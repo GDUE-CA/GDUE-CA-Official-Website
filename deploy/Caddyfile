@@ -1,0 +1,67 @@
+# =============================================================================
+# GDUECA 官网 - Caddy 反向代理配置（Nginx 的简化替代方案）
+#
+# Caddy 自动申请/续期 Let's Encrypt 证书，HTTP/3 默认开启，
+# 默认 TLS 最低版本即为 1.2（兼容 IE11），自动禁用 TLS 1.0/1.1 与 SSL。
+#
+# 使用方式：
+#   1. 域名 A/AAAA 记录指向本机，防火墙放行 TCP 80/443 + UDP 443
+#   2. caddy run --config Caddyfile（或 systemd 服务）
+#
+# 注意：与 deploy/nginx/gdueca.conf 二选一，不要同时占用 80/443。
+# =============================================================================
+
+# ---- 主站：Next.js 前端 ----
+gdue-ca.paperee.guru {
+    encode zstd gzip
+
+    # 后台管理页面：仅允许私有内网访问（后端接口层同样按角色强制校验）
+    @admin_external {
+        path /admin /admin/*
+        not remote_ip private_ranges
+    }
+    respond @admin_external "Forbidden" 403
+
+    # 同源 API：直接反代到 FastAPI；X-Forwarded-For 用真实对端覆盖，防止伪造
+    @backend path /api/* /uploads/*
+    reverse_proxy @backend 127.0.0.1:8000 {
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Request-ID {http.request.uuid}   # 链路追踪 traceId
+        request_body {
+            max_size 6MB
+        }
+    }
+
+    # 其余反代到 Next.js 生产服务（pnpm start，仅监听 127.0.0.1:3000）
+    reverse_proxy 127.0.0.1:3000 {
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Request-ID {http.request.uuid}   # 链路追踪 traceId
+    }
+
+    header {
+        # 与 next.config.ts 的 Alt-Svc 头一致（Caddy 自身已发，此处可不配）
+        # Alt-Svc 'h3=":443"; ma=86400'
+        X-Content-Type-Options nosniff
+        X-Frame-Options SAMEORIGIN
+        Referrer-Policy strict-origin-when-cross-origin
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        -Server
+    }
+}
+
+# ---- API：FastAPI 后端 ----
+api.paperee.guru {
+    encode zstd gzip
+
+    reverse_proxy 127.0.0.1:8000 {
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Request-ID {http.request.uuid}   # 链路追踪 traceId
+        header_up X-Forwarded-Proto {scheme}
+        request_body {
+            max_size 6MB     # 头像上传 ≤5MB 留余量
+        }
+    }
+}

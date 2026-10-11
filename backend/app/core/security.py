@@ -1,0 +1,207 @@
+"""JWT 认证、密码哈希、角色权限依赖、登录会话校验、内网访问控制。"""
+from datetime import UTC, datetime, timedelta
+from enum import Enum
+
+import bcrypt
+from fastapi import Depends, HTTPException, Request, status
+from jose import JWTError, jwt
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.config import get_settings
+from app.core.csrf import SESSION_COOKIE
+from app.core.middleware import get_client_ip, ip_in_networks
+from app.db.session import get_db
+
+settings = get_settings()
+
+# ---------- 登录会话超时常量 ----------
+# 默认空闲超时：30 分钟无任何认证请求 → 会话失效
+IDLE_TIMEOUT = timedelta(minutes=30)
+# 勾选「记住此设备」：空闲超时放宽到 30 天
+IDLE_TIMEOUT_REMEMBER = timedelta(days=30)
+# 「记住此设备」token 硬顶：30 天
+REMEMBER_DEVICE_DAYS = 30
+
+
+# ---------- 角色 ----------
+class Role(str, Enum):
+    SUPER_ADMIN = "super_admin"  # 超级管理员：全部权限 + 可管理账号
+    ADMIN = "admin"              # 管理员：活动管理、报名审核、Bug查看、导出
+    EDITOR = "editor"            # 编辑（管理员级）：活动内容编辑、查看报名 / Bug
+    MEMBER = "member"            # 普通成员：仅个人资料 / 登录设备，无后台权限
+    # 访客 = 未登录用户，只能访问公开页面与公开表单，不对应账号
+
+
+ROLE_RANK = {Role.MEMBER: 1, Role.EDITOR: 2, Role.ADMIN: 3, Role.SUPER_ADMIN: 4}
+# 进入后台管理的最低角色；这些角色的账号仅允许从内网访问
+ADMIN_TIER = Role.EDITOR
+
+
+def role_at_least(required: Role, user_role: Role) -> bool:
+    """判断 user_role 是否 >= required"""
+    return ROLE_RANK.get(user_role, 0) >= ROLE_RANK[required]
+
+
+def is_admin_tier(role: Role) -> bool:
+    return role_at_least(ADMIN_TIER, role)
+
+
+def is_admin_network(request: Request) -> bool:
+    """请求是否来自允许访问后台的私有内网。"""
+    return ip_in_networks(get_client_ip(request), settings.ADMIN_ALLOWED_NETWORKS)
+
+
+# ---------- 密码：bcrypt 加盐哈希，只存哈希不存原文 ----------
+BCRYPT_ROUNDS = 12
+# 账号不存在时也做一次等价哈希校验，防止通过响应时间枚举用户名
+_DUMMY_HASH = bcrypt.hashpw(b"gdueca-dummy-password", bcrypt.gensalt(BCRYPT_ROUNDS))
+
+
+def hash_password(password: str) -> str:
+    raw = password.encode("utf-8")
+    if len(raw) > 72:
+        raise ValueError("密码过长（最多 72 字节）")
+    return bcrypt.hashpw(raw, bcrypt.gensalt(BCRYPT_ROUNDS)).decode("utf-8")
+
+
+def verify_password(plain: str, hashed: str | None) -> bool:
+    try:
+        if not hashed:
+            bcrypt.checkpw(plain.encode("utf-8")[:72], _DUMMY_HASH)
+            return False
+        return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
+    except (ValueError, TypeError):
+        return False
+
+
+def is_bcrypt_hash(value: str | None) -> bool:
+    return bool(value) and value.startswith(("$2a$", "$2b$", "$2y$")) and len(value) == 60
+
+
+# ---------- JWT ----------
+def create_access_token(
+    sub: str,
+    role: Role,
+    session_id: str,
+    expires_delta: timedelta | None = None,
+) -> str:
+    expire = datetime.now(UTC) + (expires_delta or timedelta(hours=settings.JWT_EXPIRE_HOURS))
+    payload = {"sub": sub, "role": role.value, "exp": int(expire.timestamp()), "jti": session_id}
+    return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+
+
+def decode_token(token: str) -> dict:
+    try:
+        return jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+    except JWTError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="登录已失效，请重新登录")
+
+
+def _extract_token(request: Request) -> str | None:
+    """优先读取 HttpOnly 会话 Cookie；兼容非浏览器客户端的 Authorization: Bearer。"""
+    token = request.cookies.get(SESSION_COOKIE)
+    if token:
+        return token
+    auth = request.headers.get("authorization", "")
+    if auth.startswith("Bearer "):
+        return auth[7:]
+    return None
+
+
+# ---------- 依赖 ----------
+async def _authenticate(request: Request, db: AsyncSession) -> tuple[dict, object]:
+    """解析登录态并校验会话 / 账号状态，返回 (user_ctx, User)。
+
+    - 无 token / token 无效 / 缺少 jti → 401（禁止匿名访问）
+    - 会话已踢出 / 超过硬顶 / 空闲超时 → 401
+    - 账号不存在或已停用 → 401
+    - 角色以数据库为准（降权后立即生效，不信任 token 中的 role）
+    """
+    from app.db.models import LoginSession, User
+
+    token = _extract_token(request)
+    if not token:
+        raise HTTPException(status_code=401, detail="未登录或登录已失效")
+    payload = decode_token(token)
+    jti, sub = payload.get("jti"), payload.get("sub")
+    if not jti or not sub:
+        raise HTTPException(status_code=401, detail="登录已失效，请重新登录")
+
+    sess = (await db.execute(
+        select(LoginSession).where(LoginSession.session_id == jti)
+    )).scalar_one_or_none()
+    now = datetime.now(UTC).replace(tzinfo=None)
+    if not sess or sess.revoked or now > sess.expires_at or str(sess.user_id) != str(sub):
+        raise HTTPException(status_code=401, detail="登录会话已失效，请重新登录")
+
+    # 空闲超时：记住设备 → 30天硬顶；非记住设备 → 读取全局管理员配置（动态生效）
+    from app.db.models import SystemSetting
+    ss = await db.get(SystemSetting, 1)
+    global_timeout_minutes = ss.session_idle_timeout_minutes if ss else 30
+    idle_limit = IDLE_TIMEOUT_REMEMBER if sess.remember_device else timedelta(minutes=global_timeout_minutes)
+    if now - sess.last_active_at > idle_limit:
+        # 空闲超时：销毁会话记录（标记 revoked），用户必须重新登录
+        sess.revoked = True
+        sess.revoked_at = now
+        raise HTTPException(status_code=401, detail="登录已超时，请重新登录")
+
+    user = await db.get(User, sess.user_id)
+    # 软删除账号（内容回收站中）与停用账号一律拒绝认证
+    if not user or not user.is_active or user.is_deleted:
+        raise HTTPException(status_code=401, detail="账号不存在或已停用")
+
+    role = Role(user.role.value)
+    # 管理员级账号仅允许从内网使用（即使 token 被盗，外网也无法使用）
+    if is_admin_tier(role) and not is_admin_network(request):
+        raise HTTPException(status_code=403, detail="管理员账号仅允许通过内网访问")
+
+    # 滑动续期：活跃请求自动延长会话有效期
+    sess.last_active_at = now
+    ctx = {"user_id": str(user.id), "role": role.value, "jti": jti}
+    return ctx, user
+
+
+def require_role(
+    required: Role,
+    allow_pending_password_change: bool = False,
+    allow_unverified_realname: bool = False,
+):
+    """角色权限依赖：确保已登录、会话有效、角色 >= required。
+
+    首次登录 / 被重置密码的账号（must_change_password）在改密前只能访问
+    显式放行的接口（查看自身信息、修改密码、退出登录）。
+    实名验证（Phase 6）：未实名的管理员级账号（editor+/admin，super_admin 豁免）
+    禁止访问后台业务接口，仅可浏览前台与提交实名材料（realname 接口显式放行）。
+    """
+    async def _dep(request: Request, db: AsyncSession = Depends(get_db)) -> dict:
+        ctx, user = await _authenticate(request, db)
+        role = Role(ctx["role"])
+        if not role_at_least(required, role):
+            raise HTTPException(status_code=403, detail="权限不足")
+        if user.must_change_password and not allow_pending_password_change:
+            raise HTTPException(status_code=403, detail="请先修改初始密码",
+                                headers={"X-Password-Change-Required": "1"})
+        if (
+            is_admin_tier(role)
+            and role != Role.SUPER_ADMIN
+            and not user.realname_verified
+            and not allow_unverified_realname
+        ):
+            raise HTTPException(status_code=403, detail="请先完成实名验证",
+                                headers={"X-Realname-Required": "1"})
+        return ctx
+    return _dep
+
+
+async def get_optional_user(request: Request, db: AsyncSession = Depends(get_db)) -> dict | None:
+    """可选登录态：未登录 / 登录失效时返回 None（用于公开接口的差异化输出）。"""
+    if not _extract_token(request):
+        return None
+    try:
+        ctx, user = await _authenticate(request, db)
+    except HTTPException:
+        return None
+    if user.must_change_password:
+        return None
+    return ctx
