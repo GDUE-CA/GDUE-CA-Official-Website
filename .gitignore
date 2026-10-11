@@ -1,0 +1,41 @@
+# Python / backend
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# backend data & secrets
+backend/.env
+backend/*.db
+backend/uploads/
+backend/backups/
+backend/.jwt_secret
+backend/initial_admin_password.txt
+
+# Node / frontend (also see frontend/.gitignore)
+node_modules/
+.next/
+out/
+
+# env
+.env
+.env.local
+.env*.local
+
+# logs
+*.log
+logs/
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# misc
+*.tsbuildinfo
+
+# IDE tool artifacts
+.trae/

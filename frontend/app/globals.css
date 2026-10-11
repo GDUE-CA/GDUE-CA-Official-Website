@@ -1,0 +1,361 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/*
+ * 全局样式 - 克制科技风（设计稿：GDUECA 官网重设计）
+ * 黑白灰中性色 + 单一强调色（信号绿）；细边框、便当格布局；
+ * 主色 primary 为墨黑（实心按钮 / Logo）；强调色 signal（信号绿）仅用于状态点与关键行动；
+ * accent 保持 shadcn 约定：悬停 / 选中的浅灰底色（下拉菜单、侧栏等依赖此语义）
+ */
+
+/* Tailwind v4 深色模式变体声明 */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: 60 9% 97.8%;        /* #FAFAF9 背景 */
+  --foreground: 240 3% 6.1%;        /* #0F0F10 正文 */
+
+  --card: 0 0% 100%;                /* #FFFFFF 面板 */
+  --card-foreground: 240 3% 6.1%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 3% 6.1%;
+
+  --primary: 240 3% 6.1%;           /* 墨黑：实心按钮 */
+  --primary-foreground: 60 9% 97.8%;
+
+  --secondary: 60 7% 94.1%;         /* #F1F1EF 浅底 */
+  --secondary-foreground: 240 3% 6.1%;
+
+  --muted: 60 7% 94.1%;
+  --muted-foreground: 60 2% 35.3%;  /* #5C5C58 次要文字（对比度 6.4:1） */
+
+  --accent: 60 7% 94.1%;            /* 悬停浅灰 */
+  --accent-foreground: 240 3% 6.1%;
+
+  --signal: 142 76% 36.3%;          /* #16A34A 信号绿 */
+  --signal-foreground: 240 3% 6.1%; /* 绿底上用深色字（6.3:1） */
+  --signal-text: 142 72% 29.2%;     /* #15803D 绿色文字（白底 5:1） */
+  /* 图表单系列数据色：经 dataviz 校验脚本在浅 / 深两种面板底色上均通过 */
+  --chart-1: 142 76% 36.3%;         /* #16A34A */
+
+  --destructive: 0 72% 45%;
+  --destructive-foreground: 0 0% 100%;
+
+  --border: 60 5% 89.2%;            /* #E5E5E2 分隔线 */
+  --input: 60 5% 89.2%;
+  --ring: 240 3% 6.1%;
+
+  --radius: 0.75rem;                /* lg 12px；卡片 rounded-xl = 16px */
+}
+
+.dark {
+  --background: 240 5% 3.7%;        /* #09090A */
+  --foreground: 60 5% 92.5%;        /* #EDEDEB */
+
+  --card: 240 6% 7.1%;              /* #111113 */
+  --card-foreground: 60 5% 92.5%;
+
+  --popover: 240 6% 7.1%;
+  --popover-foreground: 60 5% 92.5%;
+
+  --primary: 60 5% 92.5%;
+  --primary-foreground: 240 5% 3.7%;
+
+  --secondary: 240 5% 11.2%;        /* #1B1B1E */
+  --secondary-foreground: 60 5% 92.5%;
+
+  --muted: 240 5% 11.2%;
+  --muted-foreground: 60 3% 62.2%;  /* #A1A19C */
+
+  --accent: 240 5% 11.2%;
+  --accent-foreground: 60 5% 92.5%;
+
+  --signal: 142 69% 58%;            /* #4ADE80 */
+  --signal-foreground: 240 5% 3.7%;
+  --signal-text: 142 69% 58%;
+  --chart-1: 142 76% 36.3%;         /* #16A34A（#4ADE80 作为数据色过亮，校验不通过） */
+
+  --destructive: 0 72% 55%;
+  --destructive-foreground: 0 0% 100%;
+
+  --border: 240 5% 15.7%;           /* #26262A */
+  --input: 240 5% 15.7%;
+  --ring: 60 5% 92.5%;
+}
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-signal: hsl(var(--signal));
+  --color-signal-foreground: hsl(var(--signal-foreground));
+  --color-signal-text: hsl(var(--signal-text));
+  --color-chart-1: hsl(var(--chart-1));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  /* 西文 Instrument Sans + 中文系统黑体（思源黑体 / 苹方 / 微软雅黑，不下载 CJK 字体文件） */
+  --font-sans: var(--font-instrument), "Noto Sans SC", "PingFang SC",
+    "Microsoft YaHei", sans-serif;
+  --font-display: var(--font-instrument), "Noto Sans SC", "PingFang SC",
+    "Microsoft YaHei", sans-serif;
+  /* 日期、编号、数据等辅助信息 */
+  --font-mono: var(--font-jetbrains), "Cascadia Code", monospace;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+/* 自定义滚动条 */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* Markdown 渲染样式 */
+.prose {
+  max-width: none;
+  color: hsl(var(--foreground));
+  line-height: 1.75;
+}
+
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  margin-top: 1.8em;
+  margin-bottom: 0.8em;
+  scroll-margin-top: 6rem;
+}
+
+.prose h1 {
+  font-size: 1.875rem;
+}
+
+.prose h2 {
+  font-size: 1.5rem;
+  border-bottom: 1px solid hsl(var(--border));
+  padding-bottom: 0.3em;
+}
+
+.prose h3 {
+  font-size: 1.25rem;
+}
+
+.prose p {
+  margin: 1em 0;
+}
+
+.prose a {
+  color: hsl(var(--primary));
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.prose a:hover {
+  color: hsl(var(--signal-text));
+}
+
+.prose code {
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  background: hsl(var(--muted));
+  padding: 0.2em 0.4em;
+  border-radius: 4px;
+}
+
+.prose pre {
+  background: hsl(240 5% 7%);
+  color: hsl(60 5% 92.5%);
+  border: 1px solid hsl(var(--border));
+  padding: 1rem 1.25rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin: 1.2em 0;
+}
+
+.prose pre code {
+  background: none;
+  padding: 0;
+  font-size: 0.875rem;
+}
+
+.prose ul,
+.prose ol {
+  margin: 1em 0;
+  padding-left: 1.5em;
+}
+
+.prose li {
+  margin: 0.4em 0;
+}
+
+.prose blockquote {
+  border-left: 4px solid hsl(var(--primary));
+  padding-left: 1em;
+  margin: 1.2em 0;
+  color: hsl(var(--muted-foreground));
+  font-style: italic;
+}
+
+.prose img {
+  border-radius: 0.5rem;
+  margin: 1.5em 0;
+}
+
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.2em 0;
+}
+
+.prose th,
+.prose td {
+  border: 1px solid hsl(var(--border));
+  padding: 0.5em 0.75em;
+  text-align: left;
+}
+
+.prose th {
+  background: hsl(var(--muted));
+  font-weight: 600;
+}
+
+/* =============================================================================
+ * View Transitions（React <ViewTransition> + 浏览器原生 View Transitions API）
+ * 不支持的浏览器自动跳过动画，页面功能不受影响
+ * ========================================================================== */
+:root {
+  --duration-exit: 150ms;
+  --duration-enter: 210ms;
+  --duration-move: 400ms;
+}
+
+@keyframes vt-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes vt-slide {
+  from { translate: var(--slide-offset); }
+  to { translate: 0; }
+}
+
+/* 方向性页面切换：首页 → 栏目页为前进（新页从右滑入），返回首页为后退 */
+::view-transition-old(.nav-forward) {
+  --slide-offset: -60px;
+  animation:
+    var(--duration-exit) ease-in both vt-fade reverse,
+    var(--duration-move) ease-in-out both vt-slide reverse;
+}
+::view-transition-new(.nav-forward) {
+  --slide-offset: 60px;
+  animation:
+    var(--duration-enter) ease-out var(--duration-exit) both vt-fade,
+    var(--duration-move) ease-in-out both vt-slide;
+}
+::view-transition-old(.nav-back) {
+  --slide-offset: 60px;
+  animation:
+    var(--duration-exit) ease-in both vt-fade reverse,
+    var(--duration-move) ease-in-out both vt-slide reverse;
+}
+::view-transition-new(.nav-back) {
+  --slide-offset: -60px;
+  animation:
+    var(--duration-enter) ease-out var(--duration-exit) both vt-fade,
+    var(--duration-move) ease-in-out both vt-slide;
+}
+
+/* 文字共享元素：快速导航卡片标题 → 栏目页大标题。
+ * 隐藏旧快照、新文字以原始分辨率移动，避免位图放大产生的重影 */
+::view-transition-group(.text-morph) {
+  animation-duration: var(--duration-move);
+}
+::view-transition-old(.text-morph) {
+  display: none;
+}
+::view-transition-new(.text-morph) {
+  animation: none;
+  object-fit: none;
+  object-position: left top;
+}
+
+/* 常驻导航栏：页面切换时保持静止、置于最上层；
+ * 导航栏使用 backdrop-filter，隐藏旧快照避免闪烁 */
+::view-transition-group(persistent-nav) {
+  animation: none;
+  z-index: 100;
+}
+::view-transition-old(persistent-nav) {
+  display: none;
+}
+::view-transition-new(persistent-nav) {
+  animation: none;
+}
+
+/* 无障碍：系统开启「减少动态效果」时取消所有过渡动画 */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(*),
+  ::view-transition-new(*),
+  ::view-transition-group(*) {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+  }
+}

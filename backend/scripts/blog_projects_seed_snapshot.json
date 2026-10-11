@@ -1,0 +1,30 @@
+{
+  "migrated_at": "2026-10-11 08:40:11",
+  "source": [
+    "frontend/content/blog/*.md",
+    "frontend/content/projects/*.md"
+  ],
+  "blog_slugs": [
+    "nextjs-from-scratch",
+    "react-19-new-features",
+    "typescript-type-gymnastics"
+  ],
+  "project_slugs": [
+    "association-website",
+    "campus-course-helper",
+    "campus-market",
+    "coding-practice-platform"
+  ],
+  "inserted_blog": [
+    "nextjs-from-scratch",
+    "react-19-new-features",
+    "typescript-type-gymnastics"
+  ],
+  "inserted_projects": [
+    "association-website",
+    "campus-course-helper",
+    "campus-market",
+    "coding-practice-platform"
+  ],
+  "skipped": []
+}
