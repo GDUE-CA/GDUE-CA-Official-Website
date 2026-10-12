@@ -33,6 +33,11 @@ class BizCode(IntEnum):
     BAD_REQUEST = 1010
     UNSUPPORTED_MEDIA_TYPE = 1011
     ACCOUNT_LOCKED = 1012
+    # 登录被拒（统一对外文案「用户名或密码错误」，防信息泄露；真实原因仅入审计日志）：
+    # 密码错误 / 防爆破封禁 / 应急账号停用 / 应急账号外网拒绝 / 账号不存在
+    LOGIN_BLOCKED = 1013
+    # 系统尚未完成初始化向导（system_initialized=false），普通账号禁止登录
+    SYSTEM_NOT_INITIALIZED = 1014
 
     INTERNAL_ERROR = 5000
     UPSTREAM_FAILURE = 5001
@@ -85,6 +90,12 @@ _BIZCODE_REGISTRY: dict[int, BizCodeMeta] = {
     ),
     BizCode.ACCOUNT_LOCKED: BizCodeMeta(
         http_status=423, i18n_key="error.account_locked", fallback_zh="账号已锁定，请稍后再试"
+    ),
+    BizCode.LOGIN_BLOCKED: BizCodeMeta(
+        http_status=401, i18n_key="error.login_blocked", fallback_zh="用户名或密码错误"
+    ),
+    BizCode.SYSTEM_NOT_INITIALIZED: BizCodeMeta(
+        http_status=403, i18n_key="error.system_not_initialized", fallback_zh="系统尚未完成初始化，请使用应急账号登录后台完成初始化向导"
     ),
     BizCode.INTERNAL_ERROR: BizCodeMeta(
         http_status=500, i18n_key="error.internal", fallback_zh="服务器内部错误，请稍后重试"

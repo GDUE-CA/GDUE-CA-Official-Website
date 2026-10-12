@@ -107,7 +107,8 @@ def test_permission_403_new_shell(app):
     assert body["message"]["params"]["detail"] == "权限不足"
 
 
-def test_account_locked_423_new_shell(app):
+def test_login_blocked_new_shell(app):
+    """防信息泄露：阶梯封禁期内的登录失败对外统一 401 + code 1013「用户名或密码错误」。"""
     client, headers = _admin_headers(app)
     r = client.post("/api/auth/users", headers=headers, json={
         "username": "envlock", "email": "envlock@gdue-ca.cn", "password": "Env#Lock-2025zz",
@@ -115,14 +116,14 @@ def test_account_locked_423_new_shell(app):
     })
     assert r.status_code == 201, r.text
     anon = make_client(app)
-    for _ in range(3):  # conftest LOGIN_MAX_FAILURES=3
+    for _ in range(5):  # 普通账号阶梯阶段0：5 次错误触发首次封禁
         assert _login(anon, "envlock", "wrong-password").status_code == 401
     resp = _login(anon, "envlock", "Env#Lock-2025zz")
-    assert resp.status_code == 423
+    assert resp.status_code == 401
     body = resp.json()
-    assert body["code"] == 1012
-    assert body["message"]["key"] == "error.account_locked"
-    assert "锁定" in body["message"]["params"]["detail"]
+    assert body["code"] == 1013
+    assert body["message"]["key"] == "error.login_blocked"
+    assert body["message"]["params"]["detail"] == "用户名或密码错误"
 
 
 def test_rate_limited_429_new_shell(app):

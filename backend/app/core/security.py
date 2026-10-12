@@ -85,9 +85,12 @@ def create_access_token(
     role: Role,
     session_id: str,
     expires_delta: timedelta | None = None,
+    extra_claims: dict | None = None,
 ) -> str:
     expire = datetime.now(UTC) + (expires_delta or timedelta(hours=settings.JWT_EXPIRE_HOURS))
     payload = {"sub": sub, "role": role.value, "exp": int(expire.timestamp()), "jti": session_id}
+    if extra_claims:
+        payload.update(extra_claims)
     return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 
 
@@ -109,6 +112,44 @@ def _extract_token(request: Request) -> str | None:
     return None
 
 
+# ---------- Break-Glass 应急会话（KV 存储，禁止业务库） ----------
+# 会话只在 KV 存布尔标记式条目（无 user_id，不建虚拟 users 行）；TTL = 登录时刻起
+# 全局空闲超时分钟数，不续期 —— 与普通管理员非记住设备的硬顶语义完全等价：
+# 键存在 ⇔ 登录至今 ≤ idle 分钟 ⇔ 未超硬顶且未闲置超时。禁止永久会话。
+BG_SESSION_PREFIX = "bg:session:"
+
+
+async def bg_session_create(jti: str, username: str, ip: str | None, ua: str, idle_minutes: int) -> None:
+    from app.core.kv import kv_set_json
+
+    await kv_set_json(
+        f"{BG_SESSION_PREFIX}{jti}",
+        {"username": username, "login_at": _utcnow_iso(), "ip": ip or "", "ua": (ua or "")[:256]},
+        ttl_seconds=max(60, idle_minutes * 60),
+    )
+
+
+async def bg_session_get(jti: str) -> dict | None:
+    """会话有效返回条目（含 jti）；已过期 / 不存在 / 手动登出 → None。"""
+    from app.core.kv import kv_get_json
+
+    data = await kv_get_json(f"{BG_SESSION_PREFIX}{jti}")
+    if data:
+        data = {**data, "jti": jti}
+    return data
+
+
+async def bg_session_revoke(jti: str) -> None:
+    """手动登出 / 管理端强制下线。"""
+    from app.core.kv import get_kv
+
+    await get_kv().delete(f"{BG_SESSION_PREFIX}{jti}")
+
+
+def _utcnow_iso() -> str:
+    return datetime.now(UTC).isoformat(timespec="seconds")
+
+
 # ---------- 依赖 ----------
 async def _authenticate(request: Request, db: AsyncSession) -> tuple[dict, object]:
     """解析登录态并校验会话 / 账号状态，返回 (user_ctx, User)。
@@ -127,6 +168,20 @@ async def _authenticate(request: Request, db: AsyncSession) -> tuple[dict, objec
     jti, sub = payload.get("jti"), payload.get("sub")
     if not jti or not sub:
         raise HTTPException(status_code=401, detail="登录已失效，请重新登录")
+
+    # Break-Glass 应急会话：只认 KV 条目，永不查 users 表；豁免 RBAC，不豁免内网限制
+    if payload.get("bg") is True:
+        sess = await bg_session_get(jti)
+        if not sess:
+            raise HTTPException(status_code=401, detail="登录会话已失效，请重新登录")
+        if not is_admin_network(request):
+            raise HTTPException(status_code=403, detail="管理员账号仅允许通过内网访问")
+        return {
+            "break_glass": True,
+            "role": Role.SUPER_ADMIN.value,
+            "jti": jti,
+            "username": str(sub),
+        }, None
 
     sess = (await db.execute(
         select(LoginSession).where(LoginSession.session_id == jti)
@@ -176,6 +231,9 @@ def require_role(
     """
     async def _dep(request: Request, db: AsyncSession = Depends(get_db)) -> dict:
         ctx, user = await _authenticate(request, db)
+        # Break-Glass：跳过角色 / 改密 / 实名全部校验，直接放行全部后台能力
+        if ctx.get("break_glass"):
+            return ctx
         role = Role(ctx["role"])
         if not role_at_least(required, role):
             raise HTTPException(status_code=403, detail="权限不足")
@@ -202,6 +260,8 @@ async def get_optional_user(request: Request, db: AsyncSession = Depends(get_db)
         ctx, user = await _authenticate(request, db)
     except HTTPException:
         return None
+    if ctx.get("break_glass"):
+        return ctx
     if user.must_change_password:
         return None
     return ctx

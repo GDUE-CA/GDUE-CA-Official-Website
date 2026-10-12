@@ -7,6 +7,7 @@
  */
 import { useEffect, useState } from "react";
 import { useI18n } from "@/i18n/provider";
+import { useLocalizedPath } from "@/lib/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +25,7 @@ import { Loader2, Check, QrCode, Globe, Clock, History, AlertTriangle, ShieldBan
 
 export default function SettingsPage() {
   const { t } = useI18n();
+  const lp = useLocalizedPath();
   const [corsOrigins, setCorsOrigins] = useState("");
   const [allowedHosts, setAllowedHosts] = useState("");
   const [siteName, setSiteName] = useState("");
@@ -59,7 +61,7 @@ export default function SettingsPage() {
       setSiteName(s.site_name ?? "");
       setFooter(s.footer ?? "");
       setClubCheckinOpen(!!s.club_checkin_open);
-      setSystemTimezone(s.system_timezone ?? "Asia/Shanghai");
+      setSystemTimezone(s.sys_default_timezone ?? "Asia/Shanghai");
       setNetworkPort(s.network_port ?? 443);
       setNetworkListenIp(s.network_listen_ip ?? "0.0.0.0");
       setNetworkDomainsInput((s.network_domains ?? []).join("\n"));
@@ -93,8 +95,8 @@ export default function SettingsPage() {
     try {
       // "auto" 不在系统时区场景使用；系统时区必须是具体 IANA 字符串
       const tzValue = tz === "auto" ? "Asia/Shanghai" : tz;
-      const res = await updateSystemSettings({ system_timezone: tzValue });
-      setSystemTimezone(res.system_timezone);
+      const res = await updateSystemSettings({ sys_default_timezone: tzValue });
+      setSystemTimezone(res.sys_default_timezone ?? "Asia/Shanghai");
     } catch (e) {
       alert(e instanceof Error ? e.message : "Update failed");
     }
@@ -215,7 +217,7 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent>
           <Button variant="outline" size="sm" asChild>
-            <Link href="/admin/security/ip-blacklist">
+            <Link href={lp("/admin/security/ip-blacklist")}>
               <ShieldBan className="h-4 w-4 mr-1" />
               {t("admin.settings.gotoIpBlacklist")}
               <ArrowUpRight className="h-3.5 w-3.5 ml-1" />

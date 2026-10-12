@@ -49,6 +49,14 @@ async def admin_gate_middleware(request: Request, call_next):
     if not jti or not sub:
         return fail(BizCode.UNAUTHORIZED)
 
+    # Break-Glass 应急会话：粗门只认 KV 会话条目（无 user_id，不查 users 表）
+    if payload.get("bg") is True:
+        from app.core.security import bg_session_get
+
+        if not await bg_session_get(jti):
+            return fail(BizCode.UNAUTHORIZED)
+        return await call_next(request)
+
     # 角色以数据库为准（降权 / 软删 / 停用立即生效，不信任 token 中的 role）
     from datetime import datetime, timezone
 

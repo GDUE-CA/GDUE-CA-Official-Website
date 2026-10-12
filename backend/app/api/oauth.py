@@ -31,6 +31,7 @@ from jose import jwk as jose_jwk
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.audit import ctx_uid, log_action
 from app.core.config import get_settings
 from app.core.csrf import CSRF_COOKIE, SESSION_COOKIE, cookie_secure, new_csrf_token, set_csrf_cookie
 from app.core.crypto import decrypt_secret, encrypt_secret, mask_secret
@@ -101,8 +102,9 @@ def _now() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
-def _log(db: AsyncSession, user_id: int | None, action: str, detail: str | None, ip: str | None):
-    db.add(AuditLog(user_id=user_id, action=action, detail=detail, ip=ip))
+def _log(db: AsyncSession, ctx_or_uid, action: str, detail: str | None, ip: str | None):
+    """统一审计写入：ctx_or_uid 支持 ctx dict（自动区分 Break-Glass）/ int / None。"""
+    log_action(db, ctx_or_uid, action, detail=detail, ip=ip)
 
 
 def _provider_or_400(provider: str) -> OAuthProvider:
@@ -551,7 +553,7 @@ async def update_channel(
             ch.client_secret_enc = encrypt_secret(req.client_secret)
     if req.redirect_uri is not None:
         ch.redirect_uri = req.redirect_uri or None
-    _log(db, int(user["user_id"]), "oauth.channel.update", f"provider:{p.value}",
+    _log(db, user, "oauth.channel.update", f"provider:{p.value}",
          get_client_ip(request))
     await db.commit()
     await db.refresh(ch)

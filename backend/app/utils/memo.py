@@ -17,6 +17,7 @@ from PIL import Image
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.audit import log_action
 from app.db.models import (
     AuditLog,
     MediaCategory,
@@ -300,9 +301,10 @@ async def record_media_file(
 
 
 # ---------- 审计日志快捷封装 ----------
-def log_memo(db: AsyncSession, uid: int | None, action: str, target: str | None,
+def log_memo(db: AsyncSession, ctx_or_uid, action: str, target: str | None,
              ip: str | None, detail: str | None = None) -> None:
-    db.add(AuditLog(user_id=uid, action=action, target=target, ip=ip, detail=detail))
+    """审计写入：ctx_or_uid 支持 ctx dict（Break-Glass 走 actor 标识）/ int / None。"""
+    log_action(db, ctx_or_uid, action, detail=detail, ip=ip, target=target)
 
 
 # ---------- 列表输出：填充 MemoBriefOut 派生字段 ----------

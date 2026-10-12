@@ -11,6 +11,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Loader2, Plus, Pencil, Trash2, Newspaper, Tags } from "lucide-react";
 import { useI18n } from "@/i18n/provider";
+import { useLocalizedPath } from "@/lib/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,6 +36,7 @@ const STATUS_TONE: Record<BlogPostStatus, "success" | "warning" | "info" | "neut
 
 export function BlogManager() {
   const { t } = useI18n();
+  const lp = useLocalizedPath();
   const router = useRouter();
 
   const [items, setItems] = useState<BlogPost[]>([]);
@@ -122,11 +124,11 @@ export function BlogManager() {
   return (
     <div className="space-y-4">
       <div className="flex justify-end gap-2">
-        <Button variant="outline" onClick={() => router.push("/admin/blog/tags")}>
+        <Button variant="outline" onClick={() => router.push(lp("/admin/blog/tags"))}>
           <Tags className="h-4 w-4 mr-1.5" />
           {t("admin.blog.tagsManage")}
         </Button>
-        <Button onClick={() => router.push("/admin/blog/new")}>
+        <Button onClick={() => router.push(lp("/admin/blog/new"))}>
           <Plus className="h-4 w-4 mr-1.5" />
           {t("admin.blog.newBtn")}
         </Button>
@@ -255,7 +257,7 @@ export function BlogManager() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => router.push(`/admin/blog/${p.id}/edit`)}
+                            onClick={() => router.push(lp(`/admin/blog/${p.id}/edit`))}
                             aria-label={t("admin.blog.editBtn")}
                           >
                             <Pencil className="h-4 w-4" />

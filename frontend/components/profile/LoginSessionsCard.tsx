@@ -22,6 +22,7 @@ import {
   MapPin,
 } from "lucide-react";
 import { useI18n } from "@/i18n/provider";
+import { useLocalizedPath } from "@/lib/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -81,6 +82,7 @@ function Badge({
 
 export function LoginSessionsCard() {
   const { t } = useI18n();
+  const lp = useLocalizedPath();
   const router = useRouter();
   const [sessions, setSessions] = useState<LoginSessionInfo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -120,7 +122,7 @@ export function LoginSessionsCard() {
       if (res.current_kicked) {
         // 踢掉的是当前设备：本地登出并跳转登录页
         await logout();
-        router.push("/admin/login");
+        router.push(lp("/admin/login"));
         return;
       }
       await load();

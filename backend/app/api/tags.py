@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.audit import ctx_uid
 from app.core.bizcode import BizCode
 from app.core.exceptions import BizException
 from app.core.responses import ok
@@ -102,7 +103,7 @@ async def list_memos_by_tag(
     if not t:
         raise BizException(BizCode.NOT_FOUND, "标签不存在")
 
-    uid = int(user["user_id"]) if user else None
+    uid = ctx_uid(user)
 
     # 可见性过滤：public 全体可见；member_only 已登录可见；private 仅自己可见
     vis = [Memo.visibility == "public"]

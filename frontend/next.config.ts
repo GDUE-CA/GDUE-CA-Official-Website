@@ -27,26 +27,33 @@ const nextConfig: NextConfig = {
 
   // 浏览器统一请求同源 /api/*，由 Next.js 转发到后端：
   // 登录 Cookie 为第一方 Cookie（SameSite=Strict 生效），无需开放 CORS
+  //
+  // 多语言路由（i18n URL 规范 §1）：所有浏览器 URL 必须带 /{locale}/ 前缀，
+  // 但页面源文件仍按业务域组织在 app/admin、app/auth、app/setting（不在 [locale] 下）。
+  // 这里用 rewrite 把带 locale 前缀的 URL 内部映射到实际页面路由，浏览器 URL 保持带前缀。
+  // :lang 仅匹配白名单内的合法 locale，非法 locale 不被 rewrite、由 proxy 接管做防护重定向。
   async rewrites() {
+    const LANG = "zh-cn|zh-tw|zh-hk|en-us|en-gb|ja";
     return [
-      // 登录页多语言路由：/zh-cn/admin/login → 内部渲染 /admin/login（URL 保持不变）
-      { source: "/:lang(zh-cn|zh-tw|zh-hk|en-us|en-gb|ja)/admin/login", destination: "/admin/login" },
-      // 用户端认证页多语言路由（P0）：/zh-cn/auth/login → /auth/login
-      { source: "/:lang(zh-cn|zh-tw|zh-hk|en-us|en-gb|ja)/auth/login", destination: "/auth/login" },
-      { source: "/:lang(zh-cn|zh-tw|zh-hk|en-us|en-gb|ja)/auth/register", destination: "/auth/register" },
-      // /setting 个人设置页多语言路由（与 admin/login 同一模式）
-      { source: "/:lang(zh-cn|zh-tw|zh-hk|en-us|en-gb|ja)/setting/:path*", destination: "/setting/:path*" },
+      // 后台多语言路由：/zh-cn/admin/** → 内部渲染 /admin/**
+      { source: `/:lang(${LANG})/admin/:path*`, destination: "/admin/:path*" },
+      // 用户端认证页多语言路由：/zh-cn/auth/** → /auth/**
+      { source: `/:lang(${LANG})/auth/:path*`, destination: "/auth/:path*" },
+      // /setting 个人设置页多语言路由
+      { source: `/:lang(${LANG})/setting/:path*`, destination: "/setting/:path*" },
       { source: "/api/:path*", destination: `${BACKEND_URL}/api/:path*` },
       { source: "/uploads/:path*", destination: `${BACKEND_URL}/uploads/:path*` },
     ];
   },
 
-  // 旧审核页书签兜底：三类审核已合并至统一审核中心 /admin/review?tab=
+  // 旧审核页书签兜底：三类审核已合并至统一审核中心 /{locale}/admin/review?tab=
+  // proxy 会先把裸路径补上 locale 前缀，再匹配以下带 :lang 的 source。
   async redirects() {
+    const LANG = "zh-cn|zh-tw|zh-hk|en-us|en-gb|ja";
     return [
-      { source: "/admin/registrations", destination: "/admin/review?tab=registrations", permanent: false },
-      { source: "/admin/bugs", destination: "/admin/review?tab=bugs", permanent: false },
-      { source: "/admin/password-resets", destination: "/admin/review?tab=resets", permanent: false },
+      { source: `/:lang(${LANG})/admin/registrations`, destination: "/:lang/admin/review?tab=registrations", permanent: false },
+      { source: `/:lang(${LANG})/admin/bugs`, destination: "/:lang/admin/review?tab=bugs", permanent: false },
+      { source: `/:lang(${LANG})/admin/password-resets`, destination: "/:lang/admin/review?tab=resets", permanent: false },
     ];
   },
 

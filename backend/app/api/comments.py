@@ -14,6 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.audit import ctx_uid, log_action
 from app.core.ip_location import resolve_location
 from app.core.middleware import get_client_ip
 from app.core.permissions import require_permission
@@ -69,8 +70,9 @@ def _naive_utc_now() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
-def _log(db: AsyncSession, uid: int, action: str, target: str | None, ip: str | None):
-    db.add(AuditLog(user_id=uid, action=action, target=target, ip=ip))
+def _log(db: AsyncSession, ctx_or_uid, action: str, target: str | None, ip: str | None):
+    """统一审计写入：ctx_or_uid 支持 ctx dict（自动区分 Break-Glass）/ int / None。"""
+    log_action(db, ctx_or_uid, action, target=target, ip=ip)
 
 
 async def _comments_allowed(db: AsyncSession, post: BlogPost) -> bool:
@@ -174,7 +176,7 @@ async def admin_update_comment_settings(
         s = SystemSetting(id=1)
         db.add(s)
     s.comments_enabled = req.comments_enabled
-    _log(db, int(user["user_id"]), "comment.settings",
+    _log(db, user, "comment.settings",
          f"comments_enabled={req.comments_enabled}", get_client_ip(request))
     await db.commit()
     return CommentSettingsOut(comments_enabled=s.comments_enabled)
@@ -228,7 +230,7 @@ async def admin_remove_comment(
         raise HTTPException(status_code=400, detail="该评论已是下架状态")
     c.status = CommentStatus.ADMIN_REMOVED
     c.deleted_at = _naive_utc_now()
-    _log(db, int(user["user_id"]), "comment.remove", f"comment:{c.id}",
+    _log(db, user, "comment.remove", f"comment:{c.id}",
          get_client_ip(request))
     await db.commit()
     await db.refresh(c)
@@ -250,7 +252,7 @@ async def admin_restore_comment(
         raise HTTPException(status_code=400, detail="该评论已是展示状态")
     c.status = CommentStatus.VISIBLE
     c.deleted_at = None
-    _log(db, int(user["user_id"]), "comment.restore", f"comment:{c.id}",
+    _log(db, user, "comment.restore", f"comment:{c.id}",
          get_client_ip(request))
     await db.commit()
     await db.refresh(c)

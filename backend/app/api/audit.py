@@ -5,11 +5,14 @@
 """
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Query, Response
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, Query, Request, Response
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.auth import require_break_glass
+from app.core.audit import log_action
+from app.core.middleware import get_client_ip
 from app.core.permissions import require_permission
 from app.db.models import AuditLog, User
 from app.db.session import get_db
@@ -24,10 +27,11 @@ EXPORT_LIMIT = 2000
 
 
 class AuditLogOut(BaseModel):
-    """操作日志输出（username 由列表接口回填）。"""
+    """操作日志输出（username 由列表接口回填；actor 为 Break-Glass 操作者标识）。"""
     id: int
     user_id: int | None = None
     username: str | None = None
+    actor: str | None = None
     action: str
     target: str | None = None
     detail: str | None = None
@@ -96,6 +100,7 @@ async def list_audit_logs(
     result["items"] = [
         AuditLogOut(
             id=r.id, user_id=r.user_id, username=names.get(r.user_id),
+            actor=r.actor,
             action=r.action, target=r.target, detail=r.detail,
             ip=r.ip, trace_id=r.trace_id, created_at=r.created_at,
         ).model_dump(mode="json")
@@ -128,6 +133,7 @@ async def export_audit_logs(
             {
                 "id": r.id,
                 "username": names.get(r.user_id, ""),
+                "actor": r.actor or "",
                 "action": r.action,
                 "target": r.target,
                 "detail": r.detail,
@@ -138,9 +144,9 @@ async def export_audit_logs(
             for r in rows
         ],
         [
-            ("ID", "id"), ("用户名", "username"), ("动作", "action"),
-            ("目标", "target"), ("详情", "detail"), ("IP", "ip"),
-            ("TraceID", "trace_id"), ("时间", "created_at"),
+            ("ID", "id"), ("用户名", "username"), ("操作者", "actor"),
+            ("动作", "action"), ("目标", "target"), ("详情", "detail"),
+            ("IP", "ip"), ("TraceID", "trace_id"), ("时间", "created_at"),
         ],
         free_text_keys={"detail"},
     )
@@ -149,3 +155,32 @@ async def export_audit_logs(
         media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": 'attachment; filename="audit_logs.csv"'},
     )
+
+
+# ---------- Break-Glass 高危操作确认/取消审计 ----------
+bg_router = APIRouter(prefix="/api/audit", tags=["audit"])
+
+
+class BGConfirmRequest(BaseModel):
+    action: str = Field(max_length=64)
+    target: str | None = Field(default=None, max_length=128)
+    confirmed: bool
+
+
+@bg_router.post("/bg-confirm")
+async def bg_confirm(
+    req: BGConfirmRequest,
+    request: Request,
+    user: dict = Depends(require_break_glass),
+    db: AsyncSession = Depends(get_db),
+):
+    """Break-Glass 高危操作确认/取消 → 审计日志（确认与取消均记录，无痕后门禁止）。"""
+    log_action(
+        db, user,
+        "bg_confirm" if req.confirmed else "bg_cancel",
+        f"action:{req.action}",
+        ip=get_client_ip(request),
+        target=req.target,
+    )
+    await db.commit()
+    return {"ok": True}

@@ -19,9 +19,11 @@ import {
   MonitorSmartphone,
   Link2,
   Bell,
+  Globe,
   type LucideIcon,
 } from "lucide-react";
 import { useI18n } from "@/i18n/provider";
+import { useLocalizedPath } from "@/lib/navigation";
 import { useDirtyGuard } from "@/components/setting/SettingGuardContext";
 import { BrandMark } from "@/components/shared/BrandMark";
 import { cn } from "@/lib/utils";
@@ -34,6 +36,7 @@ interface TabItem {
 
 const TABS: TabItem[] = [
   { key: "setting.tabs.profile", href: "/setting/profile", icon: User },
+  { key: "setting.tabs.localization", href: "/setting/localization", icon: Globe },
   { key: "setting.tabs.region", href: "/setting/region", icon: MapPin },
   { key: "setting.tabs.regionalFormat", href: "/setting/regional-format", icon: CalendarClock },
   { key: "setting.tabs.appearance", href: "/setting/appearance", icon: Palette },
@@ -48,7 +51,11 @@ export function SettingShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { guardNavigate } = useDirtyGuard();
+  const lp = useLocalizedPath();
 
+  // Tab href 本地化：item.href 经 lp 拼成 /{locale}/setting/...
+  // 使 <Link href>、router.push 与 isActive(pathname 比较) 三处一致
+  const tabs = TABS.map((it) => ({ ...it, href: lp(it.href) }));
   const homeHref = `/${locale}`;
 
   /** 导航点击接管：有未保存修改时 preventDefault 并弹确认框 */
@@ -80,7 +87,7 @@ export function SettingShell({ children }: { children: React.ReactNode }) {
       {/* 移动端：sticky 横向滚动 Tab 条 */}
       <div className="md:hidden sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <nav className="flex gap-1 overflow-x-auto px-2" aria-label={t("nav.settings")}>
-          {TABS.map((item) => {
+          {tabs.map((item) => {
             const active = isActive(item.href);
             return (
               <Link
@@ -107,7 +114,7 @@ export function SettingShell({ children }: { children: React.ReactNode }) {
         {/* 桌面端：左侧 Tab 导航 */}
         <aside className="hidden md:block w-56 shrink-0 border-r border-border p-3">
           <nav className="space-y-1" aria-label={t("nav.settings")}>
-            {TABS.map((item) => {
+            {tabs.map((item) => {
               const active = isActive(item.href);
               return (
                 <Link

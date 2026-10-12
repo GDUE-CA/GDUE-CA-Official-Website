@@ -15,6 +15,7 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { Loader2, ImageIcon, Upload, X, ArrowLeft } from "lucide-react";
 import { useI18n } from "@/i18n/provider";
+import { useLocalizedPath } from "@/lib/navigation";
 import { utcToLocalInput } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,6 +44,7 @@ const MDEditor = dynamic(() => import("@uiw/react-md-editor"), {
 
 export function BlogEditor({ postId }: { postId?: number }) {
   const { t } = useI18n();
+  const lp = useLocalizedPath();
   const router = useRouter();
 
   const [loading, setLoading] = useState(!!postId);
@@ -179,7 +181,7 @@ export function BlogEditor({ postId }: { postId?: number }) {
       } else {
         await adminCreateBlogPost(payload);
       }
-      router.push("/admin/blog");
+      router.push(lp("/admin/blog"));
     } catch (e) {
       setFormError(e instanceof Error ? e.message : "Save failed");
     } finally {
@@ -207,7 +209,7 @@ export function BlogEditor({ postId }: { postId?: number }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <Button variant="ghost" onClick={() => router.push("/admin/blog")}>
+        <Button variant="ghost" onClick={() => router.push(lp("/admin/blog"))}>
           <ArrowLeft className="h-4 w-4 mr-1.5" />
           {t("admin.blog.backToList")}
         </Button>

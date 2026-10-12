@@ -38,6 +38,8 @@ export const BizCode = {
   BadRequest: 1010,
   UnsupportedMediaType: 1011,
   AccountLocked: 1012,
+  LoginBlocked: 1013,
+  SystemNotInitialized: 1014,
   InternalError: 5000,
   UpstreamFailure: 5001,
   Maintenance: 5002,

@@ -14,6 +14,7 @@
 import type { ApiResponse, BizCodeType, I18nMsg } from "@/types/response";
 import { BizCode, getI18nKey, getI18nParams, isApiResponse } from "@/types/response";
 import { registerCalibrator, syncServerTime } from "@/lib/serverTime";
+import { locales, isLocale } from "@/lib/i18n";
 
 /**
  * 后端 API 基础地址
@@ -158,8 +159,28 @@ function isCsrfFailure(status: number, data: unknown): boolean {
 }
 
 /**
+ * 从浏览器 URL 路径解析当前 locale（仅客户端可用）。
+ *
+ * 规范 §localization：URL 路径 /{locale}/... 的第一段即当前 UI 语言；
+ * 后端 resolve_localization 读取 X-Locale 头感知匿名访客的 URL-locale。
+ * 服务端渲染（RSC/SSR）无 window 对象，返回 null（后端回退 sys_default）。
+ */
+function getCurrentUrlLocale(): string | null {
+  if (typeof window === "undefined") return null;
+  const segments = window.location.pathname.split("/").filter(Boolean);
+  const first = segments[0];
+  if (first && isLocale(first)) return first;
+  // 兼容大小写不一致的旧链接
+  const lower = first?.toLowerCase() ?? "";
+  return (locales as readonly string[]).includes(lower) ? lower : null;
+}
+
+/**
  * 发送带登录态（Cookie）与 CSRF 头的请求；CSRF 令牌过期时自动刷新重试一次。
  * FormData 等非 JSON 请求也走这里（不设置 Content-Type）。
+ *
+ * 规范 §localization：自动注入 X-Locale 头，让后端感知当前 URL-locale
+ * （仅控制 UI 翻译语言，不影响日期/货币/数字格式化）。
  */
 export async function secureFetch(path: string, init: RequestInit = {}): Promise<Response> {
   const method = (init.method ?? "GET").toUpperCase();
@@ -167,6 +188,11 @@ export async function secureFetch(path: string, init: RequestInit = {}): Promise
     const headers = new Headers(init.headers);
     if (UNSAFE_METHODS.has(method)) {
       headers.set("X-CSRF-Token", await getCsrfToken(refresh));
+    }
+    // 注入当前 URL-locale，供后端 resolve_localization 读取
+    const urlLocale = getCurrentUrlLocale();
+    if (urlLocale && !headers.has("X-Locale")) {
+      headers.set("X-Locale", urlLocale);
     }
     return fetch(`${API_BASE_URL}${path}`, {
       ...init,

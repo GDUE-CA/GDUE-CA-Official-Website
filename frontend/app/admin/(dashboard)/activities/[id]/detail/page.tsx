@@ -8,10 +8,12 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { useI18n } from "@/i18n/provider";
+import { useLocalizedPath } from "@/lib/navigation";
 import { ActivityDetail } from "@/components/admin/activities/ActivityDetail";
 
 export default function ActivityDetailPage() {
   const { t } = useI18n();
+  const lp = useLocalizedPath();
   const params = useParams();
   const raw = params?.id;
   const id = Number(Array.isArray(raw) ? raw[0] : raw);
@@ -20,7 +22,7 @@ export default function ActivityDetailPage() {
     <div className="space-y-6">
       <div>
         <Link
-          href="/admin/activities"
+          href={lp("/admin/activities")}
           className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
         >
           <ArrowLeft className="h-4 w-4" />

@@ -29,7 +29,8 @@ import {
 } from "lucide-react";
 import { useI18n } from "@/i18n/provider";
 import { useAdminLocale } from "@/app/admin/AdminProviders";
-import { locales, localeNames, localeToUrlLang, urlLangToLocale, type Locale } from "@/lib/i18n";
+import { useLocalizedPath, useSwitchLocale } from "@/lib/navigation";
+import { locales, localeNames, urlLangToLocale, type Locale } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,12 +43,14 @@ import {
 } from "@/components/ui/card";
 import { login } from "@/lib/api/auth";
 import { listPublicOAuthChannels } from "@/lib/api/oauth";
+import { ApiError } from "@/lib/api/client";
+import { BizCode } from "@/types/response";
 import { getSession, isAdminRole, saveSession } from "@/lib/auth";
 import type { OAuthProvider } from "@/types/api";
 
-/** 登录后的默认落地页：管理员 → 后台仪表盘；普通成员 → 个人设置 */
+/** 登录后的默认落地页：管理员 → 后台仪表盘；普通成员 → 个人设置（均带 locale 前缀） */
 function homeFor(role: string | undefined, locale: Locale) {
-  return isAdminRole(role) ? "/admin/dashboard" : `/setting/profile`;
+  return isAdminRole(role) ? `/${locale}/admin/dashboard` : `/${locale}/setting/profile`;
 }
 
 /**
@@ -63,16 +66,14 @@ function parseReturnTarget(): string | null {
   return raw;
 }
 
-/** 语言切换：跳转到对应语言前缀路由（/{lang}/admin/login），语言由页面 URL 同步效应统一应用 */
+/** 语言切换：只替换 URL 顶层 locale 段（规范 §3），保留子路径与 query */
 function AdminLocaleSwitcher() {
   const { locale } = useAdminLocale();
-  const router = useRouter();
+  const switchLocale = useSwitchLocale();
   return (
     <select
       value={locale}
-      onChange={(e) =>
-        router.replace(`/${localeToUrlLang(e.target.value as Locale)}/admin/login`)
-      }
+      onChange={(e) => switchLocale(e.target.value as Locale)}
       aria-label="Language"
       className="h-8 rounded-md border border-input bg-background px-1.5 text-xs font-medium cursor-pointer"
     >
@@ -98,6 +99,7 @@ export default function AdminLoginPage() {
   const router = useRouter();
   const pathname = usePathname();
   const { setLocale } = useAdminLocale();
+  const lp = useLocalizedPath();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -108,6 +110,8 @@ export default function AdminLoginPage() {
   const [returnTarget, setReturnTarget] = useState<string | null>(null);
   // 第三方登录：已启用的渠道（后端开关控制显隐）
   const [oauthProviders, setOauthProviders] = useState<OAuthProvider[]>([]);
+  // 首次封禁警告：登录失败返回 401 + 1013，data.first_ban=true 时显示警告
+  const [firstBanWarning, setFirstBanWarning] = useState(false);
 
   useEffect(() => {
     setReturnTarget(parseReturnTarget());
@@ -146,7 +150,7 @@ export default function AdminLoginPage() {
   function startOAuth(provider: OAuthProvider) {
     setError(null);
     // 回跳优先取 next/returnUrl（未登录守卫携带），否则按角色落地
-    const next = parseReturnTarget() ?? "/admin/dashboard";
+    const next = parseReturnTarget() ?? lp("/admin/dashboard");
     window.location.href = `/api/oauth/${provider}/login?next=${encodeURIComponent(
       next
     )}`;
@@ -157,6 +161,7 @@ export default function AdminLoginPage() {
     if (!username || !password) return;
     setLoading(true);
     setError(null);
+    setFirstBanWarning(false);
     try {
       const res = await login({ username, password, remember_device: rememberDevice });
       saveSession(
@@ -167,13 +172,32 @@ export default function AdminLoginPage() {
         },
         res.csrf_token
       );
+      // Break-Glass 应急账号登录：根据是否已初始化跳转
+      if (res.is_break_glass && res.must_setup) {
+        router.replace(lp("/admin/setup"));
+        return;
+      }
+      if (res.is_break_glass && !res.must_setup) {
+        router.replace(lp("/admin/dashboard"));
+        return;
+      }
       // 初始 / 被重置的密码 → 强制改密；否则回跳目标优先，缺省按角色落地
       router.replace(
         res.must_change_password
-          ? "/admin/change-password"
+          ? lp("/admin/change-password")
           : (returnTarget ?? homeFor(res.role, locale))
       );
     } catch (err) {
+      // 登录被防爆破封禁（401 + BizCode.LoginBlocked=1013）：
+      // 响应体 envelope.data.first_ban=true 表示首次进入封禁阶段，前端额外展示警告
+      if (err instanceof ApiError && err.code === BizCode.LoginBlocked) {
+        const envData = (err as ApiError).detail as
+          | { data?: { first_ban?: boolean } }
+          | undefined;
+        if (envData?.data?.first_ban === true) {
+          setFirstBanWarning(true);
+        }
+      }
       const msg = err instanceof Error ? err.message : t("admin.login.error");
       setError(msg);
     } finally {
@@ -227,6 +251,12 @@ export default function AdminLoginPage() {
                   required
                 />
               </div>
+
+              {firstBanWarning && (
+                <p className="text-sm text-amber-700 dark:text-amber-400 bg-amber-500/10 border border-amber-500/30 px-3 py-2 rounded-md">
+                  {t("admin.login.firstBanWarning")}
+                </p>
+              )}
 
               {error && (
                 <p className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md">
@@ -294,13 +324,13 @@ export default function AdminLoginPage() {
             {/* 忘记密码 + 账号恢复 */}
             <div className="mt-4 flex items-center justify-between text-sm">
               <Link
-                href="/admin/forgot-password"
+                href={lp("/admin/forgot-password")}
                 className="text-muted-foreground hover:text-primary transition-colors"
               >
                 {t("admin.login.forgotPassword")}
               </Link>
               <Link
-                href="/admin/recover"
+                href={lp("/admin/recover")}
                 className="text-muted-foreground hover:text-primary transition-colors"
               >
                 {t("admin.recover.title")}

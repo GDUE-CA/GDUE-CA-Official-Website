@@ -11,6 +11,7 @@ from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.audit import ctx_uid, log_action
 from app.core.middleware import get_client_ip
 from app.core.permissions import require_permission
 from app.db.models import AuditLog, RecruitmentInfo, Registration, RegistrationStatus, RegistrationType
@@ -26,8 +27,9 @@ public_router = APIRouter(prefix="/api/recruitment", tags=["recruitment-public"]
 admin_router = APIRouter(prefix="/api/admin/recruitment", tags=["recruitment-admin"])
 
 
-def _log(db: AsyncSession, uid: int, action: str, target: str | None, ip: str | None):
-    db.add(AuditLog(user_id=uid, action=action, target=target, ip=ip))
+def _log(db: AsyncSession, ctx_or_uid, action: str, target: str | None, ip: str | None):
+    """统一审计写入：ctx_or_uid 支持 ctx dict（自动区分 Break-Glass）/ int / None。"""
+    log_action(db, ctx_or_uid, action, target=target, ip=ip)
 
 
 def _is_in_effect(r: RecruitmentInfo, now: datetime) -> bool:
@@ -98,7 +100,7 @@ async def admin_create_recruitment_info(
         raise HTTPException(status_code=400, detail="开始时间必须早于结束时间")
     r = RecruitmentInfo(**req.model_dump())
     db.add(r)
-    _log(db, int(user["user_id"]), "recruitment.create", None, get_client_ip(request))
+    _log(db, user, "recruitment.create", None, get_client_ip(request))
     await db.commit()
     await db.refresh(r)
     return r
@@ -123,7 +125,7 @@ async def admin_update_recruitment_info(
         raise HTTPException(status_code=400, detail="开始时间必须早于结束时间")
     for k, v in data.items():
         setattr(r, k, v)
-    _log(db, int(user["user_id"]), "recruitment.update", f"recruitment:{rid}", get_client_ip(request))
+    _log(db, user, "recruitment.update", f"recruitment:{rid}", get_client_ip(request))
     await db.commit()
     await db.refresh(r)
     return r
@@ -141,7 +143,7 @@ async def admin_delete_recruitment_info(
     if not r:
         raise HTTPException(status_code=404, detail="招新信息不存在")
     await db.delete(r)
-    _log(db, int(user["user_id"]), "recruitment.delete", f"recruitment:{rid}", get_client_ip(request))
+    _log(db, user, "recruitment.delete", f"recruitment:{rid}", get_client_ip(request))
     await db.commit()
 
 

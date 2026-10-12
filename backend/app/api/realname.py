@@ -14,6 +14,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.audit import ctx_uid, log_action
 from app.core.middleware import get_client_ip
 from app.core.permissions import require_permission
 from app.core.security import Role, require_role
@@ -39,8 +40,17 @@ def _now() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
-def _log(db: AsyncSession, uid: int | None, action: str, detail: str | None, ip: str | None):
-    db.add(AuditLog(user_id=uid, action=action, detail=detail, ip=ip))
+def _log(db: AsyncSession, ctx_or_uid, action: str, detail: str | None, ip: str | None):
+    """统一审计写入：ctx_or_uid 支持 ctx dict（自动区分 Break-Glass）/ int / None。"""
+    log_action(db, ctx_or_uid, action, detail=detail, ip=ip)
+
+
+def _uid(user) -> int:
+    """当前登录用户 id；Break-Glass 应急账号不适用实名自服务。"""
+    v = ctx_uid(user)
+    if v is None:
+        raise HTTPException(status_code=403, detail="应急账号不适用实名功能")
+    return v
 
 
 async def _out(db: AsyncSession, r: RealnameRequest) -> dict:
@@ -60,7 +70,7 @@ async def my_realname_status(
     db: AsyncSession = Depends(get_db),
 ):
     """当前用户的实名状态 + 最近一次申请。"""
-    u = await db.get(User, int(user["user_id"]))
+    u = await db.get(User, _uid(user))
     latest = (await db.execute(
         select(RealnameRequest).where(RealnameRequest.user_id == u.id)
         .order_by(RealnameRequest.submitted_at.desc(), RealnameRequest.id.desc())
@@ -80,7 +90,7 @@ async def submit_realname(
     db: AsyncSession = Depends(get_db),
 ):
     """提交实名申请；待审核期间不可重复提交；通过后无需再提交。"""
-    uid = int(user["user_id"])
+    uid = _uid(user)
     u = await db.get(User, uid)
     if u.realname_verified:
         raise HTTPException(status_code=400, detail="账号已完成实名验证")
@@ -191,13 +201,13 @@ async def approve_request(
         raise HTTPException(status_code=404, detail="申请者账号不存在")
     r.status = RealnameStatus.APPROVED
     r.reviewed_at = _now()
-    r.reviewed_by = int(user["user_id"])
+    r.reviewed_by = ctx_uid(user)
     u.realname_verified = True
     u.realname_verified_at = r.reviewed_at
     u.student_id = r.student_id
     u.real_name = r.real_name
     u.phone = r.phone
-    _log(db, int(user["user_id"]), "realname.approve", f"user:{u.username}", get_client_ip(request))
+    _log(db, user, "realname.approve", f"user:{u.username}", get_client_ip(request))
     await db.commit()
     await db.refresh(r)
     return await _out(db, r)
@@ -220,8 +230,8 @@ async def reject_request(
     r.status = RealnameStatus.REJECTED
     r.note = req.note
     r.reviewed_at = _now()
-    r.reviewed_by = int(user["user_id"])
-    _log(db, int(user["user_id"]), "realname.reject", f"request:{r.id}", get_client_ip(request))
+    r.reviewed_by = ctx_uid(user)
+    _log(db, user, "realname.reject", f"request:{r.id}", get_client_ip(request))
     await db.commit()
     await db.refresh(r)
     return await _out(db, r)

@@ -7,6 +7,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useI18n } from "@/i18n/provider";
+import { useLocalizedPath } from "@/lib/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CalendarDays, ClipboardList, Bug, Clock, Globe } from "lucide-react";
 import { listRegistrations } from "@/lib/api/register";
@@ -17,6 +18,7 @@ import type { Registration, BugReport, AccessStats, AdminOverview } from "@/type
 
 export default function AdminDashboardPage() {
   const { t, locale } = useI18n();
+  const lp = useLocalizedPath();
   const [overview, setOverview] = useState<AdminOverview | null>(null);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [bugs, setBugs] = useState<BugReport[]>([]);
@@ -124,7 +126,7 @@ export default function AdminDashboardPage() {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((s) => (
-          <Link key={s.label} href={s.href}>
+          <Link key={s.label} href={lp(s.href)}>
             <Card className="hover:shadow-md hover:-translate-y-0.5 transition-all">
               <CardContent className="p-5">
                 <div className={`inline-flex h-10 w-10 items-center justify-center rounded-lg ${s.color} mb-3`}>

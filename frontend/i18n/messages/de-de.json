@@ -28,7 +28,26 @@
     "guest": "Guest",
     "login": "Log in",
     "register": "Sign up",
-    "memo": "Memos"
+    "memo": "Memos",
+    "appearance": "Appearance",
+    "changeLanguage": "Change language",
+    "languageSearch": "Search language…",
+    "languageEmpty": "No languages match",
+    "langGroups": {
+      "eastAsia": "East Asia",
+      "europeAmericas": "Europe & Americas",
+      "southeastAsia": "Southeast Asia"
+    },
+    "loginCard": {
+      "title": "Log in for more benefits",
+      "benefitEvents": "Event registration and check-in",
+      "benefitMemo": "Quick memo sync across devices",
+      "benefitCommunity": "Blog comments and community",
+      "benefitNotify": "Real-time in-site notifications",
+      "loginNow": "Log in now",
+      "noAccount": "No account?",
+      "registerNow": "Sign up"
+    }
   },
   "common": {
     "learnMore": "Learn More",
@@ -114,11 +133,11 @@
         },
         "2024-fraud-prevention-contest": {
           "title": "Cybersecurity Knowledge Contest \"Building the Great Wall of Cybersecurity\"",
-          "description": "A flagship contest hosted by the School of Computer Science and Security Department, organized by the Computer Association, covering 14 departments across two campuses."
+          "description": "A flagship contest hosted by the School of Computer Science and Security Department, organised by the Computer Association, covering 14 departments across two campuses."
         },
         "2022-fraud-prevention-contest": {
           "title": "Cybersecurity Knowledge Contest \"Sharp Eyes Against Fraud, Safe Journey Together\"",
-          "description": "A university-level cybersecurity contest co-organized by Student Affairs, Security Department, School of Computer Science and the Computer Association, held online via the Yiban app."
+          "description": "A university-level cybersecurity contest co-organised by Student Affairs, Security Department, School of Computer Science and the Computer Association, held online via the Yiban app."
         },
         "2022-monthly-workshop": {
           "title": "April Regular Class (Word / PPT / Cybersecurity)",
@@ -126,7 +145,7 @@
         },
         "2013-microsoft-tour": {
           "title": "Microsoft \"Innovation Journey\" Campus Lecture",
-          "description": "A \"Cloud + Client\" themed lecture co-organized by Microsoft and the Computer Association, drawing 203 attendees — the only Microsoft collaboration in the association's history."
+          "description": "A \"Cloud + Client\" themed lecture co-organised by Microsoft and the Computer Association, drawing 203 attendees — the only Microsoft collaboration in the association's history."
         }
       }
     },
@@ -155,7 +174,7 @@
       "subtitle": "Our development journey"
     },
     "structure": {
-      "title": "Organization Structure",
+      "title": "Organisation Structure",
       "subtitle": "Club departments and responsibilities",
       "activityDept": "Events Department",
       "activityDeptDesc": "Plans and runs brand events and weekly routine sessions",
@@ -349,10 +368,10 @@
       "archived": "Archived"
     },
     "enrol": {
-      "enrol": "Enroll Now",
-      "cancel": "Cancel Enrollment",
-      "loginRequired": "Log in to Enroll",
-      "failed": "Enrollment failed",
+      "enrol": "Enrol Now",
+      "cancel": "Cancel Enrolment",
+      "loginRequired": "Log in to Enrol",
+      "failed": "Enrolment failed",
       "notStarted": "Registration not started",
       "registerClosed": "Registration closed",
       "ongoing": "Event in progress",
@@ -468,7 +487,7 @@
     "title": "Contact Us",
     "subtitle": "Reach out to us through the following channels",
     "email": "Club Email",
-    "github": "GitHub Organization",
+    "github": "GitHub Organisation",
     "social": "Social Media",
     "qq": "QQ Group",
     "wechat": "WeChat Official Account",
@@ -502,8 +521,8 @@
         "content": "Users must not use this website for any illegal, malicious, harmful, or unauthorized purpose, including but not limited to attacks, scraping forms, or harassment."
       },
       {
-        "title": "Content License",
-        "content": "Content you submit (bug reports, registration info) is licensed to the club for activity management and site optimization. It will not be publicly disclosed without your consent."
+        "title": "Content Licence",
+        "content": "Content you submit (bug reports, registration info) is licensed to the club for activity management and site optimisation. It will not be publicly disclosed without your consent."
       },
       {
         "title": "Prohibited Conduct",
@@ -604,22 +623,22 @@
       "typeError": "Only JPG / PNG / WEBP images are supported"
     },
     "profile": {
-      "title": "Basic Profile",
-      "phoneDialCode": "Dial code",
+      "title": "Basic Details",
+      "phoneDialCode": "Dialling code",
       "phonePlaceholder": "Enter your phone number"
     },
     "region": {
-      "title": "Region & Timezone",
+      "title": "Region & Time Zone",
       "autoDetect": "Auto-detect region",
-      "detectSuccess": "Detected country/region filled in automatically. Please confirm it and pick sub-level divisions manually.",
+      "detectSuccess": "Detected country/region filled in automatically. Please confirm it and choose sub-level divisions manually.",
       "detectFailed": "Region detection failed. Please choose manually.",
       "country": "Country/Region",
       "subdiv1": "Level-1 division",
       "subdiv2": "Level-2 division",
       "localityPlaceholder": "Enter your locality",
       "freeTextHint": "No standard divisions available for this country/region. You can enter your location freely.",
-      "requireSubdiv1": "Please select a level-1 division",
-      "requireSubdiv2": "Please select a level-2 division"
+      "requireSubdiv1": "Please choose a level-1 division",
+      "requireSubdiv2": "Please choose a level-2 division"
     },
     "regionalFormat": {
       "title": "Regional Format",
@@ -642,6 +661,29 @@
       "preview": "Preview",
       "resetToDefault": "Reset to Region Defaults"
     },
+    "localization": {
+      "disclaimer": "⚠️Interface language controls menus and buttons only; date, currency and number formats are governed by the \"Region\" setting independently.",
+      "localeTitle": "Interface Language",
+      "localeDesc": "Choose the translation language for menus and buttons",
+      "uiLanguage": "Interface language",
+      "localeHint": "Switching interface language does not change date, currency or number formats. Adjust those under \"Region\".",
+      "timezoneTitle": "Time Zone",
+      "timezoneDesc": "Select your local time zone; affects all time displays",
+      "timezone": "Time zone",
+      "useBrowserTimezone": "Use browser local time zone",
+      "regionTitle": "Regional Format",
+      "regionDesc": "Controls localization rules for dates, first day of week, numbers and currency",
+      "regionCode": "Regional format",
+      "regionHint": "Regional format is independent of interface language and can be set separately.",
+      "currencyTitle": "Currency",
+      "currencyDesc": "Choose the default currency unit",
+      "currency": "Currency unit",
+      "syncRegionWithLang": "Sync regional format when switching interface language",
+      "rememberAsDefault": "Save as my default interface language when switching",
+      "restoreDefault": "Restore to system default",
+      "followSystem": "[Follow system: {value}]",
+      "notSet": "Not set"
+    },
     "appearance": {
       "title": "Appearance & Language",
       "themeSystem": "Follow system",
@@ -651,9 +693,9 @@
     "security": {
       "title": "Account Security",
       "usernameConfirm": "Change your username to \"{name}\"? You will need the new username to sign in afterwards.",
-      "comingSoon": "Changing your bound email and phone number will be available soon",
-      "changeEmail": "Change bound email",
-      "changePhone": "Change bound phone"
+      "comingSoon": "Changing your linked email address and phone number will be available soon",
+      "changeEmail": "Change linked email",
+      "changePhone": "Change linked phone"
     },
     "sessions": {
       "globalTimeoutNotice": "⚠️Global session idle timeout: {minutes} minutes. You will be automatically logged out after inactivity.",
@@ -663,12 +705,13 @@
     },
     "tabs": {
       "profile": "Profile",
-      "region": "Region & Timezone",
+      "localization": "Localization",
+      "region": "Region & Time Zone",
       "regionalFormat": "Regional Format",
       "appearance": "Appearance & Language",
       "security": "Account Security",
       "sessions": "Devices",
-      "connections": "Connected Accounts",
+      "connections": "Linked Accounts",
       "notifications": "Notifications"
     },
     "hints": {
@@ -698,7 +741,78 @@
       "mustChangeWarning": "Default password detected, please change it first",
       "rememberDevice": "Remember this device (fewer verifications for 30 days)",
       "oauthDivider": "Or continue with",
-      "oauthError": "Third-party sign-in failed, please retry or use password login"
+      "oauthError": "Third-party sign-in failed, please retry or use password login",
+      "firstBanWarning": "⚠️ Multiple failed login attempts detected. Continued brute-force attempts will permanently ban this account on this device/network."
+    },
+    "breakGlass": {
+      "bannerWarning": "⚠️ You are using a Break-Glass emergency account with full privileges. Proceed with caution.",
+      "sidebarLabel": "Break-Glass"
+    },
+    "setup": {
+      "title": "System Initialisation Wizard",
+      "subtitle": "First-time setup; permanently hidden after completion",
+      "step1": "Change Break-Glass Password",
+      "step1Desc": "Mandatory strong password; cannot skip",
+      "step2": "Global Parameters",
+      "step2Desc": "Default locale, timezone, region",
+      "step3": "Create First Admin",
+      "step3Desc": "Business super admin account",
+      "step4": "Confirm & Finish",
+      "step4Desc": "Submit initialisation",
+      "password": "New Password",
+      "passwordPlaceholder": "At least 12 chars, 3 of 4 categories",
+      "confirmPassword": "Confirm Password",
+      "verify": "Verify Password",
+      "verifying": "Verifying...",
+      "verifySuccess": "Password verified",
+      "generateHash": "Generate Hash",
+      "hashGenerated": "Hash generated. Copy it and update env vars.",
+      "hashPlaceholder": "Click \"Generate Hash\" button",
+      "copyHash": "Copy Hash",
+      "copied": "Copied",
+      "hashWarning": "⚠️ After copying the hash, you must update the server env vars and restart the backend for it to take effect.",
+      "next": "Next",
+      "prev": "Previous",
+      "defaultLocale": "Default Locale",
+      "defaultTimezone": "Default Timezone",
+      "defaultRegion": "Region Code",
+      "defaultCurrency": "Default Currency",
+      "adminUsername": "Admin Username",
+      "adminDisplayName": "Display Name",
+      "adminEmail": "Email",
+      "adminPassword": "Admin Password",
+      "adminPasswordConfirm": "Confirm Password",
+      "submit": "Complete Initialisation",
+      "submitting": "Submitting...",
+      "success": "System initialised. Redirecting to login...",
+      "error": "Initialisation failed",
+      "alreadyInitialized": "System is already initialised",
+      "summary": "Summary",
+      "summaryLocale": "Default Locale",
+      "summaryTimezone": "Default Timezone",
+      "summaryRegion": "Region",
+      "summaryCurrency": "Currency",
+      "summaryAdmin": "Admin Account"
+    },
+    "bans": {
+      "title": "Login Bans Panel",
+      "subtitle": "Brute-force protection ban records",
+      "empty": "No ban records",
+      "account": "Account",
+      "policy": "Policy",
+      "dim": "Dimension",
+      "dimValue": "Dim Value",
+      "stage": "Stage",
+      "bannedAt": "Banned At",
+      "until": "Until",
+      "permanent": "Permanent",
+      "actions": "Actions",
+      "unban": "Unban",
+      "unbanConfirm": "Confirm unban this entry?",
+      "resetStage": "Reset",
+      "resetConfirm": "Confirm reset error count and stage for this account?",
+      "success": "Operation succeeded",
+      "error": "Operation failed"
     },
     "changePassword": {
       "title": "Change Password",
@@ -776,7 +890,7 @@
       }
     },
     "review": {
-      "title": "Review Center",
+      "title": "Review Centre",
       "noAccess": "No review modules available. Contact an administrator for access.",
       "tabs": {
         "registrations": "Registrations",
@@ -809,7 +923,7 @@
         "backHome": "Back to Homepage"
       },
       "notifications": "Notifications",
-      "docs": "Collaborative Docs",
+      "docs": "Collaborative Documents",
       "files": "File Library",
       "recycle": "Recycle Bin",
       "mediaLibrary": "Media Library",
@@ -834,7 +948,7 @@
       "statsRegistrations": "Total Registrations",
       "statsPending": "Pending Reviews",
       "statsBugs": "Open Bugs",
-      "review": "Review Center",
+      "review": "Review Centre",
       "security": "Security",
       "accessStatsTitle": "Access Sources",
       "accessUniqueIps": "Unique IPs",
@@ -863,6 +977,7 @@
       "securityNetwork": "Listener Config",
       "securityIpWhitelist": "IP Whitelist",
       "securityIpBlacklist": "IP Blacklist",
+      "securityBans": "Login Bans",
       "auditLogs": "Audit Logs",
       "memos": "Memos"
     },
@@ -1170,16 +1285,16 @@
       "permDefaultView": "Role default: view",
       "permDefaultNone": "Role default: none",
       "permSave": "Save permissions",
-      "batchEnable": "Enable selected",
-      "batchDisable": "Disable selected",
-      "batchSelected": "{count} accounts selected",
-      "batchDisableConfirm": "Disable the selected {count} accounts? Their sessions will be revoked immediately",
       "roles": {
         "super_admin": "Super Admin",
         "admin": "Admin",
         "editor": "Editor",
         "member": "Member"
-      }
+      },
+      "batchEnable": "Enable selected",
+      "batchDisable": "Disable selected",
+      "batchSelected": "{count} accounts selected",
+      "batchDisableConfirm": "Disable the selected {count} accounts? Their sessions will be revoked immediately"
     },
     "permissions": {
       "moduleCol": "Module",
@@ -1762,7 +1877,7 @@
       "titleLabel": "Title",
       "titlePlaceholder": "Briefly describe the issue",
       "descriptionLabel": "Description",
-      "descriptionPlaceholder": "Steps to reproduce, expected vs actual behavior",
+      "descriptionPlaceholder": "Steps to reproduce, expected vs actual behaviour",
       "contactLabel": "Contact (optional)",
       "contactPlaceholder": "Email or phone, so we can reply",
       "urlLabel": "Page URL (optional)",
@@ -1952,6 +2067,8 @@
     "internal": "Internal server error, please try again later",
     "upstream_failure": "Upstream service error",
     "maintenance": "System under maintenance",
+    "login_blocked": "Invalid username or password",
+    "system_not_initialized": "System is not initialised. Please log in with the break-glass account to complete the initialisation wizard.",
     "memo": {
       "createFailed": "Failed to create memo",
       "updateFailed": "Failed to update memo",

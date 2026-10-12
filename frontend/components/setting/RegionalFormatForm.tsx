@@ -96,7 +96,7 @@ const REGION_DEFAULTS: Record<string, {
   date_long_pattern: string;
   time_short_pattern: string;
   time_long_pattern: string;
-  default_currency: string;
+  currency: string;
 }> = {
   CN: {
     primary_calendar: "gregorian",
@@ -106,7 +106,7 @@ const REGION_DEFAULTS: Record<string, {
     date_long_pattern: "YYYY年M月D日",
     time_short_pattern: "HH:mm",
     time_long_pattern: "HH:mm:ss",
-    default_currency: "CNY",
+    currency: "CNY",
   },
   HK: {
     primary_calendar: "gregorian",
@@ -116,7 +116,7 @@ const REGION_DEFAULTS: Record<string, {
     date_long_pattern: "D MMMM YYYY",
     time_short_pattern: "h:mm A",
     time_long_pattern: "h:mm:ss A",
-    default_currency: "HKD",
+    currency: "HKD",
   },
   MO: {
     primary_calendar: "gregorian",
@@ -126,7 +126,7 @@ const REGION_DEFAULTS: Record<string, {
     date_long_pattern: "D MMMM YYYY",
     time_short_pattern: "h:mm A",
     time_long_pattern: "h:mm:ss A",
-    default_currency: "MOP",
+    currency: "MOP",
   },
   TW: {
     primary_calendar: "gregorian",
@@ -136,7 +136,7 @@ const REGION_DEFAULTS: Record<string, {
     date_long_pattern: "YYYY年M月D日",
     time_short_pattern: "HH:mm",
     time_long_pattern: "HH:mm:ss",
-    default_currency: "TWD",
+    currency: "TWD",
   },
   US: {
     primary_calendar: "gregorian",
@@ -146,7 +146,7 @@ const REGION_DEFAULTS: Record<string, {
     date_long_pattern: "MMMM D, YYYY",
     time_short_pattern: "h:mm A",
     time_long_pattern: "h:mm:ss A",
-    default_currency: "USD",
+    currency: "USD",
   },
   GB: {
     primary_calendar: "gregorian",
@@ -156,7 +156,7 @@ const REGION_DEFAULTS: Record<string, {
     date_long_pattern: "D MMMM YYYY",
     time_short_pattern: "HH:mm",
     time_long_pattern: "HH:mm:ss",
-    default_currency: "GBP",
+    currency: "GBP",
   },
   JP: {
     primary_calendar: "gregorian",
@@ -166,7 +166,7 @@ const REGION_DEFAULTS: Record<string, {
     date_long_pattern: "YYYY年M月D日",
     time_short_pattern: "HH:mm",
     time_long_pattern: "HH:mm:ss",
-    default_currency: "JPY",
+    currency: "JPY",
   },
 };
 
@@ -317,7 +317,7 @@ export function RegionalFormatForm() {
         setDateLong(p.date_long_pattern ?? "YYYY年M月D日");
         setTimeShort(p.time_short_pattern ?? "HH:mm");
         setTimeLong(p.time_long_pattern ?? "HH:mm:ss");
-        setDefaultCurrency(p.default_currency ?? "CNY");
+        setDefaultCurrency(p.currency ?? "CNY");
         initialRef.current = JSON.stringify({
           pc: p.primary_calendar ?? "gregorian",
           sc: p.secondary_calendar ?? "",
@@ -326,7 +326,7 @@ export function RegionalFormatForm() {
           dl: p.date_long_pattern ?? "YYYY年M月D日",
           ts: p.time_short_pattern ?? "HH:mm",
           tl: p.time_long_pattern ?? "HH:mm:ss",
-          dc: p.default_currency ?? "CNY",
+          dc: p.currency ?? "CNY",
         });
       })
       .catch(() => {})
@@ -347,7 +347,7 @@ export function RegionalFormatForm() {
         date_long_pattern: dateLong,
         time_short_pattern: timeShort,
         time_long_pattern: timeLong,
-        default_currency: defaultCurrency,
+        currency: defaultCurrency,
       });
       setProfile(updated);
       initialRef.current = JSON.stringify({
@@ -380,7 +380,7 @@ export function RegionalFormatForm() {
     setDateLong(defaults.date_long_pattern);
     setTimeShort(defaults.time_short_pattern);
     setTimeLong(defaults.time_long_pattern);
-    setDefaultCurrency(defaults.default_currency);
+    setDefaultCurrency(defaults.currency);
   }
 
   if (loading) {

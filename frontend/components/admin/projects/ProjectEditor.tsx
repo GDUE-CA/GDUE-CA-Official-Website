@@ -21,6 +21,7 @@ import {
   Plus,
 } from "lucide-react";
 import { useI18n } from "@/i18n/provider";
+import { useLocalizedPath } from "@/lib/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -49,6 +50,7 @@ const STATUSES: ProjectStatus[] = ["draft", "published", "archived"];
 
 export function ProjectEditor({ projectId }: { projectId?: number }) {
   const { t } = useI18n();
+  const lp = useLocalizedPath();
   const router = useRouter();
 
   const [loading, setLoading] = useState(!!projectId);
@@ -174,7 +176,7 @@ export function ProjectEditor({ projectId }: { projectId?: number }) {
       } else {
         await adminCreateProject(payload);
       }
-      router.push("/admin/projects");
+      router.push(lp("/admin/projects"));
     } catch (e) {
       setFormError(e instanceof Error ? e.message : "Save failed");
     } finally {
@@ -202,7 +204,7 @@ export function ProjectEditor({ projectId }: { projectId?: number }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <Button variant="ghost" onClick={() => router.push("/admin/projects")}>
+        <Button variant="ghost" onClick={() => router.push(lp("/admin/projects"))}>
           <ArrowLeft className="h-4 w-4 mr-1.5" />
           {t("admin.projects.backToList")}
         </Button>

@@ -19,6 +19,7 @@ from sqlalchemy import delete as sa_delete
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.audit import ctx_uid, log_action
 from app.core.middleware import get_client_ip
 from app.core.permissions import require_permission
 from app.db.models import (
@@ -76,8 +77,9 @@ _NH3_ATTRS = {
 }
 
 
-def _log(db: AsyncSession, uid: int, action: str, target: str | None, ip: str | None):
-    db.add(AuditLog(user_id=uid, action=action, target=target, ip=ip))
+def _log(db: AsyncSession, ctx_or_uid, action: str, target: str | None, ip: str | None):
+    """统一审计写入：ctx_or_uid 支持 ctx dict（自动区分 Break-Glass）/ int / None。"""
+    log_action(db, ctx_or_uid, action, target=target, ip=ip)
 
 
 def _render_html(md_text: str) -> str:
@@ -287,7 +289,7 @@ async def admin_create_post(
         cover_url=req.cover_url,
         allow_comments=req.allow_comments,
         author_name=req.author_name,
-        author_id=int(user["user_id"]),
+        author_id=ctx_uid(user),
     )
     p.status = _check_status_transition(req.status, req.scheduled_at)
     p.scheduled_at = req.scheduled_at if p.status == BlogPostStatus.SCHEDULED else None
@@ -301,7 +303,7 @@ async def admin_create_post(
         # 自动 slug = post-{自增 id}，天然唯一；不能用 _ensure_slug_unique
         # （autoflush 会把新值写库后命中自身）
         p.slug = f"post-{p.id}"
-    _log(db, int(user["user_id"]), "blog.create", f"blog:{p.id}", get_client_ip(request))
+    _log(db, user, "blog.create", f"blog:{p.id}", get_client_ip(request))
     await db.commit()
     await db.refresh(p)
     out = BlogPostOut.model_validate(p).model_dump(mode="json")
@@ -353,7 +355,7 @@ async def admin_update_post(
         if k in data:
             setattr(p, k, data[k])
 
-    _log(db, int(user["user_id"]), "blog.update", f"blog:{p.id}", get_client_ip(request))
+    _log(db, user, "blog.update", f"blog:{p.id}", get_client_ip(request))
     await db.commit()
     await db.refresh(p)
     out = BlogPostOut.model_validate(p).model_dump(mode="json")
@@ -375,7 +377,7 @@ async def admin_delete_post(
     # 关联行清理交给 ORM secondary 级联（删除父对象时自动 DELETE blog_post_tags）；
     # 不可再显式 sa_delete——flush 时 ORM 会基于已加载的 collection 二次删除不存在的行，
     # 抛 StaleDataError
-    _log(db, int(user["user_id"]), "blog.delete", f"blog:{p.id}", get_client_ip(request))
+    _log(db, user, "blog.delete", f"blog:{p.id}", get_client_ip(request))
     await db.delete(p)
     await db.commit()
 
@@ -406,7 +408,7 @@ async def admin_create_tag(
     await db.flush()
     if not req.slug:
         t.slug = f"tag-{t.id}"
-    _log(db, int(user["user_id"]), "blog_tag.create", f"blog_tag:{t.id}",
+    _log(db, user, "blog_tag.create", f"blog_tag:{t.id}",
          get_client_ip(request))
     await db.commit()
     await db.refresh(t)
@@ -440,7 +442,7 @@ async def admin_update_tag(
     for k in ("name", "slug"):
         if k in data:
             setattr(t, k, data[k])
-    _log(db, int(user["user_id"]), "blog_tag.update", f"blog_tag:{t.id}",
+    _log(db, user, "blog_tag.update", f"blog_tag:{t.id}",
          get_client_ip(request))
     await db.commit()
     await db.refresh(t)
@@ -459,7 +461,7 @@ async def admin_delete_tag(
         raise HTTPException(status_code=404, detail="标签不存在")
     # 先清理文章-标签关联行（同上，secondary 不级联）
     await db.execute(sa_delete(BlogPostTag).where(BlogPostTag.tag_id == tag_id))
-    _log(db, int(user["user_id"]), "blog_tag.delete", f"blog_tag:{t.id}",
+    _log(db, user, "blog_tag.delete", f"blog_tag:{t.id}",
          get_client_ip(request))
     await db.delete(t)
     await db.commit()
@@ -537,9 +539,9 @@ async def admin_upload_blog_image(
         mime=mime,
         size=len(compressed),
         storage_path=f"uploads/blog/{filename}",
-        uploader_id=int(user["user_id"]),
+        uploader_id=ctx_uid(user),
         category=MediaCategory.BLOG,
     ))
-    _log(db, int(user["user_id"]), "blog.upload", filename, get_client_ip(request))
+    _log(db, user, "blog.upload", filename, get_client_ip(request))
     await db.commit()
     return BlogUploadOut(url=url, size=len(compressed), original_size=len(data))

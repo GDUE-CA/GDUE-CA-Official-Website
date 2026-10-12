@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.audit import ctx_uid, log_action
 from app.core.middleware import get_client_ip
 from app.core.permissions import require_permission
 from app.db.models import AuditLog, NetworkConfigHistory, SystemSetting
@@ -17,8 +18,9 @@ from app.schemas.system import (
 router = APIRouter(prefix="/api/system", tags=["system"])
 
 
-def _log(db: AsyncSession, uid: int | None, action: str, detail: str | None, ip: str | None):
-    db.add(AuditLog(user_id=uid, action=action, detail=detail, ip=ip))
+def _log(db: AsyncSession, ctx_or_uid, action: str, detail: str | None, ip: str | None):
+    """统一审计写入：ctx_or_uid 支持 ctx dict（自动区分 Break-Glass）/ int / None。"""
+    log_action(db, ctx_or_uid, action, detail=detail, ip=ip)
 
 
 def _log_network_change(
@@ -89,11 +91,11 @@ async def update_settings(
     db: AsyncSession = Depends(get_db),
 ):
     rec = await _get_or_create_settings(db)
-    # IANA 时区校验（如果本次请求包含 system_timezone）
-    if req.system_timezone is not None:
+    # IANA 时区校验（如果本次请求包含 sys_default_timezone）
+    if req.sys_default_timezone is not None:
         try:
             from zoneinfo import ZoneInfo
-            ZoneInfo(req.system_timezone)
+            ZoneInfo(req.sys_default_timezone)
         except Exception:
             raise HTTPException(status_code=400, detail="无效的 IANA 时区")
     changed_keys = list(req.model_dump(exclude_unset=True).keys())
@@ -102,9 +104,9 @@ async def update_settings(
     for k, v in req.model_dump(exclude_unset=True).items():
         if v is not None:
             setattr(rec, k, v)
-    uid = int(user["user_id"])
+    uid = ctx_uid(user)
     client_ip = get_client_ip(request)
-    _log(db, uid, "system.settings.update",
+    _log(db, user, "system.settings.update",
          f"changed: {changed_keys}" if changed_keys else "no-op",
          client_ip)
     # 网络配置变更 → 写历史 + 修剪
@@ -145,7 +147,7 @@ async def add_ip_to_blacklist(
     rec = await _get_or_create_settings(db)
     if ip not in rec.ip_blacklist:
         rec.ip_blacklist = [*rec.ip_blacklist, ip]
-        _log(db, int(user["user_id"]), "ip.blacklist.add", ip,
+        _log(db, user, "ip.blacklist.add", ip,
              get_client_ip(request))
     return {"blacklist": rec.ip_blacklist}
 
@@ -159,6 +161,6 @@ async def remove_ip_from_blacklist(
 ):
     rec = await _get_or_create_settings(db)
     rec.ip_blacklist = [x for x in rec.ip_blacklist if x != ip]
-    _log(db, int(user["user_id"]), "ip.blacklist.remove", ip,
+    _log(db, user, "ip.blacklist.remove", ip,
          get_client_ip(request))
     return {"blacklist": rec.ip_blacklist}

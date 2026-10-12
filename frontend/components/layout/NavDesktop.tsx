@@ -16,7 +16,7 @@ import { motion } from "framer-motion";
 import { Menu } from "lucide-react";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
-import { SettingsDropdown } from "@/components/layout/SettingsDropdown";
+import { NavDropdownBar } from "@/components/layout/NavDropdown";
 import { NotificationBell } from "@/components/layout/NotificationBell";
 import { NavMobile } from "@/components/layout/NavMobile";
 import { UserMenu } from "@/components/layout/UserMenu";
@@ -98,7 +98,7 @@ export function NavDesktop() {
             {/* 右侧操作区 */}
             <div className="flex items-center gap-2 justify-self-end">
               <div className="hidden md:flex items-center gap-1">
-                <SettingsDropdown />
+                <NavDropdownBar />
                 <NotificationBell />
               </div>
               <Button asChild size="sm" className="hidden md:inline-flex">

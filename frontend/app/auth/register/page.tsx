@@ -15,6 +15,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Loader2, UserPlus, ArrowLeft, LogIn } from "lucide-react";
 import { useI18n } from "@/i18n/provider";
+import { useLocalizedPath } from "@/lib/navigation";
 import { useAdminLocale } from "@/app/admin/AdminProviders";
 import { localeNames, locales, localeToUrlLang, urlLangToLocale, type Locale } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
@@ -90,6 +91,7 @@ function AuthLocaleSwitcher() {
 
 export default function AuthRegisterPage() {
   const { t, locale } = useI18n();
+  const lp = useLocalizedPath();
   const router = useRouter();
   const pathname = usePathname();
   const { setLocale } = useAdminLocale();
@@ -137,7 +139,7 @@ export default function AuthRegisterPage() {
         phone: values.phone || undefined,
       });
       // P0：注册成功跳转登录页
-      router.replace("/auth/login");
+      router.replace(lp("/auth/login"));
     } catch (err) {
       setServerError(err instanceof Error ? err.message : t("auth.register.error"));
     }
@@ -281,7 +283,7 @@ export default function AuthRegisterPage() {
 
             <div className="mt-5 flex items-center justify-between text-sm">
               <Link
-                href="/auth/login"
+                href={lp("/auth/login")}
                 className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors"
               >
                 <LogIn className="h-4 w-4" />

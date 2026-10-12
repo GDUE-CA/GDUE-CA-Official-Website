@@ -46,9 +46,7 @@ class User(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     # 默认管理员首次登录后必须改密
     must_change_password: Mapped[bool] = mapped_column(Boolean, default=False)
-    # 登录失败处理：连续失败计数 + 锁定截止时间
-    failed_login_count: Mapped[int] = mapped_column(Integer, default=0)
-    locked_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # 登录失败处理已迁移至（账号+维度）阶梯防爆破（app/core/brute_force.py，数据存 KV/Redis）
     password_changed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     # --- 账号身份信息（用于身份验证和密码恢复） ---
     student_id: Mapped[str] = mapped_column(String(32), index=True)  # 学号
@@ -97,8 +95,12 @@ class User(Base):
     time_short_pattern: Mapped[str] = mapped_column(String(32), default="HH:mm")
     # 长时间格式（带秒）
     time_long_pattern: Mapped[str] = mapped_column(String(32), default="HH:mm:ss")
-    # 默认货币单位 ISO-4217（如 CNY / USD / EUR）
-    default_currency: Mapped[str] = mapped_column(String(8), default="CNY")
+    # 默认货币 ISO-4217（如 CNY/USD/EUR）；NULL = 跟随系统全局 sys_default_currency
+    currency: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    # 用户个人 UI 界面语言（如 zh-cn/en-gb）；NULL = 跟随系统全局 sys_default_locale
+    locale: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    # 用户个人区域格式化代码（ISO-3166-1 二位，如 CN/GB/JP）；NULL = 跟随系统全局 sys_default_region
+    region_code: Mapped[str | None] = mapped_column(String(16), nullable=True)
     # 软删除：True 送入内容回收站，定时任务 30 天后物理删除；删除后禁止登录
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -309,8 +311,8 @@ class SystemSetting(Base):
     cors_origins: Mapped[list[str]] = mapped_column(JSON, default=list)
     # 社团报名签到开关（社团报名不关联活动，用全局开关控制）
     club_checkin_open: Mapped[bool] = mapped_column(Boolean, default=False)
-    # 系统默认 IANA 时区（前端降级回退用）；默认 Asia/Shanghai
-    system_timezone: Mapped[str] = mapped_column(String(64), default="Asia/Shanghai")
+    # 系统默认 IANA 时区（前端降级回退用）；默认 Asia/Shanghai；NULL 兜底 Asia/Shanghai
+    sys_default_timezone: Mapped[str | None] = mapped_column(String(64), nullable=True, default="Asia/Shanghai")
     # 网络配置（接入层 Nginx/Caddy 热重载参考用；实际生效需运维手动重载）
     network_port: Mapped[int] = mapped_column(Integer, default=443)
     network_listen_ip: Mapped[str] = mapped_column(String(64), default="0.0.0.0")
@@ -322,6 +324,14 @@ class SystemSetting(Base):
     # 全局登录会话空闲超时（分钟）：管理员在后台配置，预设值 [1,2,5,10,15,20,30,60,120]
     # 最大硬性限制 120 分钟（2 小时）；基于 last_active_at 滑动计算，非登录时刻
     session_idle_timeout_minutes: Mapped[int] = mapped_column(Integer, default=30)
+    # ---------- 系统初始化向导（Break-Glass 体系） ----------
+    # false = 尚未完成初始化：仅 Break-Glass 可登录，普通账号全部拒绝
+    # 完成向导后置 true 且永久隐藏向导入口（仅允许手动改库重置）
+    system_initialized: Mapped[bool] = mapped_column(Boolean, default=False)
+    # 初始化向导写入的全局基础参数（本地化系统全局默认；用户字段 NULL 时回退此处）
+    sys_default_locale: Mapped[str | None] = mapped_column(String(16), nullable=True)   # 如 zh-cn
+    sys_default_region: Mapped[str | None] = mapped_column(String(16), nullable=True)   # 如 CN
+    sys_default_currency: Mapped[str | None] = mapped_column(String(8), nullable=True)  # ISO-4217 如 CNY
 
 
 # ---------- 操作日志 ----------
@@ -330,6 +340,9 @@ class AuditLog(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    # 操作者展示标识：Break-Glass 应急账号固定为 [BREAK_GLASS_ESCAPE]（user_id 保持 NULL）；
+    # 普通账号为 None，展示时回落到 user_id 关联的用户名
+    actor: Mapped[str | None] = mapped_column(String(64), nullable=True)
     action: Mapped[str] = mapped_column(String(64))     # 如 "login" / "activity.create"
     target: Mapped[str | None] = mapped_column(String(64), nullable=True)   # 如 "activity:5"
     detail: Mapped[str | None] = mapped_column(Text, nullable=True)

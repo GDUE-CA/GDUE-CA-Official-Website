@@ -84,8 +84,10 @@ def test_admin_gate_member_403(app):
 
 
 def test_admin_gate_admin_ok(app):
+    # admin_router 的活动列表挂载在 /api/activities/admin；/api/admin/activities 仅存在子路径
+    # （/{activity_id}/* 等参数路由），无根列表端点 → 换用真实存在的审计日志列表验证门禁放行
     client, headers = _admin_client(app)
-    res = client.get("/api/admin/activities?archived=all")
+    res = client.get("/api/admin/audit-logs")
     assert res.status_code == 200, res.text
 
 

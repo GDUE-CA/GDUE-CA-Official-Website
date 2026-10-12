@@ -10,6 +10,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { Loader2, KeyRound, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { useI18n } from "@/i18n/provider";
+import { useLocalizedPath } from "@/lib/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,6 +27,7 @@ import { meetsPasswordPolicy } from "@/lib/passwordPolicy";
 
 export default function ChangePasswordPage() {
   const { t } = useI18n();
+  const lp = useLocalizedPath();
   const router = useRouter();
   const [oldPwd, setOldPwd] = useState("");
   const [newPwd, setNewPwd] = useState("");
@@ -50,7 +52,7 @@ export default function ChangePasswordPage() {
       await changePassword({ old_password: oldPwd, new_password: newPwd });
       setSuccess(true);
       // 管理员回后台；普通成员回前台个人资料页
-      const target = isAdminRole(getSession()?.role) ? "/admin/dashboard" : "/setting/profile";
+      const target = isAdminRole(getSession()?.role) ? lp("/admin/dashboard") : lp("/setting/profile");
       setTimeout(() => router.replace(target), 1500);
     } catch (err) {
       const msg = err instanceof Error ? err.message : t("admin.changePassword.error");
@@ -142,7 +144,7 @@ export default function ChangePasswordPage() {
 
             <div className="mt-6 text-center">
               <Button asChild variant="ghost" size="sm">
-                <Link href="/admin/login">
+                <Link href={lp("/admin/login")}>
                   <ArrowLeft className="h-4 w-4 mr-1.5" />
                   {t("admin.changePassword.backToLogin")}
                 </Link>

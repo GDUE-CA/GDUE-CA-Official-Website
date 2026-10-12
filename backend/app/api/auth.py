@@ -20,6 +20,15 @@ from pydantic import BaseModel
 from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.audit import ctx_uid, log_action
+from app.core.bizcode import BizCode
+from app.core.brute_force import (
+    BREAK_GLASS_POLICY,
+    NORMAL_POLICY,
+    check as bf_check,
+    record_failure as bf_record_failure,
+    reset as bf_reset,
+)
 from app.core.config import get_settings
 from app.core.csrf import CSRF_COOKIE, SESSION_COOKIE, cookie_secure, new_csrf_token, set_csrf_cookie
 from app.core.ip_location import resolve_location
@@ -27,9 +36,12 @@ from app.core.middleware import get_client_ip
 from app.core.password_policy import check_password_strength
 from app.core.permissions import PERMISSION_MODULES, require_permission
 from app.core.rate_limit import rate_limit
+from app.core.responses import fail
 from app.core.security import (
     REMEMBER_DEVICE_DAYS,
     Role,
+    bg_session_create,
+    bg_session_revoke,
     create_access_token,
     decode_token,
     hash_password,
@@ -44,10 +56,12 @@ from app.db.models import (
     PasswordResetRequest,
     PasswordResetStatus,
     SecurityQuestion,
+    SystemSetting,
     User,
     UserRole,
 )
 from app.db.session import get_db
+from app.utils.crud import paginate
 from app.schemas.auth import (
     AvatarUploadOut,
     ChangePasswordRequest,
@@ -69,11 +83,22 @@ from app.schemas.auth import (
 )
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+
+# 对外统一防信息泄露文案（响应壳 message.params.detail）；真实原因仅写入审计日志
+_LOGIN_DENIED = {"detail": "用户名或密码错误"}
+_INIT_REQUIRED = {"detail": "系统尚未完成初始化，请使用应急账号登录后台完成初始化向导"}
 settings = get_settings()
 
 
-def _log(db: AsyncSession, user_id: int | None, action: str, detail: str | None, ip: str | None):
-    db.add(AuditLog(user_id=user_id, action=action, detail=detail, ip=ip))
+def _log(db: AsyncSession, ctx_or_uid, action: str, detail: str | None, ip: str | None):
+    """统一审计写入：ctx_or_uid 支持 ctx dict（自动区分 Break-Glass）/ int / None。"""
+    log_action(db, ctx_or_uid, action, detail, ip=ip)
+
+
+def _reject_break_glass(user: dict) -> None:
+    """Break-Glass 应急账号不适用个人自服务功能（无 user_id，无个人资料/设备列表）。"""
+    if user.get("break_glass"):
+        raise HTTPException(status_code=403, detail="应急账号不适用个人自服务功能")
 
 
 def _now() -> datetime:
@@ -178,6 +203,10 @@ async def register(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
+    # 系统初始化门禁：未完成初始化向导时关闭公开注册
+    ss = await db.get(SystemSetting, 1)
+    if ss and not ss.system_initialized:
+        return fail(BizCode.SYSTEM_NOT_INITIALIZED, params=_INIT_REQUIRED)
     dup = (await db.execute(
         select(User).where(User.username == req.username)
     )).scalar_one_or_none()
@@ -221,54 +250,145 @@ async def login(
     response: Response,
     db: AsyncSession = Depends(get_db),
 ):
+    """登录：Break-Glass 应急账号与普通账号双轨。
+
+    防信息泄露（需求硬性规定）：无论密码错误 / 防爆破封禁 / 应急账号停用 /
+    外网拒绝 / 账号不存在，对外一律返回 BizCode.LOGIN_BLOCKED（401，
+    「用户名或密码错误」）；真实原因仅写入审计日志。剩余封禁时长绝不对外暴露。
+    """
     if not req.username and not req.email:
         raise HTTPException(status_code=400, detail="必须提供 username 或 email")
     client_ip = get_client_ip(request)
+    # 浏览器指纹（前端 canvas+字体+屏幕+UA 生成；客户端可伪造，仅作防爆破附加维度）
+    fingerprint = (request.headers.get("x-browser-fingerprint") or "").strip()[:128] or None
+    dims = {"ip": client_ip, "fp": fingerprint}
+    ua = request.headers.get("user-agent", "") or ""
+    now = _now()
+
+    # ================= Break-Glass 应急账号分支 =================
+    # 凭据仅存环境变量，永不查 users 表；限流阶梯按 (账号, 维度) 组合独立计。
+    bg_username = settings.SUPER_ADMIN_USERNAME
+    if bg_username and req.username and req.username == bg_username:
+        ctx_bg = {"break_glass": True, "username": bg_username}
+
+        # 1) 阶梯封禁检查（封禁中不做任何其他校验，直接拒绝）
+        ban = await bf_check(BREAK_GLASS_POLICY, bg_username, dims)
+        if ban:
+            log_action(db, ctx_bg, "bg_login.ban_blocked",
+                       f"stage:{ban.stage} dim:{ban.dim} permanent:{ban.permanent}", client_ip)
+            await db.commit()
+            return fail(BizCode.LOGIN_BLOCKED, params=_LOGIN_DENIED)
+
+        # 2) 应急账号仅允许内网登录（IP 白名单校验不可豁免；外网拒绝不消耗密码尝试）
+        if not is_admin_network(request):
+            log_action(db, ctx_bg, "bg_login.network_denied", None, client_ip)
+            await db.commit()
+            return fail(BizCode.LOGIN_BLOCKED, params=_LOGIN_DENIED)
+
+        # 3) 密码校验；错误计入阶梯（即使 SUPER_ADMIN_ENABLED=false 仍计数）
+        if not verify_password(req.password, settings.SUPER_ADMIN_PASSWORD_HASH):
+            entry = await bf_record_failure(BREAK_GLASS_POLICY, bg_username, bg_username, dims)
+            log_action(db, ctx_bg, "bg_login.fail",
+                       f"reason:password stage:{entry.stage if entry else '-'}", client_ip)
+            if entry:
+                log_action(db, ctx_bg, "bg_login.ban_triggered",
+                           f"stage:{entry.stage} dim:{entry.dim} until:{entry.until or 'permanent'}",
+                           client_ip)
+            await db.commit()
+            return fail(BizCode.LOGIN_BLOCKED, params=_LOGIN_DENIED, data={"first_ban": True} if entry else None)
+
+        # 4) 应急开关关闭：密码正确也拒绝（不消耗阶梯——密码尝试本身已通过）
+        if not settings.break_glass_enabled:
+            log_action(db, ctx_bg, "bg_login.disabled", None, client_ip)
+            await db.commit()
+            return fail(BizCode.LOGIN_BLOCKED, params=_LOGIN_DENIED)
+
+        # 5) 成功：KV 会话（TTL=全局空闲超时，硬顶不续期，禁止永久会话）+ JWT(bg claim)
+        ss = await db.get(SystemSetting, 1)
+        idle_minutes = ss.session_idle_timeout_minutes if ss else 30
+        sid = uuid.uuid4().hex
+        await bg_session_create(sid, bg_username, client_ip, ua, idle_minutes)
+        token = create_access_token(
+            bg_username, Role.SUPER_ADMIN, sid,
+            timedelta(hours=settings.JWT_EXPIRE_HOURS),
+            extra_claims={"bg": True},
+        )
+        response.set_cookie(
+            SESSION_COOKIE, token,
+            httponly=True, secure=cookie_secure(request), samesite="strict", path="/",
+        )
+        csrf_token = new_csrf_token()
+        set_csrf_cookie(response, request, csrf_token)
+        log_action(db, ctx_bg, "bg_login.success", f"session:{sid[:8]}", client_ip)
+        await db.commit()
+        return LoginResponse(
+            role=Role.SUPER_ADMIN,
+            csrf_token=csrf_token,
+            username=bg_username,
+            is_break_glass=True,
+            must_setup=not (ss.system_initialized if ss else False),
+        )
+
+    # ================= 普通账号分支 =================
     account_hint = (req.username or str(req.email) or "")[:64]
     user = (await db.execute(
         select(User).where(or_(User.username == req.username, User.email == req.email))
     )).scalar_one_or_none()
-    now = _now()
 
-    # 账号锁定中：不做密码校验，直接拒绝
-    if user and user.locked_until and now < user.locked_until:
-        _log(db, user.id, "login.locked", None, client_ip)
+    # 系统初始化门禁：未完成初始化向导时，普通账号一律禁止登录（仅 Break-Glass 可用）
+    ss = await db.get(SystemSetting, 1)
+    if ss and not ss.system_initialized:
+        log_action(db, None, "login.init_gate", f"account:{account_hint}", client_ip)
         await db.commit()
-        minutes = max(1, int((user.locked_until - now).total_seconds() // 60) + 1)
-        raise HTTPException(status_code=423, detail=f"登录失败次数过多，账号已锁定，请 {minutes} 分钟后再试")
+        return fail(BizCode.SYSTEM_NOT_INITIALIZED, params=_INIT_REQUIRED)
 
-    # 软删除账号禁止登录（已送入内容回收站，30 天后物理清除）
-    if user and user.is_deleted:
-        _log(db, user.id, "login.deleted_account", None, client_ip)
+    if not user:
+        # 账号不存在：等价哈希校验防时间侧信道枚举；无 user_id 不进入阶梯计数
+        verify_password(req.password, None)
+        log_action(db, None, "login.fail", f"account:{account_hint} reason:not_found", client_ip)
         await db.commit()
-        raise HTTPException(status_code=403, detail="账号已注销，如有疑问请联系管理员")
+        return fail(BizCode.LOGIN_BLOCKED, params=_LOGIN_DENIED)
 
-    if not verify_password(req.password, user.password_hash if user else None):
-        if user:
-            user.failed_login_count = (user.failed_login_count or 0) + 1
-            if user.failed_login_count >= settings.LOGIN_MAX_FAILURES:
-                user.locked_until = now + timedelta(minutes=settings.LOGIN_LOCK_MINUTES)
-                user.failed_login_count = 0
-                _log(db, user.id, "login.lock",
-                     f"连续失败 {settings.LOGIN_MAX_FAILURES} 次，锁定 {settings.LOGIN_LOCK_MINUTES} 分钟",
-                     client_ip)
-        _log(db, user.id if user else None, "login.fail", f"account:{account_hint}", client_ip)
+    uid = str(user.id)
+
+    # 软删除账号（内容回收站中）禁止登录
+    if user.is_deleted:
+        log_action(db, user.id, "login.deleted_account", f"account:{account_hint}", client_ip)
         await db.commit()
-        raise HTTPException(status_code=401, detail="账号或密码错误")
+        return fail(BizCode.LOGIN_BLOCKED, params=_LOGIN_DENIED)
+
+    # 阶梯封禁检查（每 账号×维度 独立计数；A 账号封禁不影响同设备 B 账号）
+    ban = await bf_check(NORMAL_POLICY, uid, dims)
+    if ban:
+        log_action(db, user.id, "login.ban_blocked",
+                   f"stage:{ban.stage} dim:{ban.dim} permanent:{ban.permanent}", client_ip)
+        await db.commit()
+        return fail(BizCode.LOGIN_BLOCKED, params=_LOGIN_DENIED)
+
+    if not verify_password(req.password, user.password_hash):
+        entry = await bf_record_failure(NORMAL_POLICY, uid, user.username, dims)
+        log_action(db, user.id, "login.fail",
+                   f"account:{account_hint} stage:{entry.stage if entry else '-'}", client_ip)
+        if entry:
+            log_action(db, user.id, "login.ban_triggered",
+                       f"stage:{entry.stage} dim:{entry.dim} until:{entry.until or 'permanent'}",
+                       client_ip)
+        await db.commit()
+        return fail(BizCode.LOGIN_BLOCKED, params=_LOGIN_DENIED, data={"first_ban": True} if entry else None)
 
     if not user.is_active:
-        _log(db, user.id, "login.inactive", None, client_ip)
+        log_action(db, user.id, "login.inactive", None, client_ip)
         await db.commit()
-        raise HTTPException(status_code=403, detail="账号已停用")
+        return fail(BizCode.LOGIN_BLOCKED, params=_LOGIN_DENIED)
 
     # 管理员级账号只能从内网登录
     if is_admin_tier(Role(user.role.value)) and not is_admin_network(request):
-        _log(db, user.id, "login.denied_network", None, client_ip)
+        log_action(db, user.id, "login.denied_network", None, client_ip)
         await db.commit()
-        raise HTTPException(status_code=403, detail="管理员账号仅允许通过内网登录")
+        return fail(BizCode.LOGIN_BLOCKED, params=_LOGIN_DENIED)
 
-    user.failed_login_count = 0
-    user.locked_until = None
+    # 登录成功：仅本账号成功才清零本账号两套维度的计数与惩罚阶段
+    await bf_reset(NORMAL_POLICY, uid, dims)
     user.last_login_at = now
 
     # 记住此设备 → 硬顶 30 天；否则沿用 JWT_EXPIRE_HOURS
@@ -278,12 +398,8 @@ async def login(
         expires_delta = timedelta(hours=settings.JWT_EXPIRE_HOURS)
 
     # 创建登录会话记录（设备 / IP / 登录地点 / UA）
-    # 读取全局会话空闲超时配置（仅用于新会话的 expires_at 计算）
-    from app.db.models import SystemSetting as _SS
-    ss = await db.get(_SS, 1)
     global_timeout_minutes = ss.session_idle_timeout_minutes if ss else 30
 
-    ua = request.headers.get("user-agent", "") or ""
     device_name, device_model = parse_user_agent(ua)
     loc_zh, loc_en = resolve_location(client_ip)
     sid = uuid.uuid4().hex
@@ -329,7 +445,10 @@ async def login(
 # ---------- 退出登录 ----------
 @router.post("/logout")
 async def logout(request: Request, response: Response, db: AsyncSession = Depends(get_db)):
-    """撤销当前会话并清除 Cookie；登录态已失效时也能安全调用。"""
+    """撤销当前会话并清除 Cookie；登录态已失效时也能安全调用。
+
+    Break-Glass 会话：删除 KV 会话条目并写审计（操作者 [BREAK_GLASS_ESCAPE]）。
+    """
     token = request.cookies.get(SESSION_COOKIE)
     if token:
         try:
@@ -338,13 +457,19 @@ async def logout(request: Request, response: Response, db: AsyncSession = Depend
             payload = {}
         jti = payload.get("jti")
         if jti:
-            sess = (await db.execute(
-                select(LoginSession).where(LoginSession.session_id == jti)
-            )).scalar_one_or_none()
-            if sess and not sess.revoked:
-                sess.revoked = True
-                sess.revoked_at = _now()
-                _log(db, sess.user_id, "logout", f"session:{jti[:8]}", get_client_ip(request))
+            if payload.get("bg") is True:
+                await bg_session_revoke(jti)
+                log_action(db, {"break_glass": True, "username": str(payload.get("sub", ""))},
+                           "bg_logout", f"session:{jti[:8]}", get_client_ip(request))
+                await db.commit()
+            else:
+                sess = (await db.execute(
+                    select(LoginSession).where(LoginSession.session_id == jti)
+                )).scalar_one_or_none()
+                if sess and not sess.revoked:
+                    sess.revoked = True
+                    sess.revoked_at = _now()
+                    _log(db, sess.user_id, "logout", f"session:{jti[:8]}", get_client_ip(request))
     response.delete_cookie(SESSION_COOKIE, path="/")
     return {"ok": True}
 
@@ -361,6 +486,7 @@ async def list_sessions(
     user: dict = Depends(require_role(Role.MEMBER, allow_unverified_realname=True)),
     db: AsyncSession = Depends(get_db),
 ):
+    _reject_break_glass(user)
     result = await db.execute(
         select(LoginSession)
         .where(LoginSession.user_id == int(user["user_id"]))
@@ -385,6 +511,7 @@ async def revoke_session(
     user: dict = Depends(require_role(Role.MEMBER, allow_unverified_realname=True)),
     db: AsyncSession = Depends(get_db),
 ):
+    _reject_break_glass(user)
     result = await db.execute(
         select(LoginSession).where(
             LoginSession.id == session_row_id,
@@ -398,7 +525,7 @@ async def revoke_session(
         raise HTTPException(status_code=400, detail="该会话已退出")
     sess.revoked = True
     sess.revoked_at = _now()
-    _log(db, int(user["user_id"]), "session.revoke",
+    _log(db, user, "session.revoke",
          f"session:{sess.session_id[:8]} device:{sess.device_model}",
          get_client_ip(request))
     await db.commit()
@@ -413,6 +540,7 @@ async def revoke_other_sessions(
     db: AsyncSession = Depends(get_db),
 ):
     """一键下线全部其他设备：撤销当前会话之外该用户的全部未撤销会话。"""
+    _reject_break_glass(user)
     jti = user.get("jti")
     stmt = select(LoginSession).where(
         LoginSession.user_id == int(user["user_id"]),
@@ -425,7 +553,7 @@ async def revoke_other_sessions(
     for r in rows:
         r.revoked = True
         r.revoked_at = now
-    _log(db, int(user["user_id"]), "session.revoke_others",
+    _log(db, user, "session.revoke_others",
          f"count:{len(rows)}", get_client_ip(request))
     await db.commit()
     return {"ok": True, "revoked": len(rows)}
@@ -437,6 +565,22 @@ async def me(
     user: dict = Depends(require_role(Role.MEMBER, allow_pending_password_change=True, allow_unverified_realname=True)),
     db: AsyncSession = Depends(get_db),
 ):
+    # Break-Glass：合成响应（永不查 users 表、不存在任何虚拟库行）
+    if user.get("break_glass"):
+        ss = await db.get(SystemSetting, 1)
+        return UserOut(
+            id=0,
+            username=user["username"],
+            email="",
+            role=Role.SUPER_ADMIN,
+            is_active=True,
+            student_id="",
+            real_name=user["username"],
+            phone="",
+            is_break_glass=True,
+            must_setup=not (ss.system_initialized if ss else False),
+            created_at=_now(),
+        )
     u = await db.get(User, int(user["user_id"]))
     if not u:
         raise HTTPException(status_code=404, detail="用户不存在")
@@ -444,7 +588,8 @@ async def me(
 
 
 # ---------- 个人资料 ----------
-AVATAR_MAX_SIZE = 5 * 1024 * 1024  # 5MB
+AVATAR_MAX_SIZE = 5 * 1024 * 1024  # 压缩后落盘上限 5MB
+AVATAR_RAW_MAX_SIZE = 15 * 1024 * 1024  # 原始上传上限：大图先压缩，压缩后仍超限才拒绝
 AVATAR_DIR = Path("uploads/avatars")
 
 
@@ -461,6 +606,7 @@ async def get_profile(
     db: AsyncSession = Depends(get_db),
 ):
     """获取当前用户完整资料。"""
+    _reject_break_glass(user)
     u = await db.get(User, int(user["user_id"]))
     if not u:
         raise HTTPException(status_code=404, detail="用户不存在")
@@ -476,6 +622,7 @@ async def update_profile(
     db: AsyncSession = Depends(get_db),
 ):
     """更新个人资料：显示名称、真实姓名、手机号、学号。"""
+    _reject_break_glass(user)
     u = await db.get(User, int(user["user_id"]))
     if not u:
         raise HTTPException(status_code=404, detail="用户不存在")
@@ -574,11 +721,26 @@ async def update_profile(
     if req.time_long_pattern is not None:
         v = req.time_long_pattern.strip() or None
         u.time_long_pattern = v
-    if req.default_currency is not None:
-        v = req.default_currency.strip() or None
-        if v is not None and v.upper() not in ("CNY", "USD", "EUR", "GBP", "JPY"):
+    # 本地化系统：用户个人偏好（空字符串=恢复跟随系统存 NULL）
+    if req.locale is not None:
+        v = req.locale.strip() or None
+        if v is not None:
+            from app.core.locales import validate_locale
+            if not validate_locale(v):
+                raise HTTPException(status_code=400, detail="无效的界面语言")
+        u.locale = v
+    if req.region_code is not None:
+        v = req.region_code.strip() or None
+        if v is not None:
+            v = v.upper()
+            if len(v) != 2 or not v.isalpha():
+                raise HTTPException(status_code=400, detail="无效的区域代码（需 ISO-3166-1 二位）")
+        u.region_code = v
+    if req.currency is not None:
+        v = req.currency.strip() or None
+        if v is not None and v.upper() not in ("CNY", "USD", "EUR", "GBP", "JPY", "KRW", "HKD", "SGD", "TWD", "RUB"):
             raise HTTPException(status_code=400, detail="无效的货币单位")
-        u.default_currency = v.upper() if v else v
+        u.currency = v.upper() if v else v
 
     _log(db, u.id, "profile.update", None, get_client_ip(request))
     await db.commit()
@@ -593,11 +755,12 @@ async def upload_avatar(
     user: dict = Depends(require_role(Role.MEMBER, allow_unverified_realname=True)),
     db: AsyncSession = Depends(get_db),
 ):
-    """上传头像（jpg/png/webp，最大 5MB）；按文件内容识别类型，拒绝伪装文件；
-    统一 80% 质量压缩后存储。"""
-    data = await file.read(AVATAR_MAX_SIZE + 1)
-    if len(data) > AVATAR_MAX_SIZE:
-        raise HTTPException(status_code=400, detail="文件大小不能超过 5MB")
+    """上传头像（jpg/png/webp，原始文件最大 15MB）；按文件内容识别类型，拒绝伪装文件；
+    统一 80% 质量压缩后存储，压缩结果仍超过 5MB 才拒绝。"""
+    _reject_break_glass(user)
+    data = await file.read(AVATAR_RAW_MAX_SIZE + 1)
+    if len(data) > AVATAR_RAW_MAX_SIZE:
+        raise HTTPException(status_code=400, detail="文件大小不能超过 15MB")
     ext = _sniff_image(data)
     if not ext:
         raise HTTPException(status_code=400, detail="仅支持 JPG/PNG/WEBP 格式")
@@ -606,6 +769,8 @@ async def upload_avatar(
     from app.core.images import compress_image
 
     data, ext = compress_image(data, ext)
+    if len(data) > AVATAR_MAX_SIZE:
+        raise HTTPException(status_code=400, detail="压缩后文件仍超过 5MB，请降低分辨率后重试")
 
     filename = f"{user['user_id']}_{uuid.uuid4().hex}{ext}"
     AVATAR_DIR.mkdir(parents=True, exist_ok=True)
@@ -635,6 +800,7 @@ async def reset_avatar(
     db: AsyncSession = Depends(get_db),
 ):
     """恢复默认头像：清空 avatar_url 并删除旧头像文件。"""
+    _reject_break_glass(user)
     u = await db.get(User, int(user["user_id"]))
     if not u:
         raise HTTPException(status_code=404, detail="用户不存在")
@@ -656,6 +822,7 @@ async def change_password(
     user: dict = Depends(require_role(Role.MEMBER, allow_pending_password_change=True, allow_unverified_realname=True)),
     db: AsyncSession = Depends(get_db),
 ):
+    _reject_break_glass(user)
     u = await db.get(User, int(user["user_id"]))
     if not u:
         raise HTTPException(status_code=404, detail="用户不存在")
@@ -711,11 +878,8 @@ async def list_users(
     if page is None:
         result = await db.execute(stmt)
         return result.scalars().all()
-    total = (await db.execute(select(func.count()).select_from(stmt.subquery()))).scalar_one()
-    rows = (await db.execute(
-        stmt.offset((page - 1) * page_size).limit(page_size)
-    )).scalars().all()
-    return {"items": list(rows), "total": total, "page": page, "page_size": page_size}
+    # 裸 ORM 对象无法被 dict 响应分支序列化，必须经 UserOut 转为 JSON 基本类型
+    return await paginate(db, stmt, page, page_size, out_model=UserOut)
 
 
 @router.get("/users/{user_id}", response_model=UserOut)
@@ -759,7 +923,7 @@ async def create_user(
     )
     db.add(new_user)
     await db.flush()
-    _log(db, int(user["user_id"]), "user.create", f"user:{new_user.id} role:{req.role.value}",
+    _log(db, user, "user.create", f"user:{new_user.id} role:{req.role.value}",
          get_client_ip(request))
     return new_user
 
@@ -775,7 +939,7 @@ async def delete_user(
 
     历史报名记录完整保留（统计不受影响）；会话全部吊销、登录被拒绝。
     """
-    if int(user["user_id"]) == user_id:
+    if ctx_uid(user) == user_id:
         raise HTTPException(status_code=400, detail="不能删除自己")
     u = await db.get(User, user_id)
     if not u:
@@ -786,7 +950,7 @@ async def delete_user(
     u.deleted_at = _now()
     u.is_active = False
     await _revoke_user_sessions(db, user_id)
-    _log(db, int(user["user_id"]), "user.delete", f"user:{user_id} soft", get_client_ip(request))
+    _log(db, user, "user.delete", f"user:{user_id} soft", get_client_ip(request))
 
 
 @router.put("/users/{user_id}", response_model=UserOut)
@@ -798,7 +962,7 @@ async def update_user(
     db: AsyncSession = Depends(get_db),
 ):
     """更新账号信息：自己可改基础资料，super_admin 额外可改 role/is_active/permission_overrides。"""
-    is_self = int(user["user_id"]) == user_id
+    is_self = ctx_uid(user) == user_id
     is_super = user["role"] == Role.SUPER_ADMIN.value
     if not (is_self or is_super):
         raise HTTPException(status_code=403, detail="只能修改自己的信息")
@@ -841,7 +1005,7 @@ async def update_user(
         ):
             raise HTTPException(status_code=400, detail="不能降级或停用自己的账号")
         if req.role is not None and req.role.value != u.role.value:
-            _log(db, int(user["user_id"]), "user.role_change",
+            _log(db, user, "user.role_change",
                  f"user:{user_id} {u.role.value}->{req.role.value}", get_client_ip(request))
             u.role = UserRole(req.role.value)
             await _revoke_user_sessions(db, user_id)
@@ -850,7 +1014,7 @@ async def update_user(
             if not req.is_active:
                 await _revoke_user_sessions(db, user_id)
 
-    _log(db, int(user["user_id"]), "user.update", f"user:{user_id}", get_client_ip(request))
+    _log(db, user, "user.update", f"user:{user_id}", get_client_ip(request))
     await db.commit()
     await db.refresh(u)
     return u
@@ -869,8 +1033,8 @@ async def batch_update_users(
     db: AsyncSession = Depends(get_db),
 ):
     """批量启停账号：仅 super_admin；不能包含自己；停用即撤销其会话并审计。"""
-    me = int(user["user_id"])
-    if me in body.ids:
+    me = ctx_uid(user)
+    if me is not None and me in body.ids:
         raise HTTPException(status_code=400, detail="不能批量操作自己的账号")
     updated: list[int] = []
     not_found: list[int] = []
@@ -884,11 +1048,48 @@ async def batch_update_users(
             if not body.is_active:
                 await _revoke_user_sessions(db, uid)
         updated.append(uid)
-    _log(db, me, "user.batch_update",
+    _log(db, user, "user.batch_update",
          f"is_active={body.is_active} updated={updated} not_found={not_found}",
          get_client_ip(request))
     await db.commit()
     return {"updated": len(updated), "not_found": not_found}
+
+
+async def require_break_glass(user: dict = Depends(require_role(Role.SUPER_ADMIN))) -> dict:
+    """依赖：仅 Break-Glass 应急账号可用（普通 super_admin 明确不可用）。"""
+    if not user.get("break_glass"):
+        raise HTTPException(status_code=403, detail="仅应急账号可执行该操作")
+    return user
+
+
+@router.post("/users/purge-admins")
+async def purge_admin_accounts(
+    request: Request,
+    user: dict = Depends(require_break_glass),
+    db: AsyncSession = Depends(get_db),
+):
+    """灾难修复特权（仅 Break-Glass）：清空数据库内全部 admin / super_admin 业务账号。
+
+    软删除送入内容回收站（可由应急账号恢复）；不受普通管理员「至少保留一个
+    admin」的保护限制。member / editor 账号不受影响。逐批写入审计日志。
+    """
+    client_ip = get_client_ip(request)
+    rows = (await db.execute(
+        select(User).where(
+            User.role.in_([UserRole.ADMIN, UserRole.SUPER_ADMIN]),
+            User.is_deleted.is_(False),
+        )
+    )).scalars().all()
+    purged: list[int] = []
+    for u in rows:
+        u.is_deleted = True
+        u.deleted_at = _now()
+        u.is_active = False
+        await _revoke_user_sessions(db, u.id)
+        purged.append(u.id)
+    _log(db, user, "user.purge_admins", f"count:{len(purged)} ids:{purged}", client_ip)
+    await db.commit()
+    return {"ok": True, "purged": len(purged)}
 
 
 def _generate_temp_password(username: str, email: str) -> str:
@@ -914,11 +1115,9 @@ async def admin_reset_user_password(
     u.password_hash = hash_password(temp_password)
     u.must_change_password = True
     u.password_changed_at = _now()
-    u.failed_login_count = 0
-    u.locked_until = None
     # 重置后全部会话下线，须用临时密码重新登录
     await _revoke_user_sessions(db, user_id)
-    _log(db, int(user["user_id"]), "user.reset_password", f"user:{user_id}",
+    _log(db, user, "user.reset_password", f"user:{user_id}",
          get_client_ip(request))
     await db.commit()
     return {"temp_password": temp_password}
@@ -978,9 +1177,9 @@ async def handle_password_reset(
         raise HTTPException(status_code=404, detail="申请不存在")
     reset_req.status = req.status
     reset_req.admin_note = req.admin_note
-    reset_req.handled_by = int(user["user_id"])
+    reset_req.handled_by = ctx_uid(user)
     reset_req.handled_at = _now()
-    _log(db, int(user["user_id"]), f"password_reset.{req.status}", f"reset:{reset_id}",
+    _log(db, user, f"password_reset.{req.status}", f"reset:{reset_id}",
          get_client_ip(request))
     await db.commit()
     return reset_req
@@ -1007,9 +1206,9 @@ async def batch_handle_password_resets(
     rows = result.scalars().all()
     for row in rows:
         row.status = req.status
-        row.handled_by = int(user["user_id"])
+        row.handled_by = ctx_uid(user)
         row.handled_at = _now()
-    _log(db, int(user["user_id"]), f"password_reset.batch_{req.status.value}",
+    _log(db, user, f"password_reset.batch_{req.status.value}",
          ",".join(str(i) for i in req.ids), get_client_ip(request))
     await db.commit()
     return {"updated": len(rows)}
@@ -1048,6 +1247,10 @@ async def recover_via_security_question(
     """所有管理员失能时的紧急恢复：答对安全问题 → 重置超管密码并重新启用（仅内网）。"""
     _require_intranet(request)
     client_ip = get_client_ip(request)
+    # 系统初始化门禁：未完成初始化时该接口无意义（尚无业务管理员可恢复）
+    ss = await db.get(SystemSetting, 1)
+    if ss and not ss.system_initialized:
+        return fail(BizCode.SYSTEM_NOT_INITIALIZED, params=_INIT_REQUIRED)
     q = await db.get(SecurityQuestion, 1)
     if not q:
         raise HTTPException(status_code=404, detail="未配置安全问题，请联系超级管理员线下处理")
@@ -1066,8 +1269,6 @@ async def recover_via_security_question(
     super_admin.password_hash = hash_password(req.new_password)
     super_admin.is_active = True
     super_admin.must_change_password = True
-    super_admin.failed_login_count = 0
-    super_admin.locked_until = None
     super_admin.password_changed_at = _now()
     await _revoke_user_sessions(db, super_admin.id)
     _log(db, super_admin.id, "account.recover", None, client_ip)
@@ -1091,6 +1292,6 @@ async def update_security_question(
     else:
         q.question = req.question
         q.answer = answer_hash
-    _log(db, int(user["user_id"]), "security_question.update", None, get_client_ip(request))
+    _log(db, user, "security_question.update", None, get_client_ip(request))
     await db.commit()
     return SecurityQuestionOut(question=q.question)

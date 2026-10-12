@@ -28,6 +28,10 @@ export interface LoginResponse {
   must_change_password: boolean;
   /** 实名验证状态：false 时 admin/editor 角色需先到 /realname 完成实名 */
   realname_verified: boolean;
+  /** Break-Glass 应急账号会话（前端启用三层警告 UI / 初始化向导跳转） */
+  is_break_glass: boolean;
+  /** 系统尚未完成初始化（前端跳转 /admin/setup 初始化向导） */
+  must_setup: boolean;
 }
 
 /** 公开注册（P0：强制 member，无角色字段） */
@@ -101,6 +105,10 @@ export interface AdminUser {
   realname_verified_at: string | null;
   realname_submitted_at: string | null;
   realname_note: string | null;
+  /** Break-Glass 应急账号（/api/auth/me 合成响应；前端启用三层警告 + setup 跳转） */
+  is_break_glass?: boolean;
+  /** 系统尚未完成初始化（BG 会话前端跳转初始化向导用） */
+  must_setup?: boolean;
   // ---- 区域格式（只存编码 / 模式字符串，不存展示文本） ----
   /** 主日历：gregorian / chinese / japanese / buddhist */
   primary_calendar?: string;
@@ -116,8 +124,10 @@ export interface AdminUser {
   time_short_pattern?: string;
   /** 长时间格式模式（带秒） */
   time_long_pattern?: string;
-  /** 默认货币单位 ISO-4217 */
-  default_currency?: string;
+  /** 本地化系统：用户个人偏好（NULL = 跟随系统全局 sys_default_*） */
+  locale?: string | null;
+  region_code?: string | null;
+  currency?: string | null;
   created_at: string;
 }
 
@@ -152,7 +162,10 @@ export interface ProfileUpdate {
   date_long_pattern?: string;
   time_short_pattern?: string;
   time_long_pattern?: string;
-  default_currency?: string;
+  /** 本地化系统：空字符串 = 恢复跟随系统（存 NULL）；不传 = 不修改 */
+  locale?: string;
+  region_code?: string;
+  currency?: string;
 }
 
 export interface AvatarUploadOut {
@@ -441,7 +454,8 @@ export interface BugReportCreate {
 /** 公开站点信息（GET /api/system/settings，访客可读） */
 export type PublicSystemSettings = Pick<
   SystemSettings,
-  "site_name" | "footer" | "icp_info" | "club_checkin_open" | "system_timezone"
+  "site_name" | "footer" | "icp_info" | "club_checkin_open" |
+  "sys_default_locale" | "sys_default_timezone" | "sys_default_region" | "sys_default_currency"
 >;
 
 /** 完整系统配置（GET /api/system/settings/admin，需 admin） */
@@ -453,8 +467,11 @@ export interface SystemSettings {
   allowed_hosts: string[];
   cors_origins: string[];
   club_checkin_open: boolean;
-  /** 站点全局回退系统时区（IANA 字符串） */
-  system_timezone: string;
+  /** 本地化系统全局默认（用户字段 NULL 时回退此处） */
+  sys_default_locale: string | null;
+  sys_default_timezone: string | null;
+  sys_default_region: string | null;
+  sys_default_currency: string | null;
   /** 后端服务端口（参考值，实际生效需运维重载 Nginx） */
   network_port: number;
   /** 后端监听 IP（参考值） */
@@ -1263,4 +1280,85 @@ export interface SubdivisionsResponse {
   has_second_level: boolean;
   /** 一级行政区划列表；未收录国家为空数组（前端转自由文本） */
   items: GeoSubdivisionItem[];
+}
+
+/* ===================== Break-Glass + 系统初始化 =====================
+ * 对齐后端 app/api/system_init.py + app/api/security.py (admin_router) + app/api/audit.py (bg_router)
+ * BG 凭据永不入业务库，只从环境变量读；会话只存布尔标记 is_break_glass。
+ */
+
+/** 系统初始化状态（GET /api/system-init/status，公开接口） */
+export interface SystemInitStatus {
+  system_initialized: boolean;
+  default_locale: string | null;
+  default_timezone: string | null;
+  default_region: string | null;
+  default_currency: string | null;
+}
+
+/** BG 密码强度校验请求（POST /api/system-init/break-glass/verify-password） */
+export interface BGPasswordVerifyRequest {
+  password: string;
+  confirm_password: string;
+}
+
+/** BG 密码哈希生成结果（POST /api/system-init/break-glass/password-hash） */
+export interface BGPasswordHashResult {
+  hash: string;
+  warning: string;
+}
+
+/** 首位业务超级管理员（初始化向导步骤 3） */
+export interface FirstAdminPayload {
+  username: string;
+  display_name: string;
+  email: string;
+  password: string;
+}
+
+/** 系统初始化提交请求（POST /api/system-init/initialize） */
+export interface SystemInitRequest {
+  default_locale: string;
+  default_timezone: string;
+  default_region: string;
+  default_currency: string;
+  admin: FirstAdminPayload;
+}
+
+/** 初始化完成响应 */
+export interface SystemInitResult {
+  initialized: boolean;
+}
+
+/* ---------- 登录防爆破封禁面板 ---------- */
+
+/** 封禁条目（GET /api/admin/security/bans，对齐后端 BanOut） */
+export interface BanEntry {
+  policy: "break_glass" | "normal";
+  account: string;
+  account_label: string;
+  dim: "IP" | "BrowserFingerprint";
+  dim_value: string;
+  stage: number;
+  banned_at: string;
+  /** null = 永久封禁 */
+  until: string | null;
+  permanent: boolean;
+  last_fail_at: string;
+  ip: string | null;
+}
+
+/** 封禁重置请求（POST /api/admin/security/bans/reset） */
+export interface BanResetRequest {
+  policy: "break_glass" | "normal";
+  account: string;
+  dim: "IP" | "BrowserFingerprint";
+  dim_value: string;
+}
+
+/** BG 高危操作确认请求（POST /api/audit/bg-confirm） */
+export interface BGConfirmRequest {
+  action: string;
+  target?: string | null;
+  confirmed: boolean;
 }

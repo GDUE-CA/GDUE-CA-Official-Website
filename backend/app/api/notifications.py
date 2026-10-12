@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.audit import ctx_uid
 from app.core.security import Role, require_role
 from app.db.models import Announcement, AnnouncementCategory, UserNotifyRead
 from app.db.session import get_db
@@ -61,6 +62,14 @@ async def _unread_count(db: AsyncSession, user_id: int) -> int:
     return len(eff_ids) - int(read_cnt)
 
 
+def _uid(user) -> int:
+    """当前登录用户 id；Break-Glass 应急账号不参与个人通知功能。"""
+    v = ctx_uid(user)
+    if v is None:
+        raise HTTPException(status_code=403, detail="应急账号不适用个人通知功能")
+    return v
+
+
 # ---------- 当前用户的有效通知列表 ----------
 @router.get("", response_model=NotificationListOut)
 async def list_my_notifications(
@@ -76,7 +85,7 @@ async def list_my_notifications(
     if items:
         rows = await db.execute(
             select(UserNotifyRead.announcement_id).where(
-                UserNotifyRead.user_id == int(user["user_id"]),
+                UserNotifyRead.user_id == _uid(user),
                 UserNotifyRead.announcement_id.in_([a.id for a in items]),
             )
         )
@@ -112,15 +121,15 @@ async def mark_notification_read(
 
     existing = (await db.execute(
         select(UserNotifyRead).where(
-            UserNotifyRead.user_id == int(user["user_id"]),
+            UserNotifyRead.user_id == _uid(user),
             UserNotifyRead.announcement_id == nid,
         )
     )).scalar_one_or_none()
     if not existing:
-        db.add(UserNotifyRead(user_id=int(user["user_id"]), announcement_id=nid))
+        db.add(UserNotifyRead(user_id=_uid(user), announcement_id=nid))
         await db.commit()
 
-    return MarkReadOut(unread_count=await _unread_count(db, int(user["user_id"])))
+    return MarkReadOut(unread_count=await _unread_count(db, _uid(user)))
 
 
 # ---------- 全部标为已读 ----------
@@ -130,7 +139,7 @@ async def mark_all_notifications_read(
     db: AsyncSession = Depends(get_db),
 ):
     """把当前所有【生效中且已启用】的通知一次性标记为已读（幂等）。"""
-    uid = int(user["user_id"])
+    uid = _uid(user)
     eff_ids = await _effective_ids(db)
     if eff_ids:
         existing = set((await db.execute(

@@ -27,6 +27,11 @@ out/
 *.log
 logs/
 
+# local debug / diagnostic captures (pytest/uvicorn 手工重定向产物)
+backend/diag_*.txt
+backend/pytest_*.txt
+backend/sec_*.txt
+
 # OS / editors
 .DS_Store
 Thumbs.db

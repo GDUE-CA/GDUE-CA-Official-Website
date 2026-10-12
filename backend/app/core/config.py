@@ -55,10 +55,6 @@ class Settings(BaseSettings):
     # X-Forwarded-For 才会被采信，防止客户端伪造 IP 绕过内网限制
     TRUSTED_PROXIES: str = "127.0.0.1/32,::1/128"
 
-    # ---- 登录失败处理（GB/T 22239 身份鉴别） ----
-    LOGIN_MAX_FAILURES: int = 5       # 连续失败次数阈值
-    LOGIN_LOCK_MINUTES: int = 15      # 锁定时长
-
     # ---- 日志 ----
     LOG_LEVEL: str = "INFO"
     # text：人读友好的单行文本；json：一行一个 JSON，便于日志系统采集
@@ -71,10 +67,21 @@ class Settings(BaseSettings):
     RATE_LIMIT_PER_MIN: int = 120   # 每分钟补充令牌数
     RATE_LIMIT_BURST: int = 30      # 桶容量（允许的瞬时突发）
 
-    # ---- 初始化超级管理员 ----
-    # 首次启动时创建；若口令不满足强口令策略，将自动生成随机强口令并输出到启动日志
-    FIRST_SUPERADMIN_EMAIL: str = "admin@gdue-ca.cn"
-    FIRST_SUPERADMIN_PASSWORD: str = ""
+    # ---- Break-Glass 应急账号（凭据只存环境变量，缺失/非法 → 启动直接失败） ----
+    # 由部署脚本 scripts/generate_super_admin.py 生成；源码零默认值，禁止写死任何凭据
+    SUPER_ADMIN_USERNAME: str = ""
+    # bcrypt 哈希（$2a$/$2b$/$2y$ 开头 60 字符），禁止明文
+    SUPER_ADMIN_PASSWORD_HASH: str = ""
+    # 仅允许 "true" / "false"（大小写不敏感）；false 时禁止 Break-Glass 登录
+    SUPER_ADMIN_ENABLED: str = ""
+
+    # ---- 通用 KV 存储（防爆破计数/封禁/Break-Glass 会话） ----
+    # 配置 redis://... 时使用 Redis（多 worker 共享）；留空使用进程内存兜底（仅单进程开发）
+    REDIS_URL: str = ""
+
+    @property
+    def break_glass_enabled(self) -> bool:
+        return self.SUPER_ADMIN_ENABLED.strip().lower() == "true"
 
     @property
     def cors_origins_list(self) -> list[str]:

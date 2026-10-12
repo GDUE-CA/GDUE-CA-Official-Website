@@ -30,6 +30,7 @@ from fastapi import (
 from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.audit import ctx_uid
 from app.core.bizcode import BizCode
 from app.core.exceptions import BizException
 from app.core.middleware import get_client_ip
@@ -59,6 +60,14 @@ admin_router = APIRouter(prefix="/api/admin/memos", tags=["memos-admin"])
 
 MEMO_IMAGE_DIR = Path("uploads/memos")
 MEMO_IMAGE_MAX_SIZE = 5 * 1024 * 1024  # 5MB
+
+
+def _uid(user) -> int:
+    """当前登录用户 id；Break-Glass 应急账号不参与个人备忘录功能。"""
+    v = ctx_uid(user)
+    if v is None:
+        raise HTTPException(status_code=403, detail="应急账号不适用个人备忘录功能")
+    return v
 
 
 # ---------- 通用输出辅助 ----------
@@ -222,7 +231,7 @@ async def public_timeline(
 
     已归档 / 已删除 / 已下架不展示。
     """
-    uid = int(user["user_id"]) if user else None
+    uid = ctx_uid(user)
 
     stmt = select(Memo).where(
         Memo.deleted_at.is_(None),
@@ -305,7 +314,7 @@ async def public_memos_by_date(
     from datetime import timedelta
     end_naive = start_naive + timedelta(days=1)
 
-    uid = int(user["user_id"]) if user else None
+    uid = ctx_uid(user)
     stmt = select(Memo).where(
         Memo.created_at >= start_naive,
         Memo.created_at < end_naive,
@@ -344,7 +353,7 @@ async def public_search(
     未来接 Meilisearch 时仅替换本函数实现；接口契约保持不变。
     """
     from sqlalchemy import func
-    uid = int(user["user_id"]) if user else None
+    uid = ctx_uid(user)
     like = f"%{q}%"
 
     stmt = select(Memo).where(
@@ -402,7 +411,7 @@ async def my_memos(
 ):
     """我的全部 Memo（含 private / member_only / public，已归档可选过滤）。"""
     from sqlalchemy import func
-    uid = int(user["user_id"])
+    uid = _uid(user)
     stmt = select(Memo).where(
         Memo.author_id == uid,
         Memo.deleted_at.is_(None),
@@ -437,7 +446,7 @@ async def my_liked_memos(
 ):
     """我点赞的全部 Memo（仍遵守可见性过滤）。"""
     from sqlalchemy import func
-    uid = int(user["user_id"])
+    uid = _uid(user)
     stmt = (
         select(Memo)
         .join(MemoLike, MemoLike.memo_id == Memo.id)
@@ -472,7 +481,7 @@ async def my_favorite_memos(
 ):
     """我收藏的全部 Memo。"""
     from sqlalchemy import func
-    uid = int(user["user_id"])
+    uid = _uid(user)
     stmt = (
         select(Memo)
         .join(MemoFavorite, MemoFavorite.memo_id == Memo.id)
@@ -508,7 +517,7 @@ async def create_memo(
     db: AsyncSession = Depends(get_db),
 ):
     """创建 Memo：自动写入版本 1；标签懒创建；防灌水限流（每分钟 10 条）。"""
-    uid = int(user["user_id"])
+    uid = _uid(user)
     retry_after = check_memo_rate(get_client_ip(request))
     if retry_after is not None:
         raise BizException(
@@ -583,7 +592,7 @@ async def update_memo(
     db: AsyncSession = Depends(get_db),
 ):
     """编辑 Memo：content_md 变化 → 自动写新版本；可见性 / 标签 / 附件变更不计版本。"""
-    uid = int(user["user_id"])
+    uid = _uid(user)
     m = await _load_memo_or_404(db, memo_id, require_owner=uid)
 
     new_version_no = None
@@ -638,7 +647,7 @@ async def delete_memo(
     db: AsyncSession = Depends(get_db),
 ):
     """软删除：写入 deleted_at（基线）；版本快照保留，关联数据随父级联清理（依赖 ORM cascade）。"""
-    uid = int(user["user_id"])
+    uid = _uid(user)
     m = await _load_memo_or_404(db, memo_id, require_owner=uid)
     m.deleted_at = naive_utc_now()
     log_memo(db, uid, "memo.delete", f"memo:{m.id}", get_client_ip(request))
@@ -654,7 +663,7 @@ async def archive_memo(
     db: AsyncSession = Depends(get_db),
 ):
     """归档：archived=true；不在主时间线展示；归档页专门浏览；归档≠删除。"""
-    uid = int(user["user_id"])
+    uid = _uid(user)
     m = await _load_memo_or_404(db, memo_id, require_owner=uid)
     m.archived = True
     m.updated_at = naive_utc_now()
@@ -677,7 +686,7 @@ async def unarchive_memo(
     db: AsyncSession = Depends(get_db),
 ):
     """取消归档。"""
-    uid = int(user["user_id"])
+    uid = _uid(user)
     m = await _load_memo_or_404(db, memo_id, require_owner=uid)
     m.archived = False
     m.updated_at = naive_utc_now()
@@ -701,7 +710,7 @@ async def toggle_like(
     db: AsyncSession = Depends(get_db),
 ):
     """点赞 / 取消点赞（toggle）：命中即取消；未命中即新增。"""
-    uid = int(user["user_id"])
+    uid = _uid(user)
     m = await _load_memo_or_404(db, memo_id)
     if m.visibility == "private" and m.author_id != uid:
         raise BizException(BizCode.FORBIDDEN, data={"detail": "无权点赞此 Memo"})
@@ -744,7 +753,7 @@ async def toggle_favorite(
     db: AsyncSession = Depends(get_db),
 ):
     """收藏 / 取消收藏（toggle）。"""
-    uid = int(user["user_id"])
+    uid = _uid(user)
     m = await _load_memo_or_404(db, memo_id)
     if m.visibility == "private" and m.author_id != uid:
         raise BizException(BizCode.FORBIDDEN, data={"detail": "无权收藏此 Memo"})
@@ -787,7 +796,7 @@ async def list_memo_versions(
     db: AsyncSession = Depends(get_db),
 ):
     """作者本人浏览 Memo 历史版本（不含正文，列表用）。"""
-    uid = int(user["user_id"])
+    uid = _uid(user)
     m = await _load_memo_or_404(db, memo_id, require_owner=uid)
     rows = (await db.execute(
         select(MemoVersion).where(
@@ -809,7 +818,7 @@ async def get_memo_version(
     db: AsyncSession = Depends(get_db),
 ):
     """查看指定版本号（含原文 content_md）。"""
-    uid = int(user["user_id"])
+    uid = _uid(user)
     await _load_memo_or_404(db, memo_id, require_owner=uid)
     v = (await db.execute(
         select(MemoVersion).where(
@@ -833,7 +842,7 @@ async def rollback_memo(
     db: AsyncSession = Depends(get_db),
 ):
     """回滚到指定版本：生成新版本（内容 = 旧版本），保留完整历史链。"""
-    uid = int(user["user_id"])
+    uid = _uid(user)
     m = await _load_memo_or_404(db, memo_id, require_owner=uid)
     v = (await db.execute(
         select(MemoVersion).where(
@@ -883,7 +892,7 @@ async def upload_memo_attachment(
 
     上传文件落到 uploads/memos/，并在 media_files 同步写记录。
     """
-    uid = int(user["user_id"])
+    uid = _uid(user)
     m = await _load_memo_or_404(db, memo_id, require_owner=uid)
     data = await file.read(MEMO_IMAGE_MAX_SIZE + 1)
     if len(data) > MEMO_IMAGE_MAX_SIZE:
@@ -931,7 +940,7 @@ async def create_share_link(
     db: AsyncSession = Depends(get_db),
 ):
     """生成 / 轮换公开分享 slug：仅 visibility=public 允许（member_only 不可匿名访问）。"""
-    uid = int(user["user_id"])
+    uid = _uid(user)
     m = await _load_memo_or_404(db, memo_id, require_owner=uid)
     if m.visibility != "public":
         raise BizException(BizCode.VALIDATION_FAILED, data={"detail": "仅公开 Memo 可生成分享链接"})
@@ -967,7 +976,7 @@ async def revoke_share_link(
     db: AsyncSession = Depends(get_db),
 ):
     """撤销公开分享链接。"""
-    uid = int(user["user_id"])
+    uid = _uid(user)
     m = await _load_memo_or_404(db, memo_id, require_owner=uid)
     if not m.share_slug:
         raise BizException(BizCode.NOT_FOUND, data={"detail": "暂无分享链接"})
@@ -986,7 +995,7 @@ async def get_memo(
 ):
     """按 id 读取 Memo：可见性范围内可见。"""
     m = await _load_memo_or_404(db, memo_id)
-    uid = int(user["user_id"]) if user else None
+    uid = ctx_uid(user)
     if m.visibility == "public":
         pass
     elif m.visibility == "member_only":
@@ -1111,8 +1120,8 @@ async def admin_remove_memo(
         raise BizException(BizCode.CONFLICT, data={"detail": "该 Memo 已是下架状态"})
     m.admin_removed = True
     m.admin_removed_at = naive_utc_now()
-    m.admin_removed_by = int(user["user_id"])
-    log_memo(db, int(user["user_id"]), "memo.admin.remove", f"memo:{m.id}",
+    m.admin_removed_by = ctx_uid(user)
+    log_memo(db, user, "memo.admin.remove", f"memo:{m.id}",
              get_client_ip(request))
     await db.commit()
     await db.refresh(m)
@@ -1143,7 +1152,7 @@ async def admin_restore_memo(
     m.admin_removed_at = None
     m.admin_removed_by = None
     m.admin_removed_reason = None
-    log_memo(db, int(user["user_id"]), "memo.admin.restore", f"memo:{m.id}",
+    log_memo(db, user, "memo.admin.restore", f"memo:{m.id}",
              get_client_ip(request))
     await db.commit()
     await db.refresh(m)

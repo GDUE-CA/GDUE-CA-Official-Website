@@ -1,8 +1,10 @@
 """测试夹具：隔离的临时工作目录 + SQLite 数据库，每个测试模块一个应用实例。"""
 import os
 import sys
+import tempfile
 from pathlib import Path
 
+import bcrypt
 import pytest
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
@@ -10,20 +12,73 @@ sys.path.insert(0, str(BACKEND_DIR))
 
 STRONG_ADMIN_PASSWORD = "Gd#Ca-Str0ng!Pwd"
 ADMIN_EMAIL = "root@gdue-ca.cn"
+# Break-Glass 测试凭据（哈希现算，源码不含哈希值）
+BG_USERNAME = "bg_admin"
+BG_PASSWORD = "BreakGlass#2026!Xq"
+
+# env 必须在任何 app 模块被 import 之前就位：get_settings() 的 lru_cache 在首次调用时冻结，
+# 若 env 设置晚于首个 import（如某测试文件模块级 import app.*），engine 会绑到默认库 assoc.db。
+_WORK_DIR = tempfile.mkdtemp(prefix="gdueca-test-")
+os.environ.update({
+    "DATABASE_URL": f"sqlite+aiosqlite:///{Path(_WORK_DIR) / 'test.db'}",
+    "CORS_ORIGINS": "",
+    # Break-Glass：凭据仅经环境变量注入（与生产同路径）
+    "SUPER_ADMIN_USERNAME": BG_USERNAME,
+    "SUPER_ADMIN_PASSWORD_HASH": bcrypt.hashpw(
+        BG_PASSWORD.encode(), bcrypt.gensalt(12)
+    ).decode(),
+    "SUPER_ADMIN_ENABLED": "true",
+})
+os.chdir(_WORK_DIR)
 
 
 @pytest.fixture(scope="session")
-def app(tmp_path_factory):
-    work = tmp_path_factory.mktemp("work")
-    os.chdir(work)
-    os.environ.update({
-        "DATABASE_URL": f"sqlite+aiosqlite:///{work / 'test.db'}",
-        "FIRST_SUPERADMIN_EMAIL": ADMIN_EMAIL,
-        "FIRST_SUPERADMIN_PASSWORD": STRONG_ADMIN_PASSWORD,
-        "CORS_ORIGINS": "",
-        "LOGIN_MAX_FAILURES": "3",
-    })
+def app():
+    import asyncio
+
     from app.main import app as fastapi_app
+
+    # 测试库引导（过渡方案）：全新库 system_initialized 置 true + 预置首位超管，
+    # 等价于初始化向导的产物；向导 API 就绪后将改为走真实向导流程。
+    from app.core.config import get_settings
+    from app.core.security import Role, hash_password
+    from app.db.models import Base, SystemSetting, User
+
+    async def _bootstrap():
+        # 必须用独立的一次性 engine 引导，严禁触碰共享 engine：SQLAlchemy 异步连接池
+        # 绑定创建它的 event loop，共享 engine 若先在 asyncio.run 的临时 loop 里建立
+        # 连接，TestClient 的 lifespan loop 复用这些死连接会永久挂起（诊断结论见
+        # faulthandler 栈：portal close 卡在等待绑定死 loop 的 aiosqlite 连接）。
+        from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+        eng = create_async_engine(
+            get_settings().DATABASE_URL,
+            echo=False,
+            future=True,
+            connect_args={"check_same_thread": False}
+            if get_settings().DATABASE_URL.startswith("sqlite") else {},
+        )
+        try:
+            async with eng.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+            maker = async_sessionmaker(eng, expire_on_commit=False)
+            async with maker() as s:
+                s.add(SystemSetting(id=1, system_initialized=True))
+                s.add(User(
+                    username=ADMIN_EMAIL.split("@")[0],
+                    email=ADMIN_EMAIL,
+                    password_hash=hash_password(STRONG_ADMIN_PASSWORD),
+                    role=Role.SUPER_ADMIN,
+                    must_change_password=True,
+                    student_id="00000000",
+                    real_name="测试超管",
+                    phone="+8600000000000",
+                ))
+                await s.commit()
+        finally:
+            await eng.dispose()
+
+    asyncio.run(_bootstrap())
     return fastapi_app
 
 
@@ -45,6 +100,8 @@ def csrf(client) -> dict:
 def _reset_rate_limit():
     from app.core import rate_limit
     from app.core import middleware
+    from app.core.kv import reset_kv
     rate_limit.reset()
     middleware._rate_buckets.clear()  # 全局 IP 令牌桶：不清会跨用例累积成 429
+    reset_kv()  # 防爆破阶梯计数/封禁也存 KV：跨用例清零，避免阶梯状态泄漏
     yield

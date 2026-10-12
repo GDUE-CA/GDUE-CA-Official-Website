@@ -13,6 +13,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Loader2, Plus, Pencil, Trash2, FolderKanban } from "lucide-react";
 import { useI18n } from "@/i18n/provider";
+import { useLocalizedPath } from "@/lib/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,6 +36,7 @@ const STATUS_TONE: Record<ProjectStatus, "success" | "warning" | "info" | "neutr
 
 export function ProjectsManager() {
   const { t } = useI18n();
+  const lp = useLocalizedPath();
   const router = useRouter();
 
   const [items, setItems] = useState<Project[]>([]);
@@ -110,7 +112,7 @@ export function ProjectsManager() {
   return (
     <div className="space-y-4">
       <div className="flex justify-end gap-2">
-        <Button onClick={() => router.push("/admin/projects/new")}>
+        <Button onClick={() => router.push(lp("/admin/projects/new"))}>
           <Plus className="h-4 w-4 mr-1.5" />
           {t("admin.projects.newBtn")}
         </Button>
@@ -226,7 +228,7 @@ export function ProjectsManager() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => router.push(`/admin/projects/${p.id}/edit`)}
+                            onClick={() => router.push(lp(`/admin/projects/${p.id}/edit`))}
                             aria-label={t("admin.projects.editBtn")}
                           >
                             <Pencil className="h-4 w-4" />

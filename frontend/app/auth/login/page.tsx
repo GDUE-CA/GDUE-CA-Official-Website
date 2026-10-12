@@ -14,6 +14,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { Loader2, LogIn, ArrowLeft, UserPlus } from "lucide-react";
 import { useI18n } from "@/i18n/provider";
+import { useLocalizedPath } from "@/lib/navigation";
 import { useAdminLocale } from "@/app/admin/AdminProviders";
 import { localeNames, locales, localeToUrlLang, urlLangToLocale, type Locale } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { login } from "@/lib/api/auth";
+import { ApiError } from "@/lib/api/client";
+import { BizCode } from "@/types/response";
 import { getSession, saveSession } from "@/lib/auth";
 
 /**
@@ -64,6 +67,7 @@ function AuthLocaleSwitcher() {
 
 export default function AuthLoginPage() {
   const { t, locale } = useI18n();
+  const lp = useLocalizedPath();
   const router = useRouter();
   const pathname = usePathname();
   const { setLocale } = useAdminLocale();
@@ -74,6 +78,8 @@ export default function AuthLoginPage() {
   const [error, setError] = useState<string | null>(null);
   // 登录后回跳目标：/setting/** 守卫的 returnUrl（挂载时解析一次）
   const [returnTarget, setReturnTarget] = useState<string | null>(null);
+  // 首次封禁警告：登录失败返回 401 + 1013，data.first_ban=true 时显示警告
+  const [firstBanWarning, setFirstBanWarning] = useState(false);
 
   useEffect(() => {
     setReturnTarget(parseReturnTarget());
@@ -98,17 +104,36 @@ export default function AuthLoginPage() {
     if (!username || !password) return;
     setLoading(true);
     setError(null);
+    setFirstBanWarning(false);
     try {
       const res = await login({ username, password, remember_device: rememberDevice });
       saveSession(
         { username: res.username, role: res.role, realnameVerified: res.realname_verified },
         res.csrf_token
       );
+      // Break-Glass 应急账号登录：根据是否已初始化跳转
+      if (res.is_break_glass && res.must_setup) {
+        router.replace(lp("/admin/setup"));
+        return;
+      }
+      if (res.is_break_glass && !res.must_setup) {
+        router.replace(lp("/admin/dashboard"));
+        return;
+      }
       // 强制改密优先；否则回跳地址优先，缺省跳网站首页
       router.replace(
-        res.must_change_password ? "/admin/change-password" : (returnTarget ?? `/${locale}`)
+        res.must_change_password ? lp("/admin/change-password") : (returnTarget ?? `/${locale}`)
       );
     } catch (err) {
+      // 登录被防爆破封禁（401 + BizCode.LoginBlocked=1013）：首次封禁额外警告
+      if (err instanceof ApiError && err.code === BizCode.LoginBlocked) {
+        const envData = (err as ApiError).detail as
+          | { data?: { first_ban?: boolean } }
+          | undefined;
+        if (envData?.data?.first_ban === true) {
+          setFirstBanWarning(true);
+        }
+      }
       const msg = err instanceof Error ? err.message : t("admin.login.error");
       setError(msg);
     } finally {
@@ -162,6 +187,12 @@ export default function AuthLoginPage() {
                 />
               </div>
 
+              {firstBanWarning && (
+                <p className="text-sm text-amber-700 dark:text-amber-400 bg-amber-500/10 border border-amber-500/30 px-3 py-2 rounded-md">
+                  {t("admin.login.firstBanWarning")}
+                </p>
+              )}
+
               {error && (
                 <p className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md">
                   {error}
@@ -192,13 +223,13 @@ export default function AuthLoginPage() {
 
             <div className="mt-5 flex items-center justify-between text-sm">
               <Link
-                href="/admin/forgot-password"
+                href={lp("/admin/forgot-password")}
                 className="text-muted-foreground hover:text-primary transition-colors"
               >
                 {t("admin.login.forgotPassword")}
               </Link>
               <Link
-                href="/auth/register"
+                href={lp("/auth/register")}
                 className="inline-flex items-center gap-1.5 font-medium text-primary hover:underline"
               >
                 <UserPlus className="h-4 w-4" />

@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response,
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.audit import ctx_uid, log_action
 from app.core.middleware import get_client_ip
 from app.core.permissions import require_permission
 from app.core.security import Role, get_optional_user, require_role, role_at_least
@@ -31,8 +32,9 @@ router = APIRouter(prefix="/api/activities", tags=["activities"])
 admin_router = APIRouter(prefix="/api/admin/activities", tags=["activities-admin"])
 
 
-def _log(db: AsyncSession, uid: int | None, action: str, target: str | None, ip: str | None):
-    db.add(AuditLog(user_id=uid, action=action, target=target, ip=ip))
+def _log(db: AsyncSession, ctx_or_uid, action: str, target: str | None, ip: str | None):
+    """统一审计写入：ctx_or_uid 支持 ctx dict（自动区分 Break-Glass）/ int / None。"""
+    log_action(db, ctx_or_uid, action, target=target, ip=ip)
 
 
 # 访客 / 普通成员可见的活动状态（草稿、归档仅后台可见）
@@ -94,7 +96,7 @@ async def _user_enrolled(db: AsyncSession, user: dict | None, activity_ids: list
         return set()
     rows = await db.execute(
         select(ActivityEnrol.activity_id).where(
-            ActivityEnrol.user_id == int(user["user_id"]),
+            ActivityEnrol.user_id == ctx_uid(user),
             ActivityEnrol.activity_id.in_(activity_ids),
             ActivityEnrol.is_deleted.is_(False),
         )
@@ -259,11 +261,11 @@ async def create_activity(
     db: AsyncSession = Depends(get_db),
 ):
     await _ensure_slug_free(db, req.slug)
-    a = Activity(**req.model_dump(), created_by=int(user["user_id"]),
-                 operator_admin_id=int(user["user_id"]))
+    a = Activity(**req.model_dump(), created_by=ctx_uid(user),
+                 operator_admin_id=ctx_uid(user))
     db.add(a)
     await db.flush()
-    _log(db, int(user["user_id"]), "activity.create", f"activity:{a.id}",
+    _log(db, user, "activity.create", f"activity:{a.id}",
          get_client_ip(request))
     return a
 
@@ -287,8 +289,8 @@ async def update_activity(
     for k, v in dump.items():
         setattr(a, k, v)
     a.updated_at = datetime.now(timezone.utc)
-    a.operator_admin_id = int(user["user_id"])
-    _log(db, int(user["user_id"]), "activity.update", f"activity:{activity_id}",
+    a.operator_admin_id = ctx_uid(user)
+    _log(db, user, "activity.update", f"activity:{activity_id}",
          get_client_ip(request))
     return a
 
@@ -308,8 +310,8 @@ async def delete_activity(
         raise HTTPException(status_code=400, detail="该活动已在内容回收站中")
     a.is_deleted = True
     a.deleted_at = datetime.now(timezone.utc).replace(tzinfo=None)
-    a.operator_admin_id = int(user["user_id"])
-    _log(db, int(user["user_id"]), "activity.delete", f"activity:{activity_id} soft",
+    a.operator_admin_id = ctx_uid(user)
+    _log(db, user, "activity.delete", f"activity:{activity_id} soft",
          get_client_ip(request))
 
 
@@ -346,7 +348,9 @@ async def enrol_activity(
         current = (await _enrol_counts(db, [a.id])).get(a.id, 0)
         if current >= a.max_participants:
             raise HTTPException(status_code=400, detail="报名人数已满")
-    uid = int(user["user_id"])
+    uid = ctx_uid(user)
+    if uid is None:
+        raise HTTPException(status_code=403, detail="应急账号不适用个人报名功能")
     existing = (await db.execute(
         select(ActivityEnrol).where(
             ActivityEnrol.activity_id == activity_id,
@@ -379,7 +383,9 @@ async def cancel_enrol_activity(
         raise HTTPException(status_code=404, detail="活动不存在")
     if a.status == ActivityStatus.ARCHIVED:
         raise HTTPException(status_code=403, detail="活动已归档，无法取消报名")
-    uid = int(user["user_id"])
+    uid = ctx_uid(user)
+    if uid is None:
+        raise HTTPException(status_code=403, detail="应急账号不适用个人报名功能")
     enrol = (await db.execute(
         select(ActivityEnrol).where(
             ActivityEnrol.activity_id == activity_id,
@@ -486,7 +492,7 @@ async def admin_finalize_activity(
             checked_in=checked_in,
         )
         db.add(stat)
-    _log(db, int(user["user_id"]), "activity.finalize", f"activity:{activity_id}",
+    _log(db, user, "activity.finalize", f"activity:{activity_id}",
          get_client_ip(request))
     await db.commit()
     await db.refresh(stat)

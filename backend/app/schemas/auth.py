@@ -31,6 +31,10 @@ class LoginResponse(BaseModel):
     must_change_password: bool = False
     # 实名状态（前端后台守卫用：未实名的管理员级账号跳转 /realname）
     realname_verified: bool = True
+    # Break-Glass 应急账号会话（前端启用三层警告 UI / 初始化向导跳转）
+    is_break_glass: bool = False
+    # 系统尚未完成初始化（前端跳转 /admin/setup 初始化向导）
+    must_setup: bool = False
 
 
 # ---------- 登录会话（设备管理） ----------
@@ -115,6 +119,10 @@ class UserOut(BaseModel):
     role: Role
     is_active: bool
     must_change_password: bool = False
+    # Break-Glass 应急账号（/api/auth/me 合成响应专用；非库中真实字段）
+    is_break_glass: bool = False
+    # 系统尚未完成初始化（BG 会话前端跳转初始化向导用）
+    must_setup: bool = False
     student_id: str
     real_name: str
     phone: str
@@ -147,7 +155,10 @@ class UserOut(BaseModel):
     date_long_pattern: str = "YYYY年M月D日"
     time_short_pattern: str = "HH:mm"
     time_long_pattern: str = "HH:mm:ss"
-    default_currency: str = "CNY"
+    # 本地化系统：用户个人偏好（NULL = 跟随系统全局 sys_default_*）
+    locale: str | None = None
+    region_code: str | None = None
+    currency: str | None = None
     created_at: UTCDatetime
     last_login_at: UTCDatetime | None = None
 
@@ -185,7 +196,10 @@ class ProfileUpdate(BaseModel):
     date_long_pattern: PlainText | None = Field(default=None, max_length=32)
     time_short_pattern: PlainText | None = Field(default=None, max_length=32)
     time_long_pattern: PlainText | None = Field(default=None, max_length=32)
-    default_currency: PlainText | None = Field(default=None, max_length=8)
+    # 本地化系统：用户个人偏好；空字符串=恢复跟随系统（存 NULL）；不传=不修改
+    locale: PlainText | None = Field(default=None, max_length=16)
+    region_code: PlainText | None = Field(default=None, max_length=16)
+    currency: PlainText | None = Field(default=None, max_length=8)
 
 
 class AvatarUploadOut(BaseModel):

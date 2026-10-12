@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.audit import ctx_uid, log_action
 from app.core.middleware import get_client_ip
 from app.core.permissions import require_permission
 from app.db.models import Announcement, AnnouncementCategory, AuditLog, UserNotifyRead
@@ -29,8 +30,9 @@ public_router = APIRouter(prefix="/api/announcements", tags=["announcements-publ
 admin_router = APIRouter(prefix="/api/admin/announcements", tags=["announcements-admin"])
 
 
-def _log(db: AsyncSession, uid: int, action: str, target: str | None, ip: str | None):
-    db.add(AuditLog(user_id=uid, action=action, target=target, ip=ip))
+def _log(db: AsyncSession, ctx_or_uid, action: str, target: str | None, ip: str | None):
+    """统一审计写入：ctx_or_uid 支持 ctx dict（自动区分 Break-Glass）/ int / None。"""
+    log_action(db, ctx_or_uid, action, target=target, ip=ip)
 
 
 def _is_in_effect(a: Announcement, now: datetime) -> bool:
@@ -125,10 +127,10 @@ async def admin_create_announcement(
 
     a = Announcement(
         **req.model_dump(),
-        created_by=int(user["user_id"]),
+        created_by=ctx_uid(user),
     )
     db.add(a)
-    _log(db, int(user["user_id"]), "announcement.create", None, get_client_ip(request))
+    _log(db, user, "announcement.create", None, get_client_ip(request))
     await db.commit()
     await db.refresh(a)
     return a
@@ -159,7 +161,7 @@ async def admin_update_announcement(
     for k in ("title", "content", "link", "start_at", "end_at", "enabled", "priority"):
         if k in data:
             setattr(a, k, data[k])
-    _log(db, int(user["user_id"]), "announcement.update", f"announcement:{aid}",
+    _log(db, user, "announcement.update", f"announcement:{aid}",
          get_client_ip(request))
     await db.commit()
     await db.refresh(a)
@@ -180,6 +182,6 @@ async def admin_delete_announcement(
     # 同步清理该通知的所有已读记录（SQLite 未开 FK pragma，需显式删除）
     await db.execute(delete(UserNotifyRead).where(UserNotifyRead.announcement_id == aid))
     await db.delete(a)
-    _log(db, int(user["user_id"]), "announcement.delete", f"announcement:{aid}",
+    _log(db, user, "announcement.delete", f"announcement:{aid}",
          get_client_ip(request))
     await db.commit()

@@ -14,6 +14,7 @@ from sqlalchemy import delete as sa_delete
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.audit import ctx_uid, log_action
 from app.core.middleware import get_client_ip
 from app.core.permissions import require_permission
 from app.core.security import Role, require_role
@@ -35,8 +36,9 @@ router = APIRouter(prefix="/api/admin/recycle", tags=["recycle"])
 RETENTION_DAYS = 30
 
 
-def _log(db: AsyncSession, uid: int | None, action: str, target: str | None, ip: str | None):
-    db.add(AuditLog(user_id=uid, action=action, target=target, ip=ip))
+def _log(db: AsyncSession, ctx_or_uid, action: str, target: str | None, ip: str | None):
+    """统一审计写入：ctx_or_uid 支持 ctx dict（自动区分 Break-Glass）/ int / None。"""
+    log_action(db, ctx_or_uid, action, target=target, ip=ip)
 
 
 def _now() -> datetime:
@@ -126,7 +128,7 @@ async def restore_recycle_item(
         u.is_deleted = False
         u.deleted_at = None
         u.is_active = True
-        _log(db, int(user["user_id"]), "recycle.restore", f"user:{rid}", get_client_ip(request))
+        _log(db, user, "recycle.restore", f"user:{rid}", get_client_ip(request))
         await db.commit()
         return {"ok": True, "type": "user", "id": rid}
 
@@ -135,9 +137,9 @@ async def restore_recycle_item(
         raise HTTPException(status_code=404, detail="回收站中不存在该活动")
     a.is_deleted = False
     a.deleted_at = None
-    a.operator_admin_id = int(user["user_id"])
+    a.operator_admin_id = ctx_uid(user)
     a.updated_at = now
-    _log(db, int(user["user_id"]), "recycle.restore", f"activity:{rid}", get_client_ip(request))
+    _log(db, user, "recycle.restore", f"activity:{rid}", get_client_ip(request))
     await db.commit()
     return {"ok": True, "type": "activity", "id": rid}
 
@@ -158,7 +160,7 @@ async def purge_recycle_item(
         if not u or not u.is_deleted:
             raise HTTPException(status_code=404, detail="回收站中不存在该账号")
         await _purge_user(db, rid)
-        _log(db, int(user["user_id"]), "recycle.purge", f"user:{rid}", get_client_ip(request))
+        _log(db, user, "recycle.purge", f"user:{rid}", get_client_ip(request))
         return
 
     a = await db.get(Activity, rid)
@@ -166,4 +168,4 @@ async def purge_recycle_item(
         raise HTTPException(status_code=404, detail="回收站中不存在该活动")
     await db.execute(sa_delete(ActivityEnrol).where(ActivityEnrol.activity_id == rid))
     await db.delete(a)
-    _log(db, int(user["user_id"]), "recycle.purge", f"activity:{rid}", get_client_ip(request))
+    _log(db, user, "recycle.purge", f"activity:{rid}", get_client_ip(request))

@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.audit import ctx_uid, log_action
 from app.core.middleware import get_client_ip
 from app.core.permissions import require_permission
 from app.db.models import AuditLog, ContentBlock
@@ -20,8 +21,9 @@ public_router = APIRouter(prefix="/api/content", tags=["content-public"])
 admin_router = APIRouter(prefix="/api/admin/content", tags=["content-admin"])
 
 
-def _log(db: AsyncSession, uid: int, action: str, target: str | None, ip: str | None):
-    db.add(AuditLog(user_id=uid, action=action, target=target, ip=ip))
+def _log(db: AsyncSession, ctx_or_uid, action: str, target: str | None, ip: str | None):
+    """统一审计写入：ctx_or_uid 支持 ctx dict（自动区分 Break-Glass）/ int / None。"""
+    log_action(db, ctx_or_uid, action, target=target, ip=ip)
 
 
 # ---------- 公开：按 key 取内容块 ----------
@@ -63,8 +65,8 @@ async def upsert_content_block(
     else:
         row.title = req.title
         row.body_md = req.body_md
-    row.updated_by = int(user["user_id"])
-    _log(db, int(user["user_id"]), "content.upsert", f"content:{key}", get_client_ip(request))
+    row.updated_by = ctx_uid(user)
+    _log(db, user, "content.upsert", f"content:{key}", get_client_ip(request))
     await db.commit()
     await db.refresh(row)
     return row

@@ -4,6 +4,7 @@
  * 管理员登录、当前用户、个人资料、头像上传、改密、忘记密码、安全问题恢复。
  */
 import { apiFetch, secureFetch } from "./client";
+import { getFingerprint, FINGERPRINT_HEADER } from "@/lib/fingerprint";
 import type {
   LoginRequest,
   LoginResponse,
@@ -21,14 +22,26 @@ import type {
   SecurityQuestionUpdate,
   UserCreatePayload,
   UserUpdatePayload,
+  SystemInitStatus,
+  SystemInitRequest,
+  SystemInitResult,
+  BGPasswordHashResult,
+  BGPasswordVerifyRequest,
 } from "@/types/api";
 
 /* ---------- 登录 / 当前用户 ---------- */
 
-export function login(payload: LoginRequest) {
+/**
+ * 登录：POST /api/auth/login
+ * 自动附加 X-Browser-Fingerprint header（防爆破附加维度）；
+ * 登录失败时后端返回 401 + BizCode.LOGIN_BLOCKED(1013)，data 带 first_ban 标记首次封禁。
+ */
+export async function login(payload: LoginRequest): Promise<LoginResponse> {
+  const fp = await getFingerprint().catch(() => "err:00000000");
   return apiFetch<LoginResponse>("/api/auth/login", {
     method: "POST",
     body: JSON.stringify(payload),
+    headers: { [FINGERPRINT_HEADER]: fp },
   });
 }
 
@@ -253,3 +266,46 @@ export function resetUserPassword(id: number) {
     { method: "POST", withAuth: true }
   );
 }
+
+/* ---------- 系统初始化向导（Break-Glass 体系） ---------- */
+
+/** 公开接口：系统初始化状态（未登录可读，前端据此决定是否跳转向导） */
+export function fetchSystemInitStatus() {
+  return apiFetch<SystemInitStatus>("/api/system-init/status");
+}
+
+/** 步骤1校验：Break-Glass 新密码是否符合应急账号强密码策略（前端实时调用） */
+export function verifyBGPassword(payload: BGPasswordVerifyRequest) {
+  return apiFetch<{ valid: boolean }>("/api/system-init/break-glass/verify-password", {
+    method: "POST",
+    withAuth: true,
+    body: JSON.stringify(payload),
+  });
+}
+
+/** 步骤1生成：校验通过后输出 bcrypt 哈希供运维复制 */
+export function generateBGPasswordHash(password: string) {
+  return apiFetch<BGPasswordHashResult>("/api/system-init/break-glass/password-hash", {
+    method: "POST",
+    withAuth: true,
+    body: JSON.stringify({ password }),
+  });
+}
+
+/** 步骤4确认提交：原子事务写入全部初始化数据 + 自动登出 Break-Glass */
+export function initializeSystem(payload: SystemInitRequest) {
+  return apiFetch<SystemInitResult>("/api/system-init/initialize", {
+    method: "POST",
+    withAuth: true,
+    body: JSON.stringify(payload),
+  });
+}
+
+/** Break-Glass 灾难修复：清空数据库内全部 admin 账号（仅 BG 可调用） */
+export function purgeAdmins() {
+  return apiFetch<{ purged: number }>("/api/auth/users/purge-admins", {
+    method: "POST",
+    withAuth: true,
+  });
+}
+

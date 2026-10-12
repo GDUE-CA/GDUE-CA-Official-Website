@@ -2,18 +2,16 @@
 import asyncio
 import logging
 import os
-import secrets
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import delete as sa_delete
-from sqlalchemy import select
+from sqlalchemy import func, select
 
-from app.api import activities, admin_stats, announcements, audit, auth, blog, bug_report, comments, content, geo, i18n_public, health, memos, media, members, notifications, oauth, projects, query, realname, recruitment, recycle, register, security, sso, stats, system, tags, translations
+from app.api import activities, admin_stats, announcements, audit, auth, blog, bug_report, comments, content, geo, i18n_public, health, memos, media, members, notifications, oauth, projects, query, realname, recruitment, recycle, register, security, sso, stats, system, system_init, tags, translations
 from app.api.auth import security_answer_digest
 from app.core.config import get_settings
 from app.core.csrf import CSRF_HEADER, csrf_middleware
@@ -24,8 +22,7 @@ from app.core.middleware import (
     rate_limit_middleware,
     security_headers_middleware,
 )
-from app.core.password_policy import check_password_strength
-from app.core.security import Role, hash_password, is_bcrypt_hash, verify_password
+from app.core.security import Role, hash_password, is_bcrypt_hash
 from app.core.trace import REQUEST_ID_HEADER, SERVER_TIME_HEADER, TRACE_HEADER, trace_middleware
 from app.api.recycle import RETENTION_DAYS, _purge_user
 from app.core.admin_gate import admin_gate_middleware
@@ -49,8 +46,6 @@ logger = logging.getLogger("gdueca")
 
 # 旧版本预置的弱安全问题（答案可被轻易猜中），启动时自动清除
 _LEGACY_SECURITY_QUESTION = ("计算机协会成立于哪一年？", "2008")
-# 自动生成的初始超管口令写入该文件（权限 0600），首次登录后必须修改并删除此文件
-_INITIAL_PASSWORD_FILE = Path("initial_admin_password.txt")
 
 
 # ---------- 启动时：建表 + 轻量列迁移 + 初始化超级管理员 ----------
@@ -59,10 +54,12 @@ async def _migrate_columns(conn):
     from sqlalchemy import text
 
     expected = {
-        "audit_logs": [("trace_id", "VARCHAR(64) NULL")],
+        "audit_logs": [
+            ("trace_id", "VARCHAR(64) NULL"),
+            # Break-Glass 应急账号操作者标识（user_id 保持 NULL）
+            ("actor", "VARCHAR(64) NULL"),
+        ],
         "users": [
-            ("failed_login_count", "INTEGER DEFAULT 0"),
-            ("locked_until", "DATETIME NULL"),
             ("password_changed_at", "DATETIME NULL"),
             ("timezone", "VARCHAR(64) NULL"),
             ("country", "VARCHAR(64) NULL"),
@@ -93,7 +90,11 @@ async def _migrate_columns(conn):
             ("date_long_pattern", "VARCHAR(32) DEFAULT 'YYYY年M月D日'"),
             ("time_short_pattern", "VARCHAR(32) DEFAULT 'HH:mm'"),
             ("time_long_pattern", "VARCHAR(32) DEFAULT 'HH:mm:ss'"),
-            ("default_currency", "VARCHAR(8) DEFAULT 'CNY'"),
+            # 本地化系统：用户个人偏好（NULL = 跟随系统全局）
+            # default_currency→currency 由 renames 逻辑处理（旧库 rename，新库 create_all 直接建）
+            ("locale", "VARCHAR(16) NULL"),
+            ("region_code", "VARCHAR(16) NULL"),
+            ("currency", "VARCHAR(8) NULL"),
         ],
         "activities": [
             ("checkin_open", "BOOLEAN DEFAULT 0"),
@@ -135,7 +136,8 @@ async def _migrate_columns(conn):
         ],
         "system_settings": [
             ("club_checkin_open", "BOOLEAN DEFAULT 0"),
-            ("system_timezone", "VARCHAR(64) DEFAULT 'Asia/Shanghai'"),
+            # system_timezone→sys_default_timezone 由 renames 处理（旧库 rename，新库 create_all 直接建）
+            ("sys_default_timezone", "VARCHAR(64) DEFAULT 'Asia/Shanghai'"),
             ("network_port", "INTEGER DEFAULT 443"),
             ("network_listen_ip", "VARCHAR(64) DEFAULT '0.0.0.0'"),
             ("network_domains", "TEXT DEFAULT '[]'"),
@@ -145,6 +147,12 @@ async def _migrate_columns(conn):
             ("auto_archive_events", "BOOLEAN DEFAULT 0"),
             # 全局登录会话空闲超时（分钟）
             ("session_idle_timeout_minutes", "INTEGER DEFAULT 30"),
+            # ---------- 系统初始化向导（Break-Glass 体系） ----------
+            ("system_initialized", "BOOLEAN DEFAULT 0"),
+            # 本地化系统全局默认（default_locale→sys_default_locale 等由 renames 处理）
+            ("sys_default_locale", "VARCHAR(16) NULL"),
+            ("sys_default_region", "VARCHAR(16) NULL"),
+            ("sys_default_currency", "VARCHAR(8) NULL"),
         ],
     }
     if conn.dialect.name == "postgresql":
@@ -164,6 +172,25 @@ async def _migrate_columns(conn):
     ))
     if conn.dialect.name != "sqlite":
         return
+    # 列重命名（旧列→新列）：仅当旧列存在且新列不存在时执行 ALTER TABLE RENAME COLUMN。
+    # 旧库 rename 后新列已存在，下方 ADD COLUMN 循环会跳过；新库 create_all 直接建新列，rename 不触发。
+    renames = {
+        "users": [
+            ("default_currency", "currency"),
+        ],
+        "system_settings": [
+            ("system_timezone", "sys_default_timezone"),
+            ("default_locale", "sys_default_locale"),
+            ("default_region", "sys_default_region"),
+        ],
+    }
+    for table, pairs in renames.items():
+        rows = await conn.execute(text(f"PRAGMA table_info({table})"))
+        existing_cols = {row[1] for row in rows}
+        for old, new in pairs:
+            if old in existing_cols and new not in existing_cols:
+                await conn.execute(text(f"ALTER TABLE {table} RENAME COLUMN {old} TO {new}"))
+                logger.info("已重命名 %s.%s → %s", table, old, new)
     for table, columns in expected.items():
         rows = await conn.execute(text(f"PRAGMA table_info({table})"))
         existing = {row[1] for row in rows}
@@ -188,7 +215,8 @@ async def _init_db():
     async with async_session() as s:
         rec = await s.get(SystemSetting, 1)
         if not rec:
-            s.add(SystemSetting(id=1))
+            rec = SystemSetting(id=1)
+            s.add(rec)
 
         # 安全问题：不再预置默认问题；旧版明文答案迁移为哈希，弱默认问题直接清除
         sec_q = await s.get(SecurityQuestion, 1)
@@ -198,42 +226,18 @@ async def _init_db():
         elif sec_q and not is_bcrypt_hash(sec_q.answer):
             sec_q.answer = hash_password(security_answer_digest(sec_q.answer))
 
-        # 初始化超级管理员：口令不满足强口令策略时自动生成随机强口令
-        from sqlalchemy import select
-        existing = (await s.execute(
-            select(User).where(User.email == settings.FIRST_SUPERADMIN_EMAIL)
-        )).scalar_one_or_none()
-        username = settings.FIRST_SUPERADMIN_EMAIL.split("@")[0]
-        if not existing:
-            password = settings.FIRST_SUPERADMIN_PASSWORD
-            if check_password_strength(password, username, settings.FIRST_SUPERADMIN_EMAIL):
-                password = _generate_strong_password()
-                _INITIAL_PASSWORD_FILE.write_text(
-                    f"{settings.FIRST_SUPERADMIN_EMAIL}\n{password}\n", encoding="utf-8"
-                )
-                os.chmod(_INITIAL_PASSWORD_FILE, 0o600)
-                logger.warning(
-                    "已生成初始超级管理员随机口令，见 %s（首次登录后必须修改，并删除该文件）",
-                    _INITIAL_PASSWORD_FILE.resolve(),
-                )
-            s.add(User(
-                username=username,
-                email=settings.FIRST_SUPERADMIN_EMAIL,
-                password_hash=hash_password(password),
-                role=Role.SUPER_ADMIN,
-                must_change_password=True,
-                student_id="00000000",
-                real_name="超级管理员",
-                phone="+8613800000000",
-            ))
-        elif verify_password("admin", existing.password_hash):
-            # 旧版本默认 admin/admin 仍未修改：强制下次登录改密
-            existing.must_change_password = True
-            logger.warning("超级管理员仍在使用默认弱口令，已强制要求登录后修改")
+        # 系统初始化状态判定（Break-Glass 体系）：
+        # - 存量库（users 表已有任意账号，含软删回收站中的账号）→ 视为已完成初始化；
+        # - 全新库 → 保持 false，仅 Break-Glass 可登录，通过后台初始化向导完成初始化。
+        # 初始化完成后向导永久隐藏（后台不提供重置开关，仅允许手动改库）。
+        if not rec.system_initialized:
+            user_count = (await s.execute(select(func.count()).select_from(User))).scalar_one()
+            if user_count > 0:
+                rec.system_initialized = True
+                logger.info("检测到存量数据库（%d 个账号），系统初始化状态置为已完成", user_count)
         await s.commit()
 
         # 迁移旧 SystemSetting.ip_blacklist JSON 条目为永久 ip_rules（blacklist）
-        from sqlalchemy import select
         legacy = (await s.execute(
             select(SystemSetting).where(SystemSetting.id == 1)
         )).scalar_one_or_none()
@@ -269,13 +273,6 @@ async def _init_db():
         if unverified:
             logger.info("已将 %d 个既有后台账号标记为已实名", len(unverified))
         await s.commit()
-
-
-def _generate_strong_password() -> str:
-    while True:
-        candidate = secrets.token_urlsafe(12) + secrets.choice("!@#$%^&*") + "Aa9"
-        if not check_password_strength(candidate):
-            return candidate
 
 
 # ---------- 全局定时任务（P0，每小时） ----------
@@ -341,10 +338,55 @@ async def _maintenance_loop() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Break-Glass 启动硬性校验：凭据只允许来自环境变量，缺失/非法直接崩溃退出
+    _validate_break_glass_env()
     await _init_db()
     task = asyncio.create_task(_maintenance_loop())
-    yield
-    task.cancel()
+    kv_task = asyncio.create_task(_kv_sweep_loop())
+    try:
+        yield
+    finally:
+        # 必须先取消并等待后台任务收尾：它们可能正持有数据库连接，
+        # 若在连接借出期间直接让事件循环退出，aiosqlite 工作线程的关闭回调
+        # 会投递到已停止的循环，导致优雅关闭永久挂起（测试 / 多 worker 重启必现）。
+        task.cancel()
+        kv_task.cancel()
+        await asyncio.gather(task, kv_task, return_exceptions=True)
+        # 在当前循环内主动释放连接池，避免连接被 GC 终结时跨循环 terminate 死锁
+        await engine.dispose()
+
+
+def _validate_break_glass_env() -> None:
+    """SUPER_ADMIN_* 三项环境变量任一缺失/非法 → FATAL 日志 + 进程退出。"""
+    from app.core.security import is_bcrypt_hash
+
+    problems = []
+    if not settings.SUPER_ADMIN_USERNAME.strip():
+        problems.append("SUPER_ADMIN_USERNAME is empty")
+    if not is_bcrypt_hash(settings.SUPER_ADMIN_PASSWORD_HASH):
+        problems.append("SUPER_ADMIN_PASSWORD_HASH is missing or not a bcrypt hash")
+    if settings.SUPER_ADMIN_ENABLED.strip().lower() not in ("true", "false"):
+        problems.append("SUPER_ADMIN_ENABLED must be 'true' or 'false'")
+    if problems:
+        # 只输出问题类别，绝不输出凭据内容（哈希/用户名不打日志）
+        logger.critical(
+            "FATAL: Break-Glass environment variables missing. Cannot start server. "
+            "Please configure SUPER_ADMIN_* environment variables. (%s)",
+            "; ".join(problems),
+        )
+        raise SystemExit(1)
+
+
+async def _kv_sweep_loop() -> None:
+    """KV 内存兜底后端的周期过期清扫（Redis 后端为空操作）。"""
+    from app.core.kv import start_sweep
+
+    while True:
+        try:
+            await start_sweep()
+        except Exception:
+            logger.exception("KV 清扫任务执行失败")
+        await asyncio.sleep(60)
 
 
 app = FastAPI(
@@ -423,14 +465,17 @@ app.include_router(realname.admin_router)
 app.include_router(register.router)
 app.include_router(bug_report.router)
 app.include_router(system.router)
+app.include_router(system_init.router)
 app.include_router(translations.router)
 app.include_router(query.router)
 app.include_router(admin_stats.router)
 app.include_router(stats.router)
 app.include_router(media.router)
 app.include_router(audit.router)
+app.include_router(audit.bg_router)
 app.include_router(recycle.router)
 app.include_router(security.router)
+app.include_router(security.admin_router)
 # ---------- Phase 8: Memo 碎片笔记 + 全局共享标签 ----------
 # 注意：author_router 与 public_router 共享 /api/memos 前缀；
 # FastAPI 按注册顺序匹配，必须先注册具体路径（公开 /shared/{share_slug} 等），再注册参数路由（{memo_id}）。

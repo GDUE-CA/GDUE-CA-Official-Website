@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "_variant": "zh-mo inherits from zh-cn; only differing keys are stored here",
+    "_fallback": "zh-cn"
+  }
+}

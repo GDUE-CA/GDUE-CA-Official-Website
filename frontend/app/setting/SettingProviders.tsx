@@ -13,6 +13,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { AdminProviders } from "@/app/admin/AdminProviders";
+import { useLocalizedPath } from "@/lib/navigation";
 import { SettingShell } from "@/components/setting/SettingShell";
 import { SettingGuardProvider } from "@/components/setting/SettingGuardContext";
 import { fetchMe } from "@/lib/api/auth";
@@ -20,6 +21,7 @@ import { clearLocalSession, saveSession } from "@/lib/auth";
 
 export function SettingRoot({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const lp = useLocalizedPath();
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -28,7 +30,7 @@ export function SettingRoot({ children }: { children: ReactNode }) {
       try {
         const me = await fetchMe();
         if (me.must_change_password) {
-          router.replace("/admin/change-password");
+          router.replace(lp("/admin/change-password"));
           return;
         }
         saveSession({
@@ -40,7 +42,7 @@ export function SettingRoot({ children }: { children: ReactNode }) {
       } catch {
         // 401 或网络失败：未登录
         clearLocalSession();
-        router.replace("/auth/login");
+        router.replace(lp("/auth/login"));
       }
     })();
     return () => {

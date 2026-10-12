@@ -9,6 +9,7 @@
  */
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
+import { useLocalizedPath } from "@/lib/navigation";
 import { heartbeat } from "@/lib/api/auth";
 import { clearLocalSession, isLogged } from "@/lib/auth";
 import { ApiError } from "@/lib/api/client";
@@ -17,6 +18,7 @@ const INTERVAL_MS = 4 * 60 * 1000;
 
 export function SessionHeartbeat() {
   const pathname = usePathname();
+  const lp = useLocalizedPath();
 
   useEffect(() => {
     let stopped = false;
@@ -31,7 +33,7 @@ export function SessionHeartbeat() {
         if (err instanceof ApiError && err.status === 401) {
           clearLocalSession();
           if (pathname.startsWith("/admin")) {
-            window.location.href = "/admin/login";
+            window.location.href = lp("/admin/login");
           }
         }
       }
@@ -48,7 +50,7 @@ export function SessionHeartbeat() {
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [pathname]);
+  }, [pathname, lp]);
 
   return null;
 }

@@ -25,9 +25,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
       for (const altLocale of locales) {
         alternates[altLocale] = `${BASE_URL}/${altLocale}${route}`;
       }
-      // 默认语言额外标注 x-default
+      // 默认语言额外标注 x-default（仍带 locale 前缀，与规范 §1 一致）
       if (locale === defaultLocale) {
-        alternates["x-default"] = `${BASE_URL}${route === "" ? "" : route}`;
+        alternates["x-default"] = `${BASE_URL}/${defaultLocale}${route === "" ? "" : route}`;
       }
       entries.push({
         url,

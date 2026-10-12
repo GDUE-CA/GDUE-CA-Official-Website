@@ -12,6 +12,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/i18n/provider";
+import { useLocalizedPath } from "@/lib/navigation";
 import { Button } from "@/components/ui/button";
 import { fetchActivityById, enrolActivity, cancelEnrolActivity } from "@/lib/api/activities";
 import { fetchMe } from "@/lib/api/auth";
@@ -46,6 +47,7 @@ function disabledReasonKey(status: RuntimeStatus | null): string {
 
 export function EnrolButton({ eventId, size = "default" }: EnrolButtonProps) {
   const { t } = useI18n();
+  const lp = useLocalizedPath();
   const router = useRouter();
 
   const [checking, setChecking] = useState(true);
@@ -83,7 +85,7 @@ export function EnrolButton({ eventId, size = "default" }: EnrolButtonProps) {
 
   const handleEnrol = useCallback(async () => {
     if (!loggedIn) {
-      router.push("/auth/login");
+      router.push(lp("/auth/login"));
       return;
     }
     setSubmitting(true);
@@ -103,7 +105,7 @@ export function EnrolButton({ eventId, size = "default" }: EnrolButtonProps) {
     } finally {
       setSubmitting(false);
     }
-  }, [loggedIn, enrolled, eventId, router, t]);
+  }, [loggedIn, enrolled, eventId, router, t, lp]);
 
   if (checking) {
     return (

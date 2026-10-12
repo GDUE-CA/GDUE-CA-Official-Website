@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Loader2, UserPlus } from "lucide-react";
 import { useI18n } from "@/i18n/provider";
+import { useLocalizedPath } from "@/lib/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,6 +38,7 @@ const PROVIDER_LABEL: Record<OAuthProvider, string> = {
 
 export default function CompleteProfilePage() {
   const { t } = useI18n();
+  const lp = useLocalizedPath();
   const router = useRouter();
   const [pending, setPending] = useState<PendingOAuthProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -53,7 +55,7 @@ export default function CompleteProfilePage() {
   useEffect(() => {
     getPendingOAuthProfile()
       .then(setPending)
-      .catch(() => router.replace("/admin/login"))
+      .catch(() => router.replace(lp("/admin/login")))
       .finally(() => setLoading(false));
   }, [router]);
 
@@ -94,7 +96,7 @@ export default function CompleteProfilePage() {
         },
         res.csrf_token
       );
-      router.replace("/setting/profile");
+      router.replace(lp("/setting/profile"));
     } catch (err) {
       setError(err instanceof Error ? err.message : t("completeProfile.error"));
     } finally {

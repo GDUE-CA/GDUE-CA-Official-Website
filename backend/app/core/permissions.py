@@ -196,6 +196,9 @@ def require_permission(module: str, action: str):
     """
     async def _dep(request: Request, db: AsyncSession = Depends(get_db)) -> dict:
         ctx, user = await _authenticate(request, db)
+        # Break-Glass：绕过 RBAC 权限校验（含 must_change_password / 实名门槛）
+        if ctx.get("break_glass"):
+            return ctx
         if not has_permission(ctx["role"], user.permission_overrides, module, action):
             raise HTTPException(status_code=403, detail="权限不足")
         if user.must_change_password:

@@ -61,7 +61,7 @@ export function ProfileForm() {
   // 初始快照，用于 dirty 判断
   const initialRef = useRef<string | null>(null);
 
-  const isZh = locale === "zh-cn" || locale === "zh-tw" || locale === "zh-hk";
+  const isZh = locale.startsWith("zh");
 
   useEffect(() => {
     (async () => {

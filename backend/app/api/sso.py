@@ -23,6 +23,7 @@ from jose import jwt as jose_jwt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.audit import ctx_uid, log_action
 from app.core.config import get_settings
 from app.core.csrf import SESSION_COOKIE
 from app.core.middleware import get_client_ip
@@ -49,8 +50,9 @@ ACCESS_TTL = 3600     # access_token 1 小时
 _used_code_jti: dict[str, float] = {}
 
 
-def _log(db: AsyncSession, user_id: int | None, action: str, detail: str | None, ip: str | None):
-    db.add(AuditLog(user_id=user_id, action=action, detail=detail, ip=ip))
+def _log(db: AsyncSession, ctx_or_uid, action: str, detail: str | None, ip: str | None):
+    """统一审计写入：ctx_or_uid 支持 ctx dict（自动区分 Break-Glass）/ int / None。"""
+    log_action(db, ctx_or_uid, action, detail=detail, ip=ip)
 
 
 def _sign(data: dict, ttl: int, typ: str) -> str:
@@ -230,7 +232,7 @@ async def create_client(
         is_active=True,
     )
     db.add(c)
-    _log(db, int(user["user_id"]), "sso.client.create", f"client:{client_id}",
+    _log(db, user, "sso.client.create", f"client:{client_id}",
          get_client_ip(request))
     await db.commit()
     await db.refresh(c)
@@ -256,7 +258,7 @@ async def update_client(
         c.redirect_uris = req.redirect_uris
     if req.is_active is not None:
         c.is_active = req.is_active
-    _log(db, int(user["user_id"]), "sso.client.update", f"client:{c.client_id}",
+    _log(db, user, "sso.client.update", f"client:{c.client_id}",
          get_client_ip(request))
     await db.commit()
     await db.refresh(c)
@@ -276,7 +278,7 @@ async def reset_client_secret(
         raise HTTPException(status_code=404, detail="应用不存在")
     secret = _client_secret()
     c.client_secret_hash = hash_password(secret)
-    _log(db, int(user["user_id"]), "sso.client.reset_secret", f"client:{c.client_id}",
+    _log(db, user, "sso.client.reset_secret", f"client:{c.client_id}",
          get_client_ip(request))
     await db.commit()
     await db.refresh(c)
@@ -294,7 +296,7 @@ async def delete_client(
     if not c:
         raise HTTPException(status_code=404, detail="应用不存在")
     await db.delete(c)
-    _log(db, int(user["user_id"]), "sso.client.delete", f"client:{c.client_id}",
+    _log(db, user, "sso.client.delete", f"client:{c.client_id}",
          get_client_ip(request))
     await db.commit()
     return {"ok": True}

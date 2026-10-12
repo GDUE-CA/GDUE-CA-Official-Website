@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.audit import ctx_uid, log_action
 from app.core.middleware import get_client_ip
 from app.core.permissions import require_permission
 from app.core.rate_limit import rate_limit
@@ -27,8 +28,9 @@ from app.utils.translator import detect_lang
 router = APIRouter(prefix="/api/registrations", tags=["registrations"])
 
 
-def _log(db: AsyncSession, uid: int | None, action: str, target: str | None, ip: str | None):
-    db.add(AuditLog(user_id=uid, action=action, target=target, ip=ip))
+def _log(db: AsyncSession, ctx_or_uid, action: str, target: str | None, ip: str | None):
+    """统一审计写入：ctx_or_uid 支持 ctx dict（自动区分 Break-Glass）/ int / None。"""
+    log_action(db, ctx_or_uid, action, target=target, ip=ip)
 
 
 async def _unique_receipt_code(db: AsyncSession) -> str:
@@ -195,7 +197,7 @@ async def batch_update_registrations(
             continue
         reg.status = body.status
         updated += 1
-    _log(db, int(user["user_id"]), f"registration.batch_{body.status.value}",
+    _log(db, user, f"registration.batch_{body.status.value}",
          ",".join(str(i) for i in body.ids), get_client_ip(request))
     return {"updated": updated, "skipped": skipped}
 
@@ -222,7 +224,7 @@ async def update_registration_status(
         reg.status = status
     if remark is not None:
         reg.remark = clean_multiline_text(remark)
-    _log(db, int(user["user_id"]), "registration.update", f"reg:{reg_id}",
+    _log(db, user, "registration.update", f"reg:{reg_id}",
          get_client_ip(request))
     return reg
 
@@ -253,7 +255,7 @@ async def export_registrations(
     result = await db.execute(stmt)
     rows = result.scalars().all()
     # 个人信息批量导出属于敏感操作，记录审计日志（GB/T 35274）
-    _log(db, int(user["user_id"]), f"registration.export_{fmt}",
+    _log(db, user, f"registration.export_{fmt}",
          f"{filename} rows:{len(rows)}", get_client_ip(request))
 
     if fmt == "csv":
@@ -318,6 +320,6 @@ async def manual_create_registration(
     )
     db.add(reg)
     await db.flush()
-    _log(db, int(user["user_id"]), "registration.manual",
+    _log(db, user, "registration.manual",
          f"reg:{reg.id} activity:{activity_id}", get_client_ip(request))
     return reg

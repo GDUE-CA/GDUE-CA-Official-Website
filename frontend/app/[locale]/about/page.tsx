@@ -21,17 +21,34 @@ export default async function AboutPage({
   const { locale } = await params;
   const dict = await getDictionary(locale);
 
-  /** 按当前语言取值：en-gb 缺失回退 en-us，zh-hk 缺失回退 zh-tw，其余缺失回退简体中文 */
-  const pick = (obj: Partial<Record<Locale, string>>) => {
-    const direct = obj[locale as Locale];
+  /**
+   * 按当前语言取值：数据内部用 "zh-cn"/"zh-tw"/"en-us"/"ja" 作 key（历史遗留）；
+   * 新 13 门 locale 映射到最接近的数据 key，缺失回退简体中文。
+   */
+  const localeToDataKey: Record<string, string> = {
+    "zh-cn": "zh-cn",
+    "zh-cn-sg": "zh-cn",
+    "zh-tw": "zh-tw",
+    "zh-mo": "zh-tw",
+    "zh-yue-cn": "zh-cn",
+    "zh-yue-hk": "zh-tw",
+    "en-gb": "en-us",
+    "ja-jp": "ja",
+    "ko-kr": "en-us",
+    "es-es": "en-us",
+    "fr-fr": "en-us",
+    "de-de": "en-us",
+    "ru-ru": "en-us",
+  };
+  const pick = (obj: Record<string, string>) => {
+    const direct = obj[locale];
     if (direct) return direct;
-    if (locale === "en-gb") return obj["en-us"] ?? obj["zh-cn"];
-    if (locale === "zh-hk") return obj["zh-tw"] ?? obj["zh-cn"];
-    return obj["zh-cn"];
+    const dataKey = localeToDataKey[locale] ?? "zh-cn";
+    return obj[dataKey] ?? obj["zh-cn"] ?? "";
   };
 
   /** 历史时间线数据（社史可考大事） */
-  const timeline: { year: string; event: Partial<Record<Locale, string>> }[] = [
+  const timeline: { year: string; event: Record<string, string> }[] = [
     { year: "2008", event: { "zh-cn": "计算机协会成立（2008年5月31日，花都校区）", "en-us": "Computer Association founded on May 31, 2008 (Huadu Campus)", "zh-tw": "計算機協會成立（2008年5月31日，花都校區）", ja: "コンピュータ協会設立（2008年5月31日、花都キャンパス）" } },
     { year: "2013", event: { "zh-cn": "微软“创新之旅”校园巡讲，203 人到场", "en-us": "Microsoft “Innovation Journey” campus tour with 203 attendees", "zh-tw": "微軟“創新之旅”校園巡講，203 人到場", ja: "マイクロソフト「イノベーションの旅」講演、203名が参加" } },
     { year: "2017", event: { "zh-cn": "第四届 LOL 电竞比赛，冠军晋级花都区高校友谊赛", "en-us": "4th LOL esports tournament; champions advanced to the Huadu inter-university friendly", "zh-tw": "第四屆 LOL 電競比賽，冠軍晉級花都區高校友誼賽", ja: "第4回LOL eスポーツ大会、優勝チームは花都区大学対抗戦へ進出" } },
@@ -51,13 +68,13 @@ export default async function AboutPage({
   ];
 
   /** 指导老师数据 */
-  const teachers: { name: Partial<Record<Locale, string>>; title: Partial<Record<Locale, string>> }[] = [
+  const teachers: { name: Record<string, string>; title: Record<string, string> }[] = [
     { name: { "zh-cn": "张谦", "zh-tw": "張謙", "en-us": "Qian Zhang", ja: "張謙" }, title: { "zh-cn": "指导老师 · 网络工程教研室主任（2019 年起）", "zh-tw": "指導老師 · 網絡工程教研室主任（2019 年起）", "en-us": "Advisor · Head of Network Engineering Teaching Office (since 2019)", ja: "指導教員 · ネットワーク工学教研室主任（2019年〜）" } },
     { name: { "zh-cn": "张渝荣", "zh-tw": "張渝榮", "en-us": "Yurong Zhang", ja: "張渝栄" }, title: { "zh-cn": "指导老师 · 计算机科学系（2013—2018 年）", "zh-tw": "指導老師 · 計算機科學系（2013—2018 年）", "en-us": "Advisor · Computer Science Department (2013–2018)", ja: "指導教員 · コンピュータ科学系（2013〜2018年）" } },
   ];
 
   /** 荣誉数据 */
-  const honors: Partial<Record<Locale, string>>[] = [
+  const honors: Record<string, string>[] = [
     { "zh-cn": "网络安全知识竞赛获属地街道、派出所好评，申报校“十佳品牌活动”", "zh-tw": "網絡安全知識競賽獲屬地街道、派出所好評，申報校“十佳品牌活動”", "en-us": "Anti-fraud contest praised by local authorities; nominated for Top-10 campus brand events", ja: "コンテストは地元当局から好評を得て、学十大ブランド活動に推薦" },
     { "zh-cn": "单场知识竞赛报名破千，覆盖两校区 14 个院系", "zh-tw": "單場知識競賽報名破千，覆蓋兩校區 14 個院系", "en-us": "A single knowledge contest drew 1,000+ registrations across 14 schools on two campuses", ja: "単一の知識コンテストで申込1,000名超、2キャンパス14学院をカバー" },
     { "zh-cn": "LOL 电竞校队晋级花都区高校友谊赛与技嘉 GTL 联赛", "zh-tw": "LOL 電競校隊晉級花都區高校友誼賽與技嘉 GTL 聯賽", "en-us": "LOL esports team advanced to the Huadu inter-university friendly and the Gigabyte GTL league", ja: "LOLチームは花都区大学対抗戦とGigabyte GTLリーグへ進出" },

@@ -9,6 +9,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { Loader2, MailQuestion, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { useI18n } from "@/i18n/provider";
+import { useLocalizedPath } from "@/lib/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +25,7 @@ import { submitForgotPassword } from "@/lib/api/auth";
 
 export default function ForgotPasswordPage() {
   const { t } = useI18n();
+  const lp = useLocalizedPath();
   const [email, setEmail] = useState("");
   const [usernameHint, setUsernameHint] = useState("");
   const [reason, setReason] = useState("");
@@ -128,7 +130,7 @@ export default function ForgotPasswordPage() {
 
             <div className="mt-6 text-center">
               <Button asChild variant="ghost" size="sm">
-                <Link href="/admin/login">
+                <Link href={lp("/admin/login")}>
                   <ArrowLeft className="h-4 w-4 mr-1.5" />
                   {t("admin.forgotPassword.backToLogin")}
                 </Link>

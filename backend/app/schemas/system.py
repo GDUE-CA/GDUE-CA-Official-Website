@@ -18,7 +18,11 @@ class SystemSettingPublicOut(BaseModel):
     footer: str | None
     icp_info: str | None
     club_checkin_open: bool
-    system_timezone: str = "Asia/Shanghai"
+    # 本地化系统全局默认（前端渲染「[跟随系统：{value}]」用）
+    sys_default_locale: str | None = None
+    sys_default_timezone: str | None = "Asia/Shanghai"
+    sys_default_region: str | None = None
+    sys_default_currency: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -32,8 +36,11 @@ class SystemSettingOut(BaseModel):
     allowed_hosts: list[str]
     cors_origins: list[str]
     club_checkin_open: bool
-    # 系统默认 IANA 时区（降级回退用）
-    system_timezone: str = "Asia/Shanghai"
+    # 本地化系统全局默认（用户字段 NULL 时回退此处）
+    sys_default_locale: str | None = None
+    sys_default_timezone: str | None = "Asia/Shanghai"
+    sys_default_region: str | None = None
+    sys_default_currency: str | None = None
     # 网络配置
     network_port: int = 443
     network_listen_ip: str = "0.0.0.0"
@@ -52,8 +59,11 @@ class SystemSettingUpdate(BaseModel):
     allowed_hosts: list[str] | None = None
     cors_origins: list[str] | None = None
     club_checkin_open: bool | None = None  # 社团报名签到开关
-    # IANA 时区字符串；PUT 时校验有效性
-    system_timezone: str | None = Field(default=None, max_length=64)
+    # 本地化系统全局默认；PUT 时校验 IANA 时区有效性
+    sys_default_locale: str | None = Field(default=None, max_length=16)
+    sys_default_timezone: str | None = Field(default=None, max_length=64)
+    sys_default_region: str | None = Field(default=None, max_length=16)
+    sys_default_currency: str | None = Field(default=None, max_length=8)
     # 网络配置
     network_port: int | None = Field(default=None, ge=1, le=65535)
     network_listen_ip: str | None = Field(default=None, max_length=64)

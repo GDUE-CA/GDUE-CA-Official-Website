@@ -186,6 +186,22 @@ async def ip_rules_middleware(
 
     # IP 检查
     ip = get_client_ip(request)
+    # Break-Glass 应急会话：豁免 IP 黑名单（灾难修复必须可用；内网限制由认证层强制）
+    from app.core.csrf import SESSION_COOKIE
+
+    _bg = False
+    _t = request.cookies.get(SESSION_COOKIE)
+    if not _t:
+        _auth = request.headers.get("authorization", "")
+        if _auth.startswith("Bearer "):
+            _t = _auth[7:]
+    if _t:
+        try:
+            from app.core.security import decode_token
+
+            _bg = decode_token(_t).get("bg") is True
+        except Exception:
+            _bg = False
     if ip:
         # 白名单优先（可信 IP 豁免黑名单）
         trusted = False
@@ -199,7 +215,7 @@ async def ip_rules_middleware(
                 break
         request.state.trusted_ip = trusted
 
-        if not trusted:
+        if not trusted and not _bg:
             for rule, reason, exp in _ip_rules_cache["blacklist"]:
                 if exp and now >= exp.timestamp():
                     continue

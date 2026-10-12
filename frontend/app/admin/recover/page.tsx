@@ -9,6 +9,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { Loader2, LifeBuoy, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { useI18n } from "@/i18n/provider";
+import { useLocalizedPath } from "@/lib/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,6 +28,7 @@ import { meetsPasswordPolicy } from "@/lib/passwordPolicy";
 
 export default function RecoverPage() {
   const { t } = useI18n();
+  const lp = useLocalizedPath();
   const [question, setQuestion] = useState<string>("");
   const [answer, setAnswer] = useState("");
   const [newPwd, setNewPwd] = useState("");
@@ -138,7 +140,7 @@ export default function RecoverPage() {
 
             <div className="mt-6 text-center">
               <Button asChild variant="ghost" size="sm">
-                <Link href="/admin/login">
+                <Link href={lp("/admin/login")}>
                   <ArrowLeft className="h-4 w-4 mr-1.5" />
                   {t("admin.recover.backToLogin")}
                 </Link>

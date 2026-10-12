@@ -9,6 +9,7 @@ import uuid
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import select
 
+from app.core.audit import ctx_uid, log_action
 from app.core.bizcode import BizCode
 from app.core.exceptions import BizException
 from app.core.middleware import get_client_ip
@@ -28,8 +29,9 @@ admin_router = APIRouter(prefix="/api/admin/projects", tags=["projects-admin"])
 _SLUG_RESERVED_PREFIX = "project-"
 
 
-def _log(db, uid: int, action: str, target: str | None, ip: str | None):
-    db.add(AuditLog(user_id=uid, action=action, target=target, ip=ip))
+def _log(db: AsyncSession, ctx_or_uid, action: str, target: str | None, ip: str | None):
+    """统一审计写入：ctx_or_uid 支持 ctx dict（自动区分 Break-Glass）/ int / None。"""
+    log_action(db, ctx_or_uid, action, target=target, ip=ip)
 
 
 async def _ensure_slug_unique(db, slug: str, exclude_id: int | None = None) -> None:
@@ -149,7 +151,7 @@ async def admin_create_project(
         year=req.year,
         leader=req.leader,
         content_md=req.content_md,
-        created_by=int(user["user_id"]),
+        created_by=ctx_uid(user),
     )
     p.status = ProjectStatus(req.status)
     db.add(p)
@@ -158,7 +160,7 @@ async def admin_create_project(
         # 自动 slug = project-{自增 id}，天然唯一；不能用 _ensure_slug_unique
         # （autoflush 会把新值写库后命中自身）
         p.slug = f"{_SLUG_RESERVED_PREFIX}{p.id}"
-    _log(db, int(user["user_id"]), "project.create", f"project:{p.id}", get_client_ip(request))
+    _log(db, user, "project.create", f"project:{p.id}", get_client_ip(request))
     await db.commit()
     await db.refresh(p)
     return ok(data=ProjectOut.model_validate(p).model_dump(mode="json"))
@@ -186,7 +188,7 @@ async def admin_update_project(
         if k in data:
             setattr(p, k, data[k])
 
-    _log(db, int(user["user_id"]), "project.update", f"project:{p.id}", get_client_ip(request))
+    _log(db, user, "project.update", f"project:{p.id}", get_client_ip(request))
     await db.commit()
     await db.refresh(p)
     return ok(data=ProjectOut.model_validate(p).model_dump(mode="json"))
@@ -200,7 +202,7 @@ async def admin_delete_project(
     db = Depends(get_db),
 ):
     p = await _get_or_404(db, project_id)
-    _log(db, int(user["user_id"]), "project.delete", f"project:{p.id}", get_client_ip(request))
+    _log(db, user, "project.delete", f"project:{p.id}", get_client_ip(request))
     await db.delete(p)
     await db.commit()
     return ok(data=None)

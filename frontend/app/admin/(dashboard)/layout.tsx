@@ -47,6 +47,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useI18n } from "@/i18n/provider";
+import { useLocalizedPath } from "@/lib/navigation";
 import { useAdminLocale } from "@/app/admin/AdminProviders";
 import { locales, localeNames, type Locale } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
@@ -142,6 +143,7 @@ const navGroups: NavGroup[] = [
       { key: "admin.dashboard.securityNetwork", href: "/admin/security/network", icon: Globe, modules: ["security"] },
       { key: "admin.dashboard.securityIpWhitelist", href: "/admin/security/ip-whitelist", icon: ShieldCheck, modules: ["security"] },
       { key: "admin.dashboard.securityIpBlacklist", href: "/admin/security/ip-blacklist", icon: ShieldBan, modules: ["security"] },
+      { key: "admin.dashboard.securityBans", href: "/admin/security/bans", icon: ShieldBan, modules: ["security"] },
       { key: "admin.dashboard.auditLogs", href: "/admin/audit-logs", icon: ScrollText, modules: ["audit_logs"] },
       { key: "admin.dashboard.oauth", href: "/admin/oauth", icon: KeyRound, modules: ["oauth"] },
       { key: "admin.dashboard.sso", href: "/admin/sso", icon: Fingerprint, modules: ["sso"] },
@@ -168,6 +170,7 @@ export default function AdminDashboardLayout({
   children: React.ReactNode;
 }) {
   const { t, locale } = useI18n();
+  const lp = useLocalizedPath();
   const router = useRouter();
   const pathname = usePathname();
   const [session, setSession] = useState<AdminSession | null>(null);
@@ -179,6 +182,8 @@ export default function AdminDashboardLayout({
   const [forbidden, setForbidden] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  // Break-Glass 应急账号标记：启用三层警告 UI（顶部红条 + 侧栏红标）
+  const [isBreakGlass, setIsBreakGlass] = useState(false);
 
   /** 路由守卫：以后端校验结果为准（本地缓存可被篡改，不能作为授权依据） */
   useEffect(() => {
@@ -193,8 +198,17 @@ export default function AdminDashboardLayout({
         };
         saveSession(s);
         if (me.must_change_password) {
-          router.replace("/admin/change-password");
+          router.replace(lp("/admin/change-password"));
           return;
+        }
+        // Break-Glass 应急账号 + 系统未初始化 → 强制进入初始化向导
+        if (me.is_break_glass && me.must_setup) {
+          router.replace(lp("/admin/setup"));
+          return;
+        }
+        // 标记 BG 会话，启用顶部红条 + 侧栏红标（系统已初始化后）
+        if (me.is_break_glass) {
+          setIsBreakGlass(true);
         }
         if (!isAdminRole(me.role)) {
           // 已登录但无后台权限：渲染 403（账号设置独立于后台，入口在 /setting）
@@ -206,7 +220,7 @@ export default function AdminDashboardLayout({
           me.role !== "super_admin" &&
           !me.realname_verified
         ) {
-          router.replace("/admin/realname");
+          router.replace(lp("/admin/realname"));
           return;
         }
         setSession(s);
@@ -228,7 +242,7 @@ export default function AdminDashboardLayout({
       .catch((err) => {
         if (cancelled) return;
         if (err instanceof ApiError && err.status === 401) clearLocalSession();
-        router.replace("/admin/login");
+        router.replace(lp("/admin/login"));
       });
     return () => {
       cancelled = true;
@@ -238,7 +252,7 @@ export default function AdminDashboardLayout({
   /** 退出登录 */
   async function handleLogout() {
     await logout();
-    router.replace("/admin/login");
+    router.replace(lp("/admin/login"));
   }
 
   /** 菜单项激活判断 */
@@ -262,7 +276,7 @@ export default function AdminDashboardLayout({
           </p>
           <div className="flex items-center justify-center gap-3">
             <Button asChild>
-              <Link href="/setting/profile">
+              <Link href={lp("/setting/profile")}>
                 <UserCircle className="h-4 w-4 mr-1.5" />
                 {t("admin.dashboard.forbidden.goSetting")}
               </Link>
@@ -300,6 +314,7 @@ export default function AdminDashboardLayout({
           permCtx={permCtx}
           isActive={isActive}
           onLogout={handleLogout}
+          isBreakGlass={isBreakGlass}
         />
       </aside>
 
@@ -329,6 +344,7 @@ export default function AdminDashboardLayout({
                 isActive={isActive}
                 onLogout={handleLogout}
                 onNavigate={() => setMobileNavOpen(false)}
+                isBreakGlass={isBreakGlass}
               />
             </motion.aside>
           </>
@@ -337,6 +353,14 @@ export default function AdminDashboardLayout({
 
       {/* 主区域（min-w-0 防止内容过宽把顶栏撑出视口） */}
       <div className="flex-1 md:pl-64 flex flex-col min-h-screen min-w-0">
+        {/* Layer 1: Break-Glass 顶部红条警告（仅系统已初始化后的 BG 会话显示） */}
+        {isBreakGlass && (
+          <div className="bg-destructive text-destructive-foreground text-center text-sm font-medium px-4 py-2">
+            {t("admin.breakGlass.bannerWarning")}
+          </div>
+        )}
+        {/* Layer 3: Break-Glass 高危操作确认弹窗 —— 由各业务页面对具体高危动作
+            （如删除管理员、清空数据等）按需各自实现，本布局不全局拦截 */}
         {/* 顶栏 */}
         <header className="h-14 border-b border-border bg-background/80 backdrop-blur-md flex items-center justify-between px-4 sticky top-0 z-30">
           <div className="flex items-center gap-2">
@@ -358,7 +382,7 @@ export default function AdminDashboardLayout({
             <ThemeToggle />
             <LocaleSelect />
             <Button asChild variant="ghost" size="sm">
-              <Link href="/zh-cn" target="_blank" rel="noopener noreferrer">
+              <Link href={`/${locale}`} target="_blank" rel="noopener noreferrer">
                 <ExternalLink className="h-4 w-4 mr-1" />
                 <span className="hidden sm:inline">{t("admin.login.backToSite")}</span>
               </Link>
@@ -380,6 +404,7 @@ export default function AdminDashboardLayout({
 /** 顶栏待办铃铛：待审报名 + 未关 Bug + 待处理重置，复用 overview 聚合（失败静默，点击直达审核中心） */
 function PendingBadge() {
   const { t } = useI18n();
+  const lp = useLocalizedPath();
   const [count, setCount] = useState(0);
   useEffect(() => {
     fetchOverview()
@@ -388,7 +413,7 @@ function PendingBadge() {
   }, []);
   return (
     <Button asChild variant="ghost" size="icon" aria-label={t("admin.dashboard.pendingTodos")}>
-      <Link href="/admin/review" className="relative">
+      <Link href={lp("/admin/review")} className="relative">
         <Bell className="h-4 w-4" />
         {count > 0 && (
           <span className="absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground">
@@ -430,6 +455,7 @@ function SidebarContent({
   isActive,
   onLogout,
   onNavigate,
+  isBreakGlass,
 }: {
   t: (k: string) => string;
   session: AdminSession | null;
@@ -438,7 +464,9 @@ function SidebarContent({
   isActive: (h: string) => boolean;
   onLogout: () => void;
   onNavigate?: () => void;
+  isBreakGlass?: boolean;
 }) {
+  const lp = useLocalizedPath();
   // 折叠状态：收起的分组 labelKey 集合，存 localStorage
   const [collapsed, setCollapsed] = useState<Set<string>>(() => {
     if (typeof window === "undefined") return new Set();
@@ -466,10 +494,16 @@ function SidebarContent({
 
   const isAdmin = permCtx ? isAdminRole(permCtx.role) : false;
 
-  /** 按权限 + 角色守卫过滤后的分组（空组整组隐藏，但保留可折叠的空占位组如「应用与扩展」） */
+  /** 按权限 + 角色守卫过滤后的分组（空组整组隐藏，但保留可折叠的空占位组如「应用与扩展」）
+   *  item.href 在此统一本地化为 /{locale}/admin/...，使 isActive(pathname 比较) 与 <Link href> 一致 */
   const visibleGroups = navGroups
     .filter((g) => !g.roleGuard || isAdmin)
-    .map((g) => ({ ...g, items: g.items.filter((it) => canAccess(it, permCtx)) }))
+    .map((g) => ({
+      ...g,
+      items: g.items
+        .filter((it) => canAccess(it, permCtx))
+        .map((it) => (it.href ? { ...it, href: lp(it.href) } : it)),
+    }))
     .filter((g) => g.items.length > 0 || g.collapsible);
 
   /** 激活项 = 可见项中与当前路径匹配的最长前缀 */
@@ -564,7 +598,7 @@ function SidebarContent({
       {/* 底部固定区：头像 + 用户名 → /setting/profile；所有登录用户可见 */}
       <div className="p-3 border-t border-border">
         <Link
-          href="/setting/profile"
+          href={lp("/setting/profile")}
           onClick={onNavigate}
           className="flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors hover:bg-muted mb-1"
         >
@@ -579,8 +613,14 @@ function SidebarContent({
           )}
           <div className="flex-1 min-w-0">
             <div className="text-xs text-muted-foreground">{t("admin.dashboard.welcome")}</div>
-            <div className="font-medium text-foreground truncate">
-              {session?.username ?? "admin"}
+            <div className="font-medium text-foreground truncate flex items-center gap-1.5">
+              <span className="truncate">{session?.username ?? "admin"}</span>
+              {/* Layer 2: BG 侧栏红标 */}
+              {isBreakGlass && (
+                <span className="shrink-0 inline-flex items-center rounded-md bg-destructive px-1.5 py-0.5 text-[10px] font-semibold text-destructive-foreground">
+                  {t("admin.breakGlass.sidebarLabel")}
+                </span>
+              )}
             </div>
           </div>
         </Link>

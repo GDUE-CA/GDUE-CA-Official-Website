@@ -60,7 +60,7 @@ export function RegionForm() {
 
   const initialRef = useRef<string | null>(null);
 
-  const isZh = locale === "zh-cn" || locale === "zh-tw" || locale === "zh-hk";
+  const isZh = locale.startsWith("zh");
 
   useEffect(() => {
     (async () => {

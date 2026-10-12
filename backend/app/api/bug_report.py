@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.audit import ctx_uid, log_action
 from app.core.middleware import get_client_ip
 from app.core.permissions import require_permission
 from app.core.rate_limit import rate_limit
@@ -22,8 +23,9 @@ router = APIRouter(prefix="/api/bugs", tags=["bugs"])
 _SAFE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ"
 
 
-def _log(db: AsyncSession, uid: int | None, action: str, target: str | None, ip: str | None):
-    db.add(AuditLog(user_id=uid, action=action, target=target, ip=ip))
+def _log(db: AsyncSession, ctx_or_uid, action: str, target: str | None, ip: str | None):
+    """统一审计写入：ctx_or_uid 支持 ctx dict（自动区分 Break-Glass）/ int / None。"""
+    log_action(db, ctx_or_uid, action, target=target, ip=ip)
 
 
 def _bug_receipt_code(suffix: str = "") -> str:
@@ -112,7 +114,7 @@ async def mark_bug_resolved(
     if not bug:
         raise HTTPException(status_code=404, detail="Bug 不存在")
     bug.resolved = resolved
-    _log(db, int(user["user_id"]), "bug.resolve" if resolved else "bug.reopen",
+    _log(db, user, "bug.resolve" if resolved else "bug.reopen",
          f"bug:{bug_id}", get_client_ip(request))
     return {"ok": True}
 
@@ -133,7 +135,7 @@ async def batch_update_bugs(
     bugs = result.scalars().all()
     for bug in bugs:
         bug.resolved = body.resolved
-    _log(db, int(user["user_id"]),
+    _log(db, user,
          "bug.batch_resolve" if body.resolved else "bug.batch_reopen",
          ",".join(str(i) for i in body.ids), get_client_ip(request))
     return {"updated": len(bugs)}

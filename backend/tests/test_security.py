@@ -113,7 +113,7 @@ def test_logout_revokes_session(app):
     assert other.get("/api/auth/me").status_code == 401
 
 
-# ---------- 身份鉴别：登录失败锁定 ----------
+# ---------- 身份鉴别：登录失败（账号+维度）阶梯防爆破 ----------
 def test_account_locks_after_repeated_failures(app):
     client, headers = _admin_client(app)
     r = client.post("/api/auth/users", headers=headers, json={
@@ -122,10 +122,16 @@ def test_account_locks_after_repeated_failures(app):
     })
     assert r.status_code == 201, r.text
     anon = make_client(app)
-    for _ in range(3):
+    # 普通账号阶梯阶段0：允许 5 次错误；对外统一 401（防信息泄露）
+    for _ in range(5):
         assert _login(anon, "locktest", "wrong-password").status_code == 401
-    # 已锁定：即使密码正确也拒绝
-    assert _login(anon, "locktest", "Zq#Vault-2025x").status_code == 423
+    # 首次封禁（1 分钟）期内：密码正确也拒绝，仍对外 401 + code 1013，不暴露剩余时长
+    resp = _login(anon, "locktest", "Zq#Vault-2025x")
+    assert resp.status_code == 401
+    body = resp.json()
+    assert body["code"] == 1013
+    assert body["message"]["key"] == "error.login_blocked"
+    assert body["message"]["params"]["detail"] == "用户名或密码错误"
 
 
 # ---------- 访问控制：禁止匿名、角色区分、内网限制 ----------
@@ -158,9 +164,11 @@ def test_member_cannot_access_admin(app):
 
 
 def test_admin_login_denied_from_public_network(app):
+    # Break-Glass 信息泄露防护契约：登录侧一切拒绝（含外网拒绝）统一 401，
+    # 真实原因只进审计日志；已建立会话的请求才由中间件直接 403
     client = make_client(app, ip="8.8.8.8")
     res = _login(client, ADMIN_USERNAME, STRONG_ADMIN_PASSWORD + "2")
-    assert res.status_code == 403
+    assert res.status_code == 401
 
 
 def test_admin_session_unusable_from_public_network(app):
@@ -173,11 +181,12 @@ def test_admin_session_unusable_from_public_network(app):
 
 def test_spoofed_xff_from_untrusted_peer_ignored(app):
     """非可信代理直连时伪造 X-Forwarded-For: 127.0.0.1 不能冒充内网。"""
+    # 登录侧统一 401（不暴露拒绝原因）；伪造 XFF 不改变外网判定
     from fastapi.testclient import TestClient
     client = TestClient(app, client=("8.8.4.4", 40000))
     client.headers["X-Forwarded-For"] = "127.0.0.1"
     res = _login(client, ADMIN_USERNAME, STRONG_ADMIN_PASSWORD + "2")
-    assert res.status_code == 403
+    assert res.status_code == 401
 
 
 def test_recover_is_intranet_only(app):

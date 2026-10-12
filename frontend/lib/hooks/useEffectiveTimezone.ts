@@ -103,8 +103,8 @@ export function useEffectiveTimezone(): EffectiveTimezone {
     tasks.push(
       fetchPublicSettings()
         .then((cfg) => {
-          if (cfg.system_timezone && cfg.system_timezone.trim()) {
-            systemTz = cfg.system_timezone;
+          if (cfg.sys_default_timezone && cfg.sys_default_timezone.trim()) {
+            systemTz = cfg.sys_default_timezone;
           }
           // 如果还没拿到用户时区（游客 or profile 拉取失败），
           // 此时 systemTz 才可能影响 effective

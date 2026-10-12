@@ -5,66 +5,114 @@ import { locales, defaultLocale, urlLangToLocale, localeToUrlLang, type Locale }
 /**
  * Proxy（原 middleware，Next.js 16 唯一入口：禁止再新建 middleware.ts，
  * 否则启动时 Unhandled Rejection 导致所有请求永久挂起）
- * 1. 后台守卫（P0 第二层防护）：拦截 /admin/**，无会话 Cookie 重定向登录页；
+ * 1. 后台守卫（P0 第二层防护）：拦截 /{locale}/admin/**（及裸 /admin/**），无会话 Cookie 重定向登录页；
  *    真正的「已登录 && 管理员角色」校验由后端全局中间件强制执行（403）
- * 2. 设置页守卫：拦截 /setting/**，无会话 Cookie 重定向登录页（携带 returnUrl 回跳）；
- *    账号设置与后台相互独立，所有角色的个人设置统一走 /setting
+ * 2. 设置页守卫：拦截 /{locale}/setting/**（及裸 /setting/**），无会话 Cookie 重定向登录页（携带 returnUrl 回跳）；
+ *    账号设置与后台相互独立，所有角色的个人设置统一走 /{locale}/setting
  * 3. 内容安全策略（CSP）：每个请求生成随机 nonce，只允许带 nonce 的脚本执行，
  *    即使页面被注入 <script> / 事件处理器也无法运行（XSS 纵深防御）
- * 4. 国际化路由：检测请求路径是否包含语言前缀，若无则根据浏览器偏好重定向（admin 后台除外）
+ * 4. 国际化路由（i18n URL 规范）：
+ *    - 无 locale 前缀的裸路径 → 按用户偏好（cookie → Accept-Language → zh-cn）307 补前缀，子路径与 query 完整保留
+ *    - 非法 locale（首段形似 locale 但不在白名单，如 /fr/about、/zh/blog）→ 剥离非法段后补检测到的 locale
+ *    - 混合大小写（如 /zh-CN/x）→ 301 归一到全小写规范形式
+ *    - 旧 /en 前缀 → 兼容重定向到 /en-us
+ *    admin/setting/auth 全部纳入 locale 前缀规则（经 next.config rewrites 内部映射到实际页面路由）
  */
 
 const SESSION_COOKIE = "gdueca_session";
 
-/** 无需登录即可访问的后台页面（登录流程自身 + 紧急恢复） */
-const PUBLIC_ADMIN_PATHS = new Set([
+/** 形似 locale 的首段（xx 或 xx-xx），用于识别非法 locale 前缀（spec §4） */
+const LOCALE_LIKE_RE = /^[a-z]{2}(-[a-z]{2,3})?$/i;
+
+/**
+ * 旧 locale 前缀 → 新 locale 前缀的 301 永久重定向映射。
+ * en-us 已移除（统一 en-gb）；zh-hk 改名 zh-yue-hk；ja 改名 ja-jp。
+ * 放在 localeRedirect 最早处，优先于非法 locale 剥离逻辑。
+ */
+const OLD_LOCALE_REDIRECTS: Record<string, string> = {
+  "en-us": "en-gb",
+  "zh-hk": "zh-yue-hk",
+  ja: "ja-jp",
+};
+
+/**
+ * 剥离 pathname 首段 locale 前缀，返回去掉 locale 的剩余路径与解析到的 locale。
+ * - "/zh-cn/admin/login" → { rest: "/admin/login", locale: "zh-cn" }
+ * - "/admin/login"       → { rest: "/admin/login", locale: null }
+ * - "/about"             → { rest: "/about",       locale: null }
+ */
+function stripLocale(pathname: string): { rest: string; locale: Locale | null } {
+  const first = pathname.split("/")[1] ?? "";
+  const loc = urlLangToLocale(first); // 大小写不敏感，非法值返回 null
+  if (loc) {
+    // 去掉首段 locale："/zh-cn/admin" → "/admin"；"/zh-cn" → "/"
+    const rest = pathname.slice(first.length + 1); // 去掉 "/{locale}"
+    return { rest: rest === "" ? "/" : rest, locale: loc };
+  }
+  return { rest: pathname, locale: null };
+}
+
+/** 无需登录即可访问的后台页面（admin 相对路径，已剥离 locale 前缀） */
+const PUBLIC_ADMIN_REST = new Set([
   "/admin/login",
   "/admin/forgot-password",
   "/admin/recover",
+  "/admin/setup",
 ]);
 
 /**
- * 后台守卫：未登录访问 /admin/** 时返回重定向到登录页；放行返回 null。
+ * 后台守卫：未登录访问 /{locale}/admin/** 或裸 /admin/** 时重定向到本地化登录页；放行返回 null。
  * 仅判断 Cookie 存在性，不解析 JWT / 不做角色判断——
  * HttpOnly Cookie 在 Edge Runtime 无法验签，任何角色决策必须由后端完成。
  */
 function adminGuard(request: NextRequest): URL | null {
   const { pathname } = request.nextUrl;
+  const { rest, locale } = stripLocale(pathname);
 
-  const isAdminPath = pathname === "/admin" || pathname.startsWith("/admin/");
+  // 是否为 admin 路径（裸 /admin 或 /{locale}/admin 剥离后 /admin/**）
+  const isAdminPath = rest === "/admin" || rest.startsWith("/admin/");
   if (!isAdminPath) return null;
 
-  // 放行登录流程页面（含子路径，如 /admin/login/x）
-  if (PUBLIC_ADMIN_PATHS.has(pathname) || pathname.startsWith("/admin/login/")) {
+  // 放行登录流程页面（含子路径，如 /admin/login/x）+ 初始化向导 /admin/setup
+  if (
+    PUBLIC_ADMIN_REST.has(rest) ||
+    rest.startsWith("/admin/login/") ||
+    rest.startsWith("/admin/setup")
+  )
     return null;
-  }
 
   if (request.cookies.has(SESSION_COOKIE)) return null;
 
-  // 未登录：重定向到后台登录页，并携带原始地址供登录后回跳
-  const loginUrl = new URL("/admin/login", request.url);
+  // 未登录：重定向到本地化后台登录页，并携带原始地址（含 locale 前缀）供登录后回跳
+  const detected = locale ?? detectLocale(request);
+  const loginUrl = new URL(`/${localeToUrlLang(detected)}/admin/login`, request.url);
+  // admin 根路径不携带 next（登录后按角色落地首页即可）
   const next = pathname + (request.nextUrl.search || "");
-  if (next && next !== "/admin") loginUrl.searchParams.set("next", next);
+  const isAdminRoot = rest === "/admin" || rest === "/admin/";
+  if (next && !isAdminRoot) loginUrl.searchParams.set("next", next);
   return loginUrl;
 }
 
 /**
- * 设置页守卫：未登录访问 /setting/** 时重定向到登录页并携带回跳地址；放行返回 null。
+ * 设置页守卫：未登录访问 /{locale}/setting/** 或裸 /setting/** 时重定向到本地化登录页并携带回跳地址；放行返回 null。
  * 与 adminGuard 一致仅判断 Cookie 存在性——真实登录态由后端接口与 SettingRoot 客户端校验；
  * 设置页数据一律取自当前登录会话，不存在通过 query 参数访问他人设置页的路径。
  */
 function settingGuard(request: NextRequest): URL | null {
   const { pathname } = request.nextUrl;
+  const { rest, locale } = stripLocale(pathname);
 
-  const isSettingPath = pathname === "/setting" || pathname.startsWith("/setting/");
+  const isSettingPath = rest === "/setting" || rest.startsWith("/setting/");
   if (!isSettingPath) return null;
 
   if (request.cookies.has(SESSION_COOKIE)) return null;
 
-  // 未登录：重定向到登录页，携带 returnUrl 供登录后回跳
-  const loginUrl = new URL("/auth/login", request.url);
+  // 未登录：重定向到本地化登录页，携带 returnUrl 供登录后回跳
+  const detected = locale ?? detectLocale(request);
+  const loginUrl = new URL(`/${localeToUrlLang(detected)}/auth/login`, request.url);
   const next = pathname + (request.nextUrl.search || "");
-  if (next && next !== "/setting") loginUrl.searchParams.set("returnUrl", next);
+  const isSettingRoot = rest === "/setting" || rest === "/setting/";
+  if (next && !isSettingRoot) loginUrl.searchParams.set("returnUrl", next);
   return loginUrl;
 }
 
@@ -119,99 +167,93 @@ function detectLocale(request: NextRequest): Locale {
       .split(",")
       .map((l) => l.trim().split(";")[0].toLowerCase());
     for (const l of langs) {
+      // 中文变体
       if (l.startsWith("zh")) {
-        // tw → 台湾繁体；hk / mo（澳门）→ 香港繁体；其余 zh（zh / zh-cn / zh-sg 等）→ 简体
-        return l.includes("tw")
-          ? "zh-tw"
-          : l.includes("hk") || l.includes("mo")
-            ? "zh-hk"
-            : "zh-cn";
+        if (l.includes("tw")) return "zh-tw";
+        if (l.includes("mo")) return "zh-mo";
+        if (l.includes("hk") || l.includes("yue-hk") || l.includes("hant-hk")) return "zh-yue-hk";
+        if (l.includes("yue") || l.includes("cn")) return l.includes("yue") ? "zh-yue-cn" : "zh-cn";
+        if (l.includes("sg")) return "zh-cn-sg";
+        return "zh-cn";
       }
-      if (l.startsWith("ja")) return "ja";
+      if (l.startsWith("ja")) return "ja-jp";
+      if (l.startsWith("ko")) return "ko-kr";
+      if (l.startsWith("es")) return "es-es";
+      if (l.startsWith("fr")) return "fr-fr";
+      if (l.startsWith("de")) return "de-de";
+      if (l.startsWith("ru")) return "ru-ru";
       if (l.startsWith("en")) {
-        // en-gb 优先匹配英式英语，其余英语（en / en-us / en-ca 等）归入美式
-        return l.includes("gb") ? "en-gb" : "en-us";
+        // 所有英语统一归入 en-gb（en-us 已移除）
+        return "en-gb";
       }
     }
   }
   return defaultLocale;
 }
 
-/** 登录页多语言路由：返回需要重定向的 URL；无需重定向返回 null；非登录页路径返回 undefined */
-function adminLoginRedirect(request: NextRequest): URL | null | undefined {
-  const { pathname } = request.nextUrl;
-
-  // 裸路径 /admin/login → 按检测到的语言补全前缀
-  if (pathname === "/admin/login" || pathname === "/admin/login/") {
-    const url = request.nextUrl.clone();
-    url.pathname = `/${localeToUrlLang(detectLocale(request))}/admin/login`;
-    return url;
-  }
-
-  // /{lang}/admin/login：合法语言段统一规范为小写；已在规范形式则放行
-  const match = pathname.match(/^\/([A-Za-z-]+)\/admin\/login\/?$/);
-  if (match) {
-    const locale = urlLangToLocale(match[1]);
-    if (locale) {
-      const canonical = `/${localeToUrlLang(locale)}/admin/login`;
-      if (pathname !== canonical) {
-        const url = request.nextUrl.clone();
-        url.pathname = canonical;
-        return url;
-      }
-      return null;
-    }
-  }
-
-  return undefined;
-}
-
-/** 若路径缺少语言前缀，返回应重定向到的 URL；否则返回 null */
+/** 若路径缺少合法 locale 前缀（或为非法 / 旧版前缀），返回应重定向到的 URL；否则返回 null */
 function localeRedirect(request: NextRequest): URL | null {
   const { pathname } = request.nextUrl;
 
-  // 登录页多语言路由优先处理（admin 前缀豁免规则之前）
-  const adminLogin = adminLoginRedirect(request);
-  if (adminLogin !== undefined) return adminLogin;
-
-  // admin 后台不走 locale 前缀
-  if (pathname === "/admin" || pathname.startsWith("/admin/")) return null;
-
-  // 旧 /en 前缀兼容重定向（英语拆分为 en-us / en-gb 之前的旧链接、收藏与搜索索引）
+  // 旧 /en 前缀兼容重定向 → 直跳 en-gb（en-us 已废弃，不再中转）
   if (pathname === "/en" || pathname.startsWith("/en/")) {
     const url = request.nextUrl.clone();
-    url.pathname = `/en-us${pathname.slice(3)}`;
+    url.pathname = `/en-gb${pathname.slice(3)}`;
     return url;
   }
 
-  // 旧版混合大小写语言前缀（如 /zh-CN/...）统一 301 到全小写规范形式
   const firstSeg = pathname.split("/")[1] ?? "";
+
+  // 旧 locale 前缀 301 永久重定向（en-us→en-gb、zh-hk→zh-yue-hk、ja→ja-jp）
+  if (firstSeg && firstSeg.toLowerCase() in OLD_LOCALE_REDIRECTS) {
+    const newLocale = OLD_LOCALE_REDIRECTS[firstSeg.toLowerCase()];
+    const rest = pathname.slice(firstSeg.length + 1); // 去掉 /{oldLocale}
+    const url = request.nextUrl.clone();
+    url.pathname = `/${newLocale}${rest === "" ? "" : "/" + rest}`;
+    return url;
+  }
+
   const segLocale = firstSeg ? urlLangToLocale(firstSeg) : null;
+
+  // 旧版混合大小写语言前缀（如 /zh-CN/...）统一 301 到全小写规范形式
   if (segLocale && firstSeg !== segLocale) {
     const url = request.nextUrl.clone();
     url.pathname = `/${segLocale}${pathname.slice(firstSeg.length + 1)}`;
     return url;
   }
 
-  // 检查路径是否已包含语言前缀
+  // 路径已含合法 locale 前缀 → 放行（admin/setting/auth 同样在此放行，
+  // 由 next.config rewrites 内部映射到实际页面路由）
   const pathnameHasLocale = locales.some(
     (loc) => pathname.startsWith(`/${loc}/`) || pathname === `/${loc}`
   );
   if (pathnameHasLocale) return null;
 
-  const detectedLocale = detectLocale(request);
+  // 非法 locale 防护（spec §4）：首段形似 locale（xx 或 xx-xx）但不在白名单，
+  // 例如 /fr/about、/zh/blog、/de → 剥离非法段，用检测到的 locale 重新拼前缀，
+  // 保留后续全部子路径与 query。注意：/en 已被上方旧前缀兼容处理。
+  if (firstSeg && !segLocale && LOCALE_LIKE_RE.test(firstSeg)) {
+    const detected = detectLocale(request);
+    const rest = pathname.replace(/^\/[^/]+/, ""); // 去掉非法首段："/fr/about"→"/about"，"/fr"→""
+    const url = request.nextUrl.clone();
+    url.pathname = `/${localeToUrlLang(detected)}${rest}`;
+    return url;
+  }
 
+  // 裸路径（无 locale 前缀，首段为业务页面如 /about、/admin、/events）
+  // → 307 补上检测到的 locale 前缀，子路径与 query 完整保留
+  const detected = detectLocale(request);
   const url = request.nextUrl.clone();
-  url.pathname = `/${detectedLocale}${pathname}`;
+  url.pathname = `/${localeToUrlLang(detected)}${pathname}`;
   return url;
 }
 
 export function proxy(request: NextRequest) {
-  // 后台守卫优先于 i18n 路由（/admin/** 豁免语言前缀）
+  // 后台守卫优先于 i18n 路由（/admin/** 不再豁免 locale 前缀，guard 在剥离 locale 后判定）
   const guardRedirect = adminGuard(request);
   if (guardRedirect) return NextResponse.redirect(guardRedirect);
 
-  // 设置页守卫：/setting/** 需登录（回跳地址在登录后由登录页消费）
+  // 设置页守卫：/{locale}/setting/** 需登录（回跳地址在登录后由登录页消费）
   const settingRedirect = settingGuard(request);
   if (settingRedirect) return NextResponse.redirect(settingRedirect);
 
@@ -226,6 +268,11 @@ export function proxy(request: NextRequest) {
   // 通过请求头把 nonce 传给渲染层：Next.js 自动为框架脚本加 nonce，布局中手写脚本读 x-nonce
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);
+  // x-locale / x-pathname：供服务端组件取当前 locale 与浏览器路径（locale 已由上方重定向补全）
+  // 服务端 redirect() 用 x-locale 拼 locale 前缀路径；[locale] layout 用 x-pathname 生成每页 hreflang
+  const firstSeg = request.nextUrl.pathname.split("/")[1] ?? "";
+  requestHeaders.set("x-locale", urlLangToLocale(firstSeg) ?? defaultLocale);
+  requestHeaders.set("x-pathname", request.nextUrl.pathname);
   requestHeaders.set("Content-Security-Policy", csp);
 
   const response = NextResponse.next({ request: { headers: requestHeaders } });

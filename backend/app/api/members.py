@@ -13,6 +13,7 @@ from PIL import Image
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.audit import ctx_uid, log_action
 from app.core.middleware import get_client_ip
 from app.core.permissions import require_permission
 from app.db.models import AuditLog, MediaCategory, MediaFile, Member, MemberTerm
@@ -37,8 +38,9 @@ MEMBER_AVATAR_DIR = Path("uploads/members")
 MEMBER_AVATAR_MAX_SIZE = 5 * 1024 * 1024  # 5MB
 
 
-def _log(db: AsyncSession, uid: int, action: str, target: str | None, ip: str | None):
-    db.add(AuditLog(user_id=uid, action=action, target=target, ip=ip))
+def _log(db: AsyncSession, ctx_or_uid, action: str, target: str | None, ip: str | None):
+    """统一审计写入：ctx_or_uid 支持 ctx dict（自动区分 Break-Glass）/ int / None。"""
+    log_action(db, ctx_or_uid, action, target=target, ip=ip)
 
 
 def _sniff_image(data: bytes) -> str | None:
@@ -325,7 +327,7 @@ async def admin_import_members(
             by_name[name] = m
             created += 1
 
-    _log(db, int(user["user_id"]), f"member.import_{mode}",
+    _log(db, user, f"member.import_{mode}",
          f"created={created} updated={updated} skipped={skipped} errors={len(errors)}",
          get_client_ip(request))
     await db.commit()
@@ -353,7 +355,7 @@ async def admin_batch_update_members(
         if body.role_title is not None:
             m.role_title = body.role_title
         updated += 1
-    _log(db, int(user["user_id"]), "member.batch_update", ",".join(str(i) for i in body.ids), get_client_ip(request))
+    _log(db, user, "member.batch_update", ",".join(str(i) for i in body.ids), get_client_ip(request))
     await db.commit()
     return {"updated": updated, "not_found": sorted(set(body.ids) - found)}
 
@@ -397,7 +399,7 @@ async def admin_create_member(
         is_intl_student=req.is_intl_student,
     )
     db.add(m)
-    _log(db, int(user["user_id"]), "member.create", None, get_client_ip(request))
+    _log(db, user, "member.create", None, get_client_ip(request))
     await db.commit()
     await db.refresh(m)
     return m
@@ -424,7 +426,7 @@ async def admin_update_member(
                 "political_status", "is_intl_student"):
         if k in data:
             setattr(m, k, data[k])
-    _log(db, int(user["user_id"]), "member.update", f"member:{mid}", get_client_ip(request))
+    _log(db, user, "member.update", f"member:{mid}", get_client_ip(request))
     await db.commit()
     await db.refresh(m)
     return m
@@ -450,7 +452,7 @@ async def admin_delete_member(
         except Exception:
             pass
     await db.delete(m)
-    _log(db, int(user["user_id"]), "member.delete", f"member:{mid}", get_client_ip(request))
+    _log(db, user, "member.delete", f"member:{mid}", get_client_ip(request))
     await db.commit()
 
 
@@ -488,10 +490,10 @@ async def admin_upload_member_avatar(
         mime=mime,
         size=len(compressed),
         storage_path=f"uploads/members/{filename}",
-        uploader_id=int(user["user_id"]),
+        uploader_id=ctx_uid(user),
         category=MediaCategory.MEMBER,
     )
     db.add(media)
-    _log(db, int(user["user_id"]), "member.avatar.upload", None, get_client_ip(request))
+    _log(db, user, "member.avatar.upload", None, get_client_ip(request))
     await db.commit()
     return AvatarUploadOut(avatar_url=avatar_url)

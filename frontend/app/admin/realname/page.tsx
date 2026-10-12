@@ -19,6 +19,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { useI18n } from "@/i18n/provider";
+import { useLocalizedPath } from "@/lib/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -72,6 +73,7 @@ function StatusBadge({ status }: { status: RealnameRequest["status"] }) {
 
 export default function RealnamePage() {
   const { t } = useI18n();
+  const lp = useLocalizedPath();
   const router = useRouter();
   const [status, setStatus] = useState<RealnameStatusOut | null>(null);
   const [loading, setLoading] = useState(true);
@@ -94,7 +96,7 @@ export default function RealnamePage() {
   useEffect(() => {
     const session = getSession();
     if (!session) {
-      router.replace("/admin/login");
+      router.replace(lp("/admin/login"));
       return;
     }
     getRealnameStatus()
@@ -149,7 +151,7 @@ export default function RealnamePage() {
     }
   }
 
-  const backHref = isAdminRole(getSession()?.role) ? "/admin/dashboard" : "/setting/profile";
+  const backHref = isAdminRole(getSession()?.role) ? lp("/admin/dashboard") : lp("/setting/profile");
 
   if (loading) {
     return (

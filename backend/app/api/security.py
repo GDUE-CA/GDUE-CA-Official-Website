@@ -10,9 +10,18 @@
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.audit import ctx_uid, log_action
+from app.core.brute_force import (
+    BREAK_GLASS_POLICY,
+    NORMAL_POLICY,
+    list_bans as bf_list_bans,
+    unban as bf_unban,
+    reset_stage as bf_reset_stage,
+)
 from app.core.middleware import get_client_ip
 from app.core.permissions import require_permission
 from app.db.models import AuditLog, IpRule, IpRuleType, NetworkConfigHistory, SystemSetting
@@ -29,8 +38,9 @@ from app.utils.crud import apply_eq, apply_search, paginate
 router = APIRouter(prefix="/api/security", tags=["security"])
 
 
-def _log(db: AsyncSession, uid: int | None, action: str, detail: str | None, ip: str | None):
-    db.add(AuditLog(user_id=uid, action=action, detail=detail, ip=ip))
+def _log(db: AsyncSession, ctx_or_uid, action: str, detail: str | None, ip: str | None):
+    """统一审计写入：ctx_or_uid 支持 ctx dict（自动区分 Break-Glass）/ int / None。"""
+    log_action(db, ctx_or_uid, action, detail=detail, ip=ip)
 
 
 def _is_expired(expires_at) -> bool:
@@ -90,10 +100,10 @@ async def create_ip_rule(
         reason=payload.reason,
         expires_at=payload.expires_at.replace(tzinfo=None) if payload.expires_at else None,
         bound_user_id=payload.bound_user_id,
-        created_by=int(user["user_id"]),
+        created_by=ctx_uid(user),
     )
     db.add(rec)
-    _log(db, int(user["user_id"]), f"ip_rule.{rule_type.value}.create",
+    _log(db, user, f"ip_rule.{rule_type.value}.create",
          f"{rec.rule} | reason={rec.reason or ''} | bound={rec.bound_user_id}",
          get_client_ip(request))
     await db.commit()
@@ -112,7 +122,7 @@ async def delete_ip_rule(
     rec = await db.get(IpRule, rule_id)
     if not rec:
         raise HTTPException(status_code=404, detail="规则不存在")
-    _log(db, int(user["user_id"]), f"ip_rule.{rec.type.value}.delete",
+    _log(db, user, f"ip_rule.{rec.type.value}.delete",
          f"{rec.rule} | id={rule_id}", get_client_ip(request))
     await db.delete(rec)
     await db.commit()
@@ -212,9 +222,9 @@ async def update_network_config(
     for k, v in payload.model_dump(exclude_unset=True).items():
         if v is not None:
             setattr(rec, k, v)
-    uid = int(user["user_id"])
+    uid = ctx_uid(user)
     client_ip = get_client_ip(request)
-    _log(db, uid, "security.network.update",
+    _log(db, user, "security.network.update",
          f"changed: {changed_keys}" if changed_keys else "no-op", client_ip)
     if changed_keys:
         _log_network_change(db, rec, uid, changed_keys, client_ip)
@@ -222,3 +232,88 @@ async def update_network_config(
     await db.commit()
     await db.refresh(rec)
     return rec
+
+
+# ---------- 登录防爆破封禁面板（后台） ----------
+admin_router = APIRouter(prefix="/api/admin/security", tags=["security-admin"])
+
+_BAN_POLICIES = {"break_glass": BREAK_GLASS_POLICY, "normal": NORMAL_POLICY}
+
+
+class BanOut(BaseModel):
+    policy: str
+    account: str
+    account_label: str
+    dim: str
+    dim_value: str
+    stage: int
+    banned_at: str
+    until: str | None
+    permanent: bool
+    last_fail_at: str
+    ip: str | None = None
+
+
+class BanResetRequest(BaseModel):
+    policy: str
+    account: str
+    dim: str
+    dim_value: str
+
+
+@admin_router.get("/bans", response_model=list[BanOut])
+async def list_bans(
+    user: dict = Depends(require_permission("security", "manage")),
+):
+    """枚举全部封禁条目（Break-Glass + 普通账号两套策略合并）。"""
+    out: list[BanOut] = []
+    for p in (BREAK_GLASS_POLICY, NORMAL_POLICY):
+        for e in await bf_list_bans(p):
+            out.append(BanOut(
+                policy=e.policy, account=e.account, account_label=e.account_label,
+                dim=e.dim, dim_value=e.dim_value, stage=e.stage,
+                banned_at=e.banned_at, until=e.until, permanent=e.permanent,
+                last_fail_at=e.last_fail_at, ip=e.ip,
+            ))
+    return out
+
+
+@admin_router.delete("/bans")
+async def unban(
+    policy: str,
+    account: str,
+    dim: str,
+    dim_value: str,
+    request: Request,
+    user: dict = Depends(require_permission("security", "manage")),
+    db: AsyncSession = Depends(get_db),
+):
+    """手动解除封禁（含永久封禁）。"""
+    p = _BAN_POLICIES.get(policy)
+    if not p:
+        raise HTTPException(status_code=400, detail="未知的封禁策略")
+    removed = await bf_unban(p, account, dim, dim_value)
+    _log(db, user, "security.ban.unban",
+         f"policy:{policy} account:{account} dim:{dim} removed:{removed}",
+         get_client_ip(request))
+    await db.commit()
+    return {"ok": True, "removed": removed}
+
+
+@admin_router.post("/bans/reset")
+async def reset_ban_stage(
+    req: BanResetRequest,
+    request: Request,
+    user: dict = Depends(require_permission("security", "manage")),
+    db: AsyncSession = Depends(get_db),
+):
+    """重置指定账号+维度的错误计数与惩罚阶段（不解除已生效封禁）。"""
+    p = _BAN_POLICIES.get(req.policy)
+    if not p:
+        raise HTTPException(status_code=400, detail="未知的封禁策略")
+    reset = await bf_reset_stage(p, req.account, req.dim, req.dim_value)
+    _log(db, user, "security.ban.reset_stage",
+         f"policy:{req.policy} account:{req.account} dim:{req.dim} reset:{reset}",
+         get_client_ip(request))
+    await db.commit()
+    return {"ok": True, "reset": reset}

@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.audit import ctx_uid, log_action
 from app.core.middleware import get_client_ip
 from app.core.permissions import require_permission
 from app.db.models import AuditLog, MediaCategory, MediaFile, User
@@ -138,19 +139,17 @@ async def upload_media(
         mime=file.content_type or "application/octet-stream",
         size=len(data),
         storage_path=f"/uploads/{cat.value}/{filename}",
-        uploader_id=int(user["user_id"]),
+        uploader_id=ctx_uid(user),
         category=cat,
     )
     db.add(m)
-    db.add(AuditLog(
-        user_id=int(user["user_id"]), action="media.upload",
-        detail=f"{m.original_name} category:{cat.value} size:{len(data)}",
-        ip=get_client_ip(request),
-    ))
+    log_action(db, user, "media.upload",
+               detail=f"{m.original_name} category:{cat.value} size:{len(data)}",
+               ip=get_client_ip(request))
     await db.commit()
     await db.refresh(m)
     # 上传响应直接回填上传者用户名（ctx 不含 username，按 PK 补查）
-    uploader = await db.get(User, int(user["user_id"]))
+    uploader = await db.get(User, ctx_uid(user))
     return _out(m, uploader.username if uploader else None)
 
 
@@ -173,10 +172,8 @@ async def delete_media(
     except OSError:
         pass  # 文件缺失时仅移除记录
     await db.delete(m)
-    db.add(AuditLog(
-        user_id=int(user["user_id"]), action="media.delete",
-        target=f"media:{m.id}", detail=m.storage_path,
-        ip=get_client_ip(request),
-    ))
+    log_action(db, user, "media.delete",
+               target=f"media:{m.id}", detail=m.storage_path,
+               ip=get_client_ip(request))
     await db.commit()
     return {"ok": True}
