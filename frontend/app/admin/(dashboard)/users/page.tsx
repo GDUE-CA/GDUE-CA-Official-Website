@@ -50,6 +50,7 @@ export default function UsersPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [myId, setMyId] = useState<number | null>(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [isBreakGlass, setIsBreakGlass] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const [filters, setFilters] = useState<UserFilters>({ q: "", role: "all", active: "all" });
@@ -75,6 +76,7 @@ export default function UsersPage() {
       const me = await fetchMe();
       setMyId(me.id);
       setIsSuperAdmin(me.role === "super_admin");
+      setIsBreakGlass(!!me.is_break_glass);
       const canList = me.role !== "member";
       if (canList) {
         const list = await listUsers({
@@ -147,7 +149,16 @@ export default function UsersPage() {
   }
 
   async function handleDelete(id: number) {
+    const target = users.find((u) => u.id === id);
+    const targetName = target?.username ?? `#${id}`;
     if (!confirm(t("admin.users.deleteConfirm"))) return;
+    // Break-Glass：额外强确认——要求输入目标用户名
+    if (isBreakGlass) {
+      const input = prompt(
+        `⚠️ 您当前以 Break-Glass 应急账号执行高风险操作\n\n此操作将永久删除账号「${targetName}」，无法恢复。\n\n请输入目标用户名 "${targetName}" 以确认删除：`,
+      );
+      if (input?.trim() !== targetName) return;
+    }
     setDeletingId(id);
     setError(null);
     try {
