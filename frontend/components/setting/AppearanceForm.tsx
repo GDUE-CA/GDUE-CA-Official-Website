@@ -8,7 +8,16 @@
  * - 语言：6 语言 grid；切换需确认（页面将刷新）→ setLocale + reload，同样不算 dirty
  */
 import { useEffect, useState } from "react";
-import { Sun, Moon, Monitor, Check, Loader2 } from "lucide-react";
+import {
+  Sun,
+  Moon,
+  Monitor,
+  Check,
+  Loader2,
+  LayoutGrid,
+  Apple,
+  Sparkles,
+} from "lucide-react";
 import { useI18n } from "@/i18n/provider";
 import { useAdminLocale } from "@/app/admin/AdminProviders";
 import {
@@ -31,7 +40,9 @@ import {
   onSystemThemeChange,
   type ThemeMode,
 } from "@/lib/theme";
-import { locales, localeNames, type Locale } from "@/lib/i18n";
+import { useTheme } from "@/components/theme/ThemeProvider";
+import { updateProfile } from "@/lib/api/auth";
+import { locales, localeDisplayName, type Locale } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 const THEME_OPTIONS: { mode: ThemeMode; icon: typeof Sun; labelKey: string }[] = [
@@ -40,12 +51,22 @@ const THEME_OPTIONS: { mode: ThemeMode; icon: typeof Sun; labelKey: string }[] =
   { mode: "system", icon: Monitor, labelKey: "setting.appearance.themeSystem" },
 ];
 
+/** 风格主题图标：按布局骨架推断，节日/自定义主题用 Sparkles */
+function styleIcon(layout: string) {
+  if (layout === "microsoft") return LayoutGrid;
+  if (layout === "apple") return Apple;
+  return Sparkles;
+}
+
 export function AppearanceForm() {
   const { t, locale } = useI18n();
   const { setLocale } = useAdminLocale();
+  const { themes, current: style, setTheme: setStyleTheme } = useTheme();
 
   const [theme, setTheme] = useState<ThemeMode>("system");
   const [mounted, setMounted] = useState(false);
+  // 风格主题持久化指示（应用本身由 ThemeProvider 完成）
+  const [styleSaving, setStyleSaving] = useState(false);
 
   // 语言切换确认
   const [langTarget, setLangTarget] = useState<Locale | null>(null);
@@ -65,6 +86,19 @@ export function AppearanceForm() {
     applyThemeMode(mode);
   }
 
+  async function handleStyle(key: string) {
+    setStyleTheme(key);
+    // 持久化到 User.theme（跟随账号、多端同步）
+    setStyleSaving(true);
+    try {
+      await updateProfile({ theme: key });
+    } catch {
+      // 持久化失败不影响本地体验
+    } finally {
+      setStyleSaving(false);
+    }
+  }
+
   function handleLangConfirm() {
     if (!langTarget) return;
     const target = langTarget;
@@ -75,7 +109,48 @@ export function AppearanceForm() {
 
   return (
     <div className="space-y-6">
-      {/* 主题 */}
+      {/* 风格主题（规格第四部分：默认/Apple/节日） */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">
+            {t("setting.appearance.styleTitle")}
+          </CardTitle>
+          <CardDescription>
+            {t("setting.appearance.styleHint")}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid max-w-md grid-cols-3 gap-3">
+            {themes.map((th) => {
+              const Icon = styleIcon(th.layout);
+              return (
+                <button
+                  key={th.key}
+                  type="button"
+                  onClick={() => handleStyle(th.key)}
+                  disabled={styleSaving}
+                  className={cn(
+                    "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-md border px-4 py-3 text-sm font-medium transition-colors disabled:opacity-60",
+                    mounted && style === th.key
+                      ? "border-primary bg-secondary text-primary"
+                      : "border-border text-muted-foreground hover:bg-muted"
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                  {th.name}
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-3 text-xs text-muted-foreground">
+            {styleSaving
+              ? t("common.saving")
+              : t("setting.hints.appearanceInstant")}
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* 主题（颜色模式） */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">{t("setting.appearance.title")}</CardTitle>
@@ -126,7 +201,7 @@ export function AppearanceForm() {
                     : "border-border text-muted-foreground hover:bg-muted"
                 )}
               >
-                {localeNames[loc]}
+                {localeDisplayName(loc)}
                 {loc === locale && <Check className="h-3.5 w-3.5" />}
               </button>
             ))}
@@ -153,7 +228,7 @@ export function AppearanceForm() {
           <p className="text-sm text-muted-foreground">
             {langTarget
               ? t("setting.appearance.switchLangConfirm", {
-                  name: localeNames[langTarget],
+                  name: localeDisplayName(langTarget),
                 })
               : ""}
           </p>

@@ -1,4 +1,6 @@
 import type { NextConfig } from "next";
+import fs from "node:fs";
+import path from "node:path";
 
 /**
  * Next.js 配置文件
@@ -6,18 +8,75 @@ import type { NextConfig } from "next";
  * - 图片优化配置
  * - 安全响应头（CSP 由 proxy.ts 按请求生成 nonce 后下发）
  * - /api、/uploads 同源反代到 FastAPI 后端
+ * - i18n：启动时扫描 i18n/messages/*.json，自动生成语言列表与 rewrites 正则
+ *   （规范 §3-2：前端自动扫描 message 目录，禁止硬编码语言列表）
  */
 
 /** 后端地址（仅服务端使用，不暴露给浏览器） */
 const BACKEND_URL = (process.env.BACKEND_URL || "http://127.0.0.1:8000").replace(/\/+$/, "");
 
-/**
- * 合法 locale 正则片段（rewrites / redirects 共用，单一真值源）。
- * 必须与 lib/i18n.ts 的 locales 数组保持一致——此前仅列 6 个且含已废弃的
- * zh-hk/en-us/ja，导致其余 7 个 locale 的 /admin、/setting、/auth、/login
- * 路由 rewrite 不匹配而 404。统一在此维护，新增 locale 只改一处。
+/** i18n 语言文件目录（单一真值源：新增/删除语言只需增删该目录下的 *.json） */
+const MESSAGES_DIR = path.join(__dirname, "i18n", "messages");
+const GENERATED_I18N_PATH = path.join(__dirname, "lib", "i18n", "locales.generated.ts");
+
+/** 扫描 messages 目录生成 locale 列表：zh-cn 固定置顶，其余按字典序 */
+function scanLocales(): string[] {
+  const ids = fs
+    .readdirSync(MESSAGES_DIR)
+    .filter((f) => f.endsWith(".json"))
+    .map((f) => f.replace(/\.json$/, ""));
+  const rest = ids.filter((l) => l !== "zh-cn").sort((a, b) => (a < b ? -1 : 1));
+  return ["zh-cn", ...rest];
+}
+
+const SCANNED_LOCALES = scanLocales();
+
+/** 由扫描结果生成 lib/i18n/locales.generated.ts（仅内容变化时写入，避免 watch 重建循环） */
+function writeGeneratedLocalesModule(localeIds: string[]): void {
+  const list = localeIds.map((l) => `  ${JSON.stringify(l)},`).join("\n");
+  const loaders = localeIds
+    .map(
+      (l) =>
+        `  ${JSON.stringify(l)}: () => import("@/i18n/messages/${l}.json").then((m) => m.default),`
+    )
+    .join("\n");
+  const content = `/**
+ * AUTO-GENERATED FILE — 请勿手改
+ * 由 next.config.ts 扫描 i18n/messages/*.json 自动生成；
+ * 新增/删除语言文件后重启 dev（或重新 build）自动更新。
  */
-const LANG = "zh-cn|zh-cn-sg|zh-tw|zh-mo|zh-yue-cn|zh-yue-hk|en-gb|ja-jp|ko-kr|es-es|fr-fr|de-de|ru-ru";
+export const locales = [
+${list}
+] as const;
+
+export type Locale = (typeof locales)[number];
+
+/** 字典动态加载器（键与 locales 一一对应；打包器需要字面量 import 路径） */
+export const dictionaryLoaders = {
+${loaders}
+} as const;
+`;
+  try {
+    if (
+      fs.existsSync(GENERATED_I18N_PATH) &&
+      fs.readFileSync(GENERATED_I18N_PATH, "utf8") === content
+    )
+      return;
+    fs.writeFileSync(GENERATED_I18N_PATH, content, "utf8");
+  } catch {
+    /* 只读文件系统（部分部署环境）忽略写入失败：构建期已生成过即可 */
+  }
+}
+
+writeGeneratedLocalesModule(SCANNED_LOCALES);
+
+/**
+ * 合法 locale 正则片段（rewrites / redirects 共用，来自上方目录扫描，禁止手改）。
+ * 长码在前（zh-yue-cn 先于 zh-cn），避免交替分支前缀抢占。
+ */
+const LANG = [...SCANNED_LOCALES]
+  .sort((a, b) => b.length - a.length || (a < b ? -1 : 1))
+  .join("|");
 
 const nextConfig: NextConfig = {
   // 不暴露 X-Powered-By: Next.js（减少指纹信息）

@@ -25,6 +25,7 @@ export const PERMISSION_MODULES = [
   "blog",
   "blog_tags",
   "projects",
+  "themes",
   "comments",
   "media",
   "security",
@@ -60,6 +61,7 @@ export const ROLE_DEFAULTS: Record<string, Partial<Record<PermissionModule, Perm
     blog: ["view", "manage"],
     blog_tags: ["view", "manage"],
     projects: ["view", "manage"],
+    themes: ["view", "manage"],
     comments: ["view", "manage"],
     media: ["view", "manage"],
     security: ["view", "manage"],
@@ -85,6 +87,7 @@ export const ROLE_DEFAULTS: Record<string, Partial<Record<PermissionModule, Perm
     blog: ["view", "manage"],
     blog_tags: ["view", "manage"],
     projects: ["view", "manage"],
+    themes: ["view", "manage"],
     comments: ["view", "manage"],
     media: ["view", "manage"],
     // 安全/登录/实名：admin 仅查看，manage 留 super_admin

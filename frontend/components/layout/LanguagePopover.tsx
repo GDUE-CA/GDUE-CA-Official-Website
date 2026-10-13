@@ -8,7 +8,7 @@
  * - 选中语言立即生效（替换 URL 语言前缀）并关闭浮层
  * - 通过 PopoverAnchor 挂在任意锚点元素上（典型：下拉菜单项），内容 Portal 挂载
  *
- * 新语言接入：仅需在 lib/i18n.ts 的 locales / localeMeta 中登记，本组件自动分组渲染。
+ * 新语言接入：仅需在 i18n/messages/ 目录新增 json 文件，本组件自动分组渲染。
  */
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
@@ -16,7 +16,9 @@ import { Check, Search } from "lucide-react";
 import { useI18n } from "@/i18n/provider";
 import {
   locales,
-  localeMeta,
+  localeDisplayName,
+  localeEnglishName,
+  localeGroup,
   localeGroupOrder,
   type Locale,
   type LocaleGroup,
@@ -51,17 +53,16 @@ export function LanguagePopover({ open, onOpenChange, anchor, onPicked }: Langua
     const q = query.trim().toLowerCase();
     const matched = (loc: Locale) => {
       if (!q) return true;
-      const meta = localeMeta[loc];
       return (
-        meta.nativeName.toLowerCase().includes(q) ||
-        meta.englishName.toLowerCase().includes(q) ||
+        localeDisplayName(loc).toLowerCase().includes(q) ||
+        localeEnglishName(loc).toLowerCase().includes(q) ||
         loc.includes(q)
       );
     };
     return localeGroupOrder
       .map((group) => ({
         group,
-        items: locales.filter((loc) => localeMeta[loc].group === group && matched(loc)),
+        items: locales.filter((loc) => localeGroup(loc) === group && matched(loc)),
       }))
       .filter((g) => g.items.length > 0);
   }, [query]);
@@ -121,7 +122,6 @@ export function LanguagePopover({ open, onOpenChange, anchor, onPicked }: Langua
                 {t(GROUP_LABEL_KEYS[group])}
               </p>
               {items.map((loc) => {
-                const meta = localeMeta[loc];
                 const active = loc === locale;
                 return (
                   <button
@@ -134,9 +134,9 @@ export function LanguagePopover({ open, onOpenChange, anchor, onPicked }: Langua
                     )}
                   >
                     <span className="flex min-w-0 flex-1 flex-col">
-                      <span className="truncate leading-tight">{meta.nativeName}</span>
+                      <span className="truncate leading-tight">{localeDisplayName(loc)}</span>
                       <span className="truncate text-[11px] leading-tight text-muted-foreground">
-                        {meta.englishName}
+                        {localeEnglishName(loc)}
                       </span>
                     </span>
                     {active && <Check className="h-4 w-4 shrink-0 text-primary" />}

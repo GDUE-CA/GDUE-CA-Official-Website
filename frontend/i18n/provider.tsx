@@ -38,7 +38,9 @@ function lookup(
     if (result && typeof result === "object" && part in result) {
       result = (result as Record<string, unknown>)[part];
     } else {
-      return key;
+      // fallback: 字面量带点 key（如 admin.nav 内 "users.list" 字面量 key）。
+      // 标准逐段 split('.') 解析会失败，尝试把剩余段合并为字面量 key 直接访问当前父对象。
+      return lookupLiteral(messages, key, vars);
     }
   }
   if (typeof result !== "string") return key;
@@ -48,6 +50,43 @@ function lookup(
     );
   }
   return result;
+}
+
+/**
+ * 字面量带点 key fallback：把 key 末尾多段合并为字面量 key 直接访问父对象。
+ * 例如 admin.nav.users.list → 尝试 admin.nav["users.list"] / admin.nav.users["list"] 等。
+ */
+function lookupLiteral(
+  messages: Messages,
+  key: string,
+  vars?: Record<string, string | number>
+): string {
+  const parts = key.split(".");
+  for (let i = parts.length - 1; i > 0; i--) {
+    const literal = parts.slice(i).join(".");
+    const parentPath = parts.slice(0, i);
+    let parent: unknown = messages;
+    for (const p of parentPath) {
+      if (parent && typeof parent === "object" && p in (parent as Record<string, unknown>)) {
+        parent = (parent as Record<string, unknown>)[p];
+      } else {
+        parent = undefined;
+        break;
+      }
+    }
+    if (parent && typeof parent === "object" && literal in (parent as Record<string, unknown>)) {
+      const v = (parent as Record<string, unknown>)[literal];
+      if (typeof v === "string") {
+        if (vars) {
+          return v.replace(/\{(\w+)\}/g, (_, name: string) =>
+            String(vars[name] ?? `{${name}}`)
+          );
+        }
+        return v;
+      }
+    }
+  }
+  return key;
 }
 
 /**

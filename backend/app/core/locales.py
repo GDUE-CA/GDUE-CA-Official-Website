@@ -3,11 +3,11 @@
 定义支持的 UI 界面语言列表、变体回退映射、locale→region_code 映射，
 以及 locale / region_code / currency 的校验函数。
 
-规范约束（本地化系统）：
-- 13 门语言，URL 路径全小写横杠分隔；
-- 变体语言（zh-cn-sg/zh-yue-cn/zh-yue-hk/zh-mo）缺失词条回退 zh-cn；
+规范约束（本地化系统，2026-10-13 版）：
+- 18 门语言，URL 路径全小写横杠分隔；
+- 变体语言（zh-cn-sg/zh-yue-cn/zh-yue-tw/zh-mo）缺失词条沿回退链落到 zh-cn；
 - 时区一律 IANA 标识符（如 Asia/Shanghai），禁止存 ±偏移量；
-- region_code 为 ISO-3166-1 二位国家/地区代码（如 CN/GB/JP）；
+- region_code 为 ISO-3166-1 二位国家/地区代码（如 CN/US/JP）；
 - currency 为 ISO-4217 货币代码（如 CNY/USD/EUR）。
 """
 from __future__ import annotations
@@ -17,32 +17,37 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class LocaleMeta:
-    """单条语言元信息（与前端 lib/i18n.ts 单一源数据保持一致）。"""
+    """单条语言元信息（与前端 lib/i18n 单一源数据保持一致）。"""
 
     id: str
     native_name: str
     english_name: str
-    # 变体回退目标；None = 无特殊回退（缺失词条最终落到 en-gb）
+    # 变体回退目标；None = 无特殊回退（缺失词条最终落到 zh-cn）
     fallback: str | None
     # locale → ISO-3166-1 二位 region_code（「切换语言同步更新区域」复选框用）
     region_code: str
 
 
-# 唯一源：支持的全部 13 门 UI 界面语言
+# 唯一源：支持的全部 18 门 UI 界面语言
 SUPPORTED_LOCALES: tuple[LocaleMeta, ...] = (
     LocaleMeta("zh-cn", "简体中文（中国大陆）", "Simplified Chinese (China)", None, "CN"),
     LocaleMeta("zh-cn-sg", "简体中文（新加坡）", "Simplified Chinese (Singapore)", "zh-cn", "SG"),
-    LocaleMeta("zh-tw", "繁體中文（台灣）", "Traditional Chinese (Taiwan)", None, "TW"),
-    LocaleMeta("zh-mo", "繁體中文（澳門）", "Traditional Chinese (Macao)", "zh-cn", "MO"),
+    LocaleMeta("zh-hk", "繁體中文（中國香港）", "Traditional Chinese (Hong Kong)", None, "HK"),
+    LocaleMeta("zh-mo", "繁體中文（中國澳門）", "Traditional Chinese (Macao)", "zh-hk", "MO"),
     LocaleMeta("zh-yue-cn", "简体粤语", "Cantonese (Simplified)", "zh-cn", "CN"),
-    LocaleMeta("zh-yue-hk", "繁體廣東話", "Cantonese (Traditional, Hong Kong)", "zh-cn", "HK"),
-    LocaleMeta("en-gb", "English (UK)", "English (United Kingdom)", None, "GB"),
+    LocaleMeta("zh-yue-tw", "繁體廣東話", "Cantonese (Traditional)", "zh-hk", "TW"),
+    LocaleMeta("en-us", "English (US)", "English (United States)", None, "US"),
     LocaleMeta("ja-jp", "日本語", "Japanese (Japan)", None, "JP"),
     LocaleMeta("ko-kr", "한국어", "Korean (South Korea)", None, "KR"),
     LocaleMeta("es-es", "Español", "Spanish (Spain)", None, "ES"),
     LocaleMeta("fr-fr", "Français", "French (France)", None, "FR"),
     LocaleMeta("de-de", "Deutsch", "German (Germany)", None, "DE"),
     LocaleMeta("ru-ru", "Русский", "Russian (Russia)", None, "RU"),
+    LocaleMeta("pt-br", "Português (Brasil)", "Portuguese (Brazil)", None, "BR"),
+    LocaleMeta("ar-sa", "العربية", "Arabic (Saudi Arabia)", None, "SA"),
+    LocaleMeta("hi-in", "हिन्दी", "Hindi (India)", None, "IN"),
+    LocaleMeta("tr-tr", "Türkçe", "Turkish (Türkiye)", None, "TR"),
+    LocaleMeta("it-it", "Italiano", "Italian (Italy)", None, "IT"),
 )
 
 # 支持的 locale id 列表（用于快速 contains 判断）

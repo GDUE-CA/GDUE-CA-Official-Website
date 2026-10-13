@@ -40,5 +40,17 @@
       "unhidden": "已取消屏蔽",
       "deleted": "已永久删除"
     }
+  },
+  "memo": {
+    "searchPlaceholder": "搜索说说...",
+    "newButton": "新建说说",
+    "dateFilter": {
+      "title": "选择日期",
+      "clear": "清除日期筛选",
+      "confirm": "确定",
+      "year": "年",
+      "month": "月",
+      "day": "日"
+    }
   }
 }

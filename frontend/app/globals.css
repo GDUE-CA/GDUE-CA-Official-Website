@@ -47,6 +47,21 @@
   --ring: 240 3% 6.1%;
 
   --radius: 0.75rem;                /* lg 12px；卡片 rounded-xl = 16px */
+
+  /* ===== UI 全局原子常量（规范 §7-1，全部平台统一，不许改动） ===== */
+  --card-radius: 12px;              /* 卡片圆角 */
+  --card-padding: 20px;             /* 卡片内部 padding */
+  --card-gap: 16px;                 /* 卡片互相间距 */
+  --page-margin: 24px;              /* 页面内容距离窗口外边距 */
+  --nav-active-radius: 8px;         /* 导航选中高亮圆角 */
+  --nav-item-padding-y: 10px;       /* 导航条目上下 padding */
+  --nav-item-padding-x: 14px;       /* 导航条目左右 padding */
+  --nav-icon-gap: 12px;             /* 导航图标-文字间距 */
+  --transition-base: all 180ms ease-in-out; /* 全局状态过渡动画 */
+
+  /* 侧边栏底色：与主内容区微小色差拉开层级（亮色略深，暗色对应略浅） */
+  --sidebar: 60 6% 95%;
+  --sidebar-accent: 60 6% 90.5%;    /* 侧栏内 hover 底色 */
 }
 
 .dark {
@@ -82,6 +97,27 @@
   --border: 240 5% 15.7%;           /* #26262A */
   --input: 240 5% 15.7%;
   --ring: 60 5% 92.5%;
+
+  /* 暗色侧边栏：与深色主内容区拉开层级（略浅） */
+  --sidebar: 240 5% 9%;
+  --sidebar-accent: 240 5% 14%;
+}
+
+/* ==========================================================================
+ * 风格主题（data-theme-style 属性；与颜色模式 .dark 正交）
+ * 主题列表由后端 Theme 表驱动（ThemeProvider 注入 css_vars/dark_vars）；
+ * 此处仅保留 Apple 主题的结构性补充规则（卡片圆角覆盖无法用变量表达）。
+ * ========================================================================== */
+
+/* Apple 主题：对标 macOS 视觉——更大圆角、更柔和阴影、更圆润字体感 */
+[data-theme-style="apple"] {
+  --radius: 1rem;                    /* 16px；卡片 rounded-2xl 风格 */
+}
+[data-theme-style="apple"] :is(.card, [class*="rounded-xl"]) {
+  border-radius: calc(var(--radius) + 4px);
+}
+[data-theme-style="apple"].dark {
+  --background: 240 6% 5%;           /* 略深于默认 dark，贴近 macOS 深色窗口 */
 }
 
 @theme inline {
@@ -108,14 +144,42 @@
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
+  --color-sidebar: hsl(var(--sidebar));
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
 
-  /* 西文 Instrument Sans + 中文系统黑体（思源黑体 / 苹方 / 微软雅黑，不下载 CJK 字体文件） */
-  --font-sans: var(--font-instrument), "Noto Sans SC", "PingFang SC",
-    "Microsoft YaHei", sans-serif;
-  --font-display: var(--font-instrument), "Noto Sans SC", "PingFang SC",
-    "Microsoft YaHei", sans-serif;
-  /* 日期、编号、数据等辅助信息 */
-  --font-mono: var(--font-jetbrains), "Cascadia Code", monospace;
+  /* 字体策略（规范 §7-5）：严禁下载任何 web 字体，完全复用客户端本机系统字体。
+   * Apple 自动读 SF Pro；Windows 读 Segoe UI；Android 读 Roboto。 */
+  --font-sans:
+    -apple-system,
+    BlinkMacSystemFont,
+    "SF Pro Display",
+    "SF Pro Text",
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Helvetica,
+    Arial,
+    sans-serif;
+  --font-display:
+    -apple-system,
+    BlinkMacSystemFont,
+    "SF Pro Display",
+    "SF Pro Text",
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Helvetica,
+    Arial,
+    sans-serif;
+  /* 日期、编号、数据等辅助信息：系统等宽字体 */
+  --font-mono:
+    ui-monospace,
+    SFMono-Regular,
+    "SF Mono",
+    Menlo,
+    Consolas,
+    "Liberation Mono",
+    monospace;
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -147,24 +211,15 @@ h6 {
   text-wrap: balance;
 }
 
-/* 自定义滚动条 */
-::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+/* 页面一级大标题：28px / weight 600（规范 §7-5 字号层级） */
+h1 {
+  font-size: 1.75rem;
+  font-weight: 600;
 }
 
-::-webkit-scrollbar-track {
-  background: hsl(var(--muted));
-}
-
-::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted-foreground) / 0.3);
-  border-radius: 5px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground) / 0.5);
-}
+/* 跨平台原生控件策略（规范 §7-6）：滚动条、文本选中色、tap 高亮全部交给
+ * 当前操作系统原生控件——禁止 ::-webkit-scrollbar 自定义滚动条、
+ * 禁止重写 ::selection、禁止自定义 -webkit-tap-highlight-color。 */
 
 /* Markdown 渲染样式 */
 .prose {

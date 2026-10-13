@@ -35,11 +35,10 @@ import { useDirtyGuard } from "@/components/setting/SettingGuardContext";
 import { fetchProfile, updateProfile } from "@/lib/api/auth";
 import { fetchPublicSettings } from "@/lib/api/system";
 import {
-  supportedLocales,
-  localeNames,
+  localeDisplayName,
   localeToRegion,
-  type Locale,
 } from "@/lib/i18n";
+import { LocaleSelector } from "@/components/locale/LocaleSelector";
 import { COMMON_TIMEZONES } from "@/components/layout/TimezoneSelect";
 import type { AdminUser, PublicSystemSettings } from "@/types/api";
 
@@ -159,8 +158,7 @@ export function LocalizationForm() {
   function handleLocaleChange(newLocale: string) {
     setUserLocale(newLocale);
     if (syncRegionWithLang && newLocale) {
-      const mapped = localeToRegion[newLocale as Locale];
-      if (mapped) setUserRegion(mapped);
+      setUserRegion(localeToRegion(newLocale));
     }
   }
 
@@ -168,8 +166,7 @@ export function LocalizationForm() {
   function handleSyncRegionToggle(checked: boolean) {
     setSyncRegionWithLang(checked);
     if (checked && userLocale) {
-      const mapped = localeToRegion[userLocale as Locale];
-      if (mapped) setUserRegion(mapped);
+      setUserRegion(localeToRegion(userLocale));
     }
   }
 
@@ -236,7 +233,7 @@ export function LocalizationForm() {
 
   // 系统默认值展示（用于「跟随系统：xxx」标签）
   const sysLocaleDisplay = sysSettings?.sys_default_locale
-    ? (localeNames[sysSettings.sys_default_locale as Locale] ?? sysSettings.sys_default_locale)
+    ? localeDisplayName(sysSettings.sys_default_locale)
     : t("setting.localization.notSet");
   const sysTzDisplay = sysDisplay(sysSettings?.sys_default_timezone, t("setting.localization.notSet"));
   const sysRegionDisplay = (() => {
@@ -272,20 +269,14 @@ export function LocalizationForm() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label>{t("setting.localization.uiLanguage")}</Label>
-            <select
+            <LocaleSelector
               value={userLocale}
-              onChange={(e) => handleLocaleChange(e.target.value)}
-              className="w-full h-9 rounded-md border border-input bg-background px-2 text-sm"
-            >
-              <option value={SYS_FOLLOW}>
-                {t("setting.localization.followSystem", { value: sysLocaleDisplay })}
-              </option>
-              {supportedLocales.map((l) => (
-                <option key={l} value={l}>
-                  {localeNames[l]}
-                </option>
-              ))}
-            </select>
+              onChange={handleLocaleChange}
+              includeSystemOption
+              systemOptionLabel={t("setting.localization.followSystem", {
+                value: sysLocaleDisplay,
+              })}
+            />
             <p className="text-xs text-muted-foreground">
               {t("setting.localization.localeHint")}
             </p>

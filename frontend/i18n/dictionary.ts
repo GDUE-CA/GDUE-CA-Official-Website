@@ -1,7 +1,7 @@
 /**
  * 服务端字典加载器
- * 通过 next/headers 读取当前 URL，从中解析 locale 前缀
- * 动态加载对应语言的翻译；变体语言缺失词条自动深合并父语言（zh-cn）
+ * 通过 next/headers 读取当前 URL，从中解析 locale 前缀；
+ * 字典按 localeFallbackChain 合并：扁平点号 key 展开、空串/缺失词条自动回退，最终兜底 zh-cn。
  */
 import { headers } from "next/headers";
 import type { Locale } from "@/lib/i18n";
@@ -9,42 +9,23 @@ import {
   isLocale,
   defaultLocale,
   locales,
-  localeFallbackMap,
+  localeFallbackChain,
+  dictionaryLoaders,
 } from "@/lib/i18n";
+import {
+  expandFlatKeys,
+  stripEmptyLeaves,
+  mergeLocaleChain,
+  type Dict,
+} from "./merge";
 
 /** 翻译消息类型（从 zh-cn.json 推断） */
 export type Messages = typeof import("@/i18n/messages/zh-cn.json");
 
-/** 字典加载器映射（键与 lib/i18n.ts locales 一一对应，全小写） */
-const dictionaries = {
-  "zh-cn": () => import("@/i18n/messages/zh-cn.json").then((m) => m.default),
-  "zh-cn-sg": () => import("@/i18n/messages/zh-cn-sg.json").then((m) => m.default),
-  "zh-tw": () => import("@/i18n/messages/zh-tw.json").then((m) => m.default),
-  "zh-mo": () => import("@/i18n/messages/zh-mo.json").then((m) => m.default),
-  "zh-yue-cn": () => import("@/i18n/messages/zh-yue-cn.json").then((m) => m.default),
-  "zh-yue-hk": () => import("@/i18n/messages/zh-yue-hk.json").then((m) => m.default),
-  "en-gb": () => import("@/i18n/messages/en-gb.json").then((m) => m.default),
-  "ja-jp": () => import("@/i18n/messages/ja-jp.json").then((m) => m.default),
-  "ko-kr": () => import("@/i18n/messages/ko-kr.json").then((m) => m.default),
-  "es-es": () => import("@/i18n/messages/es-es.json").then((m) => m.default),
-  "fr-fr": () => import("@/i18n/messages/fr-fr.json").then((m) => m.default),
-  "de-de": () => import("@/i18n/messages/de-de.json").then((m) => m.default),
-  "ru-ru": () => import("@/i18n/messages/ru-ru.json").then((m) => m.default),
-} as const;
-
-/** 深合并：base 为底，override 的键覆盖 base（递归到嵌套对象） */
-function deepMerge<T>(base: T, override: unknown): T {
-  if (
-    base && typeof base === "object" && !Array.isArray(base) &&
-    override && typeof override === "object" && !Array.isArray(override)
-  ) {
-    const out: Record<string, unknown> = { ...(base as Record<string, unknown>) };
-    for (const [k, v] of Object.entries(override as Record<string, unknown>)) {
-      out[k] = k in out ? deepMerge(out[k], v) : v;
-    }
-    return out as T;
-  }
-  return (override as T) ?? base;
+/** 加载单语言原始字典（扁平 key 展开 + 空串剔除） */
+async function loadLocaleDict(loc: Locale): Promise<Dict> {
+  const raw = (await dictionaryLoaders[loc]()) as unknown as Dict;
+  return stripEmptyLeaves(expandFlatKeys(raw));
 }
 
 /**
@@ -79,16 +60,14 @@ export async function getDictionary(paramLocale?: string): Promise<Messages> {
 
 /**
  * 根据指定 locale 获取翻译字典。
- * 变体语言（zh-cn-sg/zh-mo/zh-yue-cn/zh-yue-hk）的翻译文件只存差异 key，
- * 缺失词条自动深合并父语言（zh-cn），不落英文。
+ * 沿 localeFallbackChain 合并（自身 → 父语言 → … → zh-cn）：
+ * 任一语言某 key 为空字符串或缺失时自动回退兜底 zh-cn，不落英文、防页面空白。
  */
 export async function getDictionaryByLocale(loc: Locale): Promise<Messages> {
-  // cast 为 Messages：变体文件只存差异 key，类型与完整 zh-cn 不同，靠深合并补全
-  const own = (await dictionaries[loc]()) as Messages;
-  const fallback = localeFallbackMap[loc];
-  if (!fallback) return own;
-  const parent = (await dictionaries[fallback]()) as Messages;
-  return deepMerge(parent, own);
+  const chain = localeFallbackChain(loc);
+  if (chain.length === 1) return (await loadLocaleDict(loc)) as unknown as Messages;
+  const dicts = await Promise.all(chain.map(loadLocaleDict));
+  return mergeLocaleChain(dicts) as unknown as Messages;
 }
 
 /**

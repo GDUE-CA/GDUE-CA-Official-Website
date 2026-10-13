@@ -28,7 +28,7 @@
     "guest": "Guest",
     "login": "Log in",
     "register": "Sign up",
-    "memo": "Memos",
+    "memo": "Moments",
     "appearance": "Appearance",
     "changeLanguage": "Change language",
     "languageSearch": "Search language…",
@@ -41,7 +41,7 @@
     "loginCard": {
       "title": "Log in for more benefits",
       "benefitEvents": "Event registration and check-in",
-      "benefitMemo": "Quick memo sync across devices",
+      "benefitMemo": "Quick moments sync across devices",
       "benefitCommunity": "Blog comments and community",
       "benefitNotify": "Real-time in-site notifications",
       "loginNow": "Log in now",
@@ -207,6 +207,13 @@
     "cmsFormerMembersTitle": "Former Members"
   },
   "profile": {
+    "notFound": "User not found or deactivated",
+    "joinedAt": "Joined {date}",
+    "tabs": {
+      "memo": "Moments"
+    },
+    "emptyMemos": "No public moments yet",
+    "emptyBlog": "No published blog posts",
     "personalInfo": "Personal Information",
     "personalInfoHint": "Edit all your profile fields at once; click Confirm to save",
     "continentAsia": "Asia",
@@ -269,9 +276,6 @@
       "rememberDevice": "Remember this device",
       "userAgent": "Browser user agent (UA)",
       "hint": "Sessions expire after 30 minutes of inactivity by default; a visible-page heartbeat automatically extends the session. Up to 20 most recent records are shown."
-    },
-    "tabs": {
-      "memo": "Memos"
     }
   },
   "notifications": {
@@ -628,7 +632,29 @@
     "profile": {
       "title": "Basic Details",
       "phoneDialCode": "Dialling code",
-      "phonePlaceholder": "Enter your phone number"
+      "phonePlaceholder": "Enter your phone number",
+      "gender": "Gender",
+      "genderPlaceholder": "Select gender",
+      "genderMale": "Male",
+      "genderFemale": "Female",
+      "genderHidden": "Prefer not to say",
+      "birthday": "Birthday",
+      "birthdayPlaceholder": "Pick a date",
+      "bio": "Bio",
+      "bioPlaceholder": "A short tagline about yourself"
+    },
+    "privacy": {
+      "title": "Privacy",
+      "hint": "Control visibility of each profile field; region is permanently public and cannot be hidden",
+      "regionPermanent": "Region (permanently public)",
+      "regionPermanentHint": "Hard constraint: region fields are visible to all visitors and cannot be disabled",
+      "bio": "Bio",
+      "gender": "Gender",
+      "birthday": "Birthday",
+      "public": "Public",
+      "private": "Only me",
+      "saved": "Privacy settings saved",
+      "saveFailed": "Failed to save privacy settings"
     },
     "region": {
       "title": "Region & Time Zone",
@@ -690,6 +716,11 @@
     "appearance": {
       "title": "Appearance & Language",
       "themeSystem": "Follow system",
+      "styleTitle": "Theme Style",
+      "styleHint": "Choose overall visual style; synced across devices with your account",
+      "styleDefault": "Default",
+      "styleApple": "Apple",
+      "styleFestival": "Festival",
       "switchLangConfirm": "Switch to \"{name}\"? The page will reload.",
       "refreshNow": "Reload now"
     },
@@ -708,6 +739,7 @@
     },
     "tabs": {
       "profile": "Profile",
+      "privacy": "Privacy",
       "localization": "Localization",
       "region": "Region & Time Zone",
       "regionalFormat": "Regional Format",
@@ -715,6 +747,13 @@
       "security": "Account Security",
       "sessions": "Devices",
       "connections": "Linked Accounts",
+      "notifications": "Notifications"
+    },
+    "group": {
+      "profile": "Profile",
+      "localization": "Localization",
+      "appearance": "Appearance",
+      "security": "Security",
       "notifications": "Notifications"
     },
     "hints": {
@@ -745,7 +784,11 @@
       "rememberDevice": "Remember this device (fewer verifications for 30 days)",
       "oauthDivider": "Or continue with",
       "oauthError": "Third-party sign-in failed, please retry or use password login",
-      "firstBanWarning": "⚠️ Multiple failed login attempts detected. Continued brute-force attempts will permanently ban this account on this device/network."
+      "firstBanWarning": "⚠️ Multiple failed login attempts detected. Continued brute-force attempts will permanently ban this account on this device/network.",
+      "choiceTitle": "Login Successful",
+      "choiceSubtitle": "You have administrator privileges. Choose where to go.",
+      "choiceAdmin": "Enter Admin Dashboard",
+      "choiceHome": "Go to Website Home"
     },
     "breakGlass": {
       "bannerWarning": "⚠️ You are using a Break-Glass emergency account with full privileges. Proceed with caution.",
@@ -932,6 +975,7 @@
       "mediaLibrary": "Media Library",
       "title": "Admin Console",
       "welcome": "Welcome back",
+      "toggleSidebar": "Toggle sidebar",
       "logout": "Log Out",
       "pendingTodos": "Pending to-dos",
       "overview": "Overview",
@@ -982,7 +1026,7 @@
       "securityIpBlacklist": "IP Blacklist",
       "securityBans": "Login Bans",
       "auditLogs": "Audit Logs",
-      "memos": "Memos"
+      "memos": "Moments"
     },
     "navGroup": {
       "overview": "Overview",
@@ -1006,7 +1050,7 @@
       "users.review": "Review Center",
       "content": "Content Management",
       "content.blog": "Blog Management",
-      "content.memo": "Memo Management",
+      "content.memo": "Moments Management",
       "content.blocks": "Content Blocks",
       "content.media": "Media Library",
       "content.recycle": "Content Recycle Bin",
@@ -1361,7 +1405,7 @@
         "realname": "Realname Status",
         "stats": "Statistics",
         "audit_logs": "Audit Logs",
-        "memo": "Memo"
+        "memo": "Moments"
       }
     },
     "security": {
@@ -1518,6 +1562,14 @@
       "colAuthor": "Author",
       "colPublished": "Published",
       "colUpdatedAt": "Updated",
+      "colId": "ID",
+      "colLike": "Likes",
+      "colComment": "Comments",
+      "colShare": "Shares",
+      "colFavourite": "Favourites",
+      "colAllowComments": "Allow Comments",
+      "allowCommentsYes": "Yes",
+      "allowCommentsNo": "No",
       "colSlug": "Slug (URL)",
       "colExcerpt": "Excerpt",
       "colCover": "Cover",
@@ -1860,7 +1912,7 @@
     },
     "modules": {
       "memo": {
-        "title": "Memos",
+        "title": "Moments",
         "desc": "Markdown fragment notes: timeline / calendar / lazy tag creation / version snapshots / public share / admin takedown",
         "btn": "Manage"
       }
@@ -1992,11 +2044,11 @@
     }
   },
   "memo": {
-    "pageTitle": "Memos",
+    "pageTitle": "Moments",
     "subtitle": "Lightweight Markdown notes — separate from long-form blog posts",
     "timeline": {
       "title": "Timeline",
-      "empty": "No memos yet. Write your first one ✏️",
+      "empty": "No moments yet. Write your first one ✏️",
       "hasImageOnly": "With images only",
       "visibilityAll": "All visible",
       "visibilityPublic": "Public only",
@@ -2009,7 +2061,7 @@
       "today": "Today",
       "prevMonth": "Previous month",
       "nextMonth": "Next month",
-      "noMemosOnDay": "No memos on this day"
+      "noMemosOnDay": "No moments on this day"
     },
     "editor": {
       "placeholder": "Jot down your thoughts...\n\nMarkdown supported, #tags auto-extracted, paste images to upload",
@@ -2060,7 +2112,7 @@
       "unarchive": "Unarchive",
       "edit": "Edit",
       "delete": "Delete",
-      "deleteConfirm": "Delete this memo? Cannot be undone (version history is kept).",
+      "deleteConfirm": "Delete this moment? Cannot be undone (version history is kept).",
       "rollback": "Rollback"
     },
     "versions": {
@@ -2075,9 +2127,9 @@
       "empty": "No version history"
     },
     "share": {
-      "title": "Share memo",
-      "publicOnly": "Only public memos can generate share links",
-      "copyHint": "Anonymous visitors can access this memo via the link",
+      "title": "Share moment",
+      "publicOnly": "Only public moments can generate share links",
+      "copyHint": "Anonymous visitors can access this moment via the link",
       "regenerate": "Regenerate",
       "revoke": "Revoke"
     },
@@ -2088,10 +2140,20 @@
       "createFailed": "Create failed, please retry"
     },
     "tabs": {
-      "mine": "My Memos",
+      "mine": "My Moments",
       "liked": "Liked",
       "favorites": "Favorited",
       "archived": "Archived"
+    },
+    "searchPlaceholder": "Search moments...",
+    "newButton": "New moment",
+    "dateFilter": {
+      "title": "Pick a date",
+      "clear": "Clear date filter",
+      "confirm": "OK",
+      "year": "Year",
+      "month": "Month",
+      "day": "Day"
     }
   },
   "error": {
@@ -2113,29 +2175,29 @@
     "login_blocked": "Invalid username or password",
     "system_not_initialized": "System is not initialised. Please log in with the break-glass account to complete the initialisation wizard.",
     "memo": {
-      "createFailed": "Failed to create memo",
-      "updateFailed": "Failed to update memo",
-      "deleteFailed": "Failed to delete memo",
+      "createFailed": "Failed to create moment",
+      "updateFailed": "Failed to update moment",
+      "deleteFailed": "Failed to delete moment",
       "rateLimited": "Publishing too frequently, please try later",
-      "notFound": "Memo not found",
-      "forbidden": "Not authorized to operate this memo",
-      "privateForbidden": "This memo is private; cannot like/favorite",
-      "shareOnlyPublic": "Only public memos can generate share links",
+      "notFound": "Moment not found",
+      "forbidden": "Not authorized to operate this moment",
+      "privateForbidden": "This moment is private; cannot like/favorite",
+      "shareOnlyPublic": "Only public moments can generate share links",
       "versionNotFound": "Version not found",
       "tagNotFound": "Tag not found",
       "invalidDate": "Date must be YYYY-MM-DD",
       "rssMaintenance": "RSS is not yet implemented",
       "webdavMaintenance": "WebDAV is not yet implemented",
-      "importMaintenance": "Memos backup import is not yet implemented"
+      "importMaintenance": "Moments backup import is not yet implemented"
     }
   },
   "memoPage": {
-    "title": "Memos",
+    "title": "Moments",
     "intro": "Lightweight Markdown notes — #tags auto-archived, timeline + calendar dual view.",
     "compose": "Write something..."
   },
   "profileMemoTab": {
-    "empty": "No memos yet",
+    "empty": "No moments yet",
     "viewAll": "View all"
   }
 }

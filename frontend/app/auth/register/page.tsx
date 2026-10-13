@@ -17,7 +17,7 @@ import { Loader2, UserPlus, ArrowLeft, LogIn } from "lucide-react";
 import { useI18n } from "@/i18n/provider";
 import { useLocalizedPath } from "@/lib/navigation";
 import { useAdminLocale } from "@/app/admin/AdminProviders";
-import { localeNames, locales, localeToUrlLang, urlLangToLocale, type Locale } from "@/lib/i18n";
+import { localeDisplayName, locales, localeToUrlLang, urlLangToLocale, type Locale } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -82,7 +82,7 @@ function AuthLocaleSwitcher() {
     >
       {locales.map((l) => (
         <option key={l} value={l}>
-          {localeNames[l]}
+          {localeDisplayName(l)}
         </option>
       ))}
     </select>
@@ -113,7 +113,7 @@ export default function AuthRegisterPage() {
     },
   });
 
-  /** 从 URL 路径同步语言（/en-gb/auth/register → en-gb） */
+  /** 从 URL 路径同步语言（/en-us/auth/register → en-us） */
   useEffect(() => {
     const urlLocale = pathname ? urlLangToLocale(pathname.split("/")[1] ?? "") : null;
     if (urlLocale && urlLocale !== locale) {

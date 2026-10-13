@@ -1,28 +1,18 @@
 import type { Metadata } from "next";
-import { Instrument_Sans, JetBrains_Mono } from "next/font/google";
 import { headers } from "next/headers";
 import Script from "next/script";
 import "@/app/globals.css";
+import { ThemeProvider } from "@/components/theme/ThemeProvider";
 
 /**
  * 根 layout：所有路由（含 / 和 /admin）共享
- * 负责 <html><body>、字体变量、防 FOUC 主题脚本、全局 CSS
+ * 负责 <html><body>、防 FOUC 主题脚本、全局 CSS
  * 读取 proxy.ts 生成的 CSP nonce（x-nonce），因此全站为动态渲染
  * 各子 layout（[locale] / admin）负责具体的 Provider 与框架
+ *
+ * 字体策略（规范 §7-5）：严禁下载任何 web 字体（无 next/font、无 @font-face），
+ * 完全复用客户端本机系统字体（globals.css --font-sans 系统字体栈）。
  */
-/** 西文正文 / 标题字体；中文回退到系统黑体（见 globals.css --font-sans） */
-const sansFont = Instrument_Sans({
-  variable: "--font-instrument",
-  subsets: ["latin"],
-  display: "swap",
-});
-
-/** 日期、编号、数据等辅助信息 */
-const monoFont = JetBrains_Mono({
-  variable: "--font-jetbrains",
-  subsets: ["latin"],
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: {
@@ -41,7 +31,7 @@ export default async function RootLayout({
   return (
     <html
       lang="zh-cn"
-      className={`${sansFont.variable} ${monoFont.variable} h-full antialiased`}
+      className="h-full antialiased"
       suppressHydrationWarning
     >
       <head>
@@ -54,11 +44,11 @@ export default async function RootLayout({
           nonce={nonce}
           suppressHydrationWarning
         >
-          {`(function(){try{var s=localStorage.getItem('gdueca-theme');var t=s||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');if(t==='dark')document.documentElement.classList.add('dark');}catch(e){}})();`}
+          {`(function(){try{var s=localStorage.getItem('gdueca-theme');var t=s||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');if(t==='dark')document.documentElement.classList.add('dark');var ss=localStorage.getItem('gdueca-theme-style');if(ss&&/^[a-z][a-z0-9-]{0,31}$/.test(ss)){document.documentElement.setAttribute('data-theme-style',ss);}else{document.documentElement.setAttribute('data-theme-style','default');}}catch(e){}})();`}
         </Script>
       </head>
       <body className="min-h-full flex flex-col bg-background">
-        {children}
+        <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
   );

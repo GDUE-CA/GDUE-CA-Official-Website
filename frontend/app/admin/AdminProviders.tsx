@@ -7,68 +7,50 @@
  * - 切换语言由 useSwitchLocale 完成（只换 URL 顶层段，保留子路径与 query，规范 §3）；
  *   setLocale 内部委托给 useSwitchLocale，保持旧调用方兼容
  * - localStorage 仅作记忆 / URL 无 locale 时的兜底
- * - 6 份字典静态打包进 admin 路由，切换无请求
+ * - 字典懒加载：仅打包兜底 zh-cn，其余语言经 dictionaryLoaders 动态 import；
+ *   沿 localeFallbackChain 合并（扁平 key 展开 + 空串剔除），切换语言零整页刷新
  */
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { I18nProvider } from "@/i18n/provider";
 import { SessionHeartbeat } from "@/components/shared/SessionHeartbeat";
 import { useSwitchLocale } from "@/lib/navigation";
-import { defaultLocale, urlLangToLocale, type Locale, localeFallbackMap } from "@/lib/i18n";
+import {
+  defaultLocale,
+  urlLangToLocale,
+  localeFallbackChain,
+  dictionaryLoaders,
+  type Locale,
+} from "@/lib/i18n";
 import type { Messages } from "@/i18n/dictionary";
+import {
+  expandFlatKeys,
+  stripEmptyLeaves,
+  mergeLocaleChain,
+  type Dict,
+} from "@/i18n/merge";
 import zhCN from "@/i18n/messages/zh-cn.json";
-import zhCNSG from "@/i18n/messages/zh-cn-sg.json";
-import zhTW from "@/i18n/messages/zh-tw.json";
-import zhMO from "@/i18n/messages/zh-mo.json";
-import zhYueCN from "@/i18n/messages/zh-yue-cn.json";
-import zhYueHK from "@/i18n/messages/zh-yue-hk.json";
-import enGB from "@/i18n/messages/en-gb.json";
-import jaJP from "@/i18n/messages/ja-jp.json";
-import koKR from "@/i18n/messages/ko-kr.json";
-import esES from "@/i18n/messages/es-es.json";
-import frFR from "@/i18n/messages/fr-fr.json";
-import deDE from "@/i18n/messages/de-de.json";
-import ruRU from "@/i18n/messages/ru-ru.json";
 
-/** 深合并：base 为底，override 的键覆盖 base（递归嵌套对象） */
-function deepMerge<T>(base: T, override: unknown): T {
-  if (
-    base && typeof base === "object" && !Array.isArray(base) &&
-    override && typeof override === "object" && !Array.isArray(override)
-  ) {
-    const out: Record<string, unknown> = { ...(base as Record<string, unknown>) };
-    for (const [k, v] of Object.entries(override as Record<string, unknown>)) {
-      out[k] = k in out ? deepMerge(out[k], v) : v;
-    }
-    return out as T;
-  }
-  return (override as T) ?? base;
+const ZH_CN_MESSAGES = zhCN as unknown as Messages;
+
+/** 已合并字典缓存（切回已加载语言无需重新请求） */
+const dictCache = new Map<Locale, Messages>([["zh-cn", ZH_CN_MESSAGES]]);
+
+/** 按回退链加载并合并某语言字典（扁平 key 展开 + 空串剔除，最终兜底 zh-cn） */
+async function loadMergedDict(loc: Locale): Promise<Messages> {
+  const cached = dictCache.get(loc);
+  if (cached) return cached;
+  const chain = localeFallbackChain(loc);
+  const dicts = await Promise.all(
+    chain.map(async (l) => {
+      const raw = (await dictionaryLoaders[l]()) as unknown as Dict;
+      return stripEmptyLeaves(expandFlatKeys(raw));
+    })
+  );
+  const merged = mergeLocaleChain(dicts) as unknown as Messages;
+  dictCache.set(loc, merged);
+  return merged;
 }
-
-/** 变体语言缺失词条深合并父语言（zh-cn）；非变体直接返回 */
-function buildDict(loc: Locale, own: unknown): Messages {
-  const fallback = localeFallbackMap[loc];
-  if (!fallback) return own as Messages;
-  // 变体：先加载父语言（zh-cn）再合并变体自身差异 key
-  const parent = loc.startsWith("zh-") ? zhCN : enGB;
-  return deepMerge(parent, own) as Messages;
-}
-
-const DICTS: Record<Locale, Messages> = {
-  "zh-cn": zhCN as unknown as Messages,
-  "zh-cn-sg": buildDict("zh-cn-sg", zhCNSG),
-  "zh-tw": zhTW as unknown as Messages,
-  "zh-mo": buildDict("zh-mo", zhMO),
-  "zh-yue-cn": buildDict("zh-yue-cn", zhYueCN),
-  "zh-yue-hk": buildDict("zh-yue-hk", zhYueHK),
-  "en-gb": enGB as unknown as Messages,
-  "ja-jp": jaJP as unknown as Messages,
-  "ko-kr": koKR as unknown as Messages,
-  "es-es": esES as unknown as Messages,
-  "fr-fr": frFR as unknown as Messages,
-  "de-de": deDE as unknown as Messages,
-  "ru-ru": ruRU as unknown as Messages,
-};
 
 const STORAGE_KEY = "gdueca-admin-locale";
 
@@ -91,6 +73,20 @@ export function AdminProviders({ children }: { children: ReactNode }) {
   const urlLocale = urlLangToLocale(pathname.split("/")[1] ?? "");
   const switchLocale = useSwitchLocale();
   const [locale, setLocaleState] = useState<Locale>(urlLocale ?? defaultLocale);
+  // 当前生效字典：初始用缓存/zh-cn 兜底，目标语言加载完成后异步替换
+  const [messages, setMessages] = useState<Messages>(
+    () => dictCache.get(urlLocale ?? defaultLocale) ?? ZH_CN_MESSAGES
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    loadMergedDict(locale).then((m) => {
+      if (!cancelled) setMessages(m);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [locale]);
 
   useEffect(() => {
     if (urlLocale) {
@@ -114,7 +110,7 @@ export function AdminProviders({ children }: { children: ReactNode }) {
 
   return (
     <AdminLocaleContext.Provider value={{ locale, setLocale }}>
-      <I18nProvider locale={locale} messages={DICTS[locale]}>
+      <I18nProvider locale={locale} messages={messages}>
         <SessionHeartbeat />
         {children}
       </I18nProvider>

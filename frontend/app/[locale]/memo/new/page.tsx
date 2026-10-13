@@ -1,10 +1,9 @@
 "use client";
 /**
- * /[locale]/memo/new - 完整新建页（区别于主页的快速编辑器）
+ * /[locale]/memo/new - 完整新建页（说说唯一的发布入口）
  *
- * 提交后通过 MemoEditor.onSubmit 跳转详情页；
- * memoId 在创建时还未存在，故 MemoEditor 的"粘贴图片"功能不可用，
- * 引导用户先去主页 quick editor 创建再返回继续完善。
+ * 提交后跳转详情页；
+ * memoId 在创建时还未存在，粘贴图片上传需待创建后在详情/编辑页使用。
  */
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/i18n/provider";
@@ -26,7 +25,7 @@ export default function MemoNewPage() {
         {t("memo.pageTitle")}
       </Link>
       <h1 className="text-2xl font-display font-bold mb-4">
-        {t("memo.editor.saveCreate")}
+        {t("memo.newButton")}
       </h1>
       <div className="rounded-md bg-blue-500/10 text-blue-700 dark:text-blue-300 p-3 text-xs flex items-start gap-2">
         <Info className="h-4 w-4 mt-0.5 shrink-0" />

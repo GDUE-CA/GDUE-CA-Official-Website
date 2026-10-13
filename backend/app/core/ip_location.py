@@ -1,7 +1,7 @@
 """IP 归属地解析（双语）。
 
 数据源（登录记录的物理地点，login_sessions.location_zh / location_en）：
-- 中文（zh-cn / zh-tw 界面）：ip2region 离线 xdb 库（app/data/ip2region.xdb）
+- 中文（zh-cn / zh-hk 界面）：ip2region 离线 xdb 库（app/data/ip2region.xdb）
   国内 → 「广东广州」（省 + 市，去后缀）；国际 → 「国家 一级行政区」
 - 英文（en / ja 界面）：GeoLite2（maxminddb-geolite2 内置数据）
   → "United States California" / "United Kingdom London"（Country + Subdivision，

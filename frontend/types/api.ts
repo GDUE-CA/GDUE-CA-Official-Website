@@ -1300,6 +1300,37 @@ export interface ProjectCreate {
 
 export type ProjectUpdate = Partial<ProjectCreate>;
 
+/* ---------- 界面主题（对齐后端 schemas/theme.py） ---------- */
+export type ThemeLayout = "microsoft" | "apple";
+
+export interface Theme {
+  id: number;
+  /** 主题唯一 key（小写字母开头 + 小写字母/数字/连字符），User.theme 引用此值 */
+  key: string;
+  name: string;
+  layout: ThemeLayout;
+  /** 亮色 CSS 变量包（{"--background": "60 9% 97.8%"}） */
+  css_vars: Record<string, string>;
+  /** 暗色 CSS 变量包；null = 沿用基础暗色变量 */
+  dark_vars: Record<string, string> | null;
+  enabled: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ThemeCreate {
+  key: string;
+  name: string;
+  layout?: ThemeLayout;
+  css_vars?: Record<string, string>;
+  dark_vars?: Record<string, string> | null;
+  enabled?: boolean;
+  sort_order?: number;
+}
+
+export type ThemeUpdate = Partial<Omit<ThemeCreate, "key">>;
+
 /** 前台活动展示形状（由 Activity 映射而来，见 lib/api/activities.ts 的 mapActivityToClubEvent） */
 export interface ClubEvent {
   /** 活动数字 id（详情页 / 报名接口用） */

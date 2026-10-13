@@ -28,7 +28,7 @@
     "guest": "ゲスト",
     "login": "ログイン",
     "register": "新規登録",
-    "memo": "メモ",
+    "memo": "モーメンツ",
     "appearance": "外観設定",
     "changeLanguage": "言語を変更",
     "languageSearch": "言語を検索…",
@@ -41,7 +41,7 @@
     "loginCard": {
       "title": "ログインするとさらに便利に",
       "benefitEvents": "イベント申込みと現場チェックイン",
-      "benefitMemo": "メモの記録とデバイス間同期",
+      "benefitMemo": "モーメンツの記録とデバイス間同期",
       "benefitCommunity": "ブログコメントとコミュニティ交流",
       "benefitNotify": "サイト内通知のリアルタイム受信",
       "loginNow": "ログインする",
@@ -271,7 +271,7 @@
       "hint": "既定では 30 分間無操作で自動タイムアウトします。ページが表示中のときはハートビートでセッションが自動延長されます。最新 20 件まで表示します。"
     },
     "tabs": {
-      "memo": "メモ"
+      "memo": "モーメンツ"
     }
   },
   "notifications": {
@@ -953,7 +953,7 @@
       "securityIpBlacklist": "IP ブラックリスト",
       "securityBans": "封禁パネル",
       "auditLogs": "操作ログ",
-      "memos": "メモ管理"
+      "memos": "モーメンツ管理"
     },
     "navGroup": {
       "overview": "概要",
@@ -977,7 +977,7 @@
       "users.review": "審査センター",
       "content": "コンテンツ管理",
       "content.blog": "ブログ管理",
-      "content.memo": "Memo 管理",
+      "content.memo": "モーメンツ管理",
       "content.blocks": "コンテンツブロック",
       "content.media": "メディアライブラリ",
       "content.recycle": "コンテンツゴミ箱",
@@ -1332,7 +1332,7 @@
         "realname": "実名状況",
         "stats": "統計",
         "audit_logs": "操作ログ",
-        "memo": "Memo 管理"
+        "memo": "モーメンツ管理"
       }
     },
     "security": {
@@ -1831,7 +1831,7 @@
     },
     "modules": {
       "memo": {
-        "title": "メモ",
+        "title": "モーメンツ",
         "desc": "Markdown断片ノート：タイムライン / カレンダー / タグ遅延生成 / バージョン / 共有リンク / 管理者停止",
         "btn": "管理へ"
       }
@@ -1963,11 +1963,11 @@
     }
   },
   "memo": {
-    "pageTitle": "メモ",
+    "pageTitle": "モーメンツ",
     "subtitle": "断片的な思考を素早く記録。正式なブログとは分離",
     "timeline": {
       "title": "タイムライン",
-      "empty": "まだメモはありません ✏️",
+      "empty": "まだモーメンツはありません ✏️",
       "hasImageOnly": "画像付きのみ",
       "visibilityAll": "すべて",
       "visibilityPublic": "公開のみ",
@@ -1980,7 +1980,7 @@
       "today": "今日",
       "prevMonth": "前の月",
       "nextMonth": "次の月",
-      "noMemosOnDay": "この日のメモはまだありません"
+      "noMemosOnDay": "この日のモーメンツはまだありません"
     },
     "editor": {
       "placeholder": "思いついたことを...\n\nMarkdown対応、#タグ自動抽出、画像貼付で自動アップロード",
@@ -2031,7 +2031,7 @@
       "unarchive": "アーカイブ解除",
       "edit": "編集",
       "delete": "削除",
-      "deleteConfirm": "このメモを削除しますか？復元できません（バージョン履歴は残ります）。",
+      "deleteConfirm": "このモーメンツを削除しますか？復元できません（バージョン履歴は残ります）。",
       "rollback": "ロールバック"
     },
     "versions": {
@@ -2046,9 +2046,9 @@
       "empty": "バージョン履歴はまだありません"
     },
     "share": {
-      "title": "メモを共有",
-      "publicOnly": "公開メモのみ共有リンクを生成できます",
-      "copyHint": "匿名訪問者もこのリンクでメモを閲覧できます",
+      "title": "モーメンツを共有",
+      "publicOnly": "公開モーメンツのみ共有リンクを生成できます",
+      "copyHint": "匿名訪問者もこのリンクでモーメンツを閲覧できます",
       "regenerate": "再生成",
       "revoke": "無効化"
     },
@@ -2059,10 +2059,20 @@
       "createFailed": "作成に失敗しました"
     },
     "tabs": {
-      "mine": "自分のメモ",
+      "mine": "自分のモーメンツ",
       "liked": "いいね",
       "favorites": "お気に入り",
       "archived": "アーカイブ済み"
+    },
+    "searchPlaceholder": "モーメンツを検索...",
+    "newButton": "モーメンツを投稿",
+    "dateFilter": {
+      "title": "日付を選択",
+      "clear": "日付フィルターを解除",
+      "confirm": "決定",
+      "year": "年",
+      "month": "月",
+      "day": "日"
     }
   },
   "error": {
@@ -2084,29 +2094,29 @@
     "login_blocked": "ユーザー名またはパスワードが正しくありません",
     "system_not_initialized": "システム初期化が未完了です。緊急アカウントでログインし、初期化ウィザードを完了してください。",
     "memo": {
-      "createFailed": "メモの作成に失敗しました",
-      "updateFailed": "メモの編集に失敗しました",
-      "deleteFailed": "メモの削除に失敗しました",
+      "createFailed": "モーメンツの作成に失敗しました",
+      "updateFailed": "モーメンツの編集に失敗しました",
+      "deleteFailed": "モーメンツの削除に失敗しました",
       "rateLimited": "投稿が頻繁すぎます",
-      "notFound": "メモが見つかりません",
-      "forbidden": "このメモを操作する権限がありません",
-      "privateForbidden": "非公開メモにはいいね/お気に入りできません",
-      "shareOnlyPublic": "公開メモのみ共有リンクを生成できます",
+      "notFound": "モーメンツが見つかりません",
+      "forbidden": "このモーメンツを操作する権限がありません",
+      "privateForbidden": "非公開モーメンツにはいいね/お気に入りできません",
+      "shareOnlyPublic": "公開モーメンツのみ共有リンクを生成できます",
       "versionNotFound": "バージョンが見つかりません",
       "tagNotFound": "タグが見つかりません",
       "invalidDate": "日付形式はYYYY-MM-DDにしてください",
       "rssMaintenance": "RSSは未実装です",
       "webdavMaintenance": "WebDAVは未実装です",
-      "importMaintenance": "Memosバックアップ取り込みは未実装です"
+      "importMaintenance": "モーメンツバックアップ取り込みは未実装です"
     }
   },
   "memoPage": {
-    "title": "メモ",
+    "title": "モーメンツ",
     "intro": "断片的な思考の居場所。Markdownで気軽に記録、#タグ自動整理、タイムライン + カレンダーの二画面。",
     "compose": "何か書く..."
   },
   "profileMemoTab": {
-    "empty": "まだメモがありません",
+    "empty": "まだモーメンツがありません",
     "viewAll": "すべて見る"
   }
 }

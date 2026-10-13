@@ -2,7 +2,7 @@
 
 /**
  * /login - 统一登录入口（管理员 / 普通成员 / Break-Glass 共用）
- * 多语言路由：/zh-cn/login、/en-gb/login 等（经 next.config 重写到本页）
+ * 多语言路由：/zh-cn/login、/en-us/login 等（经 next.config 重写到本页）
  * - 裸路径 /login 由 proxy 按浏览器偏好补 locale 前缀
  * - URL 语言段是语言来源：访问某语言前缀即加载该语言文本，并写入 localStorage 记忆
  * - 右上角语言切换：更新 localStorage 并跳转到对应语言前缀的路由
@@ -17,7 +17,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Loader2,
   LogIn,
@@ -27,11 +27,14 @@ import {
   Chrome,
   LayoutGrid,
   UserPlus,
+  LayoutDashboard,
+  Home,
+  Check,
 } from "lucide-react";
 import { useI18n } from "@/i18n/provider";
 import { useAdminLocale } from "@/app/admin/AdminProviders";
 import { useLocalizedPath, useSwitchLocale } from "@/lib/navigation";
-import { locales, localeNames, urlLangToLocale, type Locale } from "@/lib/i18n";
+import { locales, localeDisplayName, urlLangToLocale, type Locale } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -80,7 +83,7 @@ function LoginLocaleSwitcher() {
     >
       {locales.map((l) => (
         <option key={l} value={l}>
-          {localeNames[l]}
+          {localeDisplayName(l)}
         </option>
       ))}
     </select>
@@ -113,12 +116,14 @@ export default function LoginPage() {
   const [oauthProviders, setOauthProviders] = useState<OAuthProvider[]>([]);
   // 首次封禁警告：登录失败返回 401 + 1013，data.first_ban=true 时显示警告
   const [firstBanWarning, setFirstBanWarning] = useState(false);
+  // 管理员登录成功后选择入口：进入管理后台 / 官网首页（规格 §2.2）
+  const [showAdminChoice, setShowAdminChoice] = useState(false);
 
   useEffect(() => {
     setReturnTarget(parseReturnTarget());
   }, []);
 
-  /** 从 URL 路径同步语言：访问 /en-gb/login → 语言切换为 en-gb（并写入 localStorage 记忆） */
+  /** 从 URL 路径同步语言：访问 /en-us/login → 语言切换为 en-us（并写入 localStorage 记忆） */
   useEffect(() => {
     const urlLocale = pathname ? urlLangToLocale(pathname.split("/")[1] ?? "") : null;
     if (urlLocale && urlLocale !== locale) {
@@ -182,12 +187,23 @@ export default function LoginPage() {
         router.replace(lp("/admin/dashboard"));
         return;
       }
-      // 初始 / 被重置的密码 → 强制改密；否则回跳目标优先，缺省按角色落地
-      router.replace(
-        res.must_change_password
-          ? lp("/admin/change-password")
-          : (returnTarget ?? homeFor(res.role, locale))
-      );
+      // 初始 / 被重置的密码 → 强制改密
+      if (res.must_change_password) {
+        router.replace(lp("/admin/change-password"));
+        return;
+      }
+      // 有回跳目标 → 优先回跳（/admin/** 或 /setting/** 守卫携带的 next/returnUrl）
+      if (returnTarget) {
+        router.replace(returnTarget);
+        return;
+      }
+      // 管理员（非 BG）登录成功且无回跳目标 → 让用户选择进入后台或官网首页（规格 §2.2）
+      if (isAdminRole(res.role)) {
+        setShowAdminChoice(true);
+        return;
+      }
+      // 普通成员 → 个人设置
+      router.replace(homeFor(res.role, locale));
     } catch (err) {
       // 登录被防爆破封禁（401 + BizCode.LoginBlocked=1013）：
       // 响应体 envelope.data.first_ban=true 表示首次进入封禁阶段，前端额外展示警告
@@ -213,6 +229,57 @@ export default function LoginPage() {
       <div className="absolute top-4 right-4">
         <LoginLocaleSwitcher />
       </div>
+
+      {/* 管理员登录成功后选择入口（规格 §2.2）：进入管理后台 / 官网首页 */}
+      <AnimatePresence>
+        {showAdminChoice && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="w-full max-w-md bg-background border border-border rounded-xl shadow-2xl p-6"
+            >
+              <div className="text-center mb-6">
+                <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground mx-auto mb-3">
+                  <Check className="h-6 w-6" />
+                </div>
+                <h2 className="text-xl font-bold">
+                  {t("admin.login.choiceTitle")}
+                </h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {t("admin.login.choiceSubtitle")}
+                </p>
+              </div>
+              <div className="space-y-3">
+                <Button
+                  size="lg"
+                  className="w-full h-14 text-base"
+                  onClick={() => router.replace(lp("/admin/dashboard"))}
+                >
+                  <LayoutDashboard className="h-5 w-5 mr-2" />
+                  {t("admin.login.choiceAdmin")}
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="w-full h-14 text-base"
+                  onClick={() => router.replace(`/${locale}`)}
+                >
+                  <Home className="h-5 w-5 mr-2" />
+                  {t("admin.login.choiceHome")}
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}

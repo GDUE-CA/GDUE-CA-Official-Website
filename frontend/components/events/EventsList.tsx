@@ -111,12 +111,12 @@ export function EventsList({ events, archived = false }: EventsListProps) {
               rowGrid
             )}
           >
-            <span role="columnheader">{t("events.dateColumn")}</span>
-            <span role="columnheader">{t("events.typeColumn")}</span>
-            <span role="columnheader">{t("events.title")}</span>
-            <span role="columnheader">{t("events.statusColumn")}</span>
-            <span role="columnheader" className="text-right">{t("events.enrolledColumn")}</span>
-            <span role="columnheader" className="text-right">{t("events.actionColumn")}</span>
+            <span role="columnheader" className="flex items-center">{t("events.dateColumn")}</span>
+            <span role="columnheader" className="flex items-center">{t("events.typeColumn")}</span>
+            <span role="columnheader" className="flex items-center">{t("events.title")}</span>
+            <span role="columnheader" className="flex items-center">{t("events.statusColumn")}</span>
+            <span role="columnheader" className="flex items-center justify-end text-right">{t("events.enrolledColumn")}</span>
+            <span role="columnheader" className="flex items-center justify-end text-right">{t("events.actionColumn")}</span>
           </div>
           {filtered.map((event) => (
             <div
@@ -131,17 +131,17 @@ export function EventsList({ events, archived = false }: EventsListProps) {
                 <time
                   role="cell"
                   dateTime={event.date}
-                  className="font-mono text-xs md:text-sm text-muted-foreground"
+                  className="font-mono text-xs md:text-sm text-muted-foreground md:flex md:items-center"
                 >
                   {event.date}
                 </time>
-                <span role="cell">
+                <span role="cell" className="md:flex md:items-center">
                   <span className="inline-flex h-6 items-center rounded-full border border-border px-2.5 text-xs">
                     {typeLabel(event.type)}
                   </span>
                 </span>
               </div>
-              <div role="cell" className="flex min-w-0 flex-col gap-1">
+              <div role="cell" className="flex min-w-0 flex-col gap-1 md:justify-center">
                 <Link
                   href={`/${locale}/events/${event.id}`}
                   className="text-[17px] font-semibold leading-snug md:truncate hover:text-primary transition-colors"
@@ -155,7 +155,7 @@ export function EventsList({ events, archived = false }: EventsListProps) {
               <div role="cell" className="flex items-center gap-2 md:justify-start">
                 <RuntimeStatusBadge status={event.runtime_status} />
               </div>
-              <span role="cell" className="font-mono text-xs md:text-sm md:text-right tabular-nums text-muted-foreground md:text-foreground">
+              <span role="cell" className="font-mono text-xs md:text-sm md:text-right tabular-nums text-muted-foreground md:text-foreground md:flex md:items-center md:justify-end">
                 {(event.enrolled_count ?? 0).toLocaleString("en-us")}
               </span>
               <div role="cell" className="flex items-center gap-2 md:justify-end">

@@ -5,7 +5,6 @@ import Script from "next/script";
 import {
   locales,
   defaultLocale,
-  localeHtmlLang,
   isLocale,
   urlLangToLocale,
   type Locale,
@@ -113,7 +112,7 @@ export default async function LocaleLayout({
   const locale: Locale = localeStr;
   const messages = await getDictionaryByLocale(locale);
   const nonce = (await headers()).get("x-nonce") ?? undefined;
-  const htmlLang = localeHtmlLang[locale];
+  const htmlLang = locale;
 
   return (
     <>

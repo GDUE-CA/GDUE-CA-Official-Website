@@ -23,22 +23,27 @@ export default async function AboutPage({
 
   /**
    * 按当前语言取值：数据内部用 "zh-cn"/"zh-tw"/"en-us"/"ja" 作 key（历史遗留）；
-   * 新 13 门 locale 映射到最接近的数据 key，缺失回退简体中文。
+   * 全部 locale 映射到最接近的数据 key，缺失回退简体中文。
    */
   const localeToDataKey: Record<string, string> = {
     "zh-cn": "zh-cn",
     "zh-cn-sg": "zh-cn",
-    "zh-tw": "zh-tw",
+    "zh-hk": "zh-tw",
     "zh-mo": "zh-tw",
     "zh-yue-cn": "zh-cn",
-    "zh-yue-hk": "zh-tw",
-    "en-gb": "en-us",
+    "zh-yue-tw": "zh-tw",
+    "en-us": "en-us",
     "ja-jp": "ja",
     "ko-kr": "en-us",
     "es-es": "en-us",
     "fr-fr": "en-us",
     "de-de": "en-us",
     "ru-ru": "en-us",
+    "pt-br": "en-us",
+    "ar-sa": "en-us",
+    "hi-in": "en-us",
+    "tr-tr": "en-us",
+    "it-it": "en-us",
   };
   const pick = (obj: Record<string, string>) => {
     const direct = obj[locale];

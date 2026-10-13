@@ -35,7 +35,9 @@ import { useSwitchLocale } from "@/lib/navigation";
 import { useTheme, type Theme } from "@/lib/hooks/useTheme";
 import {
   locales,
-  localeMeta,
+  localeDisplayName,
+  localeEnglishName,
+  localeGroup,
   localeGroupOrder,
   type Locale,
   type LocaleGroup,
@@ -205,10 +207,9 @@ function LanguageNavDropdown({ open, onOpenChange }: LanguageNavDropdownProps) {
     const q = query.trim().toLowerCase();
     const matched = (loc: Locale) => {
       if (!q) return true;
-      const meta = localeMeta[loc];
       return (
-        meta.nativeName.toLowerCase().includes(q) ||
-        meta.englishName.toLowerCase().includes(q) ||
+        localeDisplayName(loc).toLowerCase().includes(q) ||
+        localeEnglishName(loc).toLowerCase().includes(q) ||
         loc.includes(q)
       );
     };
@@ -216,7 +217,7 @@ function LanguageNavDropdown({ open, onOpenChange }: LanguageNavDropdownProps) {
       .map((group) => ({
         group,
         items: locales.filter(
-          (loc) => localeMeta[loc].group === group && matched(loc)
+          (loc) => localeGroup(loc) === group && matched(loc)
         ),
       }))
       .filter((g) => g.items.length > 0);
@@ -269,7 +270,6 @@ function LanguageNavDropdown({ open, onOpenChange }: LanguageNavDropdownProps) {
               {t(GROUP_LABEL_KEYS[group])}
             </p>
             {items.map((loc) => {
-              const meta = localeMeta[loc];
               const active = loc === locale;
               return (
                 <button
@@ -283,10 +283,10 @@ function LanguageNavDropdown({ open, onOpenChange }: LanguageNavDropdownProps) {
                 >
                   <span className="flex min-w-0 flex-1 flex-col">
                     <span className="truncate leading-tight">
-                      {meta.nativeName}
+                      {localeDisplayName(loc)}
                     </span>
                     <span className="truncate text-[11px] leading-tight text-muted-foreground">
-                      {meta.englishName}
+                      {localeEnglishName(loc)}
                     </span>
                   </span>
                   {active && (

@@ -73,7 +73,7 @@ export function MemoManager() {
   }
 
   async function remove(id: number) {
-    if (!window.confirm("下架此 Memo？下架后时间线 / 详情页不再展示，可恢复。")) return;
+    if (!window.confirm("下架此说说？下架后时间线 / 详情页不再展示，可恢复。")) return;
     setBusy(`rm-${id}`);
     try {
       await adminRemoveMemo(id);

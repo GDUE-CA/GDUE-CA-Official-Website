@@ -1,0 +1,61 @@
+{
+  "common.save": "",
+  "common.cancel": "",
+  "common.confirm": "",
+  "common.delete": "",
+  "common.edit": "",
+  "common.back": "",
+  "common.next": "",
+  "common.previous": "",
+  "common.search": "",
+  "common.loading": "",
+  "common.noData": "",
+  "setting.title": "",
+  "setting.personal": "",
+  "setting.privacy": "",
+  "setting.theme": "",
+  "setting.languageRegion": "",
+  "admin.overview": "",
+  "admin.userManagement": "",
+  "admin.contentManagement": "",
+  "admin.notificationManagement": "",
+  "admin.activityManagement": "",
+  "admin.systemSecurity": "",
+  "admin.systemConfiguration": "",
+  "admin.logsAudit": "",
+  "admin.emailPush": "",
+  "login.username": "",
+  "login.password": "",
+  "login.signIn": "",
+  "login.wrongPassword": "",
+  "login.lockedTip": "",
+  "login.bruteForceWarning": "",
+  "userProfile.gender": "",
+  "userProfile.genderMale": "",
+  "userProfile.genderFemale": "",
+  "userProfile.genderHide": "",
+  "userProfile.birthday": "",
+  "userProfile.location": "",
+  "userProfile.signature": "",
+  "privacy.visibilityPublic": "",
+  "privacy.visibilityPrivateOnly": "",
+  "nav": {
+    "memo": "اللحظات"
+  },
+  "memo": {
+    "pageTitle": "اللحظات",
+    "timeline": {
+      "empty": "لا توجد لحظات بعد. اكتب أول واحدة ✏️"
+    },
+    "searchPlaceholder": "ابحث في اللحظات...",
+    "newButton": "لحظة جديدة",
+    "dateFilter": {
+      "title": "اختر تاريخًا",
+      "clear": "مسح فلتر التاريخ",
+      "confirm": "موافق",
+      "year": "سنة",
+      "month": "شهر",
+      "day": "يوم"
+    }
+  }
+}

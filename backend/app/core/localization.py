@@ -42,7 +42,7 @@ X_LOCALE_HEADER = "X-Locale"
 class LocalizationResult:
     """本地化解析结果：4 项互不联动的设置。"""
 
-    ui_locale: str      # UI 界面翻译语言（如 zh-cn / en-gb）
+    ui_locale: str      # UI 界面翻译语言（如 zh-cn / en-us）
     timezone: str       # IANA 时区（如 Asia/Shanghai）
     region_code: str     # ISO-3166-1 二位，驱动日期/数字格式化
     currency: str        # ISO-4217 货币代码

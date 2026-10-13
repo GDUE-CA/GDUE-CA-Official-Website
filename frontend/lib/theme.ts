@@ -56,3 +56,36 @@ export function onSystemThemeChange(handler: () => void): () => void {
   mql.addEventListener("change", listener);
   return () => mql.removeEventListener("change", listener);
 }
+
+// ============ 风格主题（与颜色模式正交） ============
+// 主题列表由后端 Theme 表驱动（管理员可上传/启停，无需改前端代码）；
+// 颜色模式（light/dark）保留为独立维度；风格主题控制 CSS 变量包与设置页布局骨架
+
+export const THEME_STYLE_KEY = "gdueca-theme-style";
+
+/** 主题 key 合法形态（与后端 User.theme / Theme.key 校验一致） */
+export const THEME_KEY_RE = /^[a-z][a-z0-9-]{0,31}$/;
+
+/** 读取存储的风格主题 key；未设置或非法值返回 "default" */
+export function getStoredThemeStyle(): string {
+  if (typeof window === "undefined") return "default";
+  try {
+    const stored = window.localStorage.getItem(THEME_STYLE_KEY);
+    if (stored && THEME_KEY_RE.test(stored)) return stored;
+    return "default";
+  } catch {
+    return "default";
+  }
+}
+
+/** 应用风格主题：写入存储键 + 在 <html> 上设置 data-theme-style 属性 */
+export function applyThemeStyle(style: string) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(THEME_STYLE_KEY, style);
+  } catch {
+    /* 存储不可用时忽略 */
+  }
+  document.documentElement.setAttribute("data-theme-style", style);
+}
+

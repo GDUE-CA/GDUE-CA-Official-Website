@@ -28,7 +28,7 @@
     "guest": "游客",
     "login": "登录",
     "register": "注册",
-    "memo": "随手笔记",
+    "memo": "说说",
     "appearance": "外观设置",
     "changeLanguage": "更改语言",
     "languageSearch": "搜索语言…",
@@ -41,7 +41,7 @@
     "loginCard": {
       "title": "登录后可享更多权益",
       "benefitEvents": "活动报名与现场签到",
-      "benefitMemo": "随手笔记记录与同步",
+      "benefitMemo": "说说记录与同步",
       "benefitCommunity": "博客评论与社区互动",
       "benefitNotify": "站内通知实时提醒",
       "loginNow": "立即登录",
@@ -207,6 +207,13 @@
     "cmsFormerMembersTitle": "往届成员"
   },
   "profile": {
+    "notFound": "用户不存在或已注销",
+    "joinedAt": "加入于 {date}",
+    "tabs": {
+      "memo": "说说"
+    },
+    "emptyMemos": "暂无公开说说",
+    "emptyBlog": "暂无公开博客",
     "personalInfo": "个人信息",
     "personalInfoHint": "统一编辑所有个人资料，点击确定一次性保存",
     "continentAsia": "亚洲",
@@ -269,9 +276,6 @@
       "rememberDevice": "记住此设备",
       "userAgent": "浏览器标识 (UA)",
       "hint": "默认 30 分钟无操作自动超时；页面保持可见时心跳自动延长会话。最多显示最近 20 条记录。"
-    },
-    "tabs": {
-      "memo": "Memo"
     }
   },
   "notifications": {
@@ -628,7 +632,29 @@
     "profile": {
       "title": "基础资料",
       "phoneDialCode": "区号",
-      "phonePlaceholder": "请输入手机号码"
+      "phonePlaceholder": "请输入手机号码",
+      "gender": "性别",
+      "genderPlaceholder": "请选择性别",
+      "genderMale": "男",
+      "genderFemale": "女",
+      "genderHidden": "不显示",
+      "birthday": "生日",
+      "birthdayPlaceholder": "请选择日期",
+      "bio": "个性签名",
+      "bioPlaceholder": "一句话介绍自己"
+    },
+    "privacy": {
+      "title": "隐私设置",
+      "hint": "控制各项资料对外可见性；地区字段 100% 永久公开，不可关闭",
+      "regionPermanent": "地区（永久公开）",
+      "regionPermanentHint": "硬性约束：地区字段对所有访客可见，无法关闭",
+      "bio": "个性签名",
+      "gender": "性别",
+      "birthday": "生日",
+      "public": "公开",
+      "private": "仅自己",
+      "saved": "隐私设置已保存",
+      "saveFailed": "隐私设置保存失败"
     },
     "region": {
       "title": "地区与时区",
@@ -690,6 +716,11 @@
     "appearance": {
       "title": "外观与语言",
       "themeSystem": "跟随系统",
+      "styleTitle": "风格主题",
+      "styleHint": "选择整体视觉风格，跟随账号多端同步",
+      "styleDefault": "默认主题",
+      "styleApple": "Apple 主题",
+      "styleFestival": "节日主题",
       "switchLangConfirm": "切换到「{name}」后页面将刷新，是否继续？",
       "refreshNow": "立即刷新"
     },
@@ -708,6 +739,7 @@
     },
     "tabs": {
       "profile": "基础资料",
+      "privacy": "隐私设置",
       "localization": "本地化",
       "region": "地区与时区",
       "regionalFormat": "区域格式",
@@ -716,6 +748,13 @@
       "sessions": "登录设备",
       "connections": "第三方账号",
       "notifications": "通知偏好"
+    },
+    "group": {
+      "profile": "个人资料",
+      "localization": "本地化",
+      "appearance": "外观",
+      "security": "账号安全",
+      "notifications": "通知"
     },
     "hints": {
       "appearanceInstant": "主题与语言切换即时生效，无需保存"
@@ -745,7 +784,11 @@
       "rememberDevice": "记住此设备（30 天内减少验证）",
       "oauthDivider": "或使用以下方式登录",
       "oauthError": "第三方登录失败，请重试或使用密码登录",
-      "firstBanWarning": "⚠️ 检测到多次登录密码错误。持续暴力破解尝试，该账号在此设备/网络将会被永久封禁。"
+      "firstBanWarning": "⚠️ 检测到多次登录密码错误。持续暴力破解尝试，该账号在此设备/网络将会被永久封禁。",
+      "choiceTitle": "登录成功",
+      "choiceSubtitle": "您拥有管理员权限，请选择进入入口",
+      "choiceAdmin": "进入管理后台",
+      "choiceHome": "进入官网首页"
     },
     "breakGlass": {
       "bannerWarning": "⚠️ 当前为 Break-Glass 应急账号，拥有最高权限，请谨慎操作",
@@ -932,6 +975,7 @@
       "mediaLibrary": "媒体素材库",
       "title": "管理后台",
       "welcome": "欢迎回来",
+      "toggleSidebar": "折叠/展开侧边栏",
       "logout": "退出登录",
       "pendingTodos": "待办事项",
       "overview": "概览",
@@ -982,7 +1026,7 @@
       "securityIpBlacklist": "IP 黑名单",
       "securityBans": "封禁面板",
       "auditLogs": "操作日志",
-      "memos": "Memo 管理"
+      "memos": "说说管理"
     },
     "navGroup": {
       "overview": "概览",
@@ -1006,7 +1050,7 @@
       "users.review": "审核中心",
       "content": "内容管理",
       "content.blog": "博客管理",
-      "content.memo": "随手笔记管理",
+      "content.memo": "说说管理",
       "content.blocks": "内容块",
       "content.media": "媒体库",
       "content.recycle": "内容回收站",
@@ -1023,6 +1067,7 @@
       "security.access": "访问控制",
       "config": "系统配置",
       "config.site": "基础站点",
+      "config.themes": "主题管理",
       "config.locale": "全局本地化",
       "config.oauth": "OAuth 渠道",
       "config.sso": "SSO 受信应用",
@@ -1258,6 +1303,42 @@
       "updatedAt": "更新于",
       "invalidId": "无效的项目 ID"
     },
+    "themes": {
+      "title": "界面主题管理",
+      "desc": "主题变量包 CRUD：布局骨架、亮/暗色 CSS 变量、启停与排序；导入 JSON 即可新增节日主题",
+      "newTitle": "新建主题",
+      "editTitle": "编辑主题",
+      "newBtn": "新建主题",
+      "importBtn": "导入 JSON",
+      "editBtn": "编辑",
+      "deleteBtn": "删除",
+      "colKey": "Key",
+      "colName": "主题",
+      "colLayout": "布局骨架",
+      "colEnabled": "状态",
+      "colSort": "排序",
+      "colActions": "操作",
+      "empty": "暂无主题",
+      "builtin": "内置",
+      "fieldKey": "主题 Key",
+      "fieldName": "显示名称",
+      "fieldLayout": "布局骨架",
+      "fieldCssVars": "亮色 CSS 变量（JSON）",
+      "fieldDarkVars": "暗色 CSS 变量（JSON，留空沿用基础暗色）",
+      "fieldEnabled": "启用该主题",
+      "fieldSort": "排序（越小越靠前）",
+      "layoutMicrosoft": "微软（两栏）",
+      "layoutApple": "Apple（三栏）",
+      "keyPlaceholder": "小写字母开头，可含数字与连字符",
+      "cssVarsHint": "键须为 -- 开头的 CSS 变量名；例如 {\"--radius\": \"1rem\"}",
+      "deleteConfirm": "确认删除主题「{name}」？已选该主题的用户将回退到默认主题。",
+      "deleted": "主题已删除",
+      "saved": "主题已保存",
+      "errKeyInvalid": "Key 格式不正确：小写字母开头，仅含小写字母/数字/连字符，最长 32 位",
+      "errNameRequired": "请输入显示名称",
+      "errJsonInvalid": "CSS 变量 JSON 格式不正确（须为对象）",
+      "errImportInvalid": "导入文件不是合法的主题 JSON"
+    },
     "settings": {
       "title": "系统设置",
       "ipBlacklistMovedTitle": "IP 黑名单",
@@ -1407,7 +1488,7 @@
         "realname": "实名状态",
         "stats": "数据统计",
         "audit_logs": "操作日志",
-        "memo": "Memo 管理"
+        "memo": "说说管理"
       }
     },
     "security": {
@@ -1518,6 +1599,14 @@
       "colAuthor": "作者",
       "colPublished": "发布时间",
       "colUpdatedAt": "更新时间",
+      "colId": "ID",
+      "colLike": "点赞",
+      "colComment": "评论",
+      "colShare": "转发",
+      "colFavourite": "收藏",
+      "colAllowComments": "允许评论",
+      "allowCommentsYes": "是",
+      "allowCommentsNo": "否",
       "colSlug": "Slug（URL）",
       "colExcerpt": "摘要",
       "colCover": "封面图",
@@ -1860,7 +1949,7 @@
     },
     "modules": {
       "memo": {
-        "title": "Memo 碎片笔记",
+        "title": "说说",
         "desc": "Markdown 碎片笔记：时间线 / 日历 / 标签懒创建 / 版本快照 / 公开分享 / 后台下架",
         "btn": "进入管理"
       }
@@ -1992,11 +2081,11 @@
     }
   },
   "memo": {
-    "pageTitle": "随手笔记",
+    "pageTitle": "说说",
     "subtitle": "灵感、片段、随想；与正式长博客分开记录",
     "timeline": {
       "title": "时间线",
-      "empty": "还没有任何 Memo，写下第一条吧 ✏️",
+      "empty": "还没有任何说说，写下第一条吧 ✏️",
       "hasImageOnly": "只看带图",
       "visibilityAll": "全部可见",
       "visibilityPublic": "仅公开",
@@ -2009,7 +2098,7 @@
       "today": "今天",
       "prevMonth": "上个月",
       "nextMonth": "下个月",
-      "noMemosOnDay": "这一天还没有 Memo"
+      "noMemosOnDay": "这一天还没有说说"
     },
     "editor": {
       "placeholder": "随手写下你的想法...\n\n支持 Markdown、#标签、粘贴图片自动上传",
@@ -2060,7 +2149,7 @@
       "unarchive": "取消归档",
       "edit": "编辑",
       "delete": "删除",
-      "deleteConfirm": "确认删除此 Memo？删除后不可恢复（但版本历史仍保留）。",
+      "deleteConfirm": "确认删除此说说？删除后不可恢复（但版本历史仍保留）。",
       "rollback": "回滚"
     },
     "versions": {
@@ -2075,9 +2164,9 @@
       "empty": "还没有历史版本"
     },
     "share": {
-      "title": "分享 Memo",
-      "publicOnly": "仅公开 Memo 可生成分享链接",
-      "copyHint": "匿名用户可通过此链接直接访问此 Memo",
+      "title": "分享说说",
+      "publicOnly": "仅公开说说可生成分享链接",
+      "copyHint": "匿名用户可通过此链接直接访问此说说",
       "regenerate": "重新生成",
       "revoke": "撤销"
     },
@@ -2088,10 +2177,20 @@
       "createFailed": "创建失败，请重试"
     },
     "tabs": {
-      "mine": "我的 Memo",
+      "mine": "我的说说",
       "liked": "点赞的",
       "favorites": "收藏的",
       "archived": "已归档"
+    },
+    "searchPlaceholder": "搜索说说...",
+    "newButton": "新建说说",
+    "dateFilter": {
+      "title": "选择日期",
+      "clear": "清除日期筛选",
+      "confirm": "确定",
+      "year": "年",
+      "month": "月",
+      "day": "日"
     }
   },
   "error": {
@@ -2113,29 +2212,29 @@
     "login_blocked": "用户名或密码错误",
     "system_not_initialized": "系统尚未完成初始化，请使用应急账号登录后台完成初始化向导",
     "memo": {
-      "createFailed": "Memo 创建失败",
-      "updateFailed": "Memo 编辑失败",
-      "deleteFailed": "Memo 删除失败",
+      "createFailed": "说说创建失败",
+      "updateFailed": "说说编辑失败",
+      "deleteFailed": "说说删除失败",
       "rateLimited": "发布过于频繁，请稍后再试",
-      "notFound": "Memo 不存在",
-      "forbidden": "无权操作此 Memo",
-      "privateForbidden": "此 Memo 为私密，不可点赞/收藏",
-      "shareOnlyPublic": "仅公开 Memo 可生成分享链接",
+      "notFound": "说说不存在",
+      "forbidden": "无权操作此说说",
+      "privateForbidden": "此说说为私密，不可点赞/收藏",
+      "shareOnlyPublic": "仅公开说说可生成分享链接",
       "versionNotFound": "版本不存在",
       "tagNotFound": "标签不存在",
       "invalidDate": "日期格式必须为 YYYY-MM-DD",
       "rssMaintenance": "RSS 暂未实装，后续迭代上线",
       "webdavMaintenance": "WebDAV 暂未实装，后续迭代上线",
-      "importMaintenance": "Memos 备份导入暂未实装，后续迭代上线"
+      "importMaintenance": "说说备份导入暂未实装，后续迭代上线"
     }
   },
   "memoPage": {
-    "title": "随手笔记",
+    "title": "说说",
     "intro": "碎片化思考的归宿。Markdown 随手记，#标签自动归档，时间线 + 日历双视图。",
     "compose": "写点东西..."
   },
   "profileMemoTab": {
-    "empty": "还没有发布过 Memo",
+    "empty": "还没有发布过说说",
     "viewAll": "查看全部"
   }
 }

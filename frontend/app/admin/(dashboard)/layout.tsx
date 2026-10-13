@@ -1,16 +1,22 @@
 "use client";
 
 /**
- * /admin/(dashboard) 布局：三栏式后台（对标 macOS 设置）
- * - 客户端组件，挂载时向后端校验登录态（/api/auth/me），禁止匿名访问：
- *   未登录 / 会话失效 → /login；须改初始密码 → /admin/change-password；
- *   普通成员（无后台权限）→ 403 Forbidden 页（账号设置独立于后台，入口在 /setting）
- * - Break-Glass 应急账号 + 系统未初始化 → 强制进入初始化向导 /admin/setup
- * - 侧边栏按一级菜单（固定 9 项顺序）+ 二级菜单渲染；权限过滤仅界面层，
- *   接口权限由后端强制校验
- * - 响应式：桌面 ≥1280px 三栏（一级｜二级｜内容）；平板 768~1279px 双栏
- *   （一级可展开二级，右侧内容）；手机 <768px iOS 堆栈（抽屉 + 内联展开）
- * - 左上角：当前账号头像+用户名，点击弹用户卡片（个人设置 / 登出）
+ * /admin/(dashboard) 布局：iKuai 爱快路由器风格单侧边栏可折叠后台
+ *
+ * 布局从上往下层级（规格 §6 硬性约束）：
+ * 1) 【全局置顶红色 Break-Glass 警告横幅】横跨全宽，永远第一行，不可关闭
+ * 2) 【顶部 Header 通栏】左：汉堡折叠按钮；中：留空；右：通知铃铛/语言切换/账号下拉
+ * 3) 【主体】= 左侧单一可折叠 Sider + 右侧整块主内容区
+ *
+ * 侧边栏两种模式（点击汉堡切换，状态存 localStorage `gdueca-admin-sidebar`）：
+ * - 完整展开模式（宽 w-64）：图标+文字；一级有子项时点击垂直展开子菜单（绝不新开第二列）
+ * - 折叠窄栏模式（窄 w-16）：仅图标；悬浮一级图标弹出 popover 展示标题+全部子菜单，点击跳转
+ *
+ * 面包屑导航放置在右侧主内容区顶部。
+ *
+ * 路由守卫：未登录→/login；普通账号→403 Forbidden；BG+未初始化→/admin/setup；
+ * admin/editor 未实名→/admin/realname；must_change_password→/admin/change-password。
+ * 权限过滤仅界面层，接口权限由后端强制校验。
  */
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
@@ -38,21 +44,19 @@ import {
   Globe,
   ShieldBan,
   ScrollText,
-  Eye,
   Trash2,
   FolderOpen,
-  Puzzle,
   Mail,
-  FileImage,
   UserCircle,
   ChevronRight,
   ClipboardList,
+  Palette,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useI18n } from "@/i18n/provider";
 import { useLocalizedPath } from "@/lib/navigation";
 import { useAdminLocale } from "@/app/admin/AdminProviders";
-import { locales, localeNames, type Locale } from "@/lib/i18n";
+import { locales, localeDisplayName, type Locale } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { BanModal } from "@/components/shared/BanModal";
@@ -66,6 +70,9 @@ import {
   type PermissionOverrides,
 } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
+
+/** 折叠状态 localStorage 键 */
+const SIDEBAR_KEY = "gdueca-admin-sidebar";
 
 /** 二级菜单项 */
 type SecondLevel = {
@@ -168,9 +175,9 @@ const firstLevelItems: FirstLevel[] = [
     roleGuard: "admin",
     modules: ["security"],
     children: [
-      { key: "admin.nav.security.breakglass", icon: KeyRound, placeholder: true }, // ⏳常驻状态页未实现（初始化向导 /admin/setup 仅未初始化时进入）
+      { key: "admin.nav.security.breakglass", icon: KeyRound, placeholder: true }, // ⏳常驻状态页未实现
       { key: "admin.nav.security.login", href: "/admin/security/bans", icon: ShieldBan, modules: ["security"] }, // 封禁列表+解封
-      { key: "admin.nav.security.access", href: "/admin/security/access-control", icon: Globe, modules: ["security"] }, // 访问控制 Tab（白/黑/域名监听）
+      { key: "admin.nav.security.access", href: "/admin/security/access-control", icon: Globe, modules: ["security"] }, // 访问控制 Tab
     ],
   },
   // 7. 系统配置（admin 角色）
@@ -181,7 +188,8 @@ const firstLevelItems: FirstLevel[] = [
     modules: ["settings"],
     children: [
       { key: "admin.nav.config.site", href: "/admin/settings", icon: Settings, modules: ["settings"] },
-      { key: "admin.nav.config.locale", icon: Globe, placeholder: true }, // ⏳专用本地化子页未实现（字段现混在 /admin/settings）
+      { key: "admin.nav.config.themes", href: "/admin/themes", icon: Palette, modules: ["themes"] }, // 界面主题 CRUD/上传
+      { key: "admin.nav.config.locale", icon: Globe, placeholder: true }, // ⏳专用本地化子页未实现
       { key: "admin.nav.config.oauth", href: "/admin/oauth", icon: KeyRound, modules: ["oauth"] }, // ↩OAuth 渠道
       { key: "admin.nav.config.sso", href: "/admin/sso", icon: Fingerprint, modules: ["sso"] }, // ↩SSO 受信应用
     ],
@@ -219,8 +227,33 @@ export default function AdminDashboardLayout({
   const [forbidden, setForbidden] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  // Break-Glass 应急账号标记：启用三层警告 UI（顶部红条 + 侧栏红标）
+  /** Break-Glass 应急账号标记：启用顶部红横幅 + 账号下拉红标签 */
   const [isBreakGlass, setIsBreakGlass] = useState(false);
+  /** 侧边栏折叠状态：false=展开宽栏，true=折叠窄栏；mount 时从 localStorage 读取 */
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  /** 读取持久化的折叠状态（客户端才能读 localStorage） */
+  useEffect(() => {
+    try {
+      const v = window.localStorage.getItem(SIDEBAR_KEY);
+      if (v === "collapsed") setSidebarCollapsed(true);
+    } catch {
+      /* localStorage 不可用时忽略，默认展开 */
+    }
+  }, []);
+
+  /** 切换侧边栏折叠/展开，并持久化 */
+  function toggleSidebar() {
+    setSidebarCollapsed((v) => {
+      const next = !v;
+      try {
+        window.localStorage.setItem(SIDEBAR_KEY, next ? "collapsed" : "expanded");
+      } catch {
+        /* 忽略写入失败 */
+      }
+      return next;
+    });
+  }
 
   /** 路由守卫：以后端校验结果为准（本地缓存可被篡改，不能作为授权依据） */
   useEffect(() => {
@@ -243,7 +276,7 @@ export default function AdminDashboardLayout({
           router.replace(lp("/admin/setup"));
           return;
         }
-        // 标记 BG 会话，启用顶部红条 + 侧栏红标（系统已初始化后）
+        // 标记 BG 会话，启用顶部红横幅 + 账号下拉红标签
         if (me.is_break_glass) {
           setIsBreakGlass(true);
         }
@@ -252,11 +285,8 @@ export default function AdminDashboardLayout({
           setForbidden(true);
           return;
         }
-        // 实名守卫（Phase 6）：admin/editor 未实名禁止进后台（super_admin 豁免）
-        if (
-          me.role !== "super_admin" &&
-          !me.realname_verified
-        ) {
+        // 实名守卫：admin/editor 未实名禁止进后台（super_admin 豁免）
+        if (me.role !== "super_admin" && !me.realname_verified) {
           router.replace(lp("/admin/realname"));
           return;
         }
@@ -297,7 +327,7 @@ export default function AdminDashboardLayout({
     return pathname.startsWith(href);
   }
 
-  // 非管理员访问后台：403 Forbidden（后台与账号设置是两套独立系统）
+  // 非管理员访问后台：403 Forbidden
   if (forbidden) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-muted/20 px-4">
@@ -340,99 +370,128 @@ export default function AdminDashboardLayout({
   }
 
   return (
-    <div className="min-h-screen flex bg-muted/20">
+    <div className="min-h-screen flex flex-col bg-muted/20">
       <BanModal />
-      {/* 桌面/平板侧边栏（sticky，三栏在 xl，双栏在 md~lg） */}
-      <aside className="hidden md:flex md:flex-col md:sticky md:top-0 md:h-screen md:w-64 xl:w-auto md:flex-none md:border-r md:border-border bg-background">
-        <SidebarContent
-          t={t}
-          locale={locale}
-          session={session}
-          avatarUrl={avatarUrl}
-          permCtx={permCtx}
-          pathname={pathname}
-          isActive={isActive}
-          onLogout={handleLogout}
-          isBreakGlass={isBreakGlass}
-        />
-      </aside>
+      {/* Layer 1: BG 顶部红条警告横幅（横跨全宽，永远第一行，不可关闭） */}
+      {isBreakGlass && (
+        <div className="bg-destructive text-destructive-foreground text-center text-sm font-medium px-4 py-2">
+          {t("admin.breakGlass.bannerWarning")}
+        </div>
+      )}
+      {/* Layer 2: 顶部 Header 通栏（底色跟随侧边栏，仅底部极淡分隔线） */}
+      <header className="h-14 border-b border-border bg-sidebar/95 backdrop-blur-md flex items-center justify-between px-3 sm:px-4 sticky top-0 z-30">
+        <div className="flex items-center gap-2">
+          {/* 桌面端汉堡按钮：切换侧边栏折叠/展开 */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleSidebar}
+            aria-label={t("admin.dashboard.toggleSidebar")}
+            className="hidden md:inline-flex"
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+          {/* 移动端汉堡按钮：打开抽屉 */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setMobileNavOpen(true)}
+            aria-label="Open menu"
+            className="md:hidden"
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+          <span className="font-display font-bold text-sm">
+            {t("admin.dashboard.title")}
+          </span>
+        </div>
+        <div className="flex items-center gap-1 sm:gap-2">
+          <PendingBadge />
+          <ThemeToggle />
+          <LocaleSelect />
+          <UserMenu
+            t={t}
+            session={session}
+            avatarUrl={avatarUrl}
+            isBreakGlass={isBreakGlass}
+            onLogout={handleLogout}
+          />
+        </div>
+      </header>
 
-      {/* 移动端抽屉 */}
-      <AnimatePresence>
-        {mobileNavOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="md:hidden fixed inset-0 z-40 bg-black/50"
-              onClick={() => setMobileNavOpen(false)}
-            />
-            <motion.aside
-              initial={{ x: "-100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "-100%" }}
-              transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="md:hidden fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] bg-background border-r border-border flex flex-col"
-            >
-              <SidebarContent
-                t={t}
-                locale={locale}
-                session={session}
-                avatarUrl={avatarUrl}
-                permCtx={permCtx}
-                pathname={pathname}
-                isActive={isActive}
-                onLogout={handleLogout}
-                onNavigate={() => setMobileNavOpen(false)}
-                isBreakGlass={isBreakGlass}
+      {/* Layer 3: 主体 = 左侧单一可折叠 Sider + 右侧主内容区 */}
+      <div className="flex-1 flex min-h-0">
+        {/* 桌面侧边栏：单一可折叠 */}
+        <aside
+          className={cn(
+            "hidden md:flex md:flex-col md:sticky md:top-14 md:h-[calc(100vh-3.5rem)] md:flex-none md:border-r md:border-border bg-sidebar transition-[width] duration-[180ms] ease-in-out",
+            sidebarCollapsed ? "md:w-16" : "md:w-64"
+          )}
+        >
+          <SidebarContent
+            t={t}
+            locale={locale}
+            permCtx={permCtx}
+            pathname={pathname}
+            isActive={isActive}
+            collapsed={sidebarCollapsed}
+          />
+        </aside>
+
+        {/* 移动端抽屉（默认展开模式，点击外部或导航后关闭） */}
+        <AnimatePresence>
+          {mobileNavOpen && (
+            <>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="md:hidden fixed inset-0 z-40 bg-black/50"
+                onClick={() => setMobileNavOpen(false)}
               />
-            </motion.aside>
-          </>
-        )}
-      </AnimatePresence>
+              <motion.aside
+                initial={{ x: "-100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "-100%" }}
+                transition={{ type: "spring", damping: 30, stiffness: 300 }}
+                className="md:hidden fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] bg-sidebar border-r border-border flex flex-col"
+              >
+                <div className="h-14 flex items-center justify-between px-3 border-b border-border">
+                  <span className="font-display font-bold text-sm">
+                    {t("admin.dashboard.title")}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setMobileNavOpen(false)}
+                    aria-label="Close menu"
+                  >
+                    <X className="h-5 w-5" />
+                  </Button>
+                </div>
+                <SidebarContent
+                  t={t}
+                  locale={locale}
+                  permCtx={permCtx}
+                  pathname={pathname}
+                  isActive={isActive}
+                  collapsed={false}
+                  onNavigate={() => setMobileNavOpen(false)}
+                />
+              </motion.aside>
+            </>
+          )}
+        </AnimatePresence>
 
-      {/* 主区域（min-w-0 防止内容过宽把顶栏撑出视口） */}
-      <div className="flex-1 flex flex-col min-h-screen min-w-0">
-        {/* Layer 1: Break-Glass 顶部红条警告（仅系统已初始化后的 BG 会话显示） */}
-        {isBreakGlass && (
-          <div className="bg-destructive text-destructive-foreground text-center text-sm font-medium px-4 py-2">
-            {t("admin.breakGlass.bannerWarning")}
-          </div>
-        )}
-        {/* Layer 3: Break-Glass 高危操作确认弹窗 —— 由各业务页面对具体高危动作
-            （如删除管理员、清空数据等）按需各自实现，本布局不全局拦截 */}
-        {/* 顶栏 */}
-        <header className="h-14 border-b border-border bg-background/80 backdrop-blur-md flex items-center justify-between px-4 sticky top-0 z-30">
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="md:hidden"
-              onClick={() => setMobileNavOpen(true)}
-              aria-label="Open menu"
-            >
-              <Menu className="h-5 w-5" />
-            </Button>
-            <span className="font-display font-bold text-sm">
-              {t("admin.dashboard.title")}
-            </span>
-          </div>
-          <div className="flex items-center gap-1 sm:gap-2">
-            <PendingBadge />
-            <ThemeToggle />
-            <LocaleSelect />
-            <Button asChild variant="ghost" size="sm">
-              <Link href={`/${locale}`} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="h-4 w-4 mr-1" />
-                <span className="hidden sm:inline">{t("admin.login.backToSite")}</span>
-              </Link>
-            </Button>
-          </div>
-        </header>
-
-        {/* 内容区 */}
-        <main className="flex-1 p-4 md:p-8">{children}</main>
+        {/* 右侧主内容区（顶部面包屑 + 主内容） */}
+        <div className="flex-1 flex flex-col min-w-0">
+          <AdminBreadcrumb
+            locale={locale}
+            pathname={pathname}
+            permCtx={permCtx}
+          />
+          <main className="flex-1 p-6">{children}</main>
+        </div>
       </div>
     </div>
   );
@@ -474,7 +533,7 @@ function LocaleSelect() {
     >
       {locales.map((l) => (
         <option key={l} value={l}>
-          {localeNames[l]}
+          {localeDisplayName(l)}
         </option>
       ))}
     </select>
@@ -482,210 +541,26 @@ function LocaleSelect() {
 }
 
 /**
- * 侧边栏内容（桌面/平板/移动复用）。
- * - xl：col1（一级）+ col2（当前一级的二级）并排，两栏独立滚动
- * - md~lg：仅 col1，当前一级的二级内联展开（accordion 自动展开 active 父项）
- * - 移动：同 md~lg，置于抽屉内
+ * 顶栏账号下拉菜单：头像+用户名，点击弹卡片（个人设置 / 登出）。
+ * BG 会话时显示红色「BG」标签。
  */
-function SidebarContent({
+function UserMenu({
   t,
-  locale,
   session,
   avatarUrl,
-  permCtx,
-  pathname,
-  isActive,
-  onLogout,
-  onNavigate,
   isBreakGlass,
+  onLogout,
 }: {
   t: (k: string) => string;
-  locale: Locale;
   session: AdminSession | null;
   avatarUrl: string | null;
-  permCtx: { role: string; overrides: PermissionOverrides | null } | null;
-  pathname: string;
-  isActive: (h: string) => boolean;
-  onLogout: () => void;
-  onNavigate?: () => void;
   isBreakGlass?: boolean;
+  onLogout: () => void;
 }) {
   const lp = useLocalizedPath();
-  const isAdmin = permCtx ? isAdminRole(permCtx.role) : false;
-
-  /** 过滤后的有效一级项（角色守卫 + 子项权限过滤后非空）。
-   *  href 在此统一本地化为 /{locale}/admin/... */
-  const visibleFirstLevel: (FirstLevel & { visibleChildren: (SecondLevel & { href?: string })[] })[] =
-    firstLevelItems
-      .filter((fl) => !fl.roleGuard || isAdmin)
-      .map((fl) => {
-        if (fl.placeholder || !fl.children) return { ...fl, visibleChildren: [] };
-        const visibleChildren = fl.children
-          .filter((c) => canAccessSecond(c, permCtx))
-          .map((c) => (c.href ? { ...c, href: lp(c.href) } : c));
-        return { ...fl, visibleChildren };
-      })
-      // 整组可见条件：有 children 时至少一个可见子项；有 href 时按 modules 判定；占位组恒可见
-      .filter((fl) => {
-        if (fl.placeholder) return true;
-        if (fl.visibleChildren.length > 0) return true;
-        if (fl.href) {
-          // 无二级直达项：按 modules 判定（modules 为空恒可见）
-          if (!fl.modules || fl.modules.length === 0) return true;
-          return permCtx
-            ? fl.modules.some((m) => hasPermission(permCtx.role, permCtx.overrides, m, "view"))
-            : false;
-        }
-        return false;
-      });
-
-  /** 当前激活的一级项 = 其直达 href 或任一子项 href 命中 pathname 的项 */
-  const activeFirstLevel = visibleFirstLevel.find((fl) => {
-    if (fl.href && isActive(lp(fl.href))) return true;
-    return fl.visibleChildren.some((c) => c.href && isActive(c.href));
-  });
-
-  /** 一级项的落地链接：有 children 时跳首个可见子项；占位/无则 undefined */
-  function firstLevelHref(fl: typeof visibleFirstLevel[number]): string | undefined {
-    if (fl.placeholder) return undefined;
-    if (fl.href) return lp(fl.href);
-    const firstChild = fl.visibleChildren.find((c) => c.href);
-    return firstChild?.href;
-  }
-
-  /** 渲染单个二级项 */
-  function renderSecondItem(item: SecondLevel & { href?: string }) {
-    if (item.placeholder || !item.href) {
-      return (
-        <span
-          key={item.key}
-          title={t("admin.common.comingSoon")}
-          aria-disabled="true"
-          className="inline-flex items-center justify-start gap-2 whitespace-nowrap rounded-md text-sm font-medium w-full px-3 h-8 text-muted-foreground/50 cursor-not-allowed select-none"
-        >
-          <item.icon className="h-4 w-4" />
-          {t(item.key)}
-        </span>
-      );
-    }
-    return (
-      <Link
-        key={item.href}
-        href={item.href}
-        onClick={onNavigate}
-        className={cn(
-          "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 cursor-pointer [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
-          "hover:bg-accent hover:text-accent-foreground",
-          "justify-start w-full px-3 h-8",
-          isActive(item.href)
-            ? "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
-            : "text-muted-foreground"
-        )}
-      >
-        <item.icon className="h-4 w-4" />
-        {t(item.key)}
-      </Link>
-    );
-  }
-
-  /** 渲染一级项（col1 共用；md~lg 时 active 父项内联展开二级） */
-  function renderFirstItem(fl: typeof visibleFirstLevel[number]) {
-    const href = firstLevelHref(fl);
-    const isActiveItem = fl === activeFirstLevel;
-    const isPlaceholder = fl.placeholder || !href;
-    return (
-      <div key={fl.key} className="space-y-0.5">
-        {isPlaceholder ? (
-          <span
-            title={t("admin.common.comingSoon")}
-            aria-disabled="true"
-            className="inline-flex items-center justify-start gap-2 whitespace-nowrap rounded-md text-sm font-medium w-full px-3 h-9 text-muted-foreground/50 cursor-not-allowed select-none"
-          >
-            <fl.icon className="h-4 w-4" />
-            {t(fl.key)}
-          </span>
-        ) : (
-          <Link
-            href={href!}
-            onClick={onNavigate}
-            className={cn(
-              "inline-flex items-center justify-start gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-colors cursor-pointer [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
-              "hover:bg-accent hover:text-accent-foreground w-full px-3 h-9",
-              isActiveItem
-                ? "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
-                : "text-foreground"
-            )}
-          >
-            <fl.icon className="h-4 w-4" />
-            {t(fl.key)}
-          </Link>
-        )}
-        {/* md~lg 内联展开 active 父项的二级（xl 隐藏，由 col2 接管） */}
-        {isActiveItem && fl.visibleChildren.length > 0 && (
-          <div className="md:block xl:hidden pl-3 mt-0.5 space-y-0.5 border-l border-border ml-3">
-            {fl.visibleChildren.map(renderSecondItem)}
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  return (
-    <>
-      {/* 左上角：当前账号头像 + 用户名（点击弹用户卡片） */}
-      <UserCard
-        t={t}
-        lp={lp}
-        session={session}
-        avatarUrl={avatarUrl}
-        isBreakGlass={isBreakGlass}
-        onLogout={onLogout}
-        onNavigate={onNavigate}
-      />
-      {/* 导航：xl 时 col1+col2 并排，md~lg 仅 col1（active 父项内联展开二级） */}
-      <div className="flex-1 flex flex-col xl:flex-row overflow-hidden">
-        {/* col1：一级菜单（固定 9 项顺序） */}
-        <nav className="flex-1 overflow-y-auto px-3 py-3 xl:flex-none xl:w-56 xl:border-r xl:border-border">
-          <div className="space-y-0.5">{visibleFirstLevel.map(renderFirstItem)}</div>
-        </nav>
-        {/* col2：当前一级项的二级菜单（仅 xl，仅 active 有 children 时显示） */}
-        {activeFirstLevel && activeFirstLevel.visibleChildren.length > 0 && (
-          <nav className="hidden xl:block xl:w-60 overflow-y-auto px-3 py-3">
-            <div className="mb-2 px-3 text-xs font-medium text-muted-foreground/80">
-              {t(activeFirstLevel.key)}
-            </div>
-            <div className="space-y-0.5">
-              {activeFirstLevel.visibleChildren.map(renderSecondItem)}
-            </div>
-          </nav>
-        )}
-      </div>
-    </>
-  );
-}
-
-/** 左上角用户卡片：头像+用户名，点击弹卡片（个人设置 / 登出） */
-function UserCard({
-  t,
-  lp,
-  session,
-  avatarUrl,
-  isBreakGlass,
-  onLogout,
-  onNavigate,
-}: {
-  t: (k: string) => string;
-  lp: (p: string) => string;
-  session: AdminSession | null;
-  avatarUrl: string | null;
-  isBreakGlass?: boolean;
-  onLogout: () => void;
-  onNavigate?: () => void;
-}) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  // 点击外部关闭
   useEffect(() => {
     if (!open) return;
     function onClick(e: MouseEvent) {
@@ -696,34 +571,37 @@ function UserCard({
   }, [open]);
 
   return (
-    <div ref={ref} className="relative border-b border-border">
+    <div ref={ref} className="relative">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 w-full px-3 py-2.5 rounded-md text-sm transition-colors hover:bg-muted"
+        className="flex items-center gap-2 h-9 px-2 rounded-md text-sm transition-colors hover:bg-muted"
+        aria-label={t("admin.dashboard.welcome")}
       >
         {avatarUrl ? (
           <img
             src={avatarUrl}
             alt={session?.username ?? "avatar"}
-            className="h-8 w-8 shrink-0 rounded-full object-cover bg-secondary"
+            className="h-7 w-7 shrink-0 rounded-full object-cover bg-secondary"
           />
         ) : (
-          <UserCircle className="h-8 w-8 shrink-0 text-muted-foreground" />
+          <UserCircle className="h-7 w-7 shrink-0 text-muted-foreground" />
         )}
-        <div className="flex-1 min-w-0 text-left">
-          <div className="text-[10px] text-muted-foreground">{t("admin.dashboard.welcome")}</div>
-          <div className="font-medium text-foreground truncate flex items-center gap-1.5">
-            <span className="truncate">{session?.username ?? "admin"}</span>
-            {/* Layer 2: BG 侧栏红标 */}
-            {isBreakGlass && (
-              <span className="shrink-0 inline-flex items-center rounded-md bg-destructive px-1.5 py-0.5 text-[10px] font-semibold text-destructive-foreground">
-                {t("admin.breakGlass.sidebarLabel")}
-              </span>
-            )}
-          </div>
-        </div>
-        <ChevronRight className={cn("h-4 w-4 text-muted-foreground transition-transform", open && "rotate-90")} />
+        <span className="hidden sm:inline font-medium truncate max-w-32">
+          {session?.username ?? "admin"}
+        </span>
+        {/* BG 红标签（Layer 2 警告） */}
+        {isBreakGlass && (
+          <span className="hidden md:inline-flex items-center rounded-md bg-destructive px-1.5 py-0.5 text-[10px] font-semibold text-destructive-foreground">
+            BG
+          </span>
+        )}
+        <ChevronRight
+          className={cn(
+            "h-4 w-4 text-muted-foreground transition-transform",
+            open && "rotate-90"
+          )}
+        />
       </button>
       <AnimatePresence>
         {open && (
@@ -732,14 +610,11 @@ function UserCard({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.15 }}
-            className="absolute left-2 right-2 top-full z-50 mt-1 rounded-md border border-border bg-background shadow-lg overflow-hidden"
+            className="absolute right-0 top-full z-50 mt-1 w-48 rounded-md border border-border bg-background shadow-lg overflow-hidden"
           >
             <Link
               href={lp("/setting/profile")}
-              onClick={() => {
-                setOpen(false);
-                onNavigate?.();
-              }}
+              onClick={() => setOpen(false)}
               className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted"
             >
               <UserCircle className="h-4 w-4" />
@@ -760,5 +635,362 @@ function UserCard({
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+/**
+ * 侧边栏内容（桌面/移动复用）。
+ * - collapsed=false（展开宽栏）：图标+文字；一级有子项时点击垂直展开子菜单（绝不新开第二列）
+ * - collapsed=true（折叠窄栏）：仅图标；悬浮一级图标弹出 popover 展示标题+全部子菜单
+ * 折叠模式下点击有 children 的一级图标，跳转首个可见子项。
+ */
+function SidebarContent({
+  t,
+  locale,
+  permCtx,
+  pathname,
+  isActive,
+  onNavigate,
+  collapsed = false,
+}: {
+  t: (k: string) => string;
+  locale: Locale;
+  permCtx: { role: string; overrides: PermissionOverrides | null } | null;
+  pathname: string;
+  isActive: (h: string) => boolean;
+  onNavigate?: () => void;
+  collapsed?: boolean;
+}) {
+  const lp = useLocalizedPath();
+  const isAdmin = permCtx ? isAdminRole(permCtx.role) : false;
+  /** 当前展开的一级项 key（仅展开模式生效；折叠模式用 popover） */
+  const [expandedFirst, setExpandedFirst] = useState<string | null>(null);
+  /** 折叠模式下当前悬浮的一级项 key（控制 popover 显示） */
+  const [hoveredFirst, setHoveredFirst] = useState<string | null>(null);
+
+  /** 过滤后的有效一级项（角色守卫 + 子项权限过滤后非空）。
+   *  href 在此统一本地化为 /{locale}/admin/... */
+  const visibleFirstLevel: (FirstLevel & {
+    visibleChildren: (SecondLevel & { href?: string })[];
+  })[] = firstLevelItems
+    .filter((fl) => !fl.roleGuard || isAdmin)
+    .map((fl) => {
+      if (fl.placeholder || !fl.children) return { ...fl, visibleChildren: [] };
+      const visibleChildren = fl.children
+        .filter((c) => canAccessSecond(c, permCtx))
+        .map((c) => (c.href ? { ...c, href: lp(c.href) } : c));
+      return { ...fl, visibleChildren };
+    })
+    .filter((fl) => {
+      if (fl.placeholder) return true;
+      if (fl.visibleChildren.length > 0) return true;
+      if (fl.href) {
+        if (!fl.modules || fl.modules.length === 0) return true;
+        return permCtx
+          ? fl.modules.some((m) => hasPermission(permCtx.role, permCtx.overrides, m, "view"))
+          : false;
+      }
+      return false;
+    });
+
+  /** 当前激活的一级项 = 其直达 href 或任一子项 href 命中 pathname 的项 */
+  const activeFirstLevel = visibleFirstLevel.find((fl) => {
+    if (fl.href && isActive(lp(fl.href))) return true;
+    return fl.visibleChildren.some((c) => c.href && isActive(c.href));
+  });
+
+  /** 初始展开 active 一级项（仅展开模式；折叠模式不展开，靠 popover） */
+  useEffect(() => {
+    if (!collapsed && activeFirstLevel) {
+      setExpandedFirst(activeFirstLevel.key);
+    }
+    if (collapsed) {
+      setExpandedFirst(null);
+    }
+  }, [collapsed, activeFirstLevel?.key]);
+
+  /** 一级项的落地链接：有 children 时跳首个可见子项；占位/无则 undefined */
+  function firstLevelHref(
+    fl: typeof visibleFirstLevel[number]
+  ): string | undefined {
+    if (fl.placeholder) return undefined;
+    if (fl.href) return lp(fl.href);
+    const firstChild = fl.visibleChildren.find((c) => c.href);
+    return firstChild?.href;
+  }
+
+  /** 渲染单个二级项 */
+  function renderSecondItem(item: SecondLevel & { href?: string }) {
+    if (item.placeholder || !item.href) {
+      return (
+        <span
+          key={item.key}
+          title={t(item.key)}
+          aria-disabled="true"
+          className="inline-flex items-center justify-start gap-3 whitespace-nowrap rounded-sm text-[15px] leading-[1.2] font-medium w-full px-[14px] py-[10px] text-muted-foreground/50 cursor-not-allowed select-none"
+        >
+          <item.icon className="h-4 w-4 shrink-0" />
+          <span className="truncate">{t(item.key)}</span>
+        </span>
+      );
+    }
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        onClick={onNavigate}
+        title={t(item.key)}
+        className={cn(
+          "inline-flex items-center justify-start gap-3 whitespace-nowrap rounded-sm text-[15px] leading-[1.2] font-medium transition-all duration-[180ms] ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 cursor-pointer [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+          "hover:bg-sidebar-accent hover:text-accent-foreground",
+          "w-full px-[14px] py-[10px]",
+          isActive(item.href)
+            ? "bg-primary text-primary-foreground font-semibold hover:bg-primary/90 hover:text-primary-foreground"
+            : "text-muted-foreground"
+        )}
+      >
+        <item.icon className="h-4 w-4" />
+        <span className="truncate">{t(item.key)}</span>
+      </Link>
+    );
+  }
+
+  /** 渲染一级项 */
+  function renderFirstItem(fl: typeof visibleFirstLevel[number]) {
+    const href = firstLevelHref(fl);
+    const isActiveItem = fl === activeFirstLevel;
+    const isPlaceholder = fl.placeholder || !href;
+    const hasChildren = fl.visibleChildren.length > 0;
+    const isExpanded = expandedFirst === fl.key;
+
+    // 折叠模式：仅图标 + 悬浮 popover
+    if (collapsed) {
+      if (isPlaceholder) {
+        return (
+          <span
+            key={fl.key}
+            title={t("admin.common.comingSoon")}
+            aria-disabled="true"
+            className="flex items-center justify-center w-full h-10 rounded-md text-muted-foreground/50 cursor-not-allowed select-none"
+          >
+            <fl.icon className="h-5 w-5" />
+          </span>
+        );
+      }
+      return (
+        <div
+          key={fl.key}
+          className="relative"
+          onMouseEnter={() => setHoveredFirst(fl.key)}
+          onMouseLeave={() => setHoveredFirst(null)}
+        >
+          <Link
+            href={href!}
+            onClick={onNavigate}
+            title={t(fl.key)}
+            className={cn(
+              "flex items-center justify-center w-full h-10 rounded-sm transition-all duration-[180ms] ease-in-out",
+              isActiveItem
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-sidebar-accent hover:text-accent-foreground"
+            )}
+          >
+            <fl.icon className="h-5 w-5" />
+          </Link>
+          {/* popover：悬浮一级图标展示标题+全部子菜单 */}
+          {hasChildren && hoveredFirst === fl.key && (
+            <div className="absolute left-full top-0 ml-2 z-50 min-w-48 rounded-md border border-border bg-background shadow-lg p-2">
+              <div className="mb-1 px-2 text-xs font-semibold text-foreground">
+                {t(fl.key)}
+              </div>
+              <div className="space-y-0.5">
+                {fl.visibleChildren.map(renderSecondItem)}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // 展开模式：图标+文字；有 children 时点击展开/收起子菜单垂直向下
+    return (
+      <div key={fl.key} className="space-y-0.5">
+        {isPlaceholder ? (
+          <span
+            title={t(fl.key)}
+            aria-disabled="true"
+            className="inline-flex items-center justify-start gap-3 whitespace-nowrap rounded-sm text-[15px] leading-[1.2] font-medium w-full px-[14px] py-[10px] text-muted-foreground/50 cursor-not-allowed select-none"
+          >
+            <fl.icon className="h-4 w-4 shrink-0" />
+            <span className="truncate">{t(fl.key)}</span>
+          </span>
+        ) : hasChildren ? (
+          <button
+            type="button"
+            title={t(fl.key)}
+            onClick={() =>
+              setExpandedFirst((v) => (v === fl.key ? null : fl.key))
+            }
+            className={cn(
+              "inline-flex items-center justify-start gap-3 whitespace-nowrap rounded-sm text-[15px] leading-[1.2] font-semibold transition-all duration-[180ms] ease-in-out w-full px-[14px] py-[10px] [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+              isActiveItem
+                ? "bg-primary text-primary-foreground"
+                : "text-foreground hover:bg-sidebar-accent hover:text-accent-foreground"
+            )}
+          >
+            <fl.icon className="h-4 w-4" />
+            <span className="truncate">{t(fl.key)}</span>
+            <ChevronRight
+              className={cn(
+                "ml-auto h-4 w-4 transition-transform duration-[180ms]",
+                isExpanded && "rotate-90"
+              )}
+            />
+          </button>
+        ) : (
+          <Link
+            href={href!}
+            onClick={onNavigate}
+            title={t(fl.key)}
+            className={cn(
+              "inline-flex items-center justify-start gap-3 whitespace-nowrap rounded-sm text-[15px] leading-[1.2] font-semibold transition-all duration-[180ms] ease-in-out cursor-pointer [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+              "hover:bg-sidebar-accent hover:text-accent-foreground w-full px-[14px] py-[10px]",
+              isActiveItem
+                ? "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
+                : "text-foreground"
+            )}
+          >
+            <fl.icon className="h-4 w-4" />
+            <span className="truncate">{t(fl.key)}</span>
+          </Link>
+        )}
+        {/* 展开模式下子菜单垂直向下展开（绝不新开第二列） */}
+        {hasChildren && isExpanded && (
+          <div className="pl-3 mt-0.5 space-y-0.5 border-l border-border ml-3">
+            {fl.visibleChildren.map(renderSecondItem)}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <nav
+      className={cn(
+        "flex-1 py-3",
+        // 折叠模式不裁切 overflow，让 popover 能溢出 aside 边界显示
+        // 展开模式 overflow-y-auto，让长子菜单可滚动
+        collapsed ? "px-2" : "px-3 overflow-y-auto"
+      )}
+    >
+      <div className="space-y-0.5">{visibleFirstLevel.map(renderFirstItem)}</div>
+    </nav>
+  );
+}
+
+/**
+ * 面包屑导航：放置在右侧主内容区顶部。
+ * 从 pathname 反查当前一级 / 二级菜单项，生成 管理后台 / 一级 / 二级 面包屑。
+ */
+function AdminBreadcrumb({
+  locale,
+  pathname,
+  permCtx,
+}: {
+  locale: Locale;
+  pathname: string;
+  permCtx: { role: string; overrides: PermissionOverrides | null } | null;
+}) {
+  const { t, messages } = useI18n();
+  const lp = useLocalizedPath();
+  const isAdmin = permCtx ? isAdminRole(permCtx.role) : false;
+
+  /**
+   * 翻译 helper：先 t() 标准查找；失败（返回 key 本身）则尝试把末尾多段
+   * 合并为字面量带点 key 直接访问父对象（兼容 i18n 字典里 "users.list"
+   * 这种字面量 key，标准 split('.') 解析会失败）。
+   */
+  function label(key: string): string {
+    const v = t(key);
+    if (v !== key) return v;
+    const parts = key.split(".");
+    for (let i = parts.length - 1; i > 0; i--) {
+      const literal = parts.slice(i).join(".");
+      const parentPath = parts.slice(0, i);
+      let parent: unknown = messages;
+      for (const p of parentPath) {
+        if (parent && typeof parent === "object" && p in (parent as Record<string, unknown>)) {
+          parent = (parent as Record<string, unknown>)[p];
+        } else {
+          parent = undefined;
+          break;
+        }
+      }
+      if (parent && typeof parent === "object" && literal in (parent as Record<string, unknown>)) {
+        const v2 = (parent as Record<string, unknown>)[literal];
+        if (typeof v2 === "string") return v2;
+      }
+    }
+    return key;
+  }
+
+  /** 反查当前一级 / 二级（与 SidebarContent 同过滤逻辑） */
+  let matchedFirst: FirstLevel | null = null;
+  let matchedSecond: SecondLevel | null = null;
+  for (const fl of firstLevelItems) {
+    if (fl.roleGuard && !isAdmin) continue;
+    if (fl.href && pathname.startsWith(lp(fl.href))) {
+      matchedFirst = fl;
+      break;
+    }
+    if (fl.children) {
+      // 占位项（无 href）不参与匹配，但 placeholder=true 的整组跳过
+      const visibleChildren = fl.children.filter((c) =>
+        canAccessSecond(c, permCtx)
+      );
+      for (const c of visibleChildren) {
+        if (c.href && pathname.startsWith(lp(c.href))) {
+          matchedFirst = fl;
+          matchedSecond = c;
+          break;
+        }
+      }
+      if (matchedFirst) break;
+    }
+  }
+
+  return (
+    <nav
+      aria-label="Breadcrumb"
+      className="flex items-center h-10 px-4 md:px-8 border-b border-border bg-background text-xs text-muted-foreground overflow-x-auto"
+    >
+      <Link
+        href={`/${locale}`}
+        className="hover:text-foreground whitespace-nowrap"
+      >
+        {label("admin.dashboard.title")}
+      </Link>
+      {matchedFirst && (
+        <>
+          <ChevronRight className="h-3 w-3 mx-1 shrink-0" />
+          <span
+            className={cn(
+              "whitespace-nowrap",
+              !matchedSecond && "text-foreground font-medium"
+            )}
+          >
+            {label(matchedFirst.key)}
+          </span>
+        </>
+      )}
+      {matchedSecond && (
+        <>
+          <ChevronRight className="h-3 w-3 mx-1 shrink-0" />
+          <span className="text-foreground font-medium whitespace-nowrap">
+            {label(matchedSecond.key)}
+          </span>
+        </>
+      )}
+    </nav>
   );
 }

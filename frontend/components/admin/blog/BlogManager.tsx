@@ -203,18 +203,24 @@ export function BlogManager() {
               <table className="w-full text-sm">
                 <thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground">
                   <tr>
+                    <th className="px-3 py-2 w-12">{t("admin.blog.colId")}</th>
                     <th className="px-3 py-2">{t("admin.blog.colTitle")}</th>
                     <th className="px-3 py-2">{t("admin.blog.colStatus")}</th>
                     <th className="px-3 py-2 hidden md:table-cell">{t("admin.blog.colTags")}</th>
                     <th className="px-3 py-2 hidden lg:table-cell">{t("admin.blog.colAuthor")}</th>
                     <th className="px-3 py-2 hidden lg:table-cell">{t("admin.blog.colPublished")}</th>
-                    <th className="px-3 py-2 hidden sm:table-cell">{t("admin.blog.colUpdatedAt")}</th>
+                    <th className="px-3 py-2 text-center hidden xl:table-cell">{t("admin.blog.colLike")}</th>
+                    <th className="px-3 py-2 text-center hidden xl:table-cell">{t("admin.blog.colComment")}</th>
+                    <th className="px-3 py-2 text-center hidden xl:table-cell">{t("admin.blog.colShare")}</th>
+                    <th className="px-3 py-2 text-center hidden xl:table-cell">{t("admin.blog.colFavourite")}</th>
+                    <th className="px-3 py-2 text-center hidden xl:table-cell">{t("admin.blog.colAllowComments")}</th>
                     <th className="px-3 py-2 text-right">{t("admin.activities.actions")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {items.map((p) => (
                     <tr key={p.id} className="border-t border-border hover:bg-muted/30">
+                      <td className="px-3 py-2 text-xs text-muted-foreground font-mono">{p.id}</td>
                       <td className="px-3 py-2 font-medium max-w-[220px] truncate">
                         {p.title}
                       </td>
@@ -249,8 +255,32 @@ export function BlogManager() {
                           "—"
                         )}
                       </td>
-                      <td className="px-3 py-2 text-xs text-muted-foreground whitespace-nowrap hidden sm:table-cell">
-                        <FormattedUserActionTime utcIso={p.updated_at} />
+                      <td className="px-3 py-2 text-center hidden xl:table-cell">
+                        <span className="inline-flex items-center gap-0.5 text-xs">
+                          {p.like_count}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-center hidden xl:table-cell">
+                        <span className="inline-flex items-center gap-0.5 text-xs">
+                          {p.comment_count}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-center hidden xl:table-cell">
+                        <span className="inline-flex items-center gap-0.5 text-xs">
+                          {p.share_count}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-center hidden xl:table-cell">
+                        <span className="inline-flex items-center gap-0.5 text-xs">
+                          {p.favourite_count}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-center hidden xl:table-cell">
+                        {p.allow_comments ? (
+                          <span className="text-emerald-600 font-semibold" title={t("admin.blog.allowCommentsYes")}>✓</span>
+                        ) : (
+                          <span className="text-muted-foreground" title={t("admin.blog.allowCommentsNo")}>×</span>
+                        )}
                       </td>
                       <td className="px-3 py-2">
                         <div className="flex justify-end gap-1">

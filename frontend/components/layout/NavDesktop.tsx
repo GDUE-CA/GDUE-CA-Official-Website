@@ -28,8 +28,8 @@ import { navTransitionTypes } from "@/lib/navTransition";
 const navItems = [
   { key: "nav.home", href: "" },
   { key: "nav.events", href: "/events" },
-  { key: "nav.blog", href: "/blog" },
   { key: "nav.memo", href: "/memo" },
+  { key: "nav.blog", href: "/blog" },
   { key: "nav.projects", href: "/projects" },
   { key: "nav.about", href: "/about" },
   { key: "nav.contact", href: "/contact" },

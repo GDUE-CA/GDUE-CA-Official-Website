@@ -41,6 +41,7 @@ PERMISSION_MODULES = (
     "blog",            # 博客文章
     "blog_tags",       # 博客标签
     "projects",        # 项目展示 CMS
+    "themes",          # 界面主题（CSS 变量包 + 布局骨架，manage 可上传/启停/删除）
     "comments",        # 评论管理（软删除/下架）
     "media",           # 文件资源统一管理
     "security",        # IP 黑白名单 + 监听配置（manage 仅 super_admin）
@@ -124,6 +125,11 @@ ROLE_DEFAULTS: dict[str, dict[Role, set[str]]] = {
         Role.SUPER_ADMIN: {"view", "manage"},
         Role.ADMIN: {"view", "manage"},
         Role.EDITOR: {"view", "manage"},
+    },
+    # 主题：内容类配置，admin 可管理；editor 不参与
+    "themes": {
+        Role.SUPER_ADMIN: {"view", "manage"},
+        Role.ADMIN: {"view", "manage"},
     },
     "media": {
         Role.SUPER_ADMIN: {"view", "manage"},

@@ -97,7 +97,7 @@ class User(Base):
     time_long_pattern: Mapped[str] = mapped_column(String(32), default="HH:mm:ss")
     # 默认货币 ISO-4217（如 CNY/USD/EUR）；NULL = 跟随系统全局 sys_default_currency
     currency: Mapped[str | None] = mapped_column(String(8), nullable=True)
-    # 用户个人 UI 界面语言（如 zh-cn/en-gb）；NULL = 跟随系统全局 sys_default_locale
+    # 用户个人 UI 界面语言（如 zh-cn/en-us）；NULL = 跟随系统全局 sys_default_locale
     locale: Mapped[str | None] = mapped_column(String(16), nullable=True)
     # 用户个人区域格式化代码（ISO-3166-1 二位，如 CN/GB/JP）；NULL = 跟随系统全局 sys_default_region
     region_code: Mapped[str | None] = mapped_column(String(16), nullable=True)
@@ -770,6 +770,43 @@ class Project(Base):
     )
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+
+
+# ==================== 主题系统（管理员可上传/启停/排序，无需改前端代码） ====================
+
+class ThemeLayout(str, Enum):
+    """主题排版骨架：microsoft=两栏（左导航+右内容）；apple=三栏（分组/子项/内容）。"""
+    MICROSOFT = "microsoft"
+    APPLE = "apple"
+
+
+class Theme(Base):
+    """界面主题（CSS 变量包 + 布局骨架）。
+
+    - key 唯一（default / apple / 自定义如 festival-spring），User.theme 引用此 key；
+    - css_vars / dark_vars 为 JSON 对象 {"--background": "60 9% 97.8%"}：
+      键须 ^--[a-z0-9-]+$，值禁止 url(/expression(/</javascript:（schema 层校验）；
+    - dark_vars 为 NULL 时暗色模式沿用基础 .dark 变量；
+    - 软删除后由定时任务 30 天物理清除。
+    """
+    __tablename__ = "themes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    key: Mapped[str] = mapped_column(String(32), unique=True, index=True)
+    name: Mapped[str] = mapped_column(String(64))
+    layout: Mapped[ThemeLayout] = mapped_column(
+        SAEnum(ThemeLayout), default=ThemeLayout.MICROSOFT
+    )
+    # 亮色 CSS 变量包（注入 documentElement.style）
+    css_vars: Mapped[dict] = mapped_column(JSON, default=dict)
+    # 暗色 CSS 变量包（仅 dark 模式注入；NULL = 沿用基础暗色变量）
+    dark_vars: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    is_deleted: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
 
 

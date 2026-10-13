@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import delete as sa_delete
 from sqlalchemy import func, select
 
-from app.api import activities, admin_stats, announcements, audit, auth, blog, bug_report, comments, content, geo, i18n_public, health, memos, media, members, notifications, oauth, projects, query, realname, recruitment, recycle, register, security, sso, stats, system, system_init, tags, translations, users
+from app.api import activities, admin_stats, announcements, audit, auth, blog, bug_report, comments, content, geo, i18n_public, health, memos, media, members, notifications, oauth, projects, query, realname, recruitment, recycle, register, security, sso, stats, system, system_init, tags, themes, translations, users
 from app.api.auth import security_answer_digest
 from app.core.config import get_settings
 from app.core.csrf import CSRF_HEADER, csrf_middleware
@@ -35,6 +35,8 @@ from app.db.models import (
     IpRuleType,
     SecurityQuestion,
     SystemSetting,
+    Theme,
+    ThemeLayout,
     User,
 )
 from app.db.session import async_session, engine
@@ -304,6 +306,21 @@ async def _init_db():
             u.realname_verified = True
         if unverified:
             logger.info("已将 %d 个既有后台账号标记为已实名", len(unverified))
+
+        # 预置内置主题（default / apple）：key 不存在才插入，管理员后续修改不被覆盖
+        builtin_themes = [
+            dict(key="default", name="默认主题", layout=ThemeLayout.MICROSOFT,
+                 css_vars={}, dark_vars=None, sort_order=0),
+            dict(key="apple", name="Apple 主题", layout=ThemeLayout.APPLE,
+                 css_vars={"--radius": "1rem"},
+                 dark_vars={"--background": "240 6% 5%"}, sort_order=10),
+        ]
+        for spec in builtin_themes:
+            exists = (await s.execute(
+                select(Theme).where(Theme.key == spec["key"])
+            )).scalar_one_or_none()
+            if not exists:
+                s.add(Theme(**spec))
         await s.commit()
 
 
@@ -334,7 +351,12 @@ async def _run_maintenance() -> None:
             await _purge_user(s, uid)
         if expired_users:
             logger.info("定时任务：已物理删除 %d 个超期软删除账号", len(expired_users))
-        # 4) 活动自动归档（可配置开关，默认关）：end_at 已过 → archived
+        # 4) 软删主题超期物理清除
+        purged_themes = await s.execute(sa_delete(Theme).where(
+            Theme.is_deleted.is_(True), Theme.deleted_at < threshold))
+        if purged_themes.rowcount:
+            logger.info("定时任务：已物理删除 %d 个超期软删除主题", purged_themes.rowcount)
+        # 5) 活动自动归档（可配置开关，默认关）：end_at 已过 → archived
         setting = await s.get(SystemSetting, 1)
         if setting and setting.auto_archive_events:
             result = await s.execute(
@@ -487,6 +509,8 @@ app.include_router(blog.public_router)
 app.include_router(blog.admin_router)
 app.include_router(projects.public_router)
 app.include_router(projects.admin_router)
+app.include_router(themes.public_router)
+app.include_router(themes.admin_router)
 app.include_router(comments.public_router)
 app.include_router(comments.admin_router)
 app.include_router(oauth.public_router)

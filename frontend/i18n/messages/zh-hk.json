@@ -28,7 +28,7 @@
     "guest": "訪客",
     "login": "登入",
     "register": "註冊",
-    "memo": "隨手筆記",
+    "memo": "說說",
     "appearance": "外觀設定",
     "changeLanguage": "變更語言",
     "languageSearch": "搜尋語言…",
@@ -41,7 +41,7 @@
     "loginCard": {
       "title": "登入後可享更多權益",
       "benefitEvents": "活動報名與現場簽到",
-      "benefitMemo": "隨手筆記記錄與同步",
+      "benefitMemo": "說說記錄與同步",
       "benefitCommunity": "部落格評論與社群互動",
       "benefitNotify": "站內通知即時提醒",
       "loginNow": "立即登入",
@@ -271,7 +271,7 @@
       "hint": "預設 30 分鐘無操作自動逾時；頁面保持可見時心跳自動延長工作階段。最多顯示最近 20 筆記錄。"
     },
     "tabs": {
-      "memo": "Memo"
+      "memo": "說說"
     }
   },
   "notifications": {
@@ -979,7 +979,7 @@
       "securityIpBlacklist": "IP 黑名單",
       "securityBans": "封禁面板",
       "auditLogs": "操作日誌",
-      "memos": "Memo 管理"
+      "memos": "說說管理"
     },
     "navGroup": {
       "overview": "概覽",
@@ -1003,7 +1003,7 @@
       "users.review": "審核中心",
       "content": "內容管理",
       "content.blog": "部落格管理",
-      "content.memo": "隨手筆記管理",
+      "content.memo": "說說管理",
       "content.blocks": "內容塊",
       "content.media": "媒體庫",
       "content.recycle": "內容回收站",
@@ -1358,7 +1358,7 @@
         "realname": "實名狀態",
         "stats": "資料統計",
         "audit_logs": "操作日誌",
-        "memo": "Memo 管理"
+        "memo": "說說管理"
       }
     },
     "security": {
@@ -1857,7 +1857,7 @@
     },
     "modules": {
       "memo": {
-        "title": "Memo 碎片筆記",
+        "title": "說說",
         "desc": "Markdown 碎片筆記：時間線 / 日曆 / 標籤懶建立 / 版本快照 / 公開分享 / 後台下架",
         "btn": "進入管理"
       }
@@ -1989,11 +1989,11 @@
     }
   },
   "memo": {
-    "pageTitle": "隨手筆記",
+    "pageTitle": "說說",
     "subtitle": "靈感、片段、隨想；與正式長部落格分開記錄",
     "timeline": {
       "title": "時間線",
-      "empty": "還沒有任何 Memo，寫下第一條吧 ✏️",
+      "empty": "還沒有任何說說，寫下第一條吧 ✏️",
       "hasImageOnly": "只看帶圖",
       "visibilityAll": "全部可見",
       "visibilityPublic": "僅公開",
@@ -2006,7 +2006,7 @@
       "today": "今天",
       "prevMonth": "上個月",
       "nextMonth": "下個月",
-      "noMemosOnDay": "這一天還沒有 Memo"
+      "noMemosOnDay": "這一天還沒有說說"
     },
     "editor": {
       "placeholder": "隨手寫下你的想法...\n\n支援 Markdown、#標籤、貼上圖片自動上傳",
@@ -2057,7 +2057,7 @@
       "unarchive": "取消封存",
       "edit": "編輯",
       "delete": "刪除",
-      "deleteConfirm": "確認刪除此 Memo？刪除後無法復原（但版本歷史仍保留）。",
+      "deleteConfirm": "確認刪除此說說？刪除後無法復原（但版本歷史仍保留）。",
       "rollback": "回溯"
     },
     "versions": {
@@ -2072,9 +2072,9 @@
       "empty": "還沒有歷史版本"
     },
     "share": {
-      "title": "分享 Memo",
-      "publicOnly": "僅公開 Memo 可產生分享連結",
-      "copyHint": "匿名使用者可透過此連結直接存取此 Memo",
+      "title": "分享說說",
+      "publicOnly": "僅公開說說可產生分享連結",
+      "copyHint": "匿名使用者可透過此連結直接存取此說說",
       "regenerate": "重新產生",
       "revoke": "撤銷"
     },
@@ -2085,10 +2085,20 @@
       "createFailed": "建立失敗，請重試"
     },
     "tabs": {
-      "mine": "我的 Memo",
+      "mine": "我的說說",
       "liked": "按過讚",
       "favorites": "收藏的",
       "archived": "已封存"
+    },
+    "searchPlaceholder": "搜尋說說...",
+    "newButton": "新建說說",
+    "dateFilter": {
+      "title": "選擇日期",
+      "clear": "清除日期篩選",
+      "confirm": "確定",
+      "year": "年",
+      "month": "月",
+      "day": "日"
     }
   },
   "error": {
@@ -2110,29 +2120,29 @@
     "login_blocked": "使用者名稱或密碼錯誤",
     "system_not_initialized": "系統尚未完成初始化，請使用應急帳號登入後台完成初始化精靈",
     "memo": {
-      "createFailed": "Memo 建立失敗",
-      "updateFailed": "Memo 編輯失敗",
-      "deleteFailed": "Memo 刪除失敗",
+      "createFailed": "說說建立失敗",
+      "updateFailed": "說說編輯失敗",
+      "deleteFailed": "說說刪除失敗",
       "rateLimited": "發佈過於頻繁，請稍後再試",
-      "notFound": "Memo 不存在",
-      "forbidden": "無權操作此 Memo",
-      "privateForbidden": "此 Memo 為私密，不可按讚/收藏",
-      "shareOnlyPublic": "僅公開 Memo 可產生分享連結",
+      "notFound": "說說不存在",
+      "forbidden": "無權操作此說說",
+      "privateForbidden": "此說說為私密，不可按讚/收藏",
+      "shareOnlyPublic": "僅公開說說可產生分享連結",
       "versionNotFound": "版本不存在",
       "tagNotFound": "標籤不存在",
       "invalidDate": "日期格式必須為 YYYY-MM-DD",
       "rssMaintenance": "RSS 暫未實裝，後續迭代上線",
       "webdavMaintenance": "WebDAV 暫未實裝，後續迭代上線",
-      "importMaintenance": "Memos 備份匯入暫未實裝，後續迭代上線"
+      "importMaintenance": "說說備份匯入暫未實裝，後續迭代上線"
     }
   },
   "memoPage": {
-    "title": "隨手筆記",
+    "title": "說說",
     "intro": "碎片化思考的歸宿。Markdown 隨手記，#標籤自動歸檔，時間線 + 日曆雙視圖。",
     "compose": "寫點東西..."
   },
   "profileMemoTab": {
-    "empty": "還沒有發佈過 Memo",
+    "empty": "還沒有發佈過說說",
     "viewAll": "查看全部"
   }
 }

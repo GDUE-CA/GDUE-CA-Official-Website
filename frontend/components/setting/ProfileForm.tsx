@@ -30,6 +30,7 @@ import { fetchGeoCountries } from "@/lib/api/geo";
 import type { AdminUser, GeoCountry } from "@/types/api";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { utcToLocalInput, localInputToUtcIso } from "@/lib/utils";
 
 /** 从 "+86 138xxxx" 拆出区号与号码 */
 function parsePhone(phone: string): { dial: string; number: string } {
@@ -57,6 +58,10 @@ export function ProfileForm() {
   const [studentId, setStudentId] = useState("");
   const [dial, setDial] = useState("");
   const [phoneBody, setPhoneBody] = useState("");
+  // 规格 §4.1：性别（male/female/hidden）/ 生日 / 个性签名
+  const [gender, setGender] = useState("");
+  const [birthday, setBirthday] = useState("");
+  const [bio, setBio] = useState("");
 
   // 初始快照，用于 dirty 判断
   const initialRef = useRef<string | null>(null);
@@ -75,12 +80,18 @@ export function ProfileForm() {
         const { dial: d, number: n } = parsePhone(p.phone ?? "");
         setPhoneBody(n);
         setDial(d || (cs.some((c) => c.dial_code === "86") ? "86" : (cs[0]?.dial_code ?? "")));
+        setGender(p.gender ?? "");
+        setBirthday(p.birthday ? utcToLocalInput(p.birthday) : "");
+        setBio(p.bio ?? "");
         initialRef.current = JSON.stringify({
           dn: p.display_name ?? "",
           rn: p.real_name ?? "",
           si: p.student_id ?? "",
           dial: d || (cs.some((c) => c.dial_code === "86") ? "86" : (cs[0]?.dial_code ?? "")),
           pb: n,
+          g: p.gender ?? "",
+          bd: p.birthday ? utcToLocalInput(p.birthday) : "",
+          bio: p.bio ?? "",
         });
       } catch (err) {
         setError(err instanceof Error ? err.message : t("admin.profile.loadFailed"));
@@ -109,7 +120,7 @@ export function ProfileForm() {
 
   const dirty =
     initialRef.current !== null &&
-    JSON.stringify({ dn: displayName, rn: realName, si: studentId, dial, pb: phoneBody }) !==
+    JSON.stringify({ dn: displayName, rn: realName, si: studentId, dial, pb: phoneBody, g: gender, bd: birthday, bio }) !==
       initialRef.current;
 
   // 注册 dirty 到离开守卫
@@ -131,6 +142,9 @@ export function ProfileForm() {
         real_name: realName.trim(),
         student_id: studentId.trim(),
         phone,
+        gender: gender || "",
+        birthday: birthday ? localInputToUtcIso(birthday) : "",
+        bio: bio.trim(),
       });
       setProfile(updated);
       initialRef.current = JSON.stringify({
@@ -139,6 +153,9 @@ export function ProfileForm() {
         si: studentId.trim(),
         dial,
         pb: phoneBody.trim(),
+        g: gender,
+        bd: birthday,
+        bio: bio.trim(),
       });
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
@@ -236,6 +253,41 @@ export function ProfileForm() {
                 <p className="text-xs text-muted-foreground">
                   {t("admin.profile.emailReadonly")}
                 </p>
+              </div>
+              {/* 规格 §4.1：性别 / 生日 / 个性签名 */}
+              <div className="space-y-2">
+                <Label htmlFor="pf-gender">{t("setting.profile.gender")}</Label>
+                <select
+                  id="pf-gender"
+                  value={gender}
+                  onChange={(e) => setGender(e.target.value)}
+                  className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  <option value="">{t("setting.profile.genderPlaceholder")}</option>
+                  <option value="male">{t("setting.profile.genderMale")}</option>
+                  <option value="female">{t("setting.profile.genderFemale")}</option>
+                  <option value="hidden">{t("setting.profile.genderHidden")}</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="pf-birthday">{t("setting.profile.birthday")}</Label>
+                <Input
+                  id="pf-birthday"
+                  type="date"
+                  value={birthday ? birthday.slice(0, 10) : ""}
+                  onChange={(e) => setBirthday(e.target.value ? `${e.target.value}T00:00` : "")}
+                  placeholder={t("setting.profile.birthdayPlaceholder")}
+                />
+              </div>
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="pf-bio">{t("setting.profile.bio")}</Label>
+                <Input
+                  id="pf-bio"
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  placeholder={t("setting.profile.bioPlaceholder")}
+                  maxLength={140}
+                />
               </div>
             </div>
 

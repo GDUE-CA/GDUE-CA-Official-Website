@@ -19,3 +19,14 @@ export function utcToLocalInput(utcIso: string): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
+
+/**
+ * datetime-local 输入值（浏览器本地时区）→ UTC ISO 字符串
+ * 空字符串 / 非法日期返回空字符串（调用方按"清空"语义处理）
+ */
+export function localInputToUtcIso(localInput: string): string {
+  if (!localInput) return "";
+  const d = new Date(localInput);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toISOString();
+}

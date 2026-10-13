@@ -14,7 +14,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Sun, Moon, ChevronDown } from "lucide-react";
-import { locales, localeNames, type Locale } from "@/lib/i18n";
+import { locales, localeDisplayName, type Locale } from "@/lib/i18n";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { UserMenu } from "@/components/layout/UserMenu";
@@ -26,8 +26,8 @@ import { navTransitionTypes } from "@/lib/navTransition";
 const navItems = [
   { key: "nav.home", href: "" },
   { key: "nav.events", href: "/events" },
-  { key: "nav.blog", href: "/blog" },
   { key: "nav.memo", href: "/memo" },
+  { key: "nav.blog", href: "/blog" },
   { key: "nav.projects", href: "/projects" },
   { key: "nav.about", href: "/about" },
   { key: "nav.contact", href: "/contact" },
@@ -306,7 +306,7 @@ export function NavMobile({
                                   : "border-border text-muted-foreground hover:bg-muted"
                               )}
                             >
-                              {localeNames[loc]}
+                              {localeDisplayName(loc)}
                             </button>
                           ))}
                         </div>

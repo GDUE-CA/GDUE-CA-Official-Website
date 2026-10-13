@@ -20,6 +20,7 @@
 from __future__ import annotations
 
 import json
+from datetime import date, datetime
 from typing import Any
 
 from fastapi import Request
@@ -28,6 +29,19 @@ from fastapi.responses import JSONResponse
 from app.core.bizcode import BizCode, get_meta, http_status_for, to_i18n_msg
 from app.core.config import get_settings
 from app.core.log import current_trace_id
+
+
+def _json_default(obj: Any) -> Any:
+    """json.dumps default 钩子：datetime/date → ISO 8601 字符串。
+
+    与 Pydantic model_dump_json 输出格式一致，保证业务层直接把 ORM
+    datetime 放进 ok(data=...) 时也能正确序列化（时间体系约定：DB 存 naive UTC）。
+    """
+    if isinstance(obj, datetime):
+        return obj.isoformat()
+    if isinstance(obj, date):
+        return obj.isoformat()
+    raise TypeError(f"Object of type {obj.__class__.__name__} is not JSON serializable")
 
 
 def _request_id() -> str:
@@ -93,7 +107,15 @@ class EnvelopeJSONResponse(JSONResponse):
         if isinstance(content, dict) and {"code", "message", "data"}.issubset(content.keys()):
             if not content.get("request_id"):
                 _wrap_with_request_id(content)
-        return super().render(content)
+        # datetime-aware 序列化（业务层可能直接放 ORM datetime，见 _json_default）
+        return json.dumps(
+            content,
+            ensure_ascii=False,
+            allow_nan=False,
+            indent=None,
+            separators=(",", ":"),
+            default=_json_default,
+        ).encode("utf-8")
 
     def init_headers(self, headers: dict[str, str] | None = None) -> None:
         super().init_headers(headers)

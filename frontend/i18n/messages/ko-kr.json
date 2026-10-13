@@ -28,7 +28,7 @@
     "guest": "Guest",
     "login": "Log in",
     "register": "Sign up",
-    "memo": "Memos",
+    "memo": "Moments",
     "appearance": "Appearance",
     "changeLanguage": "Change language",
     "languageSearch": "Search language…",
@@ -41,7 +41,7 @@
     "loginCard": {
       "title": "Log in for more benefits",
       "benefitEvents": "Event registration and check-in",
-      "benefitMemo": "Quick memo sync across devices",
+      "benefitMemo": "Quick moments sync across devices",
       "benefitCommunity": "Blog comments and community",
       "benefitNotify": "Real-time in-site notifications",
       "loginNow": "Log in now",
@@ -271,7 +271,7 @@
       "hint": "Sessions expire after 30 minutes of inactivity by default; a visible-page heartbeat automatically extends the session. Up to 20 most recent records are shown."
     },
     "tabs": {
-      "memo": "Memos"
+      "memo": "Moments"
     }
   },
   "notifications": {
@@ -979,7 +979,7 @@
       "securityIpBlacklist": "IP Blacklist",
       "securityBans": "Login Bans",
       "auditLogs": "Audit Logs",
-      "memos": "Memos"
+      "memos": "Moments"
     },
     "navGroup": {
       "overview": "Overview",
@@ -1003,7 +1003,7 @@
       "users.review": "심사 센터",
       "content": "콘텐츠 관리",
       "content.blog": "블로그 관리",
-      "content.memo": "메모 관리",
+      "content.memo": "모먼트 관리",
       "content.blocks": "콘텐츠 블록",
       "content.media": "미디어 라이브러리",
       "content.recycle": "콘텐츠 휴지통",
@@ -1358,7 +1358,7 @@
         "realname": "Realname Status",
         "stats": "Statistics",
         "audit_logs": "Audit Logs",
-        "memo": "Memo"
+        "memo": "Moments"
       }
     },
     "security": {
@@ -1857,7 +1857,7 @@
     },
     "modules": {
       "memo": {
-        "title": "Memos",
+        "title": "Moments",
         "desc": "Markdown fragment notes: timeline / calendar / lazy tag creation / version snapshots / public share / admin takedown",
         "btn": "Manage"
       }
@@ -1989,11 +1989,11 @@
     }
   },
   "memo": {
-    "pageTitle": "Memos",
+    "pageTitle": "Moments",
     "subtitle": "Lightweight Markdown notes — separate from long-form blog posts",
     "timeline": {
       "title": "Timeline",
-      "empty": "No memos yet. Write your first one ✏️",
+      "empty": "No moments yet. Write your first one ✏️",
       "hasImageOnly": "With images only",
       "visibilityAll": "All visible",
       "visibilityPublic": "Public only",
@@ -2006,7 +2006,7 @@
       "today": "Today",
       "prevMonth": "Previous month",
       "nextMonth": "Next month",
-      "noMemosOnDay": "No memos on this day"
+      "noMemosOnDay": "No moments on this day"
     },
     "editor": {
       "placeholder": "Jot down your thoughts...\n\nMarkdown supported, #tags auto-extracted, paste images to upload",
@@ -2057,7 +2057,7 @@
       "unarchive": "Unarchive",
       "edit": "Edit",
       "delete": "Delete",
-      "deleteConfirm": "Delete this memo? Cannot be undone (version history is kept).",
+      "deleteConfirm": "Delete this moment? Cannot be undone (version history is kept).",
       "rollback": "Rollback"
     },
     "versions": {
@@ -2072,9 +2072,9 @@
       "empty": "No version history"
     },
     "share": {
-      "title": "Share memo",
-      "publicOnly": "Only public memos can generate share links",
-      "copyHint": "Anonymous visitors can access this memo via the link",
+      "title": "Share moment",
+      "publicOnly": "Only public moments can generate share links",
+      "copyHint": "Anonymous visitors can access this moment via the link",
       "regenerate": "Regenerate",
       "revoke": "Revoke"
     },
@@ -2085,10 +2085,20 @@
       "createFailed": "Create failed, please retry"
     },
     "tabs": {
-      "mine": "My Memos",
+      "mine": "My Moments",
       "liked": "Liked",
       "favorites": "Favorited",
       "archived": "Archived"
+    },
+    "searchPlaceholder": "Search moments...",
+    "newButton": "New moment",
+    "dateFilter": {
+      "title": "Pick a date",
+      "clear": "Clear date filter",
+      "confirm": "OK",
+      "year": "Year",
+      "month": "Month",
+      "day": "Day"
     }
   },
   "error": {
@@ -2110,29 +2120,29 @@
     "login_blocked": "Invalid username or password",
     "system_not_initialized": "System is not initialised. Please log in with the break-glass account to complete the initialisation wizard.",
     "memo": {
-      "createFailed": "Failed to create memo",
-      "updateFailed": "Failed to update memo",
-      "deleteFailed": "Failed to delete memo",
+      "createFailed": "Failed to create moment",
+      "updateFailed": "Failed to update moment",
+      "deleteFailed": "Failed to delete moment",
       "rateLimited": "Publishing too frequently, please try later",
-      "notFound": "Memo not found",
-      "forbidden": "Not authorized to operate this memo",
-      "privateForbidden": "This memo is private; cannot like/favorite",
-      "shareOnlyPublic": "Only public memos can generate share links",
+      "notFound": "Moment not found",
+      "forbidden": "Not authorized to operate this moment",
+      "privateForbidden": "This moment is private; cannot like/favorite",
+      "shareOnlyPublic": "Only public moments can generate share links",
       "versionNotFound": "Version not found",
       "tagNotFound": "Tag not found",
       "invalidDate": "Date must be YYYY-MM-DD",
       "rssMaintenance": "RSS is not yet implemented",
       "webdavMaintenance": "WebDAV is not yet implemented",
-      "importMaintenance": "Memos backup import is not yet implemented"
+      "importMaintenance": "Moments backup import is not yet implemented"
     }
   },
   "memoPage": {
-    "title": "Memos",
+    "title": "Moments",
     "intro": "Lightweight Markdown notes — #tags auto-archived, timeline + calendar dual view.",
     "compose": "Write something..."
   },
   "profileMemoTab": {
-    "empty": "No memos yet",
+    "empty": "No moments yet",
     "viewAll": "View all"
   }
 }

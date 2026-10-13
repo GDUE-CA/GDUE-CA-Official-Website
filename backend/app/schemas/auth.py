@@ -14,7 +14,7 @@ _PHONE_PATTERN = r"^\+?[0-9\- ]{5,32}$"
 
 # 个人资料扩展字段允许值
 _GENDER_VALUES = {"male", "female", "hidden"}
-_THEME_PATTERN = r"^(default|apple|festival(:[a-z0-9_-]+)?)$"
+_THEME_PATTERN = r"^[a-z][a-z0-9-]{0,31}$"
 _PRIVACY_VISIBILITY = {"public", "private"}
 
 
@@ -247,7 +247,7 @@ class ProfileUpdate(BaseModel):
             return v
         import re
         if not re.match(_THEME_PATTERN, v):
-            raise ValueError("theme 取值仅支持 default / apple / festival:*")
+            raise ValueError("theme 取值需为合法主题 key（小写字母开头 + 小写字母/数字/连字符）")
         return v
 
     @field_validator("profile_privacy")

@@ -26,12 +26,13 @@ const LOCALE_LIKE_RE = /^[a-z]{2}(-[a-z]{2,3})?$/i;
 
 /**
  * 旧 locale 前缀 → 新 locale 前缀的 301 永久重定向映射。
- * en-us 已移除（统一 en-gb）；zh-hk 改名 zh-yue-hk；ja 改名 ja-jp。
+ * en-gb 改名 en-us；zh-tw 改名 zh-hk；zh-yue-hk 改名 zh-yue-tw；ja 改名 ja-jp。
  * 放在 localeRedirect 最早处，优先于非法 locale 剥离逻辑。
  */
 const OLD_LOCALE_REDIRECTS: Record<string, string> = {
-  "en-us": "en-gb",
-  "zh-hk": "zh-yue-hk",
+  "en-gb": "en-us",
+  "zh-tw": "zh-hk",
+  "zh-yue-hk": "zh-yue-tw",
   ja: "ja-jp",
 };
 
@@ -170,12 +171,15 @@ function detectLocale(request: NextRequest): Locale {
       .split(",")
       .map((l) => l.trim().split(";")[0].toLowerCase());
     for (const l of langs) {
-      // 中文变体
+      // 中文变体（粤语独立判断：繁体地区 → zh-yue-tw，其余 → zh-yue-cn）
       if (l.startsWith("zh")) {
-        if (l.includes("tw")) return "zh-tw";
+        if (l.includes("yue")) {
+          return l.includes("hk") || l.includes("mo") || l.includes("tw") || l.includes("hant")
+            ? "zh-yue-tw"
+            : "zh-yue-cn";
+        }
+        if (l.includes("tw") || l.includes("hk") || l.includes("hant")) return "zh-hk";
         if (l.includes("mo")) return "zh-mo";
-        if (l.includes("hk") || l.includes("yue-hk") || l.includes("hant-hk")) return "zh-yue-hk";
-        if (l.includes("yue") || l.includes("cn")) return l.includes("yue") ? "zh-yue-cn" : "zh-cn";
         if (l.includes("sg")) return "zh-cn-sg";
         return "zh-cn";
       }
@@ -185,9 +189,14 @@ function detectLocale(request: NextRequest): Locale {
       if (l.startsWith("fr")) return "fr-fr";
       if (l.startsWith("de")) return "de-de";
       if (l.startsWith("ru")) return "ru-ru";
+      if (l.startsWith("pt")) return "pt-br";
+      if (l.startsWith("ar")) return "ar-sa";
+      if (l.startsWith("hi")) return "hi-in";
+      if (l.startsWith("tr")) return "tr-tr";
+      if (l.startsWith("it")) return "it-it";
       if (l.startsWith("en")) {
-        // 所有英语统一归入 en-gb（en-us 已移除）
-        return "en-gb";
+        // 所有英语统一归入 en-us
+        return "en-us";
       }
     }
   }
@@ -198,16 +207,16 @@ function detectLocale(request: NextRequest): Locale {
 function localeRedirect(request: NextRequest): URL | null {
   const { pathname } = request.nextUrl;
 
-  // 旧 /en 前缀兼容重定向 → 直跳 en-gb（en-us 已废弃，不再中转）
+  // 旧 /en 前缀兼容重定向 → 直跳 en-us
   if (pathname === "/en" || pathname.startsWith("/en/")) {
     const url = request.nextUrl.clone();
-    url.pathname = `/en-gb${pathname.slice(3)}`;
+    url.pathname = `/en-us${pathname.slice(3)}`;
     return url;
   }
 
   const firstSeg = pathname.split("/")[1] ?? "";
 
-  // 旧 locale 前缀 301 永久重定向（en-us→en-gb、zh-hk→zh-yue-hk、ja→ja-jp）
+  // 旧 locale 前缀 301 永久重定向（en-gb→en-us、zh-tw→zh-hk、zh-yue-hk→zh-yue-tw、ja→ja-jp）
   if (firstSeg && firstSeg.toLowerCase() in OLD_LOCALE_REDIRECTS) {
     const newLocale = OLD_LOCALE_REDIRECTS[firstSeg.toLowerCase()];
     const rest = pathname.slice(firstSeg.length + 1); // 去掉 /{oldLocale}
