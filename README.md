@@ -55,7 +55,7 @@
 ### 账号、权限与安全
 
 - RBAC 四级角色：`super_admin` / `admin` / `editor` / `member`，外加匿名访客；细粒度模块权限矩阵
-- **Break-Glass 应急账号**：凭据仅存环境变量（bcrypt 哈希），不入库；用于清空全部管理员等灾难修复，全程高危确认审计
+- **Break-Glass 应急账号**：内置默认 admin/admin（强制改密），凭据存 env（bcrypt 哈希），不入库；用于清空全部管理员等灾难修复，全程高危确认审计
 - 系统初始化向导（`/admin/setup`）：未初始化时普通账号无法登录，仅应急账号可进入
 - 服务端会话表：可撤销、硬顶过期、空闲超时、记住设备 30 天、心跳滑动续期
 - 登录防爆破阶梯封禁（按 账号 × IP × 浏览器指纹 独立计数）+ 全局限流（令牌桶 120/min，突发 30）
@@ -163,13 +163,7 @@ pip install -r requirements.txt
 copy .env.example .env   # macOS/Linux: cp .env.example .env
 ```
 
-编辑 `.env`，至少填入 Break-Glass 应急账号三项（否则后端拒绝启动，详见[下一节](#系统初始化break-glass--初始化向导)）：
-
-```env
-SUPER_ADMIN_USERNAME=breakglass
-SUPER_ADMIN_PASSWORD_HASH=<运行 python scripts/generate_super_admin.py 生成>
-SUPER_ADMIN_ENABLED=true
-```
+编辑 `.env`（复制自 `.env.example`）。Break-Glass 应急账号默认凭据已内置为 **admin / admin**，可直接启动；生产部署强烈建议覆盖为独立强密码（下文有说明）。
 
 启动：
 
@@ -200,16 +194,17 @@ pnpm dev
 
 ## 系统初始化（Break-Glass + 初始化向导）
 
-系统遵循「无默认弱口令、无硬编码超管」原则：
+1. **应急账号（Break-Glass）**：
+   - 默认凭据 **admin / admin**（bcrypt 哈希内置），首次登录后强制进入初始化向导改密；
+   - 三项环境变量 `SUPER_ADMIN_USERNAME` / `SUPER_ADMIN_PASSWORD_HASH` / `SUPER_ADMIN_ENABLED` 可覆盖默认，哈希必须为 bcrypt（`$2a$/$2b$/$2y$` 开头 60 字符，禁止明文）；
+   - 生产部署建议生成独立强密码：
 
-1. **应急账号（Break-Glass）**：凭据从 `SUPER_ADMIN_USERNAME` / `SUPER_ADMIN_PASSWORD_HASH` / `SUPER_ADMIN_ENABLED` 读取，bcrypt 哈希禁止明文；三项缺失或非法时 `main.py` 输出 FATAL 并退出。生成方式：
+     ```bash
+     cd backend
+     .venv\Scripts\python.exe scripts\generate_super_admin.py
+     ```
 
-   ```bash
-   cd backend
-   .venv\Scripts\python.exe scripts\generate_super_admin.py
-   ```
-
-   脚本输出可直接粘贴进 `.env` 的片段，明文密码仅显示一次。运维手册见 [docs/BREAK_GLASS_OPS.md](docs/BREAK_GLASS_OPS.md)。
+     脚本输出可直接粘贴进 `.env` 的片段，明文密码仅显示一次。运维手册见 [docs/BREAK_GLASS_OPS.md](docs/BREAK_GLASS_OPS.md)。
 
 2. **系统未初始化门禁**：`system_initialized=false` 时普通账号登录被拒（业务码 `SYSTEM_NOT_INITIALIZED`），仅应急账号可登录并进入 `/admin/setup`。
 
@@ -234,7 +229,7 @@ pnpm dev
 | `TRUSTED_PROXIES` | 本机回环 | 可信反代 CIDR；仅采信其 XFF，防伪造内网 IP |
 | `RATE_LIMIT_PER_MIN` / `RATE_LIMIT_BURST` | `120` / `30` | 每 IP 令牌桶限流 |
 | `REDIS_URL` | 空 | 如 `redis://127.0.0.1:6379/0`；生产必配 |
-| `SUPER_ADMIN_USERNAME` / `SUPER_ADMIN_PASSWORD_HASH` / `SUPER_ADMIN_ENABLED` | 空 | 应急账号，**启动必填**（见上节） |
+| `SUPER_ADMIN_USERNAME` / `SUPER_ADMIN_PASSWORD_HASH` / `SUPER_ADMIN_ENABLED` | `admin` / bcrypt(`admin`) / `true` | Break-Glass 应急账号（**admin/admin 为内置默认，首次登录向导强制改密**；生产请覆盖为独立强密码） |
 | `LOG_LEVEL` / `LOG_FORMAT` | `INFO` / `text` | 日志级别与格式（`text` / `json`，均带 traceId） |
 | `ENABLE_API_DOCS` | `false` | 是否开放 `/docs`、`/redoc`、`/openapi.json` |
 
