@@ -67,13 +67,15 @@ class Settings(BaseSettings):
     RATE_LIMIT_PER_MIN: int = 120   # 每分钟补充令牌数
     RATE_LIMIT_BURST: int = 30      # 桶容量（允许的瞬时突发）
 
-    # ---- Break-Glass 应急账号（凭据只存环境变量，缺失/非法 → 启动直接失败） ----
-    # 由部署脚本 scripts/generate_super_admin.py 生成；源码零默认值，禁止写死任何凭据
-    SUPER_ADMIN_USERNAME: str = ""
-    # bcrypt 哈希（$2a$/$2b$/$2y$ 开头 60 字符），禁止明文
-    SUPER_ADMIN_PASSWORD_HASH: str = ""
-    # 仅允许 "true" / "false"（大小写不敏感）；false 时禁止 Break-Glass 登录
-    SUPER_ADMIN_ENABLED: str = ""
+    # ---- Break-Glass 应急账号 ----
+    # 启动默认凭据 admin / admin（首次登录后系统强制进入初始化向导并改密；
+    # 生产部署应覆盖此默认 —— 留空时自动回落到 admin/admin，显式配置则以 env 为准）。
+    # 注意：默认哈希为 bcrypt rounds=12，明文 "admin" 的哈希值由 hash_password("admin") 预生成。
+    SUPER_ADMIN_USERNAME: str = "admin"
+    SUPER_ADMIN_PASSWORD_HASH: str = (
+        "$2b$12$N.xxjoNZt4mi2Trf4Bmq1e0l46NFNTf9.6CBFZGueUZhlWfFAvnYC"
+    )
+    SUPER_ADMIN_ENABLED: str = "true"
 
     # ---- 通用 KV 存储（防爆破计数/封禁/Break-Glass 会话） ----
     # 配置 redis://... 时使用 Redis（多 worker 共享）；留空使用进程内存兜底（仅单进程开发）
