@@ -19,7 +19,7 @@
  * 它还负责启动时把 `User.timezone === ""` 这类脏值修正为 null。
  */
 import { useEffect, useState } from "react";
-import { fetchProfile } from "@/lib/api/auth";
+import { fetchMe } from "@/lib/api/auth";
 import { fetchPublicSettings } from "@/lib/api/system";
 import { isLogged } from "@/lib/auth";
 import type { AdminUser } from "@/types/api";
@@ -81,7 +81,7 @@ export function useEffectiveTimezone(): EffectiveTimezone {
 
     if (loggedInNow) {
       tasks.push(
-        fetchProfile()
+        fetchMe()
           .then((p: AdminUser) => {
             // API 返回的 timezone 可能是 ""（空串），规范化为 null 以便下游统一处理
             const norm = p.timezone && p.timezone.trim() ? p.timezone : null;

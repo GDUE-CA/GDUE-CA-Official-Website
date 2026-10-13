@@ -35,7 +35,7 @@ import {
   batchUpdateUsers,
   deleteUser,
   updateUser,
-  fetchProfile,
+  fetchMe,
 } from "@/lib/api/auth";
 import { BatchBar } from "@/components/admin/review/BatchBar";
 import { useBatchSelection } from "@/components/admin/review/useBatchSelection";
@@ -72,7 +72,7 @@ export default function UsersPage() {
     setLoading(true);
     setError(null);
     try {
-      const me = await fetchProfile();
+      const me = await fetchMe();
       setMyId(me.id);
       setIsSuperAdmin(me.role === "super_admin");
       const canList = me.role !== "member";

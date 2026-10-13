@@ -20,7 +20,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useI18n } from "@/i18n/provider";
 import { useLocalizedPath } from "@/lib/navigation";
-import { fetchProfile } from "@/lib/api/auth";
+import { fetchMe } from "@/lib/api/auth";
 import { API_BASE_URL, ApiError } from "@/lib/api/client";
 import { clearLocalSession, isAdminRole, isLogged, logout } from "@/lib/auth";
 import type { AdminUser } from "@/types/api";
@@ -78,7 +78,7 @@ export function UserMenu() {
     setLoggedIn(logged);
     if (logged) {
       setLoading(true);
-      fetchProfile()
+      fetchMe()
         .then((p) => setProfile(p))
         .catch((err) => {
           if (err instanceof ApiError && err.status === 401) {

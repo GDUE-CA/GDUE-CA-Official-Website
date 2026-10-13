@@ -35,7 +35,7 @@ export default function NetworkConfigPage() {
   async function refresh() {
     setLoading(true);
     try {
-      const me = await import("@/lib/api/auth").then((m) => m.fetchProfile());
+      const me = await import("@/lib/api/auth").then((m) => m.fetchMe());
       setCanManage(me.role === "super_admin");
       const cfg: NetworkConfig = await fetchNetworkConfig();
       setPort(cfg.network_port ?? 443);

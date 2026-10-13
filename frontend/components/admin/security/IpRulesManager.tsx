@@ -26,7 +26,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createIpRule, deleteIpRule, fetchIpRules } from "@/lib/api/security";
-import { fetchProfile, listUsers } from "@/lib/api/auth";
+import { fetchMe, listUsers } from "@/lib/api/auth";
 import type { AdminUser, IpRule, IpRuleType } from "@/types/api";
 
 export function IpRulesManager({ type }: { type: IpRuleType }) {
@@ -72,7 +72,7 @@ export function IpRulesManager({ type }: { type: IpRuleType }) {
 
   // 初始化：加载用户列表（白名单绑定用） + 当前账号权限
   useEffect(() => {
-    fetchProfile()
+    fetchMe()
       .then((me) => setCanManage(me.role === "super_admin"))
       .catch(() => {});
     if (!isBlack) {
