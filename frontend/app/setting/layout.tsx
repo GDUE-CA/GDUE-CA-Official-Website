@@ -4,7 +4,7 @@ import { SettingProviders } from "./SettingProviders";
 /**
  * /setting 路由布局（用户个人设置）
  * - 复用 AdminProviders 提供多语言 + SessionHeartbeat 会话保活
- * - SettingRoot 客户端校验登录态，未登录跳转 /auth/login
+ * - SettingRoot 客户端校验登录态，未登录跳转 /login
  * - robots noindex，避免个人设置页被搜索引擎收录
  */
 export const metadata: Metadata = {

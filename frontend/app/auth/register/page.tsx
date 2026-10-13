@@ -4,7 +4,7 @@
  * /auth/register - 用户端注册页（P0）
  * - zod + react-hook-form 表单校验：用户名 / 昵称 / 密码 / 确认密码 / 邮箱（选填）/ 手机号（选填）
  * - 页面不含任何角色选择控件：后端强制 role=member，admin 仅能由管理员后台创建或升级
- * - 注册成功跳转登录页 /auth/login
+ * - 注册成功跳转登录页 /login
  */
 import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
@@ -139,7 +139,7 @@ export default function AuthRegisterPage() {
         phone: values.phone || undefined,
       });
       // P0：注册成功跳转登录页
-      router.replace(lp("/auth/login"));
+      router.replace(lp("/login"));
     } catch (err) {
       setServerError(err instanceof Error ? err.message : t("auth.register.error"));
     }
@@ -283,7 +283,7 @@ export default function AuthRegisterPage() {
 
             <div className="mt-5 flex items-center justify-between text-sm">
               <Link
-                href={lp("/auth/login")}
+                href={lp("/login")}
                 className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors"
               >
                 <LogIn className="h-4 w-4" />

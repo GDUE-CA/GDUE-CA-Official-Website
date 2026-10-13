@@ -55,7 +55,7 @@ export default function CompleteProfilePage() {
   useEffect(() => {
     getPendingOAuthProfile()
       .then(setPending)
-      .catch(() => router.replace(lp("/admin/login")))
+      .catch(() => router.replace(lp("/login")))
       .finally(() => setLoading(false));
   }, [router]);
 

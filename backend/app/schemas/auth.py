@@ -1,16 +1,21 @@
 """认证 & 用户 Pydantic 模型。"""
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr, Field, model_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
 from app.core.password_policy import MAX_LENGTH as PASSWORD_MAX_LENGTH
 from app.core.password_policy import validate_password_strength
 from app.core.security import Role
-from app.schemas.common import LooseEmail, MultilineText, PlainText, UTCDatetime
+from app.schemas.common import LooseEmail, MultilineText, PlainText, UTCNaive, UTCDatetime
 
 # 学号 / 手机号只允许常见字符
 _STUDENT_ID_PATTERN = r"^[A-Za-z0-9\-]{1,32}$"
 _PHONE_PATTERN = r"^\+?[0-9\- ]{5,32}$"
+
+# 个人资料扩展字段允许值
+_GENDER_VALUES = {"male", "female", "hidden"}
+_THEME_PATTERN = r"^(default|apple|festival(:[a-z0-9_-]+)?)$"
+_PRIVACY_VISIBILITY = {"public", "private"}
 
 
 class LoginRequest(BaseModel):
@@ -159,6 +164,18 @@ class UserOut(BaseModel):
     locale: str | None = None
     region_code: str | None = None
     currency: str | None = None
+    # ---- 个人资料扩展字段（Phase 规格补齐） ----
+    # 性别：male / female / hidden；NULL = 未设置
+    gender: str | None = None
+    # 生日（naive UTC 存储）；NULL = 未设置
+    birthday: UTCDatetime | None = None
+    # 个性签名 / 简介
+    bio: str | None = None
+    # 主题预设：default / apple / festival:* ；NULL = 跟随系统默认
+    theme: str | None = None
+    # 隐私设置：{"gender":"public","bio":"public","birthday":"public"}
+    # region 字段永久公开，不在此 JSON 内
+    profile_privacy: dict | None = None
     created_at: UTCDatetime
     last_login_at: UTCDatetime | None = None
 
@@ -200,6 +217,55 @@ class ProfileUpdate(BaseModel):
     locale: PlainText | None = Field(default=None, max_length=16)
     region_code: PlainText | None = Field(default=None, max_length=16)
     currency: PlainText | None = Field(default=None, max_length=8)
+    # ---- 个人资料扩展字段（Phase 规格补齐） ----
+    # 性别：male / female / hidden；空字符串=清空（存 NULL）；不传=不修改
+    gender: PlainText | None = Field(default=None, max_length=8)
+    # 生日（naive UTC 存储）；空字符串/不传=不修改，传入则规范化为 UTC naive；
+    # 显式传 null = 清空
+    birthday: UTCNaive | None = None
+    # 个性签名 / 简介；空字符串=清空；不传=不修改
+    bio: MultilineText | None = Field(default=None, max_length=200)
+    # 主题预设：default / apple / festival:* ；空字符串=跟随系统默认（存 NULL）
+    theme: PlainText | None = Field(default=None, max_length=32)
+    # 隐私设置 JSON：{"gender":"public|private","bio":"public|private","birthday":"public|private"}
+    # 不传=不修改；显式传 null = 重置为默认（全部 public）；传入 dict 则合并更新
+    profile_privacy: dict | None = None
+
+    @field_validator("gender")
+    @classmethod
+    def _validate_gender(cls, v: str | None) -> str | None:
+        if v is None or v == "":
+            return v  # 空串保留以便接口层清空逻辑识别；None 表示不修改
+        if v not in _GENDER_VALUES:
+            raise ValueError("gender 取值仅支持 male / female / hidden")
+        return v
+
+    @field_validator("theme")
+    @classmethod
+    def _validate_theme(cls, v: str | None) -> str | None:
+        if v is None or v == "":
+            return v
+        import re
+        if not re.match(_THEME_PATTERN, v):
+            raise ValueError("theme 取值仅支持 default / apple / festival:*")
+        return v
+
+    @field_validator("profile_privacy")
+    @classmethod
+    def _validate_privacy(cls, v: dict | None) -> dict | None:
+        if v is None:
+            return v
+        if not isinstance(v, dict):
+            raise ValueError("profile_privacy 必须是 JSON 对象")
+        # 仅允许这三个键；值必须是 public / private
+        allowed_keys = {"gender", "bio", "birthday"}
+        bad_keys = set(v.keys()) - allowed_keys
+        if bad_keys:
+            raise ValueError(f"profile_privacy 不支持的键：{','.join(sorted(bad_keys))}")
+        for k, val in v.items():
+            if val not in _PRIVACY_VISIBILITY:
+                raise ValueError(f"profile_privacy.{k} 取值仅支持 public / private")
+        return v
 
 
 class AvatarUploadOut(BaseModel):

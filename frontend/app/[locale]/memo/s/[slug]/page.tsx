@@ -3,7 +3,7 @@
  * /[locale]/memo/s/[slug] - 公开分享匿名访问
  *
  * 任何人都能通过 share_slug 看到这条公开 Memo（不需要登录）；
- * 互动按钮（点赞/收藏）需要登录：未登录跳到 /admin/login。
+ * 互动按钮（点赞/收藏）需要登录：未登录跳到 /login。
  */
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";

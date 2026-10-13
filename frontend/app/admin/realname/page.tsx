@@ -96,7 +96,7 @@ export default function RealnamePage() {
   useEffect(() => {
     const session = getSession();
     if (!session) {
-      router.replace(lp("/admin/login"));
+      router.replace(lp("/login"));
       return;
     }
     getRealnameStatus()

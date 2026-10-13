@@ -3,12 +3,24 @@
 /**
  * 博客评论管理组件（后台）
  *
- * - 列表：状态筛选 / 搜索 / 服务端分页 / 状态徽章 / 完整 IP + 属地（仅后台可见）
- * - 操作：下架（软删除 status=admin_removed）/ 恢复（visible）；无物理删除
- * - 全局开关：comments_enabled（与文章级 allow_comments 叠加生效）
+ * 双布尔软删除矩阵：
+ * - is_deleted=true  → 用户自删（公开列表不可见，后台留存）
+ * - is_hidden=true   → 管理员屏蔽（公开列表不可见，后台留存）
+ * - 两者可独立为 True
+ *
+ * 管理员两个操作：
+ * - 屏蔽/取消屏蔽：is_hidden 切换（软删除，可恢复）
+ * - 永久物理删除：DELETE 数据库行（不可逆，需确认弹窗）
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Eye, EyeOff, Loader2, MessageSquare, Power } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  Loader2,
+  MessageSquare,
+  Power,
+  Trash2,
+} from "lucide-react";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,22 +28,38 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/admin/review/StatusBadge";
 import { FormattedUserActionTime } from "@/components/shared/FormattedUserActionTime";
 import {
+  adminDeleteComment,
   adminGetCommentSettings,
+  adminHideComment,
   adminListComments,
-  adminRemoveComment,
-  adminRestoreComment,
+  adminUnhideComment,
   adminUpdateCommentSettings,
 } from "@/lib/api/comments";
-import type { CommentAdmin, CommentStatus } from "@/types/api";
+import type { CommentAdmin, CommentStatusLabel } from "@/types/api";
 
 const PAGE_SIZE = 20;
 
 /** 状态徽章色调 */
-const STATUS_TONE: Record<CommentStatus, "success" | "warning" | "info" | "neutral"> = {
-  visible: "success",
+const STATUS_TONE: Record<
+  CommentStatusLabel,
+  "success" | "warning" | "info" | "neutral"
+> = {
+  normal: "success",
   user_deleted: "neutral",
-  admin_removed: "warning",
+  admin_hidden: "warning",
+  user_deleted_and_admin_hidden: "warning",
 };
+
+/** 状态 i18n key 映射 */
+const STATUS_I18N_KEY: Record<CommentStatusLabel, string> = {
+  normal: "admin.comments.statusNormal",
+  user_deleted: "admin.comments.statusUserDeleted",
+  admin_hidden: "admin.comments.statusAdminHidden",
+  user_deleted_and_admin_hidden: "admin.comments.statusUserDeletedAndAdminHidden",
+};
+
+/** 筛选器取值 */
+type StatusFilter = "" | "normal" | "user_deleted" | "admin_hidden";
 
 export function CommentsManager() {
   const { t, locale } = useI18n();
@@ -46,7 +74,7 @@ export function CommentsManager() {
   const [q, setQ] = useState("");
   const [query, setQuery] = useState("");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [statusFilter, setStatusFilter] = useState<"" | CommentStatus>("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("");
   const [page, setPage] = useState(1);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -54,16 +82,27 @@ export function CommentsManager() {
   const [globalEnabled, setGlobalEnabled] = useState(true);
   const [toggling, setToggling] = useState(false);
 
+  // 操作中（按评论 id）
+  const [actingId, setActingId] = useState<number | null>(null);
+
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await adminListComments({
-        status: statusFilter || undefined,
+      const params: Parameters<typeof adminListComments>[0] = {
         q: query || undefined,
         page,
         page_size: PAGE_SIZE,
-      });
+      };
+      if (statusFilter === "normal") {
+        params.is_deleted = false;
+        params.is_hidden = false;
+      } else if (statusFilter === "user_deleted") {
+        params.is_deleted = true;
+      } else if (statusFilter === "admin_hidden") {
+        params.is_hidden = true;
+      }
+      const res = await adminListComments(params);
       setItems(res.items);
       setTotal(res.total);
     } catch (e) {
@@ -113,35 +152,49 @@ export function CommentsManager() {
     }
   }
 
-  async function handleRemove(id: number) {
-    if (!confirm(t("admin.comments.removeConfirm"))) return;
+  async function handleHide(id: number) {
+    if (!confirm(t("admin.comments.hideConfirm"))) return;
+    setActingId(id);
     try {
-      await adminRemoveComment(id);
-      setNotice(t("admin.comments.removed"));
+      await adminHideComment(id);
+      setNotice(t("admin.comments.hidden"));
       await load();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Remove failed");
+      alert(e instanceof Error ? e.message : "Hide failed");
+    } finally {
+      setActingId(null);
     }
   }
 
-  async function handleRestore(id: number) {
+  async function handleUnhide(id: number) {
+    setActingId(id);
     try {
-      await adminRestoreComment(id);
-      setNotice(t("admin.comments.restored"));
+      await adminUnhideComment(id);
+      setNotice(t("admin.comments.unhidden"));
       await load();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Restore failed");
+      alert(e instanceof Error ? e.message : "Unhide failed");
+    } finally {
+      setActingId(null);
     }
   }
 
-  function statusLabel(s: CommentStatus) {
-    return t(
-      s === "visible"
-        ? "admin.comments.statusVisible"
-        : s === "user_deleted"
-          ? "admin.comments.statusUserDeleted"
-          : "admin.comments.statusAdminRemoved"
-    );
+  async function handleDelete(id: number) {
+    if (!confirm(t("admin.comments.deleteConfirm"))) return;
+    setActingId(id);
+    try {
+      await adminDeleteComment(id);
+      setNotice(t("admin.comments.deleted"));
+      await load();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setActingId(null);
+    }
+  }
+
+  function statusLabel(s: CommentStatusLabel) {
+    return t(STATUS_I18N_KEY[s]);
   }
 
   /** 属地展示：zh 系语言用 location_zh，其余用 location_en；特殊枚举走 i18n */
@@ -198,16 +251,16 @@ export function CommentsManager() {
               <select
                 value={statusFilter}
                 onChange={(e) => {
-                  setStatusFilter(e.target.value as "" | CommentStatus);
+                  setStatusFilter(e.target.value as StatusFilter);
                   setPage(1);
                 }}
                 className="h-9 rounded-md border border-input bg-background px-2 text-sm"
                 aria-label={t("admin.comments.colStatus")}
               >
                 <option value="">{t("admin.comments.filterAllStatus")}</option>
-                <option value="visible">{t("admin.comments.statusVisible")}</option>
-                <option value="user_deleted">{t("admin.comments.statusUserDeleted")}</option>
-                <option value="admin_removed">{t("admin.comments.statusAdminRemoved")}</option>
+                <option value="normal">{t("admin.comments.filterNormal")}</option>
+                <option value="user_deleted">{t("admin.comments.filterUserDeleted")}</option>
+                <option value="admin_hidden">{t("admin.comments.filterAdminHidden")}</option>
               </select>
               <Input
                 placeholder={t("admin.comments.searchPlaceholder")}
@@ -246,53 +299,81 @@ export function CommentsManager() {
                   </tr>
                 </thead>
                 <tbody>
-                  {items.map((c) => (
-                    <tr key={c.id} className="border-t border-border hover:bg-muted/30">
-                      <td className="px-3 py-2 max-w-[240px]">
-                        <p className="truncate" title={c.content}>{c.content}</p>
-                      </td>
-                      <td className="px-3 py-2 font-medium whitespace-nowrap">{c.author_name}</td>
-                      <td className="px-3 py-2 text-muted-foreground max-w-[160px] truncate hidden md:table-cell">
-                        {c.post_title ?? "—"}
-                      </td>
-                      {/* 完整 IP 仅后台展示 */}
-                      <td className="px-3 py-2 font-mono text-xs hidden lg:table-cell">
-                        {c.submit_ip ?? "—"}
-                      </td>
-                      <td className="px-3 py-2 text-muted-foreground text-xs whitespace-nowrap hidden md:table-cell">
-                        {locationLabel(c) ?? "—"}
-                      </td>
-                      <td className="px-3 py-2">
-                        <StatusBadge tone={STATUS_TONE[c.status]}>{statusLabel(c.status)}</StatusBadge>
-                      </td>
-                      <td className="px-3 py-2 text-xs text-muted-foreground whitespace-nowrap hidden sm:table-cell">
-                        <FormattedUserActionTime utcIso={c.created_at} />
-                      </td>
-                      <td className="px-3 py-2">
-                        <div className="flex justify-end gap-1">
-                          {c.status === "visible" ? (
+                  {items.map((c) => {
+                    const isHidden = c.is_hidden;
+                    const isActing = actingId === c.id;
+                    return (
+                      <tr key={c.id} className="border-t border-border hover:bg-muted/30">
+                        <td className="px-3 py-2 max-w-[240px]">
+                          <p className="truncate" title={c.content}>{c.content}</p>
+                        </td>
+                        <td className="px-3 py-2 font-medium whitespace-nowrap">{c.author_name}</td>
+                        <td className="px-3 py-2 text-muted-foreground max-w-[160px] truncate hidden md:table-cell">
+                          {c.post_title ?? "—"}
+                        </td>
+                        {/* 完整 IP 仅后台展示 */}
+                        <td className="px-3 py-2 font-mono text-xs hidden lg:table-cell">
+                          {c.submit_ip ?? "—"}
+                        </td>
+                        <td className="px-3 py-2 text-muted-foreground text-xs whitespace-nowrap hidden md:table-cell">
+                          {locationLabel(c) ?? "—"}
+                        </td>
+                        <td className="px-3 py-2">
+                          <StatusBadge tone={STATUS_TONE[c.status_label]}>
+                            {statusLabel(c.status_label)}
+                          </StatusBadge>
+                        </td>
+                        <td className="px-3 py-2 text-xs text-muted-foreground whitespace-nowrap hidden sm:table-cell">
+                          <FormattedUserActionTime utcIso={c.created_at} />
+                        </td>
+                        <td className="px-3 py-2">
+                          <div className="flex justify-end gap-1">
+                            {isHidden ? (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleUnhide(c.id)}
+                                disabled={isActing}
+                                aria-label={t("admin.comments.unhideBtn")}
+                                title={t("admin.comments.unhideBtn")}
+                              >
+                                {isActing ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Eye className="h-4 w-4 text-emerald-600" />
+                                )}
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleHide(c.id)}
+                                disabled={isActing}
+                                aria-label={t("admin.comments.hideBtn")}
+                                title={t("admin.comments.hideBtn")}
+                              >
+                                {isActing ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <EyeOff className="h-4 w-4 text-destructive" />
+                                )}
+                              </Button>
+                            )}
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => handleRemove(c.id)}
-                              aria-label={t("admin.comments.removeBtn")}
+                              onClick={() => handleDelete(c.id)}
+                              disabled={isActing}
+                              aria-label={t("admin.comments.deleteBtn")}
+                              title={t("admin.comments.deleteBtn")}
                             >
-                              <EyeOff className="h-4 w-4 text-destructive" />
+                              <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
-                          ) : (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleRestore(c.id)}
-                              aria-label={t("admin.comments.restoreBtn")}
-                            >
-                              <Eye className="h-4 w-4 text-emerald-600" />
-                            </Button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

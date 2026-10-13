@@ -69,7 +69,7 @@ export default function MyMemosPage() {
         <h1 className="text-2xl font-bold">{t("profileMemoTab.empty")}</h1>
         <p className="text-muted-foreground">{t("profile.loginRequired")}</p>
         <Button asChild>
-          <Link href={`/${locale}/admin/login`}>{t("profile.goLogin")}</Link>
+          <Link href={`/${locale}/login`}>{t("profile.goLogin")}</Link>
         </Button>
       </div>
     );

@@ -1,18 +1,18 @@
 "use client";
 
 /**
- * /{lang}/admin/login - 账号登录页（管理员 / 普通成员共用）
- * 多语言路由：/zh-cn/admin/login、/en-gb/admin/login 等（经 next.config 重写到本页）
- * - 裸路径 /admin/login 由 proxy 按浏览器偏好 302 到对应语言前缀
+ * /login - 统一登录入口（管理员 / 普通成员 / Break-Glass 共用）
+ * 多语言路由：/zh-cn/login、/en-gb/login 等（经 next.config 重写到本页）
+ * - 裸路径 /login 由 proxy 按浏览器偏好补 locale 前缀
  * - URL 语言段是语言来源：访问某语言前缀即加载该语言文本，并写入 localStorage 记忆
  * - 右上角语言切换：更新 localStorage 并跳转到对应语言前缀的路由
  * 表单提交 POST /api/auth/login，登录凭据由后端写入 HttpOnly Cookie
  * - 如返回 must_change_password=true，跳转 /admin/change-password
- * - 管理员进入 /admin；普通成员进入前台个人资料页（无后台权限）
+ * - 管理员进入 /admin/dashboard；普通成员进入前台个人设置 /setting/profile
+ * - Break-Glass 应急账号：未初始化 → /admin/setup；已初始化 → /admin/dashboard
  * - 第三方登录：按 /api/oauth/channels 开关显隐按钮，302 发起授权
- * - 登录选项：记住此设备（减少验证频率）；不在浏览器保存任何密码，
- *   如需记住密码请使用浏览器自带的密码管理器
- * - 底部含「忘记密码」和「账号恢复」入口
+ * - 登录选项：记住此设备（减少验证频率）；不在浏览器保存任何密码
+ * - 底部含「注册账号」「忘记密码」「账号恢复」入口（合并自旧 /auth/login + /admin/login）
  */
 import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
@@ -20,12 +20,13 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   Loader2,
-  ShieldCheck,
+  LogIn,
   ArrowLeft,
   Github,
   Apple,
   Chrome,
   LayoutGrid,
+  UserPlus,
 } from "lucide-react";
 import { useI18n } from "@/i18n/provider";
 import { useAdminLocale } from "@/app/admin/AdminProviders";
@@ -67,7 +68,7 @@ function parseReturnTarget(): string | null {
 }
 
 /** 语言切换：只替换 URL 顶层 locale 段（规范 §3），保留子路径与 query */
-function AdminLocaleSwitcher() {
+function LoginLocaleSwitcher() {
   const { locale } = useAdminLocale();
   const switchLocale = useSwitchLocale();
   return (
@@ -94,7 +95,7 @@ const PROVIDER_ICONS: Record<OAuthProvider, React.ReactNode> = {
   google: <Chrome className="h-4 w-4" />,
 };
 
-export default function AdminLoginPage() {
+export default function LoginPage() {
   const { t, locale } = useI18n();
   const router = useRouter();
   const pathname = usePathname();
@@ -117,7 +118,7 @@ export default function AdminLoginPage() {
     setReturnTarget(parseReturnTarget());
   }, []);
 
-  /** 从 URL 路径同步语言：访问 /en-gb/admin/login → 语言切换为 en-gb（并写入 localStorage 记忆） */
+  /** 从 URL 路径同步语言：访问 /en-gb/login → 语言切换为 en-gb（并写入 localStorage 记忆） */
   useEffect(() => {
     const urlLocale = pathname ? urlLangToLocale(pathname.split("/")[1] ?? "") : null;
     if (urlLocale && urlLocale !== locale) {
@@ -210,7 +211,7 @@ export default function AdminLoginPage() {
     <div className="relative min-h-screen flex items-center justify-center px-4 py-12 bg-gradient-to-br from-background to-muted/30">
       {/* 语言切换：未登录也能切换后台界面语言 */}
       <div className="absolute top-4 right-4">
-        <AdminLocaleSwitcher />
+        <LoginLocaleSwitcher />
       </div>
       <motion.div
         initial={{ opacity: 0, y: 12 }}
@@ -221,7 +222,7 @@ export default function AdminLoginPage() {
         <Card className="shadow-xl">
           <CardHeader className="text-center space-y-2">
             <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground mx-auto">
-              <ShieldCheck className="h-6 w-6" />
+              <LogIn className="h-6 w-6" />
             </div>
             <CardTitle className="text-2xl">{t("admin.login.title")}</CardTitle>
             <CardDescription>{t("admin.login.subtitle")}</CardDescription>
@@ -321,7 +322,7 @@ export default function AdminLoginPage() {
               </>
             )}
 
-            {/* 忘记密码 + 账号恢复 */}
+            {/* 忘记密码 + 注册账号 + 账号恢复 */}
             <div className="mt-4 flex items-center justify-between text-sm">
               <Link
                 href={lp("/admin/forgot-password")}
@@ -330,8 +331,17 @@ export default function AdminLoginPage() {
                 {t("admin.login.forgotPassword")}
               </Link>
               <Link
+                href={lp("/auth/register")}
+                className="inline-flex items-center gap-1.5 font-medium text-primary hover:underline"
+              >
+                <UserPlus className="h-4 w-4" />
+                {t("auth.login.toRegister")}
+              </Link>
+            </div>
+            <div className="mt-2 text-center">
+              <Link
                 href={lp("/admin/recover")}
-                className="text-muted-foreground hover:text-primary transition-colors"
+                className="text-xs text-muted-foreground hover:text-primary transition-colors"
               >
                 {t("admin.recover.title")}
               </Link>

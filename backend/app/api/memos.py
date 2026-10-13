@@ -107,6 +107,7 @@ def _memo_brief_dict(memo: Memo, liked_ids: set[int], fav_ids: set[int],
         "like_count": memo.like_count,
         "favorite_count": memo.favorite_count,
         "comment_count": memo.comment_count,
+        "share_count": memo.share_count,
         "has_image": has_img,
         "first_image_url": first_img,
         "author": _author_dict(memo.author),
@@ -159,6 +160,7 @@ def _memo_out_dict(memo: Memo, liked: bool, fav: bool, attachments: list[MemoAtt
         "like_count": memo.like_count,
         "favorite_count": memo.favorite_count,
         "comment_count": memo.comment_count,
+        "share_count": memo.share_count,
         "author": _author_dict(memo.author),
         "tags": _tag_dicts(memo),
         "attachments": [MemoAttachmentOut.model_validate(a).model_dump(mode="json") for a in attachments],
@@ -1025,6 +1027,29 @@ async def get_memo(
             )
         )).scalar_one_or_none() is not None
     return ok(data=_memo_out_dict(m, liked=liked, fav=fav, attachments=attachments))
+
+
+# ---------- 分享计数（无鉴权，仅累加 share_count） ----------
+# 注：路径用 /share-count 避免与 author_router 的 POST /{id}/share（生成分享链接）冲突
+@public_router.post("/{memo_id}/share-count")
+async def share_memo(
+    memo_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """分享计数：每次调用 share_count += 1。
+
+    仅记录触发次数（复制链接 / 唤起系统分享弹窗均调用此接口）；
+    不存储分享者身份隐私。private 可见性的 Memo 不允许分享。
+    """
+    m = await _load_memo_or_404(db, memo_id)
+    if m.visibility == "private":
+        raise BizException(BizCode.NOT_FOUND, data={"detail": "Memo 不存在"})
+    if m.admin_removed:
+        raise BizException(BizCode.NOT_FOUND, data={"detail": "Memo 不存在"})
+    m.share_count = (m.share_count or 0) + 1
+    await db.commit()
+    await db.refresh(m)
+    return ok(data={"share_count": m.share_count})
 
 
 # ==================== 后台管理 ====================

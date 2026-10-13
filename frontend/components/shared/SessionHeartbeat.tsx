@@ -33,7 +33,7 @@ export function SessionHeartbeat() {
         if (err instanceof ApiError && err.status === 401) {
           clearLocalSession();
           if (pathname.startsWith("/admin")) {
-            window.location.href = lp("/admin/login");
+            window.location.href = lp("/login");
           }
         }
       }

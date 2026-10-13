@@ -31,9 +31,12 @@ class CommentPublic(BaseModel):
 
 
 class CommentAdminOut(CommentPublic):
-    """后台评论：含完整 IP 溯源 + 状态 + 所属文章标题。"""
+    """后台评论：含完整 IP 溯源 + 双布尔状态 + 所属文章标题。"""
     submit_ip: str | None
-    status: Literal["visible", "user_deleted", "admin_removed"]
+    is_deleted: bool
+    is_hidden: bool
+    # 状态标签 key（前端 i18n 渲染）：normal / user_deleted / admin_hidden
+    status_label: str | None = None
     deleted_at: UTCDatetime | None
     post_title: str | None = None
 

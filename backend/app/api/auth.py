@@ -742,6 +742,27 @@ async def update_profile(
             raise HTTPException(status_code=400, detail="无效的货币单位")
         u.currency = v.upper() if v else v
 
+    # ---- 个人资料扩展字段（Phase 规格补齐） ----
+    # gender / bio / theme：空字符串=清空（存 NULL）；schema 层已校验 allowlist
+    if req.gender is not None:
+        u.gender = req.gender.strip() or None
+    if req.birthday is not None:
+        u.birthday = req.birthday
+    if req.bio is not None:
+        u.bio = req.bio.strip() or None
+    if req.theme is not None:
+        u.theme = req.theme.strip() or None
+    # profile_privacy：用 exclude_unset 区分「未传」与「显式传 null/空 dict=重置默认」。
+    # 传入非空 dict 则合并更新（保留旧值中未提供的键）。
+    raw_data = req.model_dump(exclude_unset=True)
+    if "profile_privacy" in raw_data:
+        if req.profile_privacy:
+            old = u.profile_privacy or {}
+            new = {**old, **req.profile_privacy}
+            u.profile_privacy = new or None
+        else:
+            u.profile_privacy = None
+
     _log(db, u.id, "profile.update", None, get_client_ip(request))
     await db.commit()
     await db.refresh(u)

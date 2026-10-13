@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import delete as sa_delete
 from sqlalchemy import func, select
 
-from app.api import activities, admin_stats, announcements, audit, auth, blog, bug_report, comments, content, geo, i18n_public, health, memos, media, members, notifications, oauth, projects, query, realname, recruitment, recycle, register, security, sso, stats, system, system_init, tags, translations
+from app.api import activities, admin_stats, announcements, audit, auth, blog, bug_report, comments, content, geo, i18n_public, health, memos, media, members, notifications, oauth, projects, query, realname, recruitment, recycle, register, security, sso, stats, system, system_init, tags, translations, users
 from app.api.auth import security_answer_digest
 from app.core.config import get_settings
 from app.core.csrf import CSRF_HEADER, csrf_middleware
@@ -95,6 +95,12 @@ async def _migrate_columns(conn):
             ("locale", "VARCHAR(16) NULL"),
             ("region_code", "VARCHAR(16) NULL"),
             ("currency", "VARCHAR(8) NULL"),
+            # ---- 个人资料扩展字段（规格补齐） ----
+            ("gender", "VARCHAR(8) NULL"),
+            ("birthday", "DATETIME NULL"),
+            ("bio", "TEXT NULL"),
+            ("theme", "VARCHAR(32) NULL"),
+            ("profile_privacy", "JSON NULL"),
         ],
         "activities": [
             ("checkin_open", "BOOLEAN DEFAULT 0"),
@@ -117,8 +123,23 @@ async def _migrate_columns(conn):
             ("source", "VARCHAR(16) NOT NULL DEFAULT 'form'"),
         ],
         "bug_reports": [("submit_ip", "VARCHAR(64) NULL")],
-        # 博客展示用作者名（历史迁移内容无系统账号）
-        "blog_posts": [("author_name", "VARCHAR(64) NULL")],
+        # 博客展示用作者名（历史迁移内容无系统账号）+ 4 项统计指标
+        "blog_posts": [
+            ("author_name", "VARCHAR(64) NULL"),
+            ("like_count", "INTEGER DEFAULT 0"),
+            ("comment_count", "INTEGER DEFAULT 0"),
+            ("share_count", "INTEGER DEFAULT 0"),
+            ("favourite_count", "INTEGER DEFAULT 0"),
+        ],
+        # 评论系统：双布尔软删除字段（替代旧 CommentStatus 枚举）
+        "comments": [
+            ("is_deleted", "BOOLEAN DEFAULT 0"),
+            ("is_hidden", "BOOLEAN DEFAULT 0"),
+        ],
+        # 随手笔记：分享计数
+        "memos": [
+            ("share_count", "INTEGER DEFAULT 0"),
+        ],
         # 成员花名册扩展字段（Excel 批量导入；电话/微信仅管理端可见）
         "members": [
             ("gender", "VARCHAR(8) NULL"),
@@ -197,6 +218,17 @@ async def _migrate_columns(conn):
         for col, ddl in columns:
             if col not in existing:
                 await conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {ddl}"))
+    # 评论旧枚举 status → 双布尔回填（仅当 status 列存在时执行；新库无此列跳过）
+    rows = await conn.execute(text("PRAGMA table_info(comments)"))
+    has_status_col = any(row[1] == "status" for row in rows)
+    if has_status_col:
+        await conn.execute(text(
+            "UPDATE comments SET is_deleted=1 WHERE status='USER_DELETED' AND is_deleted=0"
+        ))
+        await conn.execute(text(
+            "UPDATE comments SET is_hidden=1 WHERE status='ADMIN_REMOVED' AND is_hidden=0"
+        ))
+        logger.info("评论旧枚举 status 已回填至 is_deleted/is_hidden")
     await conn.execute(text(
         "CREATE INDEX IF NOT EXISTS ix_audit_logs_trace_id ON audit_logs (trace_id)"
     ))
@@ -439,6 +471,7 @@ app.include_router(health.router)
 app.include_router(geo.router)
 app.include_router(i18n_public.router)
 app.include_router(auth.router)
+app.include_router(users.router)
 app.include_router(activities.router)
 app.include_router(activities.admin_router)
 app.include_router(announcements.public_router)

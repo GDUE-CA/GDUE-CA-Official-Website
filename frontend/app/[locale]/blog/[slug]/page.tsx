@@ -7,6 +7,7 @@ import { getPublicPost } from "@/lib/api/blog";
 import { ApiError } from "@/lib/api/client";
 import { Badge } from "@/components/ui/badge";
 import { MarkdownRenderer } from "@/components/blog/MarkdownRenderer";
+import { BlogMetricBar } from "@/components/blog/BlogMetricBar";
 import { CommentsSection } from "@/components/blog/CommentsSection";
 import { FormattedUserActionTime } from "@/components/shared/FormattedUserActionTime";
 
@@ -90,6 +91,15 @@ export default async function BlogPostPage({
 
       {/* 文章正文 */}
       <MarkdownRenderer content={post.content_md} />
+
+      {/* 指标操作条（点赞 / 评论计数 / 分享 / 收藏） */}
+      <BlogMetricBar
+        slug={post.slug}
+        initialLike={post.like_count}
+        initialComment={post.comment_count}
+        initialShare={post.share_count}
+        initialFavourite={post.favourite_count}
+      />
 
       {/* 评论区（客户端组件自行拉取 /api/blog/{id}/comments） */}
       <CommentsSection postId={post.id} />

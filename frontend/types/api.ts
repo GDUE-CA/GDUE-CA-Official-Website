@@ -128,6 +128,17 @@ export interface AdminUser {
   locale?: string | null;
   region_code?: string | null;
   currency?: string | null;
+  // ---- 个人资料扩展字段（Phase 规格补齐） ----
+  /** 性别：male / female / hidden；null = 未设置 */
+  gender?: string | null;
+  /** 生日（带 Z 后缀 UTC ISO）；null = 未设置 */
+  birthday?: string | null;
+  /** 个性签名 / 简介 */
+  bio?: string | null;
+  /** 主题预设：default / apple / festival:*；null = 跟随系统默认 */
+  theme?: string | null;
+  /** 隐私设置：{"gender":"public|private","bio":"public|private","birthday":"public|private"}；region 永久公开不在此 JSON */
+  profile_privacy?: Record<string, string> | null;
   created_at: string;
 }
 
@@ -166,10 +177,52 @@ export interface ProfileUpdate {
   locale?: string;
   region_code?: string;
   currency?: string;
+  // ---- 个人资料扩展字段 ----
+  /** 性别：male / female / hidden；空字符串 = 清空；不传 = 不修改 */
+  gender?: string;
+  /** 生日 ISO 字符串；传入则规范化为 UTC naive；不传 = 不修改 */
+  birthday?: string;
+  /** 个性签名；空字符串 = 清空 */
+  bio?: string;
+  /** 主题预设：default / apple / festival:*；空字符串 = 跟随系统默认 */
+  theme?: string;
+  /** 隐私设置；传入 dict 则合并更新；显式传 null = 重置为默认 */
+  profile_privacy?: Record<string, string> | null;
 }
 
 export interface AvatarUploadOut {
   avatar_url: string;
+}
+
+/** 用户公开个人主页信息（GET /api/users/{username}/profile）：隐私过滤后 */
+export interface UserProfile {
+  id: number;
+  username: string;
+  display_name: string;
+  avatar_url: string | null;
+  /** 个性签名；privacy=private 时为 null */
+  bio: string | null;
+  /** 性别；privacy=private 或显式 hidden 时为 null */
+  gender: string | null;
+  /** 生日；privacy=private 时为 null */
+  birthday: string | null;
+  // ---- 地区字段（永久公开，硬性约束） ----
+  country: string | null;
+  region: string | null;
+  locality: string | null;
+  country_code: string | null;
+  subdiv1_code: string | null;
+  subdiv2_code: string | null;
+  locality_text: string | null;
+  created_at: string;
+}
+
+/** 博客指标操作结果（POST /api/blog/{slug}/{share|like|unlike|favourite|unfavourite}） */
+export interface BlogMetricOut {
+  like_count: number;
+  comment_count: number;
+  share_count: number;
+  favourite_count: number;
 }
 
 /** 单个 IP 的访问来源聚合（后台概览） */
@@ -697,6 +750,11 @@ export interface BlogPost {
   author: string | null;
   allow_comments: boolean;
   tags: BlogTag[];
+  // ---- 4 项统计指标（冗余计数，前端列表/详情展示） ----
+  like_count: number;
+  comment_count: number;
+  share_count: number;
+  favourite_count: number;
   created_at: string;
   updated_at: string;
 }
@@ -721,7 +779,18 @@ export interface BlogTagCreate {
 }
 
 /* ---------- 评论（Phase 5） ---------- */
-export type CommentStatus = "visible" | "user_deleted" | "admin_removed";
+/**
+ * 评论状态标签（后端按 is_deleted + is_hidden 派生）：
+ * - normal: 正常可见
+ * - user_deleted: 用户自删（is_deleted=true）
+ * - admin_hidden: 管理员屏蔽（is_hidden=true）
+ * - user_deleted_and_admin_hidden: 用户删 + 管理员屏蔽
+ */
+export type CommentStatusLabel =
+  | "normal"
+  | "user_deleted"
+  | "admin_hidden"
+  | "user_deleted_and_admin_hidden";
 
 /** 公开评论（GET /api/blog/{id}/comments）：不返回完整 IP，只返回属地 */
 export interface CommentPublic {
@@ -741,7 +810,7 @@ export interface CommentListResponse extends Paginated<CommentPublic> {
   allowed: boolean;
 }
 
-/** 后台评论（GET /api/admin/comments）：含完整 IP + 状态 + 所属文章标题 */
+/** 后台评论（GET /api/admin/comments）：含完整 IP + 双布尔状态 + 状态标签 + 所属文章标题 */
 export interface CommentAdmin {
   id: number;
   post_id: number;
@@ -750,7 +819,12 @@ export interface CommentAdmin {
   submit_ip: string | null;
   location_zh: string | null;
   location_en: string | null;
-  status: CommentStatus;
+  /** 用户自删标记（公开列表不可见，后台留存） */
+  is_deleted: boolean;
+  /** 管理员屏蔽标记（公开列表不可见，后台留存） */
+  is_hidden: boolean;
+  /** 状态标签 key（前端 i18n 渲染） */
+  status_label: CommentStatusLabel;
   created_at: string;
   deleted_at: string | null;
   post_title: string | null;
@@ -1060,6 +1134,8 @@ export interface MemoOut {
   like_count: number;
   favorite_count: number;
   comment_count: number;
+  /** 转发/分享次数（仅计数器，不存储分享者身份） */
+  share_count: number;
   author: MemoAuthorBrief | null;
   tags: MemoTagOut[];
   attachments: MemoAttachmentOut[];
@@ -1079,6 +1155,8 @@ export interface MemoBriefOut {
   like_count: number;
   favorite_count: number;
   comment_count: number;
+  /** 转发/分享次数（仅计数器，不存储分享者身份） */
+  share_count: number;
   has_image: boolean;
   first_image_url: string | null;
   author: MemoAuthorBrief | null;

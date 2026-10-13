@@ -85,7 +85,7 @@ export function EnrolButton({ eventId, size = "default" }: EnrolButtonProps) {
 
   const handleEnrol = useCallback(async () => {
     if (!loggedIn) {
-      router.push(lp("/auth/login"));
+      router.push(lp("/login"));
       return;
     }
     setSubmitting(true);

@@ -11,6 +11,14 @@ import type { NextConfig } from "next";
 /** 后端地址（仅服务端使用，不暴露给浏览器） */
 const BACKEND_URL = (process.env.BACKEND_URL || "http://127.0.0.1:8000").replace(/\/+$/, "");
 
+/**
+ * 合法 locale 正则片段（rewrites / redirects 共用，单一真值源）。
+ * 必须与 lib/i18n.ts 的 locales 数组保持一致——此前仅列 6 个且含已废弃的
+ * zh-hk/en-us/ja，导致其余 7 个 locale 的 /admin、/setting、/auth、/login
+ * 路由 rewrite 不匹配而 404。统一在此维护，新增 locale 只改一处。
+ */
+const LANG = "zh-cn|zh-cn-sg|zh-tw|zh-mo|zh-yue-cn|zh-yue-hk|en-gb|ja-jp|ko-kr|es-es|fr-fr|de-de|ru-ru";
+
 const nextConfig: NextConfig = {
   // 不暴露 X-Powered-By: Next.js（减少指纹信息）
   poweredByHeader: false,
@@ -18,11 +26,17 @@ const nextConfig: NextConfig = {
   // dev 服务器跨源白名单（仅 development 生效）：
   // Next 16 默认只允许 localhost 访问 HMR websocket 与跨源资源，
   // 用回环 IP / 局域网 IP / 域名访问时客户端运行时会被阻塞 → 页面停留在 SSR 初始态（白屏无文字）。
+  // 本机网卡 IP 变动时无需改代码：用 DEV_ALLOWED_ORIGINS 环境变量追加（逗号分隔）。
   allowedDevOrigins: [
     "127.0.0.1",
-    "172.17.0.100", // 本机局域网/虚拟网卡地址（IP 变动时需同步更新）
+    "localhost",
+    "10.0.146.41", // 本机局域网（以太网）
+    "100.67.253.101", // 本机 Tailscale 虚拟网卡
     "gdue-ca.paperee.guru",
     "*.paperee.guru",
+    ...(process.env.DEV_ALLOWED_ORIGINS?.split(",")
+      .map((s) => s.trim())
+      .filter(Boolean) ?? []),
   ],
 
   // 浏览器统一请求同源 /api/*，由 Next.js 转发到后端：
@@ -33,7 +47,6 @@ const nextConfig: NextConfig = {
   // 这里用 rewrite 把带 locale 前缀的 URL 内部映射到实际页面路由，浏览器 URL 保持带前缀。
   // :lang 仅匹配白名单内的合法 locale，非法 locale 不被 rewrite、由 proxy 接管做防护重定向。
   async rewrites() {
-    const LANG = "zh-cn|zh-tw|zh-hk|en-us|en-gb|ja";
     return [
       // 后台多语言路由：/zh-cn/admin/** → 内部渲染 /admin/**
       { source: `/:lang(${LANG})/admin/:path*`, destination: "/admin/:path*" },
@@ -41,19 +54,24 @@ const nextConfig: NextConfig = {
       { source: `/:lang(${LANG})/auth/:path*`, destination: "/auth/:path*" },
       // /setting 个人设置页多语言路由
       { source: `/:lang(${LANG})/setting/:path*`, destination: "/setting/:path*" },
+      // 统一登录入口多语言路由：/zh-cn/login → /login
+      { source: `/:lang(${LANG})/login`, destination: "/login" },
       { source: "/api/:path*", destination: `${BACKEND_URL}/api/:path*` },
       { source: "/uploads/:path*", destination: `${BACKEND_URL}/uploads/:path*` },
     ];
   },
 
   // 旧审核页书签兜底：三类审核已合并至统一审核中心 /{locale}/admin/review?tab=
+  // 旧登录页书签兜底：两套登录页已合并为统一 /login
   // proxy 会先把裸路径补上 locale 前缀，再匹配以下带 :lang 的 source。
   async redirects() {
-    const LANG = "zh-cn|zh-tw|zh-hk|en-us|en-gb|ja";
     return [
       { source: `/:lang(${LANG})/admin/registrations`, destination: "/:lang/admin/review?tab=registrations", permanent: false },
       { source: `/:lang(${LANG})/admin/bugs`, destination: "/:lang/admin/review?tab=bugs", permanent: false },
       { source: `/:lang(${LANG})/admin/password-resets`, destination: "/:lang/admin/review?tab=resets", permanent: false },
+      // 旧 /admin/login、/auth/login → 统一 /login（permanent=false 临时重定向，便于后续清理）
+      { source: `/:lang(${LANG})/admin/login`, destination: "/:lang/login", permanent: false },
+      { source: `/:lang(${LANG})/auth/login`, destination: "/:lang/login", permanent: false },
     ];
   },
 

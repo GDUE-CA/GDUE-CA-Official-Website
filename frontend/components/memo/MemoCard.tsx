@@ -199,7 +199,7 @@ export function MemoCard({
           onClick={() =>
             logged
               ? withBusy("like", () => toggleLike(memo.id))
-              : router.push(localePath("/admin/login"))
+              : router.push(localePath("/login"))
           }
           className={cn(
             "inline-flex items-center gap-1 px-2 h-7 rounded hover:bg-muted transition-colors",
@@ -217,7 +217,7 @@ export function MemoCard({
           onClick={() =>
             logged
               ? withBusy("fav", () => toggleFavorite(memo.id))
-              : router.push(localePath("/admin/login"))
+              : router.push(localePath("/login"))
           }
           className={cn(
             "inline-flex items-center gap-1 px-2 h-7 rounded hover:bg-muted transition-colors",

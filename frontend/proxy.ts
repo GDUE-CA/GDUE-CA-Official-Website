@@ -52,16 +52,18 @@ function stripLocale(pathname: string): { rest: string; locale: Locale | null } 
   return { rest: pathname, locale: null };
 }
 
-/** 无需登录即可访问的后台页面（admin 相对路径，已剥离 locale 前缀） */
+/** 无需登录即可访问的后台页面（admin 相对路径，已剥离 locale 前缀）。
+ *  注：/admin/login 已合并入统一 /login（由 next.config redirects 兜底），
+ *  此处不再放行；/admin/forgot-password、/admin/recover、/admin/setup 仍属 admin
+ *  域公开流程页，保留放行。 */
 const PUBLIC_ADMIN_REST = new Set([
-  "/admin/login",
   "/admin/forgot-password",
   "/admin/recover",
   "/admin/setup",
 ]);
 
 /**
- * 后台守卫：未登录访问 /{locale}/admin/** 或裸 /admin/** 时重定向到本地化登录页；放行返回 null。
+ * 后台守卫：未登录访问 /{locale}/admin/** 或裸 /admin/** 时重定向到统一登录页 /{locale}/login；放行返回 null。
  * 仅判断 Cookie 存在性，不解析 JWT / 不做角色判断——
  * HttpOnly Cookie 在 Edge Runtime 无法验签，任何角色决策必须由后端完成。
  */
@@ -73,19 +75,20 @@ function adminGuard(request: NextRequest): URL | null {
   const isAdminPath = rest === "/admin" || rest.startsWith("/admin/");
   if (!isAdminPath) return null;
 
-  // 放行登录流程页面（含子路径，如 /admin/login/x）+ 初始化向导 /admin/setup
+  // 放行登录流程页面 + 初始化向导 /admin/setup
   if (
     PUBLIC_ADMIN_REST.has(rest) ||
-    rest.startsWith("/admin/login/") ||
-    rest.startsWith("/admin/setup")
+    rest.startsWith("/admin/setup") ||
+    rest.startsWith("/admin/forgot-password/") ||
+    rest.startsWith("/admin/recover/")
   )
     return null;
 
   if (request.cookies.has(SESSION_COOKIE)) return null;
 
-  // 未登录：重定向到本地化后台登录页，并携带原始地址（含 locale 前缀）供登录后回跳
+  // 未登录：重定向到统一登录页 /{locale}/login，并携带原始地址（含 locale 前缀）供登录后回跳
   const detected = locale ?? detectLocale(request);
-  const loginUrl = new URL(`/${localeToUrlLang(detected)}/admin/login`, request.url);
+  const loginUrl = new URL(`/${localeToUrlLang(detected)}/login`, request.url);
   // admin 根路径不携带 next（登录后按角色落地首页即可）
   const next = pathname + (request.nextUrl.search || "");
   const isAdminRoot = rest === "/admin" || rest === "/admin/";
@@ -94,7 +97,7 @@ function adminGuard(request: NextRequest): URL | null {
 }
 
 /**
- * 设置页守卫：未登录访问 /{locale}/setting/** 或裸 /setting/** 时重定向到本地化登录页并携带回跳地址；放行返回 null。
+ * 设置页守卫：未登录访问 /{locale}/setting/** 或裸 /setting/** 时重定向到统一登录页 /{locale}/login 并携带回跳地址；放行返回 null。
  * 与 adminGuard 一致仅判断 Cookie 存在性——真实登录态由后端接口与 SettingRoot 客户端校验；
  * 设置页数据一律取自当前登录会话，不存在通过 query 参数访问他人设置页的路径。
  */
@@ -107,9 +110,9 @@ function settingGuard(request: NextRequest): URL | null {
 
   if (request.cookies.has(SESSION_COOKIE)) return null;
 
-  // 未登录：重定向到本地化登录页，携带 returnUrl 供登录后回跳
+  // 未登录：重定向到统一登录页 /{locale}/login，携带 returnUrl 供登录后回跳
   const detected = locale ?? detectLocale(request);
-  const loginUrl = new URL(`/${localeToUrlLang(detected)}/auth/login`, request.url);
+  const loginUrl = new URL(`/${localeToUrlLang(detected)}/login`, request.url);
   const next = pathname + (request.nextUrl.search || "");
   const isSettingRoot = rest === "/setting" || rest === "/setting/";
   if (next && !isSettingRoot) loginUrl.searchParams.set("returnUrl", next);

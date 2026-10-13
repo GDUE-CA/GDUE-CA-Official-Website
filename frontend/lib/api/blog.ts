@@ -6,6 +6,7 @@
  */
 import { apiFetch } from "./client";
 import type {
+  BlogMetricOut,
   BlogPost,
   BlogPostCreate,
   BlogPostStatus,
@@ -41,6 +42,47 @@ export function getPublicPost(slug: string, lang?: string) {
 export function listPublicTags(lang?: string) {
   const langQs = lang ? `?lang=${encodeURIComponent(lang)}` : "";
   return apiFetch<BlogTag[]>(`/api/blog/tags${langQs}`);
+}
+
+/* ---------- 博客指标：点赞 / 分享 / 收藏（冗余计数器，仅计数不存身份） ---------- */
+
+/** 公开：分享计数（无鉴权，share_count += 1；不存储分享者身份） */
+export function sharePost(slug: string) {
+  return apiFetch<BlogMetricOut>(`/api/blog/${encodeURIComponent(slug)}/share`, {
+    method: "POST",
+  });
+}
+
+/** 鉴权：点赞（like_count += 1；需登录，未登录 401） */
+export function likePost(slug: string) {
+  return apiFetch<BlogMetricOut>(`/api/blog/${encodeURIComponent(slug)}/like`, {
+    method: "POST",
+    withAuth: true,
+  });
+}
+
+/** 鉴权：取消点赞（like_count = max(0, -1)；需登录） */
+export function unlikePost(slug: string) {
+  return apiFetch<BlogMetricOut>(`/api/blog/${encodeURIComponent(slug)}/unlike`, {
+    method: "POST",
+    withAuth: true,
+  });
+}
+
+/** 鉴权：收藏（favourite_count += 1；需登录） */
+export function favouritePost(slug: string) {
+  return apiFetch<BlogMetricOut>(`/api/blog/${encodeURIComponent(slug)}/favourite`, {
+    method: "POST",
+    withAuth: true,
+  });
+}
+
+/** 鉴权：取消收藏（favourite_count = max(0, -1)；需登录） */
+export function unfavouritePost(slug: string) {
+  return apiFetch<BlogMetricOut>(`/api/blog/${encodeURIComponent(slug)}/unfavourite`, {
+    method: "POST",
+    withAuth: true,
+  });
 }
 
 /* ---------- 管理接口 ---------- */

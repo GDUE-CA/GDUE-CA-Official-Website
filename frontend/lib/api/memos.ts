@@ -214,6 +214,13 @@ export async function revokeShareLink(id: number): Promise<null> {
   return apiFetch<null>(`/api/memos/${id}/share`, { method: "DELETE" });
 }
 
+/** 公开：分享计数（无鉴权，share_count += 1；不存储分享者身份） */
+export async function shareMemo(id: number): Promise<{ share_count: number }> {
+  return apiFetch<{ share_count: number }>(`/api/memos/${id}/share-count`, {
+    method: "POST",
+  });
+}
+
 /* 上传附件（multipart；不走 JSON 路径） */
 export async function uploadMemoAttachment(
   id: number,

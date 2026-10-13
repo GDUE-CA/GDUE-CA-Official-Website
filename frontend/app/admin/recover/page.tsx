@@ -140,7 +140,7 @@ export default function RecoverPage() {
 
             <div className="mt-6 text-center">
               <Button asChild variant="ghost" size="sm">
-                <Link href={lp("/admin/login")}>
+                <Link href={lp("/login")}>
                   <ArrowLeft className="h-4 w-4 mr-1.5" />
                   {t("admin.recover.backToLogin")}
                 </Link>

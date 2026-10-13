@@ -101,6 +101,18 @@ class User(Base):
     locale: Mapped[str | None] = mapped_column(String(16), nullable=True)
     # 用户个人区域格式化代码（ISO-3166-1 二位，如 CN/GB/JP）；NULL = 跟随系统全局 sys_default_region
     region_code: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    # ---- 个人资料扩展字段（Phase 规格补齐） ----
+    # 性别：male / female / hidden（不显示）；NULL = 未设置
+    gender: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    # 生日（naive UTC 存储）；NULL = 未设置
+    birthday: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # 个性签名 / 简介
+    bio: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # 主题预设：default / apple / festival:* ；NULL = 跟随系统默认
+    theme: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # 隐私设置 JSON：{"gender":"public","bio":"public","birthday":"public"}
+    # region 永久公开不在此 JSON 内
+    profile_privacy: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     # 软删除：True 送入内容回收站，定时任务 30 天后物理删除；删除后禁止登录
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -638,6 +650,15 @@ class BlogPost(Base):
     author_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     # 是否允许评论（Phase 5 评论系统读取此开关 + 全局开关共同决定）
     allow_comments: Mapped[bool] = mapped_column(Boolean, default=True)
+    # ---- 博客 4 项统计指标（冗余计数字段，用于列表/详情展示） ----
+    # 点赞数
+    like_count: Mapped[int] = mapped_column(Integer, default=0)
+    # 评论数（含用户已删除 + 管理员已屏蔽的全部行数；与前端展示数可不一致）
+    comment_count: Mapped[int] = mapped_column(Integer, default=0)
+    # 转发/分享次数（仅计数器，不存储分享者身份）
+    share_count: Mapped[int] = mapped_column(Integer, default=0)
+    # 收藏数
+    favourite_count: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
 
@@ -672,16 +693,25 @@ class BlogPostTag(Base):
 
 
 class CommentStatus(str, Enum):
-    VISIBLE = "visible"              # 正常展示
-    USER_DELETED = "user_deleted"    # 用户自删（软删除，后台仍可见）
-    ADMIN_REMOVED = "admin_removed"  # 管理员下架
+    """旧枚举（已弃用，仅保留兼容旧库 status 列；新代码使用 is_deleted/is_hidden）。
+    迁移回填：VISIBLE→(F,F) / USER_DELETED→(T,F) / ADMIN_REMOVED→(F,T)
+    """
+    VISIBLE = "visible"
+    USER_DELETED = "user_deleted"
+    ADMIN_REMOVED = "admin_removed"
 
 
 class Comment(Base):
-    """博客评论（软删除：任何状态都不物理删除，仅文章删除时随父级联清理）。
+    """博客评论（双布尔软删除 + 管理员可物理删除）。
 
     访客无账号，评论以「昵称 + 内容」提交；提交 IP 完整存储仅后台可见，
     公开接口只返回属地（国家/省份粒度）。
+
+    软删除矩阵：
+    - is_deleted=True  → 用户自删（公开列表不可见，后台留存）
+    - is_hidden=True   → 管理员屏蔽（公开列表不可见，后台留存）
+    - 两者可独立为 True（一条评论可被用户删后再被管理员屏蔽）
+    - 物理删除 = 管理员确认后 DELETE 数据库行（不可逆）
     """
     __tablename__ = "comments"
 
@@ -695,9 +725,10 @@ class Comment(Base):
     # "local"=本机回环，"intranet"=校园内网（特殊枚举由前端 i18n 渲染）
     location_zh: Mapped[str | None] = mapped_column(String(128), nullable=True)
     location_en: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    status: Mapped[CommentStatus] = mapped_column(
-        SAEnum(CommentStatus), default=CommentStatus.VISIBLE, index=True
-    )
+    # 用户自删标记（软删除）：公开列表过滤 is_deleted=false
+    is_deleted: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    # 管理员屏蔽标记（软删除）：公开列表过滤 is_hidden=false
+    is_hidden: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
@@ -915,6 +946,8 @@ class Memo(Base):
     favorite_count: Mapped[int] = mapped_column(Integer, default=0)
     # 评论数（本期评论为预留接口骨架，计数仍写入）
     comment_count: Mapped[int] = mapped_column(Integer, default=0)
+    # 转发/分享次数（仅计数器，不存储分享者身份）
+    share_count: Mapped[int] = mapped_column(Integer, default=0)
     # 作者（外键：作者账号被删除时禁止物理删除 memo，置 author_id 为 NULL）
     author_id: Mapped[int | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True

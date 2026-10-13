@@ -7,7 +7,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Calendar, Tag } from "lucide-react";
+import { Calendar, Tag, Heart, MessageCircle, Share2, Star } from "lucide-react";
 import { useI18n } from "@/i18n/provider";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +22,11 @@ interface BlogListProps {
     date: string;
     tags: string[];
     author: string;
+    /** 4 项冗余计数（列表卡片底部展示） */
+    like_count: number;
+    comment_count: number;
+    share_count: number;
+    favourite_count: number;
   }[];
   tags: string[];
 }
@@ -95,10 +100,29 @@ export function BlogList({ posts, tags }: BlogListProps) {
                     <p className="text-sm text-muted-foreground line-clamp-3 mb-3">
                       {post.excerpt}
                     </p>
-                    <div className="flex flex-wrap gap-1.5">
+                    <div className="flex flex-wrap gap-1.5 mb-3">
                       {post.tags.map((tag) => (
                         <Badge key={tag} variant="outline">{tag}</Badge>
                       ))}
+                    </div>
+                    {/* 指标计数条 */}
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      <span className="inline-flex items-center gap-1">
+                        <Heart className="h-3.5 w-3.5" />
+                        {post.like_count}
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <MessageCircle className="h-3.5 w-3.5" />
+                        {post.comment_count}
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <Share2 className="h-3.5 w-3.5" />
+                        {post.share_count}
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <Star className="h-3.5 w-3.5" />
+                        {post.favourite_count}
+                      </span>
                     </div>
                   </CardContent>
                 </Card>

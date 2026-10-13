@@ -32,20 +32,6 @@ export const metadata: Metadata = {
   description: "广东第二师范学院（花都校区）计算机协会官方网站",
 };
 
-/** 防 FOUC 主题初始化脚本：在 hydration 前根据 localStorage/系统偏好设置主题 */
-function ThemeInitScript({ nonce }: { nonce?: string }) {
-  return (
-    <Script
-      id="gdueca-theme-init"
-      strategy="beforeInteractive"
-      nonce={nonce}
-      suppressHydrationWarning
-    >
-      {`(function(){try{var s=localStorage.getItem('gdueca-theme');var t=s||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');if(t==='dark')document.documentElement.classList.add('dark');}catch(e){}})();`}
-    </Script>
-  );
-}
-
 export default async function RootLayout({
   children,
 }: {
@@ -59,7 +45,17 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        <ThemeInitScript nonce={nonce} />
+        {/* 防 FOUC 主题初始化脚本：必须直接放在根 layout 的 <head> 内，
+            不能包在子组件里——beforeInteractive 脚本仅在根 layout/page 有效，
+            嵌套进子组件会触发 React "script tag inside component" 警告 */}
+        <Script
+          id="gdueca-theme-init"
+          strategy="beforeInteractive"
+          nonce={nonce}
+          suppressHydrationWarning
+        >
+          {`(function(){try{var s=localStorage.getItem('gdueca-theme');var t=s||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');if(t==='dark')document.documentElement.classList.add('dark');}catch(e){}})();`}
+        </Script>
       </head>
       <body className="min-h-full flex flex-col bg-background">
         {children}

@@ -113,7 +113,7 @@ export default function SetupWizardPage() {
     fetchSystemInitStatus()
       .then((s) => {
         if (s.system_initialized) {
-          router.replace(lp("/admin/login"));
+          router.replace(lp("/login"));
           return;
         }
         setChecking(false);
@@ -236,7 +236,7 @@ export default function SetupWizardPage() {
       setSuccess(true);
       // 后端已注销 BG 会话，清理本地会话后跳登录页
       clearLocalSession();
-      setTimeout(() => router.replace(lp("/admin/login")), 1800);
+      setTimeout(() => router.replace(lp("/login")), 1800);
     } catch (e) {
       setError(e instanceof Error ? e.message : t("admin.setup.error"));
     } finally {

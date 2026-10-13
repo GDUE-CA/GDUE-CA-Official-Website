@@ -5,7 +5,7 @@
  *
  * - SettingProviders：复用 AdminProviders（6 语言字典 + SessionHeartbeat 保活）
  * - SettingRoot：挂载时 fetchMe() 校验登录态
- *   - 401 / 网络失败 → clearLocalSession + 跳转 /auth/login
+ * 401 / 网络失败 → clearLocalSession + 跳转 /login
  *   - me.must_change_password → 跳转 /admin/change-password 强制改密
  *   - 通过后写回本地会话展示信息并渲染 children（未校验完显示 Loading）
  */
@@ -42,7 +42,7 @@ export function SettingRoot({ children }: { children: ReactNode }) {
       } catch {
         // 401 或网络失败：未登录
         clearLocalSession();
-        router.replace(lp("/auth/login"));
+        router.replace(lp("/login"));
       }
     })();
     return () => {

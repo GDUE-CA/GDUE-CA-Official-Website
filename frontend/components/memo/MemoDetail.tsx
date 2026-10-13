@@ -140,7 +140,7 @@ export function MemoDetail({ memo, onChange, onDelete, onRollback }: MemoDetailP
             onClick={() =>
               logged
                 ? toggleLike(memo.id).then((r) => onChange?.({ ...memo, ...r }))
-                : router.push(localePath("/admin/login"))
+                : router.push(localePath("/login"))
             }
             className={cn(
               "inline-flex items-center gap-1 px-2 h-8 rounded hover:bg-muted",
@@ -156,7 +156,7 @@ export function MemoDetail({ memo, onChange, onDelete, onRollback }: MemoDetailP
             onClick={() =>
               logged
                 ? toggleFavorite(memo.id).then((r) => onChange?.({ ...memo, ...r }))
-                : router.push(localePath("/admin/login"))
+                : router.push(localePath("/login"))
             }
             className={cn(
               "inline-flex items-center gap-1 px-2 h-8 rounded hover:bg-muted",

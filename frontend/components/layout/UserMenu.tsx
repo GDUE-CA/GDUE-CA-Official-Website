@@ -95,7 +95,7 @@ export function UserMenu() {
   const handleLogout = async () => {
     setMenuOpen(false);
     await logout();
-    window.location.href = lp(`/auth/login`);
+    window.location.href = lp(`/login`);
   };
 
   const showBackend = loggedIn && isAdminRole(profile?.role);
@@ -111,7 +111,7 @@ export function UserMenu() {
       <HoverCard openDelay={250} closeDelay={200}>
         <HoverCardTrigger asChild>
           <Button asChild size="sm" variant="outline">
-            <Link href={lp("/auth/login")}>{t("nav.login")}</Link>
+            <Link href={lp("/login")}>{t("nav.login")}</Link>
           </Button>
         </HoverCardTrigger>
         <HoverCardContent align="end" className="w-72">
@@ -125,7 +125,7 @@ export function UserMenu() {
             ))}
           </ul>
           <Button asChild size="sm" className="mt-3 w-full">
-            <Link href={lp("/auth/login")}>{t("nav.loginCard.loginNow")}</Link>
+            <Link href={lp("/login")}>{t("nav.loginCard.loginNow")}</Link>
           </Button>
           <p className="mt-2 text-center text-xs text-muted-foreground">
             {t("nav.loginCard.noAccount")}{" "}

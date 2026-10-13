@@ -22,6 +22,10 @@ function toCardPost(p: BlogPost) {
     date: p.published_at ?? p.created_at,
     tags: p.tags.map((t) => t.name),
     author: p.author ?? "—",
+    like_count: p.like_count,
+    comment_count: p.comment_count,
+    share_count: p.share_count,
+    favourite_count: p.favourite_count,
   };
 }
 

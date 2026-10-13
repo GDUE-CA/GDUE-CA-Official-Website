@@ -184,6 +184,8 @@ class MemoOut(BaseModel):
     like_count: int
     favorite_count: int
     comment_count: int
+    # 转发/分享次数（仅计数器，不存储分享者身份）
+    share_count: int
     author: MemoAuthorBrief | None
     tags: list[TagOut]
     attachments: list[MemoAttachmentOut]
@@ -208,6 +210,8 @@ class MemoBriefOut(BaseModel):
     like_count: int
     favorite_count: int
     comment_count: int
+    # 转发/分享次数（仅计数器，不存储分享者身份）
+    share_count: int
     # 是否带图片附件（用于时间线卡片显示封面/缩略图）
     has_image: bool
     # 首张图片 URL（仅 has_image=true 时有意义）

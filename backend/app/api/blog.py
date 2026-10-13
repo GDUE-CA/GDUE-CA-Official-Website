@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.audit import ctx_uid, log_action
 from app.core.middleware import get_client_ip
 from app.core.permissions import require_permission
+from app.core.security import get_optional_user
 from app.db.models import (
     AuditLog,
     BlogPost,
@@ -33,6 +34,7 @@ from app.db.models import (
 )
 from app.db.session import get_db
 from app.schemas.blog import (
+    BlogMetricOut,
     BlogPostBriefOut,
     BlogPostCreate,
     BlogPostOut,
@@ -151,6 +153,27 @@ async def _ensure_slug_unique(db: AsyncSession, slug: str, exclude_id: int | Non
 
 # ==================== 公开接口 ====================
 
+async def _published_post_by_slug_or_404(db: AsyncSession, slug: str) -> BlogPost:
+    """按 slug 取已发布文章；草稿/归档一律 404（不暴露存在性）。"""
+    await _auto_publish_scheduled(db)
+    p = (await db.execute(
+        select(BlogPost).where(BlogPost.slug == slug)
+    )).scalar_one_or_none()
+    if not p or p.status != BlogPostStatus.PUBLISHED:
+        raise HTTPException(status_code=404, detail="文章不存在")
+    return p
+
+
+def _metric_out(p: BlogPost) -> dict:
+    """统一返回 4 项计数（避免重复 model_dump）。"""
+    return {
+        "like_count": p.like_count or 0,
+        "comment_count": p.comment_count or 0,
+        "share_count": p.share_count or 0,
+        "favourite_count": p.favourite_count or 0,
+    }
+
+
 @public_router.get("/tags", response_model=list[BlogTagOut])
 async def list_public_tags(
     lang: str | None = Query(default=None, max_length=16, description="显示语言；传入时标签名自动翻译"),
@@ -202,12 +225,7 @@ async def get_public_post(
 
     正文为 Markdown 长文，不做机器翻译（避免破坏代码块/格式），仅翻译标题与摘要。
     """
-    await _auto_publish_scheduled(db)
-    p = (await db.execute(
-        select(BlogPost).where(BlogPost.slug == slug)
-    )).scalar_one_or_none()
-    if not p or p.status != BlogPostStatus.PUBLISHED:
-        raise HTTPException(status_code=404, detail="文章不存在")
+    p = await _published_post_by_slug_or_404(db, slug)
     # 翻译 Out 副本而非 ORM 实体，避免译文随 get_db 统一 commit 污染源数据
     out_obj = BlogPostOut.model_validate(p)
     if lang:
@@ -215,6 +233,89 @@ async def get_public_post(
     out = out_obj.model_dump(mode="json")
     out["content_html"] = _render_html(p.content_md)
     return out
+
+
+# ---------- 博客指标：点赞 / 分享 / 收藏（冗余计数器，仅计数不存身份） ----------
+
+@public_router.post("/{slug}/share", response_model=BlogMetricOut)
+async def share_post(
+    slug: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """分享计数：无鉴权，每次调用 share_count += 1。
+
+    仅记录触发次数（复制链接 / 唤起系统分享弹窗均调用此接口）；
+    不存储分享者身份隐私。
+    """
+    p = await _published_post_by_slug_or_404(db, slug)
+    p.share_count = (p.share_count or 0) + 1
+    await db.commit()
+    await db.refresh(p)
+    return _metric_out(p)
+
+
+@public_router.post("/{slug}/like", response_model=BlogMetricOut)
+async def like_post(
+    slug: str,
+    user: dict | None = Depends(get_optional_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """点赞：需登录，like_count += 1。"""
+    if not user:
+        raise HTTPException(status_code=401, detail="请先登录")
+    p = await _published_post_by_slug_or_404(db, slug)
+    p.like_count = (p.like_count or 0) + 1
+    await db.commit()
+    await db.refresh(p)
+    return _metric_out(p)
+
+
+@public_router.post("/{slug}/unlike", response_model=BlogMetricOut)
+async def unlike_post(
+    slug: str,
+    user: dict | None = Depends(get_optional_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """取消点赞：需登录，like_count = max(0, -1)。"""
+    if not user:
+        raise HTTPException(status_code=401, detail="请先登录")
+    p = await _published_post_by_slug_or_404(db, slug)
+    p.like_count = max(0, (p.like_count or 0) - 1)
+    await db.commit()
+    await db.refresh(p)
+    return _metric_out(p)
+
+
+@public_router.post("/{slug}/favourite", response_model=BlogMetricOut)
+async def favourite_post(
+    slug: str,
+    user: dict | None = Depends(get_optional_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """收藏：需登录，favourite_count += 1。"""
+    if not user:
+        raise HTTPException(status_code=401, detail="请先登录")
+    p = await _published_post_by_slug_or_404(db, slug)
+    p.favourite_count = (p.favourite_count or 0) + 1
+    await db.commit()
+    await db.refresh(p)
+    return _metric_out(p)
+
+
+@public_router.post("/{slug}/unfavourite", response_model=BlogMetricOut)
+async def unfavourite_post(
+    slug: str,
+    user: dict | None = Depends(get_optional_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """取消收藏：需登录，favourite_count = max(0, -1)。"""
+    if not user:
+        raise HTTPException(status_code=401, detail="请先登录")
+    p = await _published_post_by_slug_or_404(db, slug)
+    p.favourite_count = max(0, (p.favourite_count or 0) - 1)
+    await db.commit()
+    await db.refresh(p)
+    return _metric_out(p)
 
 
 # ==================== 管理：文章 ====================

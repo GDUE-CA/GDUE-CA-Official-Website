@@ -1,6 +1,7 @@
-"""评论系统接口：公开列表/发表 + 管理列表/下架/恢复/全局开关。
+"""评论系统接口：公开列表/发表 + 管理列表/屏蔽/取消屏蔽/物理删除/全局开关。
 
-- 软删除：评论任何状态都不物理删除（仅文章删除时随父级联清理）；
+- 双布尔软删除：is_deleted（用户自删）+ is_hidden（管理员屏蔽），两者独立；
+- 管理员可执行物理 DELETE（确认后不可逆）；
 - 完整 submit_ip 仅后台返回，公开接口只暴露属地（location_zh/en，国家/省份粒度）；
 - 双开关：SystemSetting.comments_enabled 全局开关 + blog_posts.allow_comments 文章级开关；
 - 评论专用限流：每 IP 每分钟最多 5 条（内存滑动窗口，全局限流之外的防刷兜底）。
@@ -8,7 +9,6 @@
 import time
 from collections import defaultdict, deque
 from datetime import datetime, timezone
-from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import select
@@ -23,7 +23,6 @@ from app.db.models import (
     BlogPost,
     BlogPostStatus,
     Comment,
-    CommentStatus,
     SystemSetting,
 )
 from app.db.session import get_db
@@ -34,7 +33,7 @@ from app.schemas.comments import (
     CommentSettingsOut,
     CommentSettingsUpdate,
 )
-from app.utils.crud import apply_eq, apply_search, paginate
+from app.utils.crud import apply_search, paginate
 
 # 公开接口（无鉴权，挂在 /api/blog 下）
 public_router = APIRouter(prefix="/api/blog", tags=["comments-public"])
@@ -75,6 +74,17 @@ def _log(db: AsyncSession, ctx_or_uid, action: str, target: str | None, ip: str 
     log_action(db, ctx_or_uid, action, target=target, ip=ip)
 
 
+def _status_label(c: Comment) -> str:
+    """计算状态标签 key（前端 i18n 渲染）。"""
+    if c.is_deleted and c.is_hidden:
+        return "user_deleted_and_admin_hidden"
+    if c.is_deleted:
+        return "user_deleted"
+    if c.is_hidden:
+        return "admin_hidden"
+    return "normal"
+
+
 async def _comments_allowed(db: AsyncSession, post: BlogPost) -> bool:
     """双开关判定：全局 comments_enabled + 文章级 allow_comments。"""
     s = await db.get(SystemSetting, 1)
@@ -90,8 +100,9 @@ async def _published_post_or_404(db: AsyncSession, post_id: int) -> BlogPost:
 
 
 async def _admin_out(db: AsyncSession, c: Comment) -> dict:
-    """后台评论输出：附带所属文章标题。"""
+    """后台评论输出：含状态标签 + 所属文章标题。"""
     out = CommentAdminOut.model_validate(c).model_dump(mode="json")
+    out["status_label"] = _status_label(c)
     post = await db.get(BlogPost, c.post_id)
     out["post_title"] = post.title if post else None
     return out
@@ -106,12 +117,13 @@ async def list_public_comments(
     page_size: int = Query(default=10, ge=1, le=50),
     db: AsyncSession = Depends(get_db),
 ):
-    """公开评论列表：仅 visible，按时间正序（对话式）；allowed 表示当前是否可提交。"""
+    """公开评论列表：仅 is_deleted=false AND is_hidden=false，按时间正序；allowed 表示当前是否可提交。"""
     post = await _published_post_or_404(db, post_id)
     allowed = await _comments_allowed(db, post)
     stmt = select(Comment).where(
         Comment.post_id == post_id,
-        Comment.status == CommentStatus.VISIBLE,
+        Comment.is_deleted.is_(False),
+        Comment.is_hidden.is_(False),
     ).order_by(Comment.created_at.asc(), Comment.id.asc())
     result = await paginate(db, stmt, page, page_size, out_model=CommentPublic)
     result["allowed"] = allowed
@@ -143,9 +155,12 @@ async def create_public_comment(
         submit_ip=ip,
         location_zh=zh,
         location_en=en,
-        status=CommentStatus.VISIBLE,
+        is_deleted=False,
+        is_hidden=False,
     )
     db.add(c)
+    # 同步冗余计数：BlogPost.comment_count（含已删除+已屏蔽的总行数）
+    post.comment_count = (post.comment_count or 0) + 1
     await db.commit()
     await db.refresh(c)
     return c
@@ -184,9 +199,8 @@ async def admin_update_comment_settings(
 
 @admin_router.get("", response_model=dict)
 async def admin_list_comments(
-    status_filter: Literal["visible", "user_deleted", "admin_removed"] | None = Query(
-        default=None, alias="status"
-    ),
+    is_deleted: bool | None = Query(default=None),
+    is_hidden: bool | None = Query(default=None),
     post_id: int | None = Query(default=None),
     q: str | None = Query(default=None, max_length=64),
     page: int = Query(default=1, ge=1),
@@ -194,66 +208,102 @@ async def admin_list_comments(
     user: dict = Depends(require_permission("comments", "view")),
     db: AsyncSession = Depends(get_db),
 ):
-    """后台评论列表：全部状态 + 完整 IP + 属地 + 文章标题；软删除永不出库。"""
+    """后台评论列表：全部记录（含用户删/管理员屏蔽）+ 完整 IP + 属地 + 文章标题 + 状态标签。"""
     stmt = select(Comment)
-    if status_filter:
-        stmt = apply_eq(stmt, Comment.status, CommentStatus(status_filter))
+    if is_deleted is not None:
+        stmt = stmt.where(Comment.is_deleted.is_(is_deleted))
+    if is_hidden is not None:
+        stmt = stmt.where(Comment.is_hidden.is_(is_hidden))
     if post_id:
         stmt = stmt.where(Comment.post_id == post_id)
     stmt = apply_search(stmt, [Comment.author_name, Comment.content], q)
     stmt = stmt.order_by(Comment.created_at.desc())
     result = await paginate(db, stmt, page, page_size, out_model=CommentAdminOut)
-    # 回填所属文章标题（一批查询，避免 N+1）
+    # 回填状态标签 + 所属文章标题
     ids = {it["post_id"] for it in result["items"]}
+    titles: dict[int, str] = {}
     if ids:
         rows = (await db.execute(
             select(BlogPost.id, BlogPost.title).where(BlogPost.id.in_(ids))
         )).all()
         titles = {r[0]: r[1] for r in rows}
-        for it in result["items"]:
-            it["post_title"] = titles.get(it["post_id"])
+    for it in result["items"]:
+        it["status_label"] = _status_label_from_dict(it)
+        it["post_title"] = titles.get(it["post_id"])
     return result
 
 
-@admin_router.post("/{comment_id}/remove", response_model=dict)
-async def admin_remove_comment(
+def _status_label_from_dict(it: dict) -> str:
+    """从 dict 计算 status_label（用于 paginate 后的批量回填）。"""
+    d = it.get("is_deleted", False)
+    h = it.get("is_hidden", False)
+    if d and h:
+        return "user_deleted_and_admin_hidden"
+    if d:
+        return "user_deleted"
+    if h:
+        return "admin_hidden"
+    return "normal"
+
+
+@admin_router.post("/{comment_id}/hide", response_model=dict)
+async def admin_hide_comment(
     comment_id: int,
     request: Request,
     user: dict = Depends(require_permission("comments", "manage")),
     db: AsyncSession = Depends(get_db),
 ):
-    """管理员下架：status=admin_removed，软删除不物理删除。"""
+    """管理员屏蔽：is_hidden=true（软删除，后台留存）。"""
     c = await db.get(Comment, comment_id)
     if not c:
         raise HTTPException(status_code=404, detail="评论不存在")
-    if c.status == CommentStatus.ADMIN_REMOVED:
-        raise HTTPException(status_code=400, detail="该评论已是下架状态")
-    c.status = CommentStatus.ADMIN_REMOVED
-    c.deleted_at = _naive_utc_now()
-    _log(db, user, "comment.remove", f"comment:{c.id}",
-         get_client_ip(request))
+    if c.is_hidden:
+        raise HTTPException(status_code=400, detail="该评论已被管理员屏蔽")
+    c.is_hidden = True
+    _log(db, user, "comment.hide", f"comment:{c.id}", get_client_ip(request))
     await db.commit()
     await db.refresh(c)
     return await _admin_out(db, c)
 
 
-@admin_router.post("/{comment_id}/restore", response_model=dict)
-async def admin_restore_comment(
+@admin_router.post("/{comment_id}/unhide", response_model=dict)
+async def admin_unhide_comment(
     comment_id: int,
     request: Request,
     user: dict = Depends(require_permission("comments", "manage")),
     db: AsyncSession = Depends(get_db),
 ):
-    """恢复展示：status 回到 visible，清空 deleted_at。"""
+    """取消管理员屏蔽：is_hidden=false（不影响用户自删标记 is_deleted）。"""
     c = await db.get(Comment, comment_id)
     if not c:
         raise HTTPException(status_code=404, detail="评论不存在")
-    if c.status == CommentStatus.VISIBLE:
-        raise HTTPException(status_code=400, detail="该评论已是展示状态")
-    c.status = CommentStatus.VISIBLE
-    c.deleted_at = None
-    _log(db, user, "comment.restore", f"comment:{c.id}",
-         get_client_ip(request))
+    if not c.is_hidden:
+        raise HTTPException(status_code=400, detail="该评论未被管理员屏蔽")
+    c.is_hidden = False
+    _log(db, user, "comment.unhide", f"comment:{c.id}", get_client_ip(request))
     await db.commit()
     await db.refresh(c)
     return await _admin_out(db, c)
+
+
+@admin_router.delete("/{comment_id}", response_model=dict)
+async def admin_delete_comment(
+    comment_id: int,
+    request: Request,
+    user: dict = Depends(require_permission("comments", "manage")),
+    db: AsyncSession = Depends(get_db),
+):
+    """管理员物理删除：确认后 DELETE 数据库行（不可逆）。"""
+    c = await db.get(Comment, comment_id)
+    if not c:
+        raise HTTPException(status_code=404, detail="评论不存在")
+    post_id = c.post_id
+    # 审计日志在物理删除前写入（保留记录）
+    _log(db, user, "comment.delete", f"comment:{c.id}", get_client_ip(request))
+    await db.delete(c)
+    # 同步冗余计数：BlogPost.comment_count 减 1（不低于 0）
+    post = await db.get(BlogPost, post_id)
+    if post:
+        post.comment_count = max(0, (post.comment_count or 0) - 1)
+    await db.commit()
+    return {"deleted": True, "comment_id": comment_id}

@@ -100,6 +100,11 @@ class BlogPostBriefOut(BaseModel):
     allow_comments: bool
     author: str | None
     tags: list[BlogTagBrief]
+    # ---- 4 项统计指标（冗余计数，供前端列表/详情展示） ----
+    like_count: int
+    comment_count: int
+    share_count: int
+    favourite_count: int
     created_at: UTCDatetime
     updated_at: UTCDatetime
 
@@ -141,3 +146,14 @@ class BlogUploadOut(BaseModel):
     url: str
     size: int
     original_size: int
+
+
+class BlogMetricOut(BaseModel):
+    """博客指标操作结果（点赞/分享/收藏）：返回操作后的最新计数。
+
+    share/like/favourite 各端点均返回此模型，前端可直接刷新 UI。
+    """
+    like_count: int
+    comment_count: int
+    share_count: int
+    favourite_count: int
