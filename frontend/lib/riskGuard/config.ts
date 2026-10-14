@@ -39,6 +39,10 @@ export interface RiskGuardConfig {
   apiTimeoutMs: number;
   /** 免检 IP / 网段（管理员手动放行） */
   allowlist: string[];
+  /** 是否放行链接预览机器人（按 UA 识别，每 IP 限次） */
+  allowPreviewBots: boolean;
+  /** 追加的预览机器人 UA 关键字（不区分大小写的子串匹配） */
+  previewBotUa: string[];
   turnstileSiteKey: string;
   turnstileSecretKey: string;
   /** 工作量证明难度（SHA-256 前导零位数），每 +1 计算量翻倍 */
@@ -60,6 +64,8 @@ export function getRiskGuardConfig(): RiskGuardConfig {
     apiUrl: apiUrlEnv(),
     apiTimeoutMs: intEnv("RISK_API_TIMEOUT_MS", 4000, 500),
     allowlist: listEnv("RISK_IP_ALLOWLIST"),
+    allowPreviewBots: process.env.RISK_ALLOW_PREVIEW_BOTS !== "false",
+    previewBotUa: listEnv("RISK_PREVIEW_BOT_UA"),
     turnstileSiteKey: process.env.TURNSTILE_SITE_KEY ?? "",
     turnstileSecretKey: process.env.TURNSTILE_SECRET_KEY ?? "",
     powDifficulty: intEnv("RISK_POW_DIFFICULTY", 16, 8, 24),

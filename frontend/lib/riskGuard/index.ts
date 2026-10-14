@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getRiskGuardConfig, isTurnstileConfigured } from "./config";
 import { verifiedCrawler } from "./crawler";
+import { allowPreviewBot } from "./previewBots";
 import { getClientIp, ipScope, isAllowlisted, isPrivateIp } from "./ip";
 import { riskLog } from "./log";
 import { gateCsp, renderGatePage, VERIFY_PATH } from "./pages";
@@ -14,6 +15,7 @@ import { verifyTurnstile } from "./turnstile";
  *
  * 服务端只负责「门」：
  *   内网 IP / 白名单 / 持有有效通行凭证 / 经 DNS 校验的搜索引擎爬虫 → 放行
+ *   链接预览机器人（按 UA 识别，每 IP 限次）→ 放行
  *   其余 → 返回检测页，由访客浏览器直接请求风控接口（接口按来源 IP 自行判定）：
  *     三项均为 false        → 自动完成工作量证明，换取通行凭证后刷新
  *     isIdc 且 isProxy      → 显示拒绝访问（附管理员联系方式），不发凭证
@@ -47,7 +49,9 @@ export async function riskGuard(request: NextRequest, ctx: GuardContext): Promis
   const ip = getClientIp(request);
   if (!ip || isPrivateIp(ip) || isAllowlisted(ip, cfg.allowlist)) return null;
   if (verifyPassToken(request.cookies.get(PASS_COOKIE)?.value, ipScope(ip), cfg)) return null;
-  if (await verifiedCrawler(ip, request.headers.get("user-agent") ?? "")) return null;
+  const userAgent = request.headers.get("user-agent") ?? "";
+  if (await verifiedCrawler(ip, userAgent)) return null;
+  if (cfg.allowPreviewBots && allowPreviewBot(ip, userAgent, request.method, cfg.previewBotUa)) return null;
 
   // 非页面请求（表单 / Server Action 等）无法展示检测页，直接拒绝
   if (request.method !== "GET" && request.method !== "HEAD") {
