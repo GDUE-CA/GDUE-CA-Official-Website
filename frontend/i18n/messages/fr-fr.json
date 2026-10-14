@@ -281,7 +281,25 @@
     "markAllRead": "Mark all as read",
     "unread": "Unread",
     "read": "Read",
-    "unreadCount": "{count} unread"
+    "unreadCount": "{count} unread",
+    "messages": {
+      "sectionTitle": "Messages privés"
+    },
+    "backgroundTask": {
+      "sectionTitle": "Tâches en arrière-plan",
+      "category": {
+        "db_export": "Export complet de la base de données"
+      },
+      "statusRunning": "En cours",
+      "statusSuccess": "Réussi",
+      "statusFailed": "Échoué",
+      "currentProgress": "Actuel : {message} ({progress} %)",
+      "generatedFile": "Fichier généré : {path}",
+      "gotoMaintenance": "Aller à la liste des sauvegardes",
+      "copyError": "Copier le journal d'erreur",
+      "copied": "Copié",
+      "dismiss": "Fermer"
+    }
   },
   "account": {
     "title": "Account Settings",
@@ -321,7 +339,10 @@
       "weak": "Weak",
       "medium": "Medium",
       "strong": "Strong"
-    }
+    },
+    "keepCurrentDevice": "Rester connecté sur cet appareil",
+    "keepCurrentDeviceHint": "Si décoché, le changement de mot de passe déconnectera tous les appareils (celui-ci inclus)",
+    "newPasswordMismatch": "Les deux nouveaux mots de passe ne correspondent pas"
   },
   "projects": {
     "title": "Projects",
@@ -716,6 +737,69 @@
     },
     "hints": {
       "appearanceInstant": "Theme and language changes apply instantly — no need to save"
+    },
+    "emailChange": {
+      "title": "Changer l’e-mail lié",
+      "desc": "Une vérification d’identité est requise : codes sur l’ancien e-mail, vérification en libre-service ou examen manuel par un administrateur.",
+      "current": "Actuel",
+      "none": "Aucun e-mail valide lié",
+      "newEmail": "Nouvelle adresse e-mail",
+      "newEmailPlaceholder": "Saisir la nouvelle adresse e-mail",
+      "currentPassword": "Mot de passe actuel",
+      "oldCode": "Code envoyé à l’ancien e-mail",
+      "newCode": "Code envoyé au nouvel e-mail",
+      "studentId": "Numéro étudiant",
+      "phone": "Téléphone lié",
+      "realName": "Nom réel",
+      "remark": "Note (pourquoi l’ancien e-mail est indisponible)",
+      "remarkPlaceholder": "Expliquez pourquoi l’ancien e-mail est indisponible, ex. désactivé après l’obtention du diplôme, boîte inaccessible",
+      "uidLabel": "UID du compte actuel",
+      "usernameLabel": "Nom d’utilisateur actuel",
+      "submit": "Confirmer",
+      "sendCodes": "Envoyer les codes",
+      "backToStep1": "Retour",
+      "sentHint": "Deux codes ont été envoyés à votre ancien e-mail et au nouveau ({new}) ; valables 15 minutes.",
+      "changeSuccess": "E-mail modifié avec succès. Tous les appareils restent connectés.",
+      "confirmSendTitle": "Confirmer l’envoi des codes",
+      "confirmSendBody": "Un code à 6 chiffres sera envoyé à votre ancien ({old}) et nouvel e-mail ({new}). Continuer ?",
+      "confirmChangeTitle": "Confirmer le changement d’e-mail",
+      "confirmChangeBody": "L’e-mail lié passera de [{old}] à [{new}] dès l’envoi. Veuillez revérifier. Continuer ?",
+      "lostOld": {
+        "entry": "L’ancien e-mail ne reçoit pas les codes ? Cliquez ici",
+        "back": "Retour au flux normal",
+        "hint": "Les quatre éléments doivent correspondre aux données du compte (mot de passe actuel, numéro étudiant, téléphone, nom réel) ; toute erreur rejette la vérification.",
+        "verify": "Soumettre la vérification",
+        "verifyGuidance": "Vous ne pouvez pas compléter toutes les vérifications. Veuillez soumettre une [demande manuelle de changement d’e-mail] pour examen par un administrateur.",
+        "gotoManual": "Soumettre une demande manuelle",
+        "confirmSendTitle": "Confirmer l’envoi du code",
+        "confirmSendBody": "Identité vérifiée. Un code à 6 chiffres sera envoyé au nouvel e-mail ({new}). Continuer ?"
+      },
+      "manual": {
+        "entry": "Soumettre une demande manuelle de changement d’e-mail",
+        "submitLabel": "Soumettre la demande",
+        "confirmTitle": "Confirmer la demande manuelle",
+        "confirmBody": "⚠️ Confirmer la soumission d’une demande manuelle de changement d’e-mail. Elle sera examinée par un administrateur ; vous ne pourrez pas modifier l’e-mail vous-même avant la fin de l’examen. La demande ne peut pas être annulée. Continuer ?",
+        "submitted": "Demande soumise, en attente d’examen"
+      },
+      "pending": {
+        "title": "Demande de changement d’e-mail en cours d’examen",
+        "target": "Nouvel e-mail demandé",
+        "hint": "En attente d’examen. Toutes les entrées en libre-service sont désactivées jusqu’à la fin de l’examen.",
+        "disabled": "Changement en libre-service désactivé pendant l’examen"
+      },
+      "rejected": {
+        "title": "Votre demande manuelle de changement d’e-mail a été rejetée",
+        "reason": "Motif du rejet",
+        "canRetry": "Vous pouvez réessayer la vérification en libre-service ou soumettre une nouvelle demande."
+      },
+      "exempt": {
+        "title": "Mode exemption après examen manuel",
+        "warning": "Un administrateur a approuvé votre demande. Ce mode ignore toutes les vérifications (ancien e-mail, mot de passe, numéro étudiant, téléphone) ; le changement se fait uniquement depuis cette page. Cette autorisation est à usage unique et expire immédiatement après succès.",
+        "prefill": "E-mail approuvé par l’administrateur",
+        "confirmTitle": "⚠️ Mode exemption après examen manuel",
+        "confirmBody": "⚠️ Mode exemption après examen manuel\nL’e-mail lié sera mis à jour vers : {new}\nLe changement prend effet dès l’envoi. Veuillez revérifier. Continuer ?",
+        "success": "E-mail modifié avec succès"
+      }
     }
   },
   "admin": {
@@ -1024,7 +1108,8 @@
       "config.oauth": "Canaux OAuth",
       "config.sso": "Applications de confiance SSO",
       "audit": "Journaux et audit",
-      "mailpush": "E-mail et push"
+      "mailpush": "E-mail et push",
+      "users.emailChange": "Demandes de changement d’e-mail"
     },
     "profile": {
       "title": "Profile",
@@ -1234,6 +1319,11 @@
       "adminTrustedIpsLabel": "Entrées de la liste blanche (une par ligne, # commentaires pris en charge)",
       "adminTrustedIpsPlaceholder": "# Une entrée par ligne ; IPv4, IPv6, IPv4-CIDR, IPv6-CIDR pris en charge\n# Vide = liste blanche désactivée, toutes les IP peuvent se connecter aux comptes admin\n# Exemples :\n127.0.0.1\n192.168.1.0/24\n::1\n2001:db8::/32",
       "adminTrustedIpsNote": "⚠️ Priorité : la config web en base de données prime ; la variable d'environnement ADMIN_TRUSTED_IPS n'est lue que si la base est vide.",
+      "dbMaintenanceTitle": "Maintenance de la base de données",
+      "dbMaintenanceDesc": "Sauvegarde et migration de la base de données. L'export s'exécute en tâche de fond asynchrone : inutile de rester sur cette page après l'envoi ; suivez la progression dans la fenêtre flottante en bas à droite ou dans le centre de notifications.",
+      "dbExportButton": "Lancer un export complet de la base",
+      "dbExportSubmitted": "Tâche envoyée en arrière-plan. Vous pouvez continuer ; la progression s'affiche en bas à droite ou dans le centre de notifications.",
+      "dbExportNote": "Une fois terminé, le fichier de sauvegarde est stocké dans le répertoire ./exports du serveur (droits 0600) ; téléchargez-le manuellement via SFTP. Les tâches restent dans la liste des notifications jusqu'à fermeture manuelle.",
       "netTitle": "Network Configuration",
       "netDesc": "Reference values for backend port, listen address and site domains. Changes require manual Nginx/Caddy reload by ops.",
       "netPort": "Backend Port",
@@ -1866,6 +1956,37 @@
         "desc": "Markdown fragment notes: timeline / calendar / lazy tag creation / version snapshots / public share / admin takedown",
         "btn": "Manage"
       }
+    },
+    "emailChange": {
+      "title": "Demandes manuelles de compte",
+      "desc": "Demandes manuelles de changement d’e-mail : après approbation, l’utilisateur finalise lui-même le changement dans les paramètres ; l’administrateur ne modifie jamais l’e-mail directement.",
+      "filterPending": "En attente",
+      "filterAll": "Toutes",
+      "empty": "Aucune demande",
+      "colOldEmail": "E-mail actuel",
+      "colNewEmail": "Nouvel e-mail demandé",
+      "colRemark": "Note",
+      "colCreatedAt": "Soumise le",
+      "colIp": "IP client",
+      "colFingerprint": "Empreinte navigateur",
+      "approve": "Approuver",
+      "reject": "Rejeter",
+      "rejectReason": "Motif du rejet",
+      "rejectReasonPlaceholder": "Motif requis (affiché au demandeur)",
+      "reviewedAt": "Examinée le",
+      "approveConfirm": {
+        "title": "Approuver la demande de changement d’e-mail",
+        "body": "Approuver la demande de « {name} » (cible : {email}) ?\nL’approbation accorde seulement une autorisation unique ; l’utilisateur finalise lui-même dans les paramètres. L’e-mail n’est pas modifié par l’administrateur."
+      },
+      "rejectConfirm": {
+        "title": "Rejeter la demande de changement d’e-mail",
+        "body": "Rejeter la demande de « {name} » ? Un motif est requis et sera affiché au demandeur."
+      },
+      "statuses": {
+        "pending": "En attente",
+        "approved": "Approuvée",
+        "rejected": "Rejetée"
+      }
     }
   },
   "ban": {
@@ -2149,5 +2270,23 @@
   "profileMemoTab": {
     "empty": "No moments yet",
     "viewAll": "View all"
+  },
+  "forgotPassword": {
+    "title": "Réinitialiser le mot de passe",
+    "subtitle": "Saisissez votre e-mail lié pour recevoir un code de vérification",
+    "email": "E-mail lié",
+    "emailPlaceholder": "you@example.com",
+    "sendCode": "Envoyer le code",
+    "codeSentTip": "Si cet e-mail est lié à un compte, le code a été envoyé",
+    "code": "Code de vérification",
+    "codePlaceholder": "Saisissez le code à 6 chiffres",
+    "emailRequired": "Veuillez saisir votre e-mail lié",
+    "codeRequired": "Veuillez saisir le code de vérification",
+    "submit": "Réinitialiser le mot de passe",
+    "submitting": "Réinitialisation…",
+    "success": "Mot de passe réinitialisé",
+    "successHint": "Toutes les sessions ont été déconnectées. Redirection vers la page de connexion…",
+    "backToLogin": "Retour à la connexion",
+    "manualEntry": "E-mail indisponible ? Envoyez une demande de récupération manuelle"
   }
 }

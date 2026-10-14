@@ -12,7 +12,7 @@
  * 实现：复用 ui/dialog（Radix Dialog）并覆盖为右侧滑入面板，
  * 自动获得 Portal（避免祖先 transform 影响定位）、焦点圈定与 Escape 关闭。
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BellRing, CheckCheck, ExternalLink, Loader2 } from "lucide-react";
 import {
@@ -28,8 +28,14 @@ import {
   listMyNotifications,
   markAllNotificationsRead,
   markNotificationRead,
+  markUserMessageRead,
 } from "@/lib/api/notifications";
-import type { NotificationItem } from "@/types/api";
+import {
+  dismissBackgroundTask,
+  listBackgroundTasks,
+} from "@/lib/api/backgroundTasks";
+import type { BackgroundTask, NotificationItem, UserMessage } from "@/types/api";
+import { BackgroundTaskCard } from "./BackgroundTaskCard";
 import { FormattedUserActionTime } from "@/components/shared/FormattedUserActionTime";
 import { cn } from "@/lib/utils";
 
@@ -48,8 +54,13 @@ export function NotificationDrawer({
   const [loading, setLoading] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
   const [items, setItems] = useState<NotificationItem[]>([]);
+  const [messages, setMessages] = useState<UserMessage[]>([]);
   const [unread, setUnread] = useState(0);
   const [acting, setActing] = useState(false);
+  // 后台任务通知（管理员级才有数据；常驻不自动消失，手动关闭才移除）
+  const [bgTasks, setBgTasks] = useState<BackgroundTask[]>([]);
+  const [dismissingId, setDismissingId] = useState<string | null>(null);
+  const bgPollRef = useRef<number | null>(null);
 
   const syncUnread = useCallback(
     (n: number) => {
@@ -58,6 +69,13 @@ export function NotificationDrawer({
     },
     [onUnreadChange]
   );
+
+  const clearBgPoll = useCallback(() => {
+    if (bgPollRef.current !== null) {
+      window.clearTimeout(bgPollRef.current);
+      bgPollRef.current = null;
+    }
+  }, []);
 
   // 打开抽屉时拉取最新通知列表
   useEffect(() => {
@@ -69,7 +87,9 @@ export function NotificationDrawer({
       .then((data) => {
         if (cancelled) return;
         setItems(data.items);
+        setMessages(data.messages ?? []);
         syncUnread(data.unread_count);
+        setBgTasks(data.background_tasks ?? []);
       })
       .catch(() => {
         if (!cancelled) setLoadFailed(true);
@@ -81,6 +101,53 @@ export function NotificationDrawer({
       cancelled = true;
     };
   }, [open, syncUnread]);
+
+  // 抽屉打开且有进行中后台任务时：800ms 轮询同步进度（终态后停止，卡片常驻）
+  useEffect(() => {
+    if (!open) return;
+    const hasActive = bgTasks.some(
+      (t) => t.status === "pending" || t.status === "running"
+    );
+    if (!hasActive) return;
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const res = await listBackgroundTasks({ limit: 20 });
+        if (cancelled) return;
+        setBgTasks(res.items);
+        if (res.items.some((t) => t.status === "pending" || t.status === "running")) {
+          bgPollRef.current = window.setTimeout(() => void poll(), 800);
+        }
+      } catch {
+        // 轮询失败静默：保留当前展示，下次打开抽屉重新拉取
+      }
+    };
+    bgPollRef.current = window.setTimeout(() => void poll(), 800);
+    return () => {
+      cancelled = true;
+      clearBgPoll();
+    };
+    // 仅在「是否存在进行中任务」变化时重启轮询，避免每次进度更新都重置定时器
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, bgTasks.some((t) => t.status === "pending" || t.status === "running")]);
+
+  // 抽屉关闭时停止后台任务轮询
+  useEffect(() => {
+    if (!open) clearBgPoll();
+  }, [open, clearBgPoll]);
+
+  /** 手动关闭后台任务通知（数据源同步移除：悬浮窗下次轮询也会消失） */
+  const handleDismissTask = async (taskId: string) => {
+    setDismissingId(taskId);
+    try {
+      await dismissBackgroundTask(taskId);
+      setBgTasks((prev) => prev.filter((t) => t.id !== taskId));
+    } catch {
+      // 关闭失败保留，用户可重试
+    } finally {
+      setDismissingId(null);
+    }
+  };
 
   /** 站内路径走路由跳转；外链新标签页打开（noopener 防止反向标签劫持） */
   const navigate = (link: string) => {
@@ -107,12 +174,29 @@ export function NotificationDrawer({
     if (item.link) navigate(item.link);
   };
 
+  /** 站内私信点击：标记已读；有链接则跳转 */
+  const handleMessageClick = async (msg: UserMessage) => {
+    if (!msg.is_read) {
+      try {
+        const res = await markUserMessageRead(msg.id);
+        setMessages((prev) =>
+          prev.map((m) => (m.id === msg.id ? { ...m, is_read: true } : m))
+        );
+        syncUnread(res.unread_count);
+      } catch {
+        // 已读标记失败不阻断跳转
+      }
+    }
+    if (msg.link) navigate(msg.link);
+  };
+
   const handleMarkAll = async () => {
     if (acting) return;
     setActing(true);
     try {
       const res = await markAllNotificationsRead();
       setItems((prev) => prev.map((n) => ({ ...n, is_read: true })));
+      setMessages((prev) => prev.map((m) => ({ ...m, is_read: true })));
       syncUnread(res.unread_count);
     } catch {
       // 静默失败：保持当前状态，用户可重试
@@ -171,12 +255,102 @@ export function NotificationDrawer({
             <div className="py-16 text-center text-sm text-muted-foreground">
               {t("notifications.loadFailed")}
             </div>
-          ) : items.length === 0 ? (
+          ) : items.length === 0 && messages.length === 0 && bgTasks.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-2 py-16 text-muted-foreground">
               <BellRing className="h-8 w-8 opacity-40" aria-hidden />
               <span className="text-sm">{t("notifications.empty")}</span>
             </div>
           ) : (
+            <>
+              {/* 站内私信区块（每用户专属，系统事件触发） */}
+              {messages.length > 0 && (
+                <section className="border-b">
+                  <h3 className="px-4 pt-3 pb-2 text-xs font-semibold text-muted-foreground">
+                    {t("notifications.messages.sectionTitle")}
+                  </h3>
+                  <ul className="divide-y border-t">
+                    {messages.map((msg) => (
+                      <li key={msg.id}>
+                        <button
+                          type="button"
+                          onClick={() => handleMessageClick(msg)}
+                          className="w-full text-left px-4 py-3 transition-colors hover:bg-accent/60 focus:bg-accent/60 focus:outline-none cursor-pointer"
+                        >
+                          <div className="flex items-start gap-2">
+                            {/* 未读蓝点 */}
+                            <span
+                              className={cn(
+                                "mt-1.5 h-2 w-2 shrink-0 rounded-full",
+                                msg.is_read ? "bg-transparent" : "bg-primary"
+                              )}
+                              aria-hidden
+                            />
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className={cn(
+                                    "text-sm leading-snug line-clamp-1",
+                                    msg.is_read
+                                      ? "text-foreground"
+                                      : "font-semibold text-foreground"
+                                  )}
+                                >
+                                  {msg.title}
+                                </span>
+                                {msg.link && (
+                                  <ExternalLink
+                                    className="h-3 w-3 shrink-0 text-muted-foreground"
+                                    aria-hidden
+                                  />
+                                )}
+                              </div>
+                              <p className="mt-1 text-xs text-muted-foreground leading-relaxed line-clamp-2 whitespace-pre-line">
+                                {msg.content}
+                              </p>
+                              <div className="mt-1.5 flex items-center gap-2">
+                                <FormattedUserActionTime
+                                  utcIso={msg.created_at}
+                                  className="text-xs text-muted-foreground"
+                                />
+                                <span
+                                  className={cn(
+                                    "text-[10px] px-1.5 py-0.5 rounded-full",
+                                    msg.is_read
+                                      ? "bg-muted text-muted-foreground"
+                                      : "bg-primary/10 text-primary font-medium"
+                                  )}
+                                >
+                                  {msg.is_read
+                                    ? t("notifications.read")
+                                    : t("notifications.unread")}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+              {/* 后台任务通知区块（数据同源：常驻不自动消失，手动 X 关闭） */}
+              {bgTasks.length > 0 && (
+                <section className="border-b">
+                  <h3 className="px-4 pt-3 pb-2 text-xs font-semibold text-muted-foreground">
+                    {t("notifications.backgroundTask.sectionTitle")}
+                  </h3>
+                  <div className="space-y-2 px-4 pb-3">
+                    {bgTasks.map((task) => (
+                      <BackgroundTaskCard
+                        key={task.id}
+                        task={task}
+                        onDismiss={handleDismissTask}
+                        dismissing={dismissingId === task.id}
+                      />
+                    ))}
+                  </div>
+                </section>
+              )}
             <ul className="divide-y">
               {items.map((item) => (
                 <li key={item.id}>
@@ -240,6 +414,7 @@ export function NotificationDrawer({
                 </li>
               ))}
             </ul>
+            </>
           )}
         </div>
       </DialogContent>

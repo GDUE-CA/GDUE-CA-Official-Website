@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import delete as sa_delete
 from sqlalchemy import func, select
 
-from app.api import account, activities, admin_stats, announcements, audit, auth, blog, bug_report, comments, content, geo, i18n_public, health, memos, media, members, notifications, oauth, projects, query, realname, recruitment, recycle, register, security, sso, stats, system, system_init, tags, themes, translations, users
+from app.api import account, activities, admin_stats, announcements, audit, auth, background_tasks, blog, bug_report, comments, content, db_maintenance, email_change, geo, i18n_public, health, memos, media, members, notifications, oauth, projects, query, realname, recruitment, recycle, register, security, sso, stats, system, system_init, tags, themes, translations, users
 from app.api.auth import security_answer_digest
 from app.core.config import get_settings
 from app.core.csrf import CSRF_HEADER, csrf_middleware
@@ -103,6 +103,8 @@ async def _migrate_columns(conn):
             ("bio", "TEXT NULL"),
             ("theme", "VARCHAR(32) NULL"),
             ("profile_privacy", "JSON NULL"),
+            # 更改绑定邮箱人工审核一次性豁免标记（用完即清）
+            ("allow_manual_email_switch", "BOOLEAN DEFAULT 0"),
         ],
         "activities": [
             ("checkin_open", "BOOLEAN DEFAULT 0"),
@@ -397,6 +399,11 @@ async def lifespan(app: FastAPI):
     # Break-Glass 启动硬性校验：凭据只允许来自环境变量，缺失/非法直接崩溃退出
     _validate_break_glass_env()
     await _init_db()
+    # 上次进程遗留的 pending/running 后台任务 → 标记为 failed（中断）
+    from app.core.background_tasks import recover_interrupted
+    from app.core.background_tasks import shutdown as bg_tasks_shutdown
+
+    await recover_interrupted()
     task = asyncio.create_task(_maintenance_loop())
     kv_task = asyncio.create_task(_kv_sweep_loop())
     try:
@@ -408,6 +415,8 @@ async def lifespan(app: FastAPI):
         task.cancel()
         kv_task.cancel()
         await asyncio.gather(task, kv_task, return_exceptions=True)
+        # 用户触发的后台异步任务（数据库导出等）同样先收尾
+        await bg_tasks_shutdown()
         # 在当前循环内主动释放连接池，避免连接被 GC 终结时跨循环 terminate 死锁
         await engine.dispose()
 
@@ -495,6 +504,7 @@ app.include_router(health.router)
 app.include_router(geo.router)
 app.include_router(i18n_public.router)
 app.include_router(auth.router)
+app.include_router(email_change.router)
 app.include_router(account.router)
 app.include_router(users.router)
 app.include_router(activities.router)
@@ -537,6 +547,9 @@ app.include_router(audit.bg_router)
 app.include_router(recycle.router)
 app.include_router(security.router)
 app.include_router(security.admin_router)
+# 后台异步任务（数据库导出等）：任务查询/关闭 + 数据库维护提交入口
+app.include_router(background_tasks.router)
+app.include_router(db_maintenance.router)
 # ---------- Phase 8: Memo 碎片笔记 + 全局共享标签 ----------
 # 注意：author_router 与 public_router 共享 /api/memos 前缀；
 # FastAPI 按注册顺序匹配，必须先注册具体路径（公开 /shared/{share_slug} 等），再注册参数路由（{memo_id}）。

@@ -20,6 +20,7 @@ import { useAdminLocale } from "@/app/admin/AdminProviders";
 import { localeDisplayName, locales, localeToUrlLang, urlLangToLocale, type Locale } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import {
   Card,
@@ -197,9 +198,8 @@ export default function AuthRegisterPage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="password">{t("auth.register.password")}</Label>
-                  <Input
+                  <PasswordInput
                     id="password"
-                    type="password"
                     autoComplete="new-password"
                     aria-invalid={!!errors.password}
                     {...registerField("password")}
@@ -210,9 +210,8 @@ export default function AuthRegisterPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="confirm_password">{t("auth.register.confirmPassword")}</Label>
-                  <Input
+                  <PasswordInput
                     id="confirm_password"
-                    type="password"
                     autoComplete="new-password"
                     aria-invalid={!!errors.confirm_password}
                     {...registerField("confirm_password")}

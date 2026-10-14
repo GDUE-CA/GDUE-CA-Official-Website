@@ -29,6 +29,10 @@ _SAFE_METHODS = {"GET", "HEAD", "OPTIONS", "TRACE"}
 # CSRF 豁免路径：非浏览器上下文、有独立认证方式的写接口
 # （/api/sso/token 由受信应用后端以 client_secret 调用，无浏览器 Cookie 参与）
 CSRF_EXEMPT_PATHS = {"/api/sso/token"}
+# 登录路径：Origin/Referer 来源校验不在中间件执行（此时尚不知用户名，无法区分
+# Break-Glass 应急账号豁免），下沉到 login 接口内部按账号类型执行；
+# CSRF 双提交令牌校验对登录请求仍然生效。
+LOGIN_ORIGIN_DEFERRED_PATHS = {"/api/auth/login"}
 
 
 def new_csrf_token() -> str:
@@ -55,12 +59,29 @@ def set_csrf_cookie(response: Response, request: Request, token: str) -> None:
     )
 
 
+def _host_in_allowed_hosts(request: Request) -> bool:
+    """请求 Host 是否命中 ALLOWED_HOSTS 白名单（反向代理丢 Header 通用兜底）。
+
+    ALLOWED_HOSTS 未配置（默认空）时返回 False，调用方维持原有策略。
+    """
+    hosts = get_settings().allowed_hosts_list
+    if not hosts:
+        return False
+    host = get_request_host(request).lower()
+    return bool(host) and host in (h.lower() for h in hosts)
+
+
 def _origin_allowed(request: Request) -> bool:
     origin = request.headers.get("origin")
     if not origin:
         referer = request.headers.get("referer")
         if not referer:
-            return True  # 无来源信息时由令牌兜底
+            # Origin / Referer 均为空（新开标签页、反代剥离、内网直连等场景）：
+            # Host 命中 ALLOWED_HOSTS 白名单 → 信任为本站访问，放行；
+            # 未配置白名单时维持旧行为（无来源信息时由 CSRF 令牌兜底）。
+            if get_settings().allowed_hosts_list:
+                return _host_in_allowed_hosts(request)
+            return True
         parts = urlsplit(referer)
         origin = f"{parts.scheme}://{parts.netloc}"
     if origin == "null":
@@ -69,6 +90,11 @@ def _origin_allowed(request: Request) -> bool:
         return True
     origin_host = (urlsplit(origin).hostname or "").lower()
     return bool(origin_host) and origin_host == get_request_host(request).lower()
+
+
+def origin_allowed(request: Request) -> bool:
+    """来源校验公开入口（登录接口按账号类型调用：普通账号校验、BG 豁免）。"""
+    return _origin_allowed(request)
 
 
 def _reject(detail: str) -> JSONResponse:
@@ -94,7 +120,8 @@ async def csrf_middleware(
     if auth.startswith("Bearer ") and SESSION_COOKIE not in request.cookies:
         return await call_next(request)
 
-    if not _origin_allowed(request):
+    # 登录路径：来源校验下沉到接口内按账号类型执行（BG 应急账号豁免、普通账号照常校验）
+    if request.url.path not in LOGIN_ORIGIN_DEFERRED_PATHS and not _origin_allowed(request):
         return _reject("请求来源不合法")
 
     cookie_token = request.cookies.get(CSRF_COOKIE, "")

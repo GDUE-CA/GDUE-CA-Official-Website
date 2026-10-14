@@ -11,6 +11,7 @@ import { Loader2, RefreshCw } from "lucide-react";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import {
   Card,
@@ -162,9 +163,8 @@ export function OAuthChannelsManager() {
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor={`${p}-secret`}>{t("admin.oauth.clientSecret")}</Label>
-                  <Input
+                  <PasswordInput
                     id={`${p}-secret`}
-                    type="password"
                     value={draft.client_secret}
                     onChange={(e) => patchDraft(p, { client_secret: e.target.value })}
                     placeholder={

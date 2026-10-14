@@ -13,7 +13,11 @@ import type {
   ProfileUpdate,
   AvatarUploadOut,
   ChangePasswordRequest,
+  ChangePasswordResult,
   ForgotPasswordRequest,
+  ForgotPasswordResetRequest,
+  ForgotPasswordSendCodeRequest,
+  ForgotPasswordSendCodeResult,
   PasswordResetItem,
   RegisterRequest,
   RegisterResponse,
@@ -127,9 +131,27 @@ export function deleteAvatar() {
 /* ---------- 修改密码 ---------- */
 
 export function changePassword(payload: ChangePasswordRequest) {
-  return apiFetch<{ ok: boolean }>("/api/auth/change-password", {
+  return apiFetch<ChangePasswordResult>("/api/auth/change-password", {
     method: "POST",
     withAuth: true,
+    body: JSON.stringify(payload),
+  });
+}
+
+/* ---------- 忘记密码：邮箱验证码（公开接口，未登录找回） ---------- */
+
+/** 发送验证码到绑定邮箱（防账号枚举：响应与邮箱是否存在无关） */
+export function sendForgotPasswordCode(payload: ForgotPasswordSendCodeRequest) {
+  return apiFetch<ForgotPasswordSendCodeResult>("/api/auth/forgot-password/send-code", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+/** 邮箱验证码重置密码（成功后该账号全部会话强制下线，无保留本机选项） */
+export function resetPasswordWithCode(payload: ForgotPasswordResetRequest) {
+  return apiFetch<{ ok: boolean }>("/api/auth/forgot-password/reset", {
+    method: "POST",
     body: JSON.stringify(payload),
   });
 }

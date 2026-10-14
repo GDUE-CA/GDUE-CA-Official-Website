@@ -281,7 +281,25 @@
     "markAllRead": "Mark all as read",
     "unread": "Unread",
     "read": "Read",
-    "unreadCount": "{count} unread"
+    "unreadCount": "{count} unread",
+    "messages": {
+      "sectionTitle": "Mensajes privados"
+    },
+    "backgroundTask": {
+      "sectionTitle": "Tareas en segundo plano",
+      "category": {
+        "db_export": "Exportación completa de la base de datos"
+      },
+      "statusRunning": "En curso",
+      "statusSuccess": "Correcto",
+      "statusFailed": "Fallido",
+      "currentProgress": "Actual: {message} ({progress}%)",
+      "generatedFile": "Archivo generado: {path}",
+      "gotoMaintenance": "Ir a la lista de copias",
+      "copyError": "Copiar registro de errores",
+      "copied": "Copiado",
+      "dismiss": "Cerrar"
+    }
   },
   "account": {
     "title": "Account Settings",
@@ -321,7 +339,10 @@
       "weak": "Weak",
       "medium": "Medium",
       "strong": "Strong"
-    }
+    },
+    "keepCurrentDevice": "Mantener este dispositivo conectado",
+    "keepCurrentDeviceHint": "Si lo desmarcas, al cambiar la contraseña se cerrarán todas las sesiones (incluida esta)",
+    "newPasswordMismatch": "Las dos contraseñas nuevas no coinciden"
   },
   "projects": {
     "title": "Projects",
@@ -716,6 +737,69 @@
     },
     "hints": {
       "appearanceInstant": "Theme and language changes apply instantly — no need to save"
+    },
+    "emailChange": {
+      "title": "Cambiar correo vinculado",
+      "desc": "Se requiere verificación de identidad: códigos al correo antiguo, verificación de autoservicio o revisión manual por un administrador.",
+      "current": "Actual",
+      "none": "Sin correo válido vinculado",
+      "newEmail": "Nuevo correo electrónico",
+      "newEmailPlaceholder": "Introduce el nuevo correo a vincular",
+      "currentPassword": "Contraseña actual",
+      "oldCode": "Código del correo antiguo",
+      "newCode": "Código del correo nuevo",
+      "studentId": "Número de estudiante",
+      "phone": "Teléfono vinculado",
+      "realName": "Nombre real",
+      "remark": "Nota de la solicitud (por qué el correo antiguo no está disponible)",
+      "remarkPlaceholder": "Explica por qué el correo antiguo no está disponible, p. ej. desactivado tras graduarte, sin acceso al buzón",
+      "uidLabel": "UID de la cuenta actual",
+      "usernameLabel": "Nombre de usuario actual",
+      "submit": "Confirmar y enviar",
+      "sendCodes": "Enviar códigos",
+      "backToStep1": "Volver",
+      "sentHint": "Se enviaron dos códigos a tu correo antiguo y al nuevo ({new}); válidos por 15 minutos.",
+      "changeSuccess": "Correo cambiado correctamente. Todos los dispositivos siguen conectados.",
+      "confirmSendTitle": "Confirmar envío de códigos",
+      "confirmSendBody": "Se enviará un código de 6 dígitos a tu correo antiguo ({old}) y al nuevo ({new}). ¿Continuar?",
+      "confirmChangeTitle": "Confirmar cambio de correo",
+      "confirmChangeBody": "El correo vinculado cambiará de [{old}] a [{new}] inmediatamente tras el envío. Revísalo con cuidado. ¿Continuar?",
+      "lostOld": {
+        "entry": "¿El correo antiguo no recibe códigos? Pulsa aquí",
+        "back": "Volver al flujo normal",
+        "hint": "Los cuatro datos deben coincidir con el registro de la cuenta (contraseña actual, número de estudiante, teléfono, nombre real); cualquier error rechaza la verificación.",
+        "verify": "Enviar verificación",
+        "verifyGuidance": "No puedes completar todas las verificaciones. Envía una [solicitud manual de cambio de correo] para revisión del administrador.",
+        "gotoManual": "Enviar solicitud manual de cambio de correo",
+        "confirmSendTitle": "Confirmar envío del código",
+        "confirmSendBody": "Identidad verificada. Se enviará un código de 6 dígitos al nuevo correo ({new}). ¿Continuar?"
+      },
+      "manual": {
+        "entry": "Enviar solicitud manual de cambio de correo",
+        "submitLabel": "Enviar solicitud",
+        "confirmTitle": "Confirmar solicitud manual",
+        "confirmBody": "⚠️ Confirmar el envío de una solicitud manual de cambio de correo. Será revisada por un administrador; no podrás cambiar el correo por tu cuenta hasta que finalice la revisión. La solicitud no se puede retirar. ¿Continuar?",
+        "submitted": "Solicitud enviada, pendiente de revisión"
+      },
+      "pending": {
+        "title": "Solicitud de cambio de correo en revisión",
+        "target": "Nuevo correo solicitado",
+        "hint": "Pendiente de revisión. Todas las entradas de autoservicio están deshabilitadas hasta que termine la revisión.",
+        "disabled": "Cambio de autoservicio deshabilitado durante la revisión"
+      },
+      "rejected": {
+        "title": "Tu solicitud manual de cambio de correo fue rechazada",
+        "reason": "Motivo del rechazo",
+        "canRetry": "Puedes reintentar la verificación de autoservicio o enviar otra solicitud."
+      },
+      "exempt": {
+        "title": "Modo de exención por revisión manual",
+        "warning": "Un administrador aprobó tu solicitud. Este modo omite todas las verificaciones (correo antiguo, contraseña, número de estudiante, teléfono); el cambio se completa solo al enviarlo desde esta página. Este permiso es de un solo uso y expira inmediatamente tras el éxito.",
+        "prefill": "Correo aprobado por el administrador",
+        "confirmTitle": "⚠️ Modo de exención por revisión manual",
+        "confirmBody": "⚠️ Modo de exención por revisión manual\nEl correo vinculado se actualizará a: {new}\nEl cambio se aplica al enviar. Revísalo con cuidado. ¿Continuar?",
+        "success": "Correo cambiado correctamente"
+      }
     }
   },
   "admin": {
@@ -1024,7 +1108,8 @@
       "config.oauth": "Canales OAuth",
       "config.sso": "Aplicaciones de confianza SSO",
       "audit": "Registros y auditoría",
-      "mailpush": "Correo y push"
+      "mailpush": "Correo y push",
+      "users.emailChange": "Solicitudes de cambio de correo"
     },
     "profile": {
       "title": "Profile",
@@ -1234,6 +1319,11 @@
       "adminTrustedIpsLabel": "Entradas de la lista blanca (una por línea, se admite # para comentarios)",
       "adminTrustedIpsPlaceholder": "# Una entrada por línea; se admite IPv4, IPv6, IPv4-CIDR, IPv6-CIDR\n# Vacío = lista blanca desactivada, todas las IP pueden iniciar sesión en cuentas de administrador\n# Ejemplos:\n127.0.0.1\n192.168.1.0/24\n::1\n2001:db8::/32",
       "adminTrustedIpsNote": "⚠️ Prioridad: la configuración web de la base de datos tiene prioridad; la variable de entorno ADMIN_TRUSTED_IPS solo se lee cuando la base de datos está vacía.",
+      "dbMaintenanceTitle": "Mantenimiento de la base de datos",
+      "dbMaintenanceDesc": "Copia de seguridad y migración de la base de datos. La exportación se ejecuta como tarea asíncrona en segundo plano: no necesitas quedarte en esta página; el progreso se muestra en la ventana flotante inferior derecha o en el centro de notificaciones.",
+      "dbExportButton": "Ejecutar una exportación completa",
+      "dbExportSubmitted": "Tarea enviada en segundo plano. Puedes seguir trabajando; el progreso aparece abajo a la derecha o en el centro de notificaciones.",
+      "dbExportNote": "Al finalizar, el archivo de copia se guarda en el directorio ./exports del servidor (permisos 0600); descárgalo manualmente por SFTP. Las tareas permanecen en la lista de notificaciones hasta que las cierres manualmente.",
       "netTitle": "Network Configuration",
       "netDesc": "Reference values for backend port, listen address and site domains. Changes require manual Nginx/Caddy reload by ops.",
       "netPort": "Backend Port",
@@ -1866,6 +1956,37 @@
         "desc": "Markdown fragment notes: timeline / calendar / lazy tag creation / version snapshots / public share / admin takedown",
         "btn": "Manage"
       }
+    },
+    "emailChange": {
+      "title": "Solicitudes manuales de cuenta",
+      "desc": "Solicitudes manuales de cambio de correo: tras la aprobación, el usuario completa el paso final en los ajustes; el administrador nunca cambia el correo directamente.",
+      "filterPending": "Pendientes",
+      "filterAll": "Todas",
+      "empty": "Sin solicitudes",
+      "colOldEmail": "Correo actual",
+      "colNewEmail": "Nuevo correo solicitado",
+      "colRemark": "Nota",
+      "colCreatedAt": "Enviada",
+      "colIp": "IP del cliente",
+      "colFingerprint": "Huella del navegador",
+      "approve": "Aprobar",
+      "reject": "Rechazar",
+      "rejectReason": "Motivo del rechazo",
+      "rejectReasonPlaceholder": "Motivo obligatorio (se mostrará al solicitante)",
+      "reviewedAt": "Revisada",
+      "approveConfirm": {
+        "title": "Aprobar solicitud de cambio de correo",
+        "body": "¿Aprobar la solicitud de «{name}» (destino: {email})?\nLa aprobación solo otorga un permiso de un solo uso; el usuario completa el paso final en los ajustes. El administrador no modifica el correo."
+      },
+      "rejectConfirm": {
+        "title": "Rechazar solicitud de cambio de correo",
+        "body": "¿Rechazar la solicitud de «{name}»? El motivo es obligatorio y se mostrará al solicitante."
+      },
+      "statuses": {
+        "pending": "Pendiente",
+        "approved": "Aprobada",
+        "rejected": "Rechazada"
+      }
     }
   },
   "ban": {
@@ -2149,5 +2270,23 @@
   "profileMemoTab": {
     "empty": "No moments yet",
     "viewAll": "View all"
+  },
+  "forgotPassword": {
+    "title": "Restablecer contraseña",
+    "subtitle": "Introduce tu correo vinculado para recibir un código de verificación",
+    "email": "Correo vinculado",
+    "emailPlaceholder": "you@example.com",
+    "sendCode": "Enviar código",
+    "codeSentTip": "Si este correo está vinculado a una cuenta, el código ha sido enviado",
+    "code": "Código de verificación",
+    "codePlaceholder": "Introduce el código de 6 dígitos",
+    "emailRequired": "Introduce tu correo vinculado",
+    "codeRequired": "Introduce el código de verificación",
+    "submit": "Restablecer contraseña",
+    "submitting": "Restableciendo…",
+    "success": "Contraseña restablecida",
+    "successHint": "Todas las sesiones se han cerrado. Redirigiendo al inicio de sesión…",
+    "backToLogin": "Volver al inicio de sesión",
+    "manualEntry": "¿Correo no disponible? Envía una solicitud de recuperación manual"
   }
 }

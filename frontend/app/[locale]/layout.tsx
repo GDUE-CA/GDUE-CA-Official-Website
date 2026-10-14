@@ -15,6 +15,7 @@ import { SessionHeartbeat } from "@/components/shared/SessionHeartbeat";
 import { BanModal } from "@/components/shared/BanModal";
 import { NavDesktop } from "@/components/layout/NavDesktop";
 import { Footer } from "@/components/layout/Footer";
+import { BackgroundTaskFloat } from "@/components/notifications/BackgroundTaskFloat";
 
 /** 站点根 URL（与 sitemap.ts / robots.ts 同源，用于 hreflang 绝对 URL） */
 const BASE_URL =
@@ -157,6 +158,7 @@ export default async function LocaleLayout({
       <I18nProvider locale={locale} messages={messages}>
         <SessionHeartbeat />
         <BanModal />
+        <BackgroundTaskFloat />
         <NavDesktop />
         <main className="flex-1 pt-16">{children}</main>
         <Footer />

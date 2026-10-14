@@ -37,6 +37,7 @@ import { useLocalizedPath, useSwitchLocale } from "@/lib/navigation";
 import { locales, localeDisplayName, urlLangToLocale, type Locale } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import {
   Card,
@@ -309,9 +310,8 @@ export default function LoginPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">{t("admin.login.password")}</Label>
-                <Input
+                <PasswordInput
                   id="password"
-                  type="password"
                   autoComplete="current-password"
                   placeholder={t("admin.login.passwordPlaceholder")}
                   value={password}
@@ -392,7 +392,7 @@ export default function LoginPage() {
             {/* 忘记密码 + 注册账号 + 账号恢复 */}
             <div className="mt-4 flex items-center justify-between text-sm">
               <Link
-                href={lp("/admin/forgot-password")}
+                href={lp("/forgot-password")}
                 className="text-muted-foreground hover:text-primary transition-colors"
               >
                 {t("admin.login.forgotPassword")}

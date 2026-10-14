@@ -115,6 +115,8 @@ const nextConfig: NextConfig = {
       { source: `/:lang(${LANG})/setting/:path*`, destination: "/setting/:path*" },
       // 统一登录入口多语言路由：/zh-cn/login → /login
       { source: `/:lang(${LANG})/login`, destination: "/login" },
+      // 忘记密码页多语言路由：/zh-cn/forgot-password → /forgot-password
+      { source: `/:lang(${LANG})/forgot-password`, destination: "/forgot-password" },
       { source: "/api/:path*", destination: `${BACKEND_URL}/api/:path*` },
       { source: "/uploads/:path*", destination: `${BACKEND_URL}/uploads/:path*` },
     ];

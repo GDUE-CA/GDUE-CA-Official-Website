@@ -15,6 +15,7 @@ export const PERMISSION_MODULES = [
   "review.registrations",
   "review.bugs",
   "review.resets",
+  "review.emails", // 更改绑定邮箱人工申请审核
   "settings",
   "users",
   // ---------- CMS 扩展 ----------
@@ -52,6 +53,7 @@ export const ROLE_DEFAULTS: Record<string, Partial<Record<PermissionModule, Perm
     "review.registrations": ["view", "manage"],
     "review.bugs": ["view", "manage"],
     "review.resets": ["view", "manage"],
+    "review.emails": ["view", "manage"],
     settings: ["view", "manage"],
     users: ["view", "manage"],
     announcements: ["view", "manage"],
@@ -77,6 +79,7 @@ export const ROLE_DEFAULTS: Record<string, Partial<Record<PermissionModule, Perm
     "review.registrations": ["view", "manage"],
     "review.bugs": ["view", "manage"],
     "review.resets": ["view", "manage"],
+    "review.emails": ["view", "manage"],
     settings: ["view", "manage"],
     users: ["view"],
     // 内容类：admin 可管理

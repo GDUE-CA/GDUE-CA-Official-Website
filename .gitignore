@@ -10,6 +10,7 @@ backend/.env
 backend/*.db
 backend/uploads/
 backend/backups/
+backend/exports/
 backend/.jwt_secret
 backend/initial_admin_password.txt
 

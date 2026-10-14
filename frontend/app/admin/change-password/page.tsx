@@ -12,7 +12,6 @@ import { Loader2, KeyRound, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { useI18n } from "@/i18n/provider";
 import { useLocalizedPath } from "@/lib/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Card,
@@ -24,6 +23,7 @@ import {
 import { changePassword } from "@/lib/api/auth";
 import { getSession, isAdminRole } from "@/lib/auth";
 import { meetsPasswordPolicy } from "@/lib/passwordPolicy";
+import { PasswordInput } from "@/components/ui/password-input";
 
 export default function ChangePasswordPage() {
   const { t } = useI18n();
@@ -49,7 +49,7 @@ export default function ChangePasswordPage() {
     setLoading(true);
     setError(null);
     try {
-      await changePassword({ old_password: oldPwd, new_password: newPwd });
+      await changePassword({ old_password: oldPwd, new_password: newPwd, confirm_password: confirmPwd });
       setSuccess(true);
       // 管理员回后台；普通成员回前台个人资料页
       const target = isAdminRole(getSession()?.role) ? lp("/admin/dashboard") : lp("/setting/profile");
@@ -88,9 +88,8 @@ export default function ChangePasswordPage() {
               <form onSubmit={handleSubmit} className="space-y-4" noValidate>
                 <div className="space-y-2">
                   <Label htmlFor="old">{t("admin.changePassword.oldPassword")}</Label>
-                  <Input
+                  <PasswordInput
                     id="old"
-                    type="password"
                     autoComplete="current-password"
                     placeholder={t("admin.changePassword.oldPasswordPlaceholder")}
                     value={oldPwd}
@@ -100,9 +99,8 @@ export default function ChangePasswordPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="new">{t("admin.changePassword.newPassword")}</Label>
-                  <Input
+                  <PasswordInput
                     id="new"
-                    type="password"
                     autoComplete="new-password"
                     placeholder={t("admin.changePassword.newPasswordPlaceholder")}
                     value={newPwd}
@@ -112,9 +110,8 @@ export default function ChangePasswordPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="confirm">{t("admin.changePassword.confirmPassword")}</Label>
-                  <Input
+                  <PasswordInput
                     id="confirm"
-                    type="password"
                     autoComplete="new-password"
                     placeholder={t("admin.changePassword.confirmPlaceholder")}
                     value={confirmPwd}

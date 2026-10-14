@@ -25,6 +25,7 @@ import { useI18n } from "@/i18n/provider";
 import { useLocalizedPath } from "@/lib/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -284,9 +285,8 @@ export default function SetupWizardPage() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="bgPassword">{t("admin.setup.password")}</Label>
-                    <Input
+                    <PasswordInput
                       id="bgPassword"
-                      type="password"
                       autoComplete="new-password"
                       placeholder={t("admin.setup.passwordPlaceholder")}
                       value={bgPassword}
@@ -295,9 +295,8 @@ export default function SetupWizardPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="bgConfirm">{t("admin.setup.confirmPassword")}</Label>
-                    <Input
+                    <PasswordInput
                       id="bgConfirm"
-                      type="password"
                       autoComplete="new-password"
                       placeholder={t("admin.setup.confirmPassword")}
                       value={bgConfirm}
@@ -485,9 +484,8 @@ export default function SetupWizardPage() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="adminPassword">{t("admin.setup.adminPassword")}</Label>
-                    <Input
+                    <PasswordInput
                       id="adminPassword"
-                      type="password"
                       value={adminPassword}
                       onChange={(e) => setAdminPassword(e.target.value)}
                       autoComplete="new-password"
@@ -497,9 +495,8 @@ export default function SetupWizardPage() {
                     <Label htmlFor="adminPasswordConfirm">
                       {t("admin.setup.adminPasswordConfirm")}
                     </Label>
-                    <Input
+                    <PasswordInput
                       id="adminPasswordConfirm"
-                      type="password"
                       value={adminPasswordConfirm}
                       onChange={(e) => setAdminPasswordConfirm(e.target.value)}
                       autoComplete="new-password"

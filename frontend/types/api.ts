@@ -260,6 +260,34 @@ export interface AdminOverview {
 export interface ChangePasswordRequest {
   old_password: string;
   new_password: string;
+  /** 二次确认新密码：后端二次校验（防御前端绕过） */
+  confirm_password: string;
+  /** 保留当前设备登录（默认勾选）；false = 全部会话（含本机）强制下线 */
+  keep_current_device?: boolean;
+}
+
+/** 改密结果：current_session_revoked=true 时前端需清除本地会话并跳转登录页 */
+export interface ChangePasswordResult {
+  ok: boolean;
+  current_session_revoked: boolean;
+}
+
+/** 忘记密码：发送邮箱验证码（防账号枚举：响应与邮箱是否存在无关） */
+export interface ForgotPasswordSendCodeRequest {
+  email: string;
+}
+
+export interface ForgotPasswordSendCodeResult {
+  ok: boolean;
+  message?: string;
+}
+
+/** 忘记密码：邮箱验证码重置密码（成功后全部会话强制下线） */
+export interface ForgotPasswordResetRequest {
+  email: string;
+  code: string;
+  new_password: string;
+  confirm_password: string;
 }
 
 export interface ForgotPasswordRequest {
@@ -277,6 +305,90 @@ export interface PasswordResetItem {
   admin_note: string | null;
   handled_at: string | null;
   created_at: string;
+}
+
+/* ---------- 更换绑定邮箱（路径A 自助 / 路径B 自助核验 / 路径C 人工申请 / 豁免确认） ---------- */
+
+export type EmailChangeStatus = "pending" | "approved" | "rejected";
+
+/** 用户端换绑板块状态（GET /api/auth/email-change/status） */
+export interface EmailChangeStatusOut {
+  current_email: string;
+  is_placeholder: boolean;
+  allow_manual_email_switch: boolean;
+  pending: {
+    id: number;
+    new_email: string;
+    remark: string | null;
+    created_at: string;
+  } | null;
+  /** 最近一条已同意申请（豁免模式预填目标邮箱） */
+  approved_application: {
+    id: number;
+    new_email: string;
+    remark: string | null;
+    created_at: string;
+  } | null;
+  last_rejected: {
+    id: number;
+    new_email: string;
+    reject_reason: string;
+    created_at: string;
+  } | null;
+}
+
+/** 后台审核列表行（GET /api/auth/email-change/requests） */
+export interface EmailChangeRequestRow {
+  id: number;
+  user_id: number;
+  username: string;
+  old_email: string;
+  new_email: string;
+  remark: string | null;
+  status: EmailChangeStatus;
+  reject_reason: string | null;
+  submit_ip: string | null;
+  fingerprint: string | null;
+  reviewed_by: number | null;
+  reviewed_at: string | null;
+  created_at: string;
+}
+
+export interface EmailChangeSendCodesPayload {
+  new_email: string;
+}
+
+export interface EmailChangeNormalConfirmPayload {
+  old_code: string;
+  new_code: string;
+  current_password: string;
+}
+
+export interface EmailChangeLostOldVerifyPayload {
+  current_password: string;
+  student_id: string;
+  phone: string;
+  real_name: string;
+}
+
+export interface EmailChangeLostOldConfirmPayload {
+  new_email: string;
+  code: string;
+}
+
+export interface EmailChangeManualRequestPayload {
+  new_email: string;
+  remark?: string;
+}
+
+export interface EmailChangeExemptConfirmPayload {
+  new_email: string;
+}
+
+export interface EmailChangeOpResult {
+  ok: boolean;
+  message: string;
+  new_email?: string;
 }
 
 export interface SecurityQuestionOut {
@@ -604,9 +716,59 @@ export interface NotificationItem {
   is_read: boolean;
 }
 
+/* ---------- 后台异步任务（数据库导出等） ---------- */
+export type BackgroundTaskCategory = "db_export";
+export type BackgroundTaskStatus = "pending" | "running" | "success" | "failed";
+
+export interface BackgroundTask {
+  id: string;
+  title: string;
+  category: BackgroundTaskCategory;
+  status: BackgroundTaskStatus;
+  /** 0-100；失败时保持当前进度 */
+  progress: number;
+  message: string;
+  /** 成功：{filename, path, size_bytes}；失败：{error} */
+  result_payload: {
+    filename?: string;
+    path?: string;
+    size_bytes?: number;
+    error?: string;
+  } | null;
+  created_by_user_id: number | null;
+  created_at: string;
+  finished_at: string | null;
+  dismissed_at: string | null;
+}
+
+export interface BackgroundTaskListResponse {
+  items: BackgroundTask[];
+}
+
+export interface BackgroundTaskSubmitResponse {
+  task_id: string;
+}
+
 export interface NotificationListResponse {
   items: NotificationItem[];
+  /** 未读总数 = 广播通知未读 + 站内私信未读（角标直接使用） */
   unread_count: number;
+  /** 站内私信（每用户专属，系统事件触发，按创建时间倒序） */
+  messages: UserMessage[];
+  /** 后台任务通知（管理员级才有数据；未手动关闭常驻，不自动消失） */
+  background_tasks: BackgroundTask[];
+}
+
+/** 站内私信（user_messages 表，如换绑邮箱审核结果通知） */
+export interface UserMessage {
+  id: number;
+  kind: string;
+  title: string;
+  content: string;
+  link: string | null;
+  is_read: boolean;
+  /** 创建时间：后端原始 UTC-Z 字符串，由客户端组件本地化渲染 */
+  created_at: string;
 }
 
 export interface MarkReadResponse {

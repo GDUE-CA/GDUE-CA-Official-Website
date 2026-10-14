@@ -313,7 +313,25 @@
     "markAllRead": "Mark all as read",
     "unread": "Unread",
     "read": "Read",
-    "unreadCount": "{count} unread"
+    "unreadCount": "{count} unread",
+    "messages": {
+      "sectionTitle": "Direct messages"
+    },
+    "backgroundTask": {
+      "sectionTitle": "Background tasks",
+      "category": {
+        "db_export": "Full database export"
+      },
+      "statusRunning": "Running",
+      "statusSuccess": "Succeeded",
+      "statusFailed": "Failed",
+      "currentProgress": "Current: {message} ({progress}%)",
+      "generatedFile": "Generated file: {path}",
+      "gotoMaintenance": "Go to backup file list",
+      "copyError": "Copy error log",
+      "copied": "Copied",
+      "dismiss": "Dismiss"
+    }
   },
   "account": {
     "title": "Account Settings",
@@ -353,7 +371,10 @@
       "weak": "Weak",
       "medium": "Medium",
       "strong": "Strong"
-    }
+    },
+    "keepCurrentDevice": "Keep this device signed in",
+    "keepCurrentDeviceHint": "If unchecked, changing the password signs out all devices (including this one)",
+    "newPasswordMismatch": "The two new passwords do not match"
   },
   "projects": {
     "title": "Projects",
@@ -946,6 +967,69 @@
     },
     "hints": {
       "appearanceInstant": "Theme and language changes apply instantly — no need to save"
+    },
+    "emailChange": {
+      "title": "Change Bound Email",
+      "desc": "Identity verification is required first: via old-email codes, self-service identity checks, or admin manual review.",
+      "current": "Current",
+      "none": "No valid email bound",
+      "newEmail": "New email address",
+      "newEmailPlaceholder": "Enter the new email to bind",
+      "currentPassword": "Current password",
+      "oldCode": "Code sent to old email",
+      "newCode": "Code sent to new email",
+      "studentId": "Student ID",
+      "phone": "Bound phone number",
+      "realName": "Real name",
+      "remark": "Request note (why the old email is unavailable)",
+      "remarkPlaceholder": "Explain why the old email is unavailable, e.g. deactivated after graduation, mailbox inaccessible",
+      "uidLabel": "Current account UID",
+      "usernameLabel": "Current username",
+      "submit": "Confirm & submit",
+      "sendCodes": "Send codes",
+      "backToStep1": "Back",
+      "sentHint": "Two codes were sent to your old email and the new email ({new}); valid for 15 minutes.",
+      "changeSuccess": "Email changed successfully. All devices stay signed in.",
+      "confirmSendTitle": "Confirm sending codes",
+      "confirmSendBody": "A 6-digit code will be sent to both your old email ({old}) and the new email ({new}). Continue?",
+      "confirmChangeTitle": "Confirm email change",
+      "confirmChangeBody": "The bound email will change from [{old}] to [{new}] immediately after submission. Please double-check. Continue?",
+      "lostOld": {
+        "entry": "Old email can't receive codes? Click here",
+        "back": "Back to normal flow",
+        "hint": "All four items must match your account records (current password, student ID, phone number, real name); any single mismatch rejects this verification.",
+        "verify": "Verify identity",
+        "verifyGuidance": "You cannot complete all identity checks. Please submit a [manual email-change request] for admin review.",
+        "gotoManual": "Submit manual email-change request",
+        "confirmSendTitle": "Confirm sending code",
+        "confirmSendBody": "Identity verified. A 6-digit code will be sent to the new email ({new}). Continue?"
+      },
+      "manual": {
+        "entry": "Submit a manual email-change request",
+        "submitLabel": "Submit request",
+        "confirmTitle": "Confirm manual email-change request",
+        "confirmBody": "⚠️ Confirm submitting a manual email-change request. It will be reviewed by an admin; you cannot change your email yourself until the review completes. The request cannot be withdrawn once submitted. Continue?",
+        "submitted": "Request submitted, pending admin review"
+      },
+      "pending": {
+        "title": "Email-change request under review",
+        "target": "Requested new email",
+        "hint": "Pending admin review. All self-service email-change entries are disabled until the review completes.",
+        "disabled": "Self-service change disabled while under review"
+      },
+      "rejected": {
+        "title": "Your manual email-change request was rejected",
+        "reason": "Reason",
+        "canRetry": "You can retry self-service verification or submit another request."
+      },
+      "exempt": {
+        "title": "Manual-review exemption mode",
+        "warning": "An admin approved your email-change request. This mode skips all identity checks (old email, password, student ID, phone); the change completes only when you submit here. This permit is one-time and expires immediately after success.",
+        "prefill": "Admin-approved email",
+        "confirmTitle": "⚠️ Manual-review exemption mode",
+        "confirmBody": "⚠️ Manual-review exemption mode\nYour bound email will be updated to: {new}\nIt takes effect once submitted. Please double-check. Continue?",
+        "success": "Email changed successfully"
+      }
     }
   },
   "admin": {
@@ -1260,7 +1344,8 @@
       "config.oauth": "OAuth Channels",
       "config.sso": "SSO Trusted Apps",
       "audit": "Logs & Audit",
-      "mailpush": "Email & Push"
+      "mailpush": "Email & Push",
+      "users.emailChange": "Email-change requests"
     },
     "profile": {
       "title": "Profile",
@@ -1470,6 +1555,11 @@
       "adminTrustedIpsLabel": "Whitelist entries (one per line, # comments supported)",
       "adminTrustedIpsPlaceholder": "# One entry per line; IPv4, IPv6, IPv4-CIDR, IPv6-CIDR supported\n# Empty = whitelist off, all IPs can log in to admin accounts\n# Examples:\n127.0.0.1\n192.168.1.0/24\n::1\n2001:db8::/32",
       "adminTrustedIpsNote": "⚠️ Priority: the database web config takes precedence; the env var ADMIN_TRUSTED_IPS is read only when the database list is empty.",
+      "dbMaintenanceTitle": "Database maintenance",
+      "dbMaintenanceDesc": "Database backup and migration. Export runs as an async background task: no need to stay on this page after submitting; track progress in the bottom-right floating panel or the notification center.",
+      "dbExportButton": "Run a full database export",
+      "dbExportSubmitted": "Task submitted to run in the background. You can keep working; progress appears in the bottom-right panel or the notification center.",
+      "dbExportNote": "When finished, the backup file is stored in the server ./exports directory (0600 permissions); download it manually via SFTP. Task records stay in the notification list until you dismiss them.",
       "netTitle": "Network Configuration",
       "netDesc": "Reference values for backend port, listen address and site domains. Changes require manual Nginx/Caddy reload by ops.",
       "netPort": "Backend Port",
@@ -2147,6 +2237,37 @@
         "desc": "Markdown fragment notes: timeline / calendar / lazy tag creation / version snapshots / public share / admin takedown",
         "btn": "Manage"
       }
+    },
+    "emailChange": {
+      "title": "Manual Account Requests",
+      "desc": "Email-change manual requests: after approval the user must complete the final confirmation in account settings; admins never change the email directly.",
+      "filterPending": "Pending",
+      "filterAll": "All",
+      "empty": "No requests",
+      "colOldEmail": "Current email",
+      "colNewEmail": "Requested new email",
+      "colRemark": "Note",
+      "colCreatedAt": "Submitted",
+      "colIp": "Client IP",
+      "colFingerprint": "Fingerprint",
+      "approve": "Approve",
+      "reject": "Reject",
+      "rejectReason": "Reject reason",
+      "rejectReasonPlaceholder": "Reason required (shown to the requester)",
+      "reviewedAt": "Reviewed at",
+      "approveConfirm": {
+        "title": "Approve email-change request",
+        "body": "Approve \"{name}\"'s email-change request (target: {email})?\nApproval only grants a one-time permit; the user must complete the final step in account settings. The email is not changed by the admin."
+      },
+      "rejectConfirm": {
+        "title": "Reject email-change request",
+        "body": "Reject \"{name}\"'s request? A reason is required and will be shown to the requester."
+      },
+      "statuses": {
+        "pending": "Pending",
+        "approved": "Approved",
+        "rejected": "Rejected"
+      }
     }
   },
   "ban": {
@@ -2430,5 +2551,23 @@
   "profileMemoTab": {
     "empty": "No moments yet",
     "viewAll": "View all"
+  },
+  "forgotPassword": {
+    "title": "Reset your password",
+    "subtitle": "Enter your bound email to receive a verification code",
+    "email": "Bound email",
+    "emailPlaceholder": "you@example.com",
+    "sendCode": "Send code",
+    "codeSentTip": "If this email is bound to an account, the code has been sent",
+    "code": "Email verification code",
+    "codePlaceholder": "Enter the 6-digit code",
+    "emailRequired": "Please enter your bound email",
+    "codeRequired": "Please enter the verification code",
+    "submit": "Reset password",
+    "submitting": "Resetting…",
+    "success": "Password reset",
+    "successHint": "All sessions have been signed out. Redirecting to login…",
+    "backToLogin": "Back to login",
+    "manualEntry": "Email unavailable? Submit a manual recovery request"
   }
 }

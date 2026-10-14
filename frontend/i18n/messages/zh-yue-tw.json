@@ -281,7 +281,25 @@
     "markAllRead": "全部標為已讀",
     "unread": "未讀",
     "read": "已讀",
-    "unreadCount": "{count} 條未讀"
+    "unreadCount": "{count} 條未讀",
+    "messages": {
+      "sectionTitle": "站內私信"
+    },
+    "backgroundTask": {
+      "sectionTitle": "後台任務",
+      "category": {
+        "db_export": "資料庫全量匯出"
+      },
+      "statusRunning": "進行中",
+      "statusSuccess": "成功",
+      "statusFailed": "失敗",
+      "currentProgress": "而家：{message}（{progress}%）",
+      "generatedFile": "產生檔案：{path}",
+      "gotoMaintenance": "跳轉去備份檔案列表",
+      "copyError": "複製錯誤日誌",
+      "copied": "複製咗",
+      "dismiss": "閂"
+    }
   },
   "account": {
     "title": "修改帳號資訊",
@@ -321,7 +339,10 @@
       "weak": "弱",
       "medium": "中",
       "strong": "強"
-    }
+    },
+    "keepCurrentDevice": "保留目前裝置登入",
+    "keepCurrentDeviceHint": "如果取消勾選，改密碼之後所有裝置（包括目前呢部）都會登出",
+    "newPasswordMismatch": "兩次輸入嘅新密碼唔相同"
   },
   "projects": {
     "title": "項目展示",
@@ -692,6 +713,69 @@
     },
     "hints": {
       "appearanceInstant": "主題與語言切換即時生效，無需儲存"
+    },
+    "emailChange": {
+      "title": "更換綁定電郵",
+      "desc": "更換前要驗證你嘅身份：支援舊電郵驗證碼、自助身份核驗或管理員人工審核三條路徑。",
+      "current": "而家綁定",
+      "none": "未綁定有效電郵",
+      "newEmail": "新電郵地址",
+      "newEmailPlaceholder": "請輸入要更換到嘅新電郵",
+      "currentPassword": "而家登入密碼",
+      "oldCode": "原電郵驗證碼",
+      "newCode": "新電郵驗證碼",
+      "studentId": "學號",
+      "phone": "綁定手機號",
+      "realName": "真實姓名",
+      "remark": "申請備註（原電郵失效原因）",
+      "remarkPlaceholder": "請講明原電郵失效原因，例如：畢業註銷、唔記得密碼而且入唔到電郵等",
+      "uidLabel": "而家帳號 UID",
+      "usernameLabel": "而家帳號用戶名",
+      "submit": "確認提交",
+      "sendCodes": "發送驗證碼",
+      "backToStep1": "返回上一步",
+      "sentHint": "兩份驗證碼已分別發送去你嘅原電郵同新電郵（{new}），15 分鐘內有效。",
+      "changeSuccess": "綁定電郵更換成功，全部登入裝置保持登入狀態。",
+      "confirmSendTitle": "確認發送驗證碼",
+      "confirmSendBody": "系統將同時向你嘅原電郵（{old}）同新電郵（{new}）各發送一份 6 位驗證碼。確認發送？",
+      "confirmChangeTitle": "確認更換綁定電郵",
+      "confirmChangeBody": "即將將帳號綁定電郵由【{old}】變更為【{new}】，提交後即刻生效。請再三核對電郵無誤。確認提交？",
+      "lostOld": {
+        "entry": "原電郵收唔到驗證碼？撳呢度",
+        "back": "返回正常流程",
+        "hint": "四項資料必須全部同帳號登記記錄一致（而家密碼、學號、綁定手機號、真實姓名），任何一項唔啱都會直接拒絕今次核驗。",
+        "verify": "提交核驗",
+        "verifyGuidance": "你無法完成全部身份核驗，請提交【更改綁定電郵人工申請】交畀站內管理員審核。",
+        "gotoManual": "提交更改綁定電郵人工申請",
+        "confirmSendTitle": "確認發送新電郵驗證碼",
+        "confirmSendBody": "身份核驗已通過，將向新電郵（{new}）發送一份 6 位驗證碼。確認發送？"
+      },
+      "manual": {
+        "entry": "提交更改綁定電郵人工申請",
+        "submitLabel": "提交人工申請",
+        "confirmTitle": "確認提交更改電郵人工申請",
+        "confirmBody": "⚠️確認提交更改電郵人工申請。提交之後等管理員審核；審核完成前你無法自助修改綁定電郵。提交後唔可以自己撤銷，請耐心等管理員處理。確認提交？",
+        "submitted": "人工申請已提交，等緊管理員審核"
+      },
+      "pending": {
+        "title": "更改綁定電郵申請審核中",
+        "target": "申請目標電郵",
+        "hint": "等緊管理員審核；審核完成前所有自助更換電郵入口已停用，請耐心等管理員處理。",
+        "disabled": "人工申請審核中，自助更換已停用"
+      },
+      "rejected": {
+        "title": "你嘅更改綁定電郵人工申請已被駁回",
+        "reason": "駁回理由",
+        "canRetry": "你而家可以重新自助操作，或者再次提交人工申請。"
+      },
+      "exempt": {
+        "title": "人工審核豁免模式",
+        "warning": "管理員已核准你嘅更改電郵人工申請。呢個模式會跳過全部身份核驗（舊電郵、密碼、學號、手機號），淨係憑本頁面提交完成換綁；呢個許可一次性有效，提交成功後即刻失效。",
+        "prefill": "管理員核准嘅申請電郵",
+        "confirmTitle": "⚠️人工審核豁免模式",
+        "confirmBody": "⚠️人工審核豁免模式\n即將更新帳號綁定電郵為：{new}\n確認提交之後綁定電郵就會變更；請再三核對電郵無誤。確認繼續？",
+        "success": "電郵更換成功"
+      }
     }
   },
   "admin": {
@@ -998,7 +1082,8 @@
       "config.oauth": "OAuth 渠道",
       "config.sso": "SSO 受信應用",
       "audit": "日誌與稽核",
-      "mailpush": "郵件與推送"
+      "mailpush": "郵件與推送",
+      "users.emailChange": "更改綁定電郵申請列表"
     },
     "profile": {
       "title": "個人資料",
@@ -1208,6 +1293,11 @@
       "adminTrustedIpsLabel": "白名單清單（每行一條，支援 # 註釋）",
       "adminTrustedIpsPlaceholder": "# 每行一條，支援 IPv4、IPv6、IPv4-CIDR、IPv6-CIDR\n# 留空=關閉白名單，所有IP均可登入管理員帳號\n# 範例：\n127.0.0.1\n192.168.1.0/24\n::1\n2001:db8::/32",
       "adminTrustedIpsNote": "⚠️ 優先級：資料庫 Web 配置優先；資料庫為空才讀取環境變數 ADMIN_TRUSTED_IPS。",
+      "dbMaintenanceTitle": "資料庫維護",
+      "dbMaintenanceDesc": "資料庫備份同遷移。匯出係後台非同步任務：提交之後唔使留喺呢版，進度可以喺右下角懸浮窗或者通知中心睇。",
+      "dbExportButton": "執行一次完整資料庫匯出",
+      "dbExportSubmitted": "任務已交咗去後台行，可以繼續做其他嘢；進度睇右下角懸浮窗或者頂部通知中心。",
+      "dbExportNote": "完成之後備份檔案保存喺伺服器 ./exports 目錄（0600 權限），請用 SFTP 手動下載；任務記錄會常駐通知列表，手動閂之前唔會消失。",
       "netTitle": "網絡設定",
       "netDesc": "後端服務連接埠、監聽位址與站點網域參考值。實際生效需運維手動修改 Nginx/Caddy 並重載設定。",
       "netPort": "後端連接埠",
@@ -1840,6 +1930,37 @@
         "desc": "Markdown 碎片筆記：時間線 / 日曆 / 標籤懶建立 / 版本快照 / 公開分享 / 後台下架",
         "btn": "進入管理"
       }
+    },
+    "emailChange": {
+      "title": "人工帳號申請",
+      "desc": "更改綁定電郵人工申請：同意後用戶要喺帳號設定自己完成最後一步換綁確認，管理員絕唔會直接幫用戶改電郵。",
+      "filterPending": "待審核",
+      "filterAll": "全部",
+      "empty": "暫無申請",
+      "colOldEmail": "現存綁定電郵",
+      "colNewEmail": "目標新電郵",
+      "colRemark": "申請備註",
+      "colCreatedAt": "提交時間",
+      "colIp": "客戶端 IP",
+      "colFingerprint": "瀏覽器指紋",
+      "approve": "同意",
+      "reject": "駁回",
+      "rejectReason": "駁回理由",
+      "rejectReasonPlaceholder": "請填寫駁回理由（必填，會展示畀申請人）",
+      "reviewedAt": "審核時間",
+      "approveConfirm": {
+        "title": "同意更改綁定電郵申請",
+        "body": "確認同意用戶「{name}」嘅更改綁定電郵申請（目標電郵：{email}）？\n同意後淨係為該帳號打上一次換綁許可標記，用戶要自己前往帳號設定-更換綁定電郵完成最後一步確認；管理員唔會直接改佢嘅電郵。"
+      },
+      "rejectConfirm": {
+        "title": "駁回更改綁定電郵申請",
+        "body": "確認駁回用戶「{name}」嘅申請？駁回理由必填，會推送畀申請人。"
+      },
+      "statuses": {
+        "pending": "待審核",
+        "approved": "已同意",
+        "rejected": "已駁回"
+      }
     }
   },
   "ban": {
@@ -2123,5 +2244,23 @@
   "profileMemoTab": {
     "empty": "還沒有發佈過說說",
     "viewAll": "查看全部"
+  },
+  "forgotPassword": {
+    "title": "搵返密碼",
+    "subtitle": "輸入綁定嘅電郵攞驗證碼，重新設定登入密碼",
+    "email": "綁定電郵",
+    "emailPlaceholder": "you@example.com",
+    "sendCode": "發送驗證碼",
+    "codeSentTip": "如果呢個電郵已經綁定咗帳號，驗證碼已經發送咗，請查收",
+    "code": "電郵驗證碼",
+    "codePlaceholder": "輸入 6 位驗證碼",
+    "emailRequired": "請輸入綁定電郵",
+    "codeRequired": "請輸入電郵驗證碼",
+    "submit": "重設密碼",
+    "submitting": "重設緊…",
+    "success": "密碼重設成功",
+    "successHint": "所有登入工作階段已經強制下線，好快會跳去登入頁",
+    "backToLogin": "返去登入",
+    "manualEntry": "電郵用唔到？提交人工搵返申請"
   }
 }

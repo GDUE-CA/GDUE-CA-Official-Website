@@ -20,9 +20,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { updateProfile, changePassword } from "@/lib/api/auth";
-import { getSession, saveSession } from "@/lib/auth";
+import { getSession, saveSession, clearLocalSession } from "@/lib/auth";
 import { meetsPasswordPolicy, passwordClassCount } from "@/lib/passwordPolicy";
-import { CheckCircle2, Loader2, KeyRound, UserCog, Eye, EyeOff } from "lucide-react";
+import { PasswordInput } from "@/components/ui/password-input";
+import { CheckCircle2, Loader2, KeyRound, UserCog } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /** 用户名格式：≥4 字符，字母/数字/下划线 */
@@ -56,8 +57,7 @@ export function AccountSecurityCard({ currentUsername, onUsernameUpdated }: Prop
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
-  const [showOld, setShowOld] = useState(false);
-  const [showNew, setShowNew] = useState(false);
+  const [keepCurrentDevice, setKeepCurrentDevice] = useState(true);
 
   function validateUsername(name: string): string | null {
     if (!name) return t("account.usernameRequired");
@@ -107,12 +107,23 @@ export function AccountSecurityCard({ currentUsername, onUsernameUpdated }: Prop
     setPasswordError(null);
     setPasswordSuccess(false);
     try {
-      await changePassword({ old_password: oldPassword, new_password: newPassword });
+      const res = await changePassword({
+        old_password: oldPassword,
+        new_password: newPassword,
+        confirm_password: confirmPassword,
+        keep_current_device: keepCurrentDevice,
+      });
       setPasswordSuccess(true);
       setPasswordEditing(false);
       setOldPassword("");
       setNewPassword("");
       setConfirmPassword("");
+      // 未保留当前设备：后端已撤销全部会话（含本机），清理本地并跳登录页
+      if (res.current_session_revoked) {
+        clearLocalSession();
+        setTimeout(() => { window.location.href = "/login"; }, 1500);
+        return;
+      }
       setTimeout(() => setPasswordSuccess(false), 3000);
     } catch (err) {
       setPasswordError(err instanceof Error ? err.message : t("account.passwordSaveError"));
@@ -222,47 +233,25 @@ export function AccountSecurityCard({ currentUsername, onUsernameUpdated }: Prop
                 <Label htmlFor="oldPassword" className="text-xs text-muted-foreground">
                   {t("account.oldPassword")}
                 </Label>
-                <div className="relative">
-                  <Input
-                    id="oldPassword"
-                    type={showOld ? "text" : "password"}
-                    value={oldPassword}
-                    onChange={(e) => { setOldPassword(e.target.value); setPasswordError(null); }}
-                    placeholder={t("account.oldPasswordPlaceholder")}
-                    autoComplete="current-password"
-                    className="pr-9"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowOld(!showOld)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showOld ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
+                <PasswordInput
+                  id="oldPassword"
+                  value={oldPassword}
+                  onChange={(e) => { setOldPassword(e.target.value); setPasswordError(null); }}
+                  placeholder={t("account.oldPasswordPlaceholder")}
+                  autoComplete="current-password"
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="newPassword" className="text-xs text-muted-foreground">
                   {t("account.newPassword")}
                 </Label>
-                <div className="relative">
-                  <Input
-                    id="newPassword"
-                    type={showNew ? "text" : "password"}
-                    value={newPassword}
-                    onChange={(e) => { setNewPassword(e.target.value); setPasswordError(null); }}
-                    placeholder={t("account.newPasswordPlaceholder")}
-                    autoComplete="new-password"
-                    className="pr-9"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowNew(!showNew)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
+                <PasswordInput
+                  id="newPassword"
+                  value={newPassword}
+                  onChange={(e) => { setNewPassword(e.target.value); setPasswordError(null); }}
+                  placeholder={t("account.newPasswordPlaceholder")}
+                  autoComplete="new-password"
+                />
                 {/* 密码强度指示器 */}
                 {strength && (
                   <div className="flex items-center gap-2">
@@ -295,15 +284,27 @@ export function AccountSecurityCard({ currentUsername, onUsernameUpdated }: Prop
                 <Label htmlFor="confirmPassword" className="text-xs text-muted-foreground">
                   {t("account.confirmPassword")}
                 </Label>
-                <Input
+                <PasswordInput
                   id="confirmPassword"
-                  type={showNew ? "text" : "password"}
                   value={confirmPassword}
                   onChange={(e) => { setConfirmPassword(e.target.value); setPasswordError(null); }}
                   placeholder={t("account.confirmPasswordPlaceholder")}
                   autoComplete="new-password"
                 />
               </div>
+              {/* 保留当前设备登录（默认勾选；取消=全部设备含本机下线） */}
+              <label className="flex items-start gap-2 text-sm cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 size-4 rounded accent-primary cursor-pointer"
+                  checked={keepCurrentDevice}
+                  onChange={(e) => setKeepCurrentDevice(e.target.checked)}
+                />
+                <span>
+                  {t("account.keepCurrentDevice")}
+                  <span className="block text-xs text-muted-foreground">{t("account.keepCurrentDeviceHint")}</span>
+                </span>
+              </label>
               {passwordError && (
                 <p className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md">
                   {passwordError}

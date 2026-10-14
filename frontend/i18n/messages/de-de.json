@@ -281,7 +281,25 @@
     "markAllRead": "Mark all as read",
     "unread": "Unread",
     "read": "Read",
-    "unreadCount": "{count} unread"
+    "unreadCount": "{count} unread",
+    "messages": {
+      "sectionTitle": "Direktnachrichten"
+    },
+    "backgroundTask": {
+      "sectionTitle": "Hintergrundaufgaben",
+      "category": {
+        "db_export": "Vollständiger Datenbankexport"
+      },
+      "statusRunning": "Läuft",
+      "statusSuccess": "Erfolgreich",
+      "statusFailed": "Fehlgeschlagen",
+      "currentProgress": "Aktuell: {message} ({progress} %)",
+      "generatedFile": "Erstellte Datei: {path}",
+      "gotoMaintenance": "Zur Sicherungsdateiliste",
+      "copyError": "Fehlerprotokoll kopieren",
+      "copied": "Kopiert",
+      "dismiss": "Schließen"
+    }
   },
   "account": {
     "title": "Account Settings",
@@ -321,7 +339,10 @@
       "weak": "Weak",
       "medium": "Medium",
       "strong": "Strong"
-    }
+    },
+    "keepCurrentDevice": "Auf diesem Gerät angemeldet bleiben",
+    "keepCurrentDeviceHint": "Wenn deaktiviert, meldet die Passwortänderung alle Geräte ab (einschließlich dieses Geräts)",
+    "newPasswordMismatch": "Die beiden neuen Passwörter stimmen nicht überein"
   },
   "projects": {
     "title": "Projects",
@@ -716,6 +737,69 @@
     },
     "hints": {
       "appearanceInstant": "Theme and language changes apply instantly — no need to save"
+    },
+    "emailChange": {
+      "title": "Gebundene E-Mail ändern",
+      "desc": "Vor der Änderung ist eine Identitätsprüfung erforderlich: Codes an die alte E-Mail, Selbstverifizierung oder manuelle Prüfung durch einen Admin.",
+      "current": "Aktuell",
+      "none": "Keine gültige E-Mail gebunden",
+      "newEmail": "Neue E-Mail-Adresse",
+      "newEmailPlaceholder": "Neue E-Mail-Adresse eingeben",
+      "currentPassword": "Aktuelles Passwort",
+      "oldCode": "Code an alte E-Mail",
+      "newCode": "Code an neue E-Mail",
+      "studentId": "Matrikelnummer",
+      "phone": "Gebundene Handynummer",
+      "realName": "Echter Name",
+      "remark": "Anmerkung (warum die alte E-Mail nicht verfügbar ist)",
+      "remarkPlaceholder": "Grund angeben, z. B. nach Abschluss deaktiviert, kein Zugriff auf das Postfach",
+      "uidLabel": "Aktuelle Konto-UID",
+      "usernameLabel": "Aktueller Benutzername",
+      "submit": "Bestätigen & senden",
+      "sendCodes": "Codes senden",
+      "backToStep1": "Zurück",
+      "sentHint": "Zwei Codes wurden an Ihre alte E-Mail und die neue ({new}) gesendet; 15 Minuten gültig.",
+      "changeSuccess": "E-Mail erfolgreich geändert. Alle Geräte bleiben angemeldet.",
+      "confirmSendTitle": "Code-Versand bestätigen",
+      "confirmSendBody": "Ein 6-stelliger Code wird an Ihre alte ({old}) und neue E-Mail ({new}) gesendet. Fortfahren?",
+      "confirmChangeTitle": "E-Mail-Änderung bestätigen",
+      "confirmChangeBody": "Die gebundene E-Mail wird von [{old}] zu [{new}] geändert und sofort wirksam. Bitte prüfen Sie die Angaben. Fortfahren?",
+      "lostOld": {
+        "entry": "Alte E-Mail kann keine Codes empfangen? Hier klicken",
+        "back": "Zurück zum normalen Ablauf",
+        "hint": "Alle vier Angaben müssen mit den Kontodaten übereinstimmen (aktuelles Passwort, Matrikelnummer, Handynummer, echter Name); jede Abweichung lehnt die Prüfung ab.",
+        "verify": "Verifizierung absenden",
+        "verifyGuidance": "Sie können nicht alle Identitätsprüfungen abschließen. Bitte stellen Sie einen [manuellen E-Mail-Änderungsantrag] zur Admin-Prüfung.",
+        "gotoManual": "Manuellen E-Mail-Änderungsantrag stellen",
+        "confirmSendTitle": "Code-Versand bestätigen",
+        "confirmSendBody": "Identität bestätigt. Ein 6-stelliger Code wird an die neue E-Mail ({new}) gesendet. Fortfahren?"
+      },
+      "manual": {
+        "entry": "Manuellen E-Mail-Änderungsantrag stellen",
+        "submitLabel": "Antrag stellen",
+        "confirmTitle": "Manuellen Antrag bestätigen",
+        "confirmBody": "⚠️ Manuellen E-Mail-Änderungsantrag wirklich stellen? Er wird von einem Admin geprüft; bis dahin ist die Selbständerung gesperrt. Der Antrag kann nicht zurückgezogen werden. Fortfahren?",
+        "submitted": "Antrag gestellt, wartet auf Admin-Prüfung"
+      },
+      "pending": {
+        "title": "E-Mail-Änderungsantrag in Prüfung",
+        "target": "Beantragte neue E-Mail",
+        "hint": "Wartet auf Admin-Prüfung. Alle Selbstbedienungs-Eingänge sind bis zum Abschluss deaktiviert.",
+        "disabled": "Selbständerung während der Prüfung deaktiviert"
+      },
+      "rejected": {
+        "title": "Ihr manueller E-Mail-Änderungsantrag wurde abgelehnt",
+        "reason": "Ablehnungsgrund",
+        "canRetry": "Sie können die Selbstverifizierung erneut versuchen oder einen neuen Antrag stellen."
+      },
+      "exempt": {
+        "title": "Freistellungsmodus nach manueller Prüfung",
+        "warning": "Ein Admin hat Ihren Antrag genehmigt. Dieser Modus überspringt alle Identitätsprüfungen (alte E-Mail, Passwort, Matrikelnummer, Handy); die Änderung wird nur durch Absenden auf dieser Seite wirksam. Die Erlaubnis ist einmalig und verfällt sofort nach Erfolg.",
+        "prefill": "Vom Admin genehmigte E-Mail",
+        "confirmTitle": "⚠️ Freistellungsmodus nach manueller Prüfung",
+        "confirmBody": "⚠️ Freistellungsmodus nach manueller Prüfung\nDie gebundene E-Mail wird geändert zu: {new}\nDie Änderung wird nach dem Absenden wirksam. Bitte prüfen Sie die Angaben. Fortfahren?",
+        "success": "E-Mail erfolgreich geändert"
+      }
     }
   },
   "admin": {
@@ -1024,7 +1108,8 @@
       "config.oauth": "OAuth-Kanäle",
       "config.sso": "Vertrauenswürdige SSO-Apps",
       "audit": "Protokolle & Audit",
-      "mailpush": "E-Mail & Push"
+      "mailpush": "E-Mail & Push",
+      "users.emailChange": "E-Mail-Änderungsanträge"
     },
     "profile": {
       "title": "Profile",
@@ -1234,6 +1319,11 @@
       "adminTrustedIpsLabel": "Whitelist-Einträge (einer pro Zeile, # Kommentare unterstützt)",
       "adminTrustedIpsPlaceholder": "# Ein Eintrag pro Zeile; IPv4, IPv6, IPv4-CIDR, IPv6-CIDR unterstützt\n# Leer = Whitelist aus, alle IPs können sich bei Admin-Konten anmelden\n# Beispiele:\n127.0.0.1\n192.168.1.0/24\n::1\n2001:db8::/32",
       "adminTrustedIpsNote": "⚠️ Priorität: Die Web-Konfiguration in der Datenbank hat Vorrang; erst bei leerer Datenbank wird die Umgebungsvariable ADMIN_TRUSTED_IPS gelesen.",
+      "dbMaintenanceTitle": "Datenbankwartung",
+      "dbMaintenanceDesc": "Datenbanksicherung und -migration. Der Export läuft als asynchrone Hintergrundaufgabe: Nach dem Absenden müssen Sie nicht auf dieser Seite bleiben; den Fortschritt sehen Sie im schwebenden Fenster unten rechts oder im Benachrichtigungscenter.",
+      "dbExportButton": "Vollständigen Datenbankexport ausführen",
+      "dbExportSubmitted": "Aufgabe wurde im Hintergrund gestartet. Sie können weiterarbeiten; der Fortschritt erscheint unten rechts oder im Benachrichtigungscenter.",
+      "dbExportNote": "Nach Abschluss liegt die Sicherungsdatei im Serververzeichnis ./exports (Berechtigung 0600); bitte per SFTP manuell herunterladen. Aufgabeneinträge bleiben in der Benachrichtigungsliste, bis Sie sie manuell schließen.",
       "netTitle": "Network Configuration",
       "netDesc": "Reference values for backend port, listen address and site domains. Changes require manual Nginx/Caddy reload by ops.",
       "netPort": "Backend Port",
@@ -1866,6 +1956,37 @@
         "desc": "Markdown fragment notes: timeline / calendar / lazy tag creation / version snapshots / public share / admin takedown",
         "btn": "Manage"
       }
+    },
+    "emailChange": {
+      "title": "Manuelle Kontoanträge",
+      "desc": "Manuelle E-Mail-Änderungsanträge: Nach Genehmigung schließt der Nutzer die Änderung selbst in den Kontoeinstellungen ab; Admins ändern die E-Mail niemals direkt.",
+      "filterPending": "Ausstehend",
+      "filterAll": "Alle",
+      "empty": "Keine Anträge",
+      "colOldEmail": "Aktuelle E-Mail",
+      "colNewEmail": "Beantragte neue E-Mail",
+      "colRemark": "Anmerkung",
+      "colCreatedAt": "Eingereicht",
+      "colIp": "Client-IP",
+      "colFingerprint": "Browser-Fingerprint",
+      "approve": "Genehmigen",
+      "reject": "Ablehnen",
+      "rejectReason": "Ablehnungsgrund",
+      "rejectReasonPlaceholder": "Grund erforderlich (wird dem Antragsteller angezeigt)",
+      "reviewedAt": "Geprüft am",
+      "approveConfirm": {
+        "title": "E-Mail-Änderungsantrag genehmigen",
+        "body": "Antrag von „{name}“ genehmigen (Ziel: {email})?\nDie Genehmigung erteilt nur eine einmalige Erlaubnis; den letzten Schritt führt der Nutzer selbst in den Kontoeinstellungen aus. Die E-Mail wird nicht vom Admin geändert."
+      },
+      "rejectConfirm": {
+        "title": "E-Mail-Änderungsantrag ablehnen",
+        "body": "Antrag von „{name}“ ablehnen? Ein Grund ist erforderlich und wird dem Antragsteller angezeigt."
+      },
+      "statuses": {
+        "pending": "Ausstehend",
+        "approved": "Genehmigt",
+        "rejected": "Abgelehnt"
+      }
     }
   },
   "ban": {
@@ -2149,5 +2270,23 @@
   "profileMemoTab": {
     "empty": "No moments yet",
     "viewAll": "View all"
+  },
+  "forgotPassword": {
+    "title": "Passwort zurücksetzen",
+    "subtitle": "Gib deine hinterlegte E-Mail-Adresse ein, um einen Bestätigungscode zu erhalten",
+    "email": "Hinterlegte E-Mail",
+    "emailPlaceholder": "you@example.com",
+    "sendCode": "Code senden",
+    "codeSentTip": "Wenn diese E-Mail mit einem Konto verknüpft ist, wurde der Code gesendet",
+    "code": "E-Mail-Bestätigungscode",
+    "codePlaceholder": "6-stelligen Code eingeben",
+    "emailRequired": "Bitte hinterlegte E-Mail-Adresse eingeben",
+    "codeRequired": "Bitte Bestätigungscode eingeben",
+    "submit": "Passwort zurücksetzen",
+    "submitting": "Wird zurückgesetzt…",
+    "success": "Passwort zurückgesetzt",
+    "successHint": "Alle Sitzungen wurden zwangsweise abgemeldet. Weiterleitung zur Anmeldeseite…",
+    "backToLogin": "Zurück zur Anmeldung",
+    "manualEntry": "E-Mail nicht verfügbar? Manuellen Wiederherstellungsantrag senden"
   }
 }

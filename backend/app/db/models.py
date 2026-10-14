@@ -49,6 +49,9 @@ class User(Base):
     must_change_password: Mapped[bool] = mapped_column(Boolean, default=False)
     # 登录失败处理已迁移至（账号+维度）阶梯防爆破（app/core/brute_force.py，数据存 KV/Redis）
     password_changed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # 更改绑定邮箱人工审核一次性豁免标记：管理员同意人工申请后置 True，
+    # 用户端凭此跳过身份校验完成换绑，成功瞬间同事务清除（一次性，禁止复用）
+    allow_manual_email_switch: Mapped[bool] = mapped_column(Boolean, default=False)
     # --- 账号身份信息（用于身份验证和密码恢复） ---
     student_id: Mapped[str] = mapped_column(String(32), index=True)  # 学号
     real_name: Mapped[str] = mapped_column(String(64))               # 真实姓名
@@ -483,6 +486,38 @@ class PasswordResetRequest(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
 
 
+class EmailChangeStatus(str, Enum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
+class EmailChangeRequest(Base):
+    """更改绑定邮箱人工申请（路径C兜底通道）。
+
+    用户旧邮箱失效且无法通过自助核验（路径B）时提交，管理员审核：
+    - 同意：仅打一次性豁免标记 users.allow_manual_email_switch=True，
+      最终换绑必须由用户本人在设置页确认提交（管理员绝不直接改邮箱）；
+    - 驳回：必填理由，用户端展示并可重新自助操作或再次申请。
+    """
+    __tablename__ = "email_change_requests"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    old_email: Mapped[str] = mapped_column(String(128))   # 提交时现存绑定邮箱快照
+    new_email: Mapped[str] = mapped_column(String(128))   # 用户填写的目标新邮箱
+    remark: Mapped[str | None] = mapped_column(Text, nullable=True)  # 申请备注（原邮箱失效原因）
+    status: Mapped[EmailChangeStatus] = mapped_column(
+        SAEnum(EmailChangeStatus), default=EmailChangeStatus.PENDING, index=True
+    )
+    reject_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    submit_ip: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    fingerprint: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    reviewed_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
+
+
 # ---------- IP 规则（黑白名单，替代 system_settings.ip_blacklist JSON） ----------
 class IpRuleType(str, Enum):
     WHITELIST = "whitelist"   # 可信 IP：豁免网络层限制；绑定账号可自动登录（opt-in）
@@ -572,6 +607,27 @@ class UserNotifyRead(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "announcement_id", name="uq_user_notify_read"),
     )
+
+
+class UserMessage(Base):
+    """站内私信通知（user_messages）：系统事件触发的每用户消息。
+
+    与 Announcement（全站广播，已读靠 user_notify_reads 关联行）不同：
+    每行仅属于一个接收用户，is_read 行内标记。由后端业务事件写入
+    （如换绑邮箱审核结果），用户端通知抽屉展示并标记已读。
+    """
+    __tablename__ = "user_messages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    # 消息类别（业务事件标识，如 email_change；便于后续按类别过滤/扩展）
+    kind: Mapped[str] = mapped_column(String(50), default="general", index=True)
+    title: Mapped[str] = mapped_column(String(200))
+    content: Mapped[str] = mapped_column(Text)
+    # 可选站内跳转链接（/ 开头路径）
+    link: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    is_read: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
 
 
 # ---------- 富文本内容块（社团介绍等） ----------
@@ -1193,3 +1249,53 @@ class MemoAttachment(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     tenant_id: Mapped[int] = mapped_column(Integer, default=1, index=True)
+
+
+# ==================== 后台异步任务（通用基础设施） ====================
+
+class BackgroundTaskCategory(str, Enum):
+    """后台任务类别（可扩展；当前仅数据库全量导出）。"""
+    DB_EXPORT = "db_export"
+
+
+class BackgroundTaskStatus(str, Enum):
+    PENDING = "pending"
+    RUNNING = "running"
+    SUCCESS = "success"
+    FAILED = "failed"
+
+
+class BackgroundTask(Base):
+    """后台异步任务记录（持久化；进程重启记录不丢，禁止仅内存存储）。
+
+    设计要点：
+    - 任务行本身即「通知中心」的后台任务通知数据源（数据同源）：
+      状态/进度变更直接体现在本行，通知中心与悬浮弹窗都读本表；
+    - 通知不自动消失：用户手动关闭 = 置 dismissed_at；未关闭的记录刷新后仍可见；
+    - 进程重启时，启动流程把残留 pending/running 记录标记为 failed（中断）。
+    """
+    __tablename__ = "background_tasks"
+
+    # UUID 字符串主键（对外暴露 task_id）
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    title: Mapped[str] = mapped_column(String(128))
+    category: Mapped[BackgroundTaskCategory] = mapped_column(
+        SAEnum(BackgroundTaskCategory), index=True
+    )
+    status: Mapped[BackgroundTaskStatus] = mapped_column(
+        SAEnum(BackgroundTaskStatus), default=BackgroundTaskStatus.PENDING, index=True
+    )
+    # 进度 0-100；失败时保持当前进度不回退
+    progress: Mapped[int] = mapped_column(Integer, default=0)
+    # 当前状态文字（如「调用 pg_dump 开始转储全部数据表」）；失败时写错误详情
+    message: Mapped[str] = mapped_column(String(512), default="")
+    # 成功：{"filename": ..., "path": ..., "size_bytes": ...}；失败：{"error": ...}
+    result_payload: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    # 创建者（Break-Glass 无 user_id → NULL，与审计约定一致）
+    created_by_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # 用户手动关闭时间；NULL = 仍在通知中心/悬浮弹窗可见
+    dismissed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)

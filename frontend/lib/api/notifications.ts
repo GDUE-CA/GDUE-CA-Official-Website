@@ -32,3 +32,11 @@ export function markAllNotificationsRead() {
     withAuth: true,
   });
 }
+
+/** 单条站内私信标记为已读（幂等），返回最新未读总数 */
+export function markUserMessageRead(id: number) {
+  return apiFetch<MarkReadResponse>(`/api/notifications/messages/${id}/read`, {
+    method: "POST",
+    withAuth: true,
+  });
+}

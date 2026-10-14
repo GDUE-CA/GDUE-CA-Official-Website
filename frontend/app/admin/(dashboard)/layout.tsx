@@ -50,6 +50,7 @@ import {
   UserCircle,
   ChevronRight,
   ClipboardList,
+  MailPlus,
   Palette,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -60,6 +61,7 @@ import { locales, localeDisplayName, type Locale } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { BanModal } from "@/components/shared/BanModal";
+import { BackgroundTaskFloat } from "@/components/notifications/BackgroundTaskFloat";
 import { fetchMe } from "@/lib/api/auth";
 import { fetchOverview } from "@/lib/api/adminStats";
 import { API_BASE_URL, ApiError } from "@/lib/api/client";
@@ -132,6 +134,7 @@ const firstLevelItems: FirstLevel[] = [
       { key: "admin.nav.users.members", href: "/admin/members", icon: UsersRound, modules: ["members"] }, // ↩成员花名册
       { key: "admin.nav.users.realname", href: "/admin/realname-review", icon: BadgeCheck, modules: ["realname"] }, // ↩实名审核
       { key: "admin.nav.users.review", href: "/admin/review", icon: ClipboardList, modules: ["review.registrations", "review.bugs", "review.resets"] }, // ↩审核中心
+      { key: "admin.nav.users.emailChange", href: "/admin/email-change-requests", icon: MailPlus, modules: ["review.emails"] }, // ↩人工账号申请：更改绑定邮箱申请列表
     ],
   },
   // 3. 内容管理
@@ -372,6 +375,7 @@ export default function AdminDashboardLayout({
   return (
     <div className="min-h-screen flex flex-col bg-muted/20">
       <BanModal />
+      <BackgroundTaskFloat />
       {/* Layer 1: BG 顶部红条警告横幅（横跨全宽，永远第一行，不可关闭） */}
       {isBreakGlass && (
         <div className="bg-destructive text-destructive-foreground text-center text-sm font-medium px-4 py-2">

@@ -281,7 +281,25 @@
     "markAllRead": "Mark all as read",
     "unread": "Unread",
     "read": "Read",
-    "unreadCount": "{count} unread"
+    "unreadCount": "{count} unread",
+    "messages": {
+      "sectionTitle": "개인 메시지"
+    },
+    "backgroundTask": {
+      "sectionTitle": "백그라운드 작업",
+      "category": {
+        "db_export": "데이터베이스 전체 내보내기"
+      },
+      "statusRunning": "진행 중",
+      "statusSuccess": "성공",
+      "statusFailed": "실패",
+      "currentProgress": "현재: {message} ({progress}%)",
+      "generatedFile": "생성된 파일: {path}",
+      "gotoMaintenance": "백업 파일 목록으로 이동",
+      "copyError": "오류 로그 복사",
+      "copied": "복사됨",
+      "dismiss": "닫기"
+    }
   },
   "account": {
     "title": "Account Settings",
@@ -321,7 +339,10 @@
       "weak": "Weak",
       "medium": "Medium",
       "strong": "Strong"
-    }
+    },
+    "keepCurrentDevice": "이 기기 로그인 유지",
+    "keepCurrentDeviceHint": "선택 해제 시 비밀번호 변경 후 모든 기기(이 기기 포함)에서 로그아웃됩니다",
+    "newPasswordMismatch": "입력한 새 비밀번호가 일치하지 않습니다"
   },
   "projects": {
     "title": "Projects",
@@ -716,6 +737,69 @@
     },
     "hints": {
       "appearanceInstant": "Theme and language changes apply instantly — no need to save"
+    },
+    "emailChange": {
+      "title": "연동 이메일 변경",
+      "desc": "변경 전 본인 확인이 필요합니다: 기존 이메일 인증코드, 셀프 본인확인 또는 관리자 수동 심사 세 가지 경로를 지원합니다.",
+      "current": "현재 연동",
+      "none": "유효한 이메일 미연동",
+      "newEmail": "새 이메일 주소",
+      "newEmailPlaceholder": "변경할 새 이메일을 입력하세요",
+      "currentPassword": "현재 로그인 비밀번호",
+      "oldCode": "기존 이메일 인증코드",
+      "newCode": "새 이메일 인증코드",
+      "studentId": "학번",
+      "phone": "연동 휴폰 번호",
+      "realName": "실명",
+      "remark": "신청 메모(기존 이메일 사용 불가 사유)",
+      "remarkPlaceholder": "기존 이메일 사용 불가 사유를 적어주세요. 예: 졸업 후 삭제됨, 비밀번호 분실로 메일함 접속 불가 등",
+      "uidLabel": "현재 계정 UID",
+      "usernameLabel": "현재 계정 사용자명",
+      "submit": "제출 확인",
+      "sendCodes": "인증코드 발송",
+      "backToStep1": "이전 단계로",
+      "sentHint": "두 개의 인증코드가 기존 이메일과 새 이메일({new})로 각각 발송되었습니다. 15분간 유효합니다.",
+      "changeSuccess": "이메일이 변경되었습니다. 모든 기기가 로그인 상태를 유지합니다.",
+      "confirmSendTitle": "인증코드 발송 확인",
+      "confirmSendBody": "기존 이메일({old})과 새 이메일({new})로 각각 6자리 인증코드를 발송합니다. 계속하시겠습니까?",
+      "confirmChangeTitle": "이메일 변경 확인",
+      "confirmChangeBody": "연동 이메일이 【{old}】에서 【{new}】(으)로 변경되며 제출 즉시 적용됩니다. 다시 한번 확인해 주세요. 제출하시겠습니까?",
+      "lostOld": {
+        "entry": "기존 이메일로 인증코드를 받을 수 없나요? 여기를 클릭",
+        "back": "일반 절차로 돌아가기",
+        "hint": "네 가지 항목이 모두 계정 등록 정보와 일치해야 합니다(현재 비밀번호, 학번, 휴폰 번호, 실명). 하나라도 불일치하면 거부됩니다.",
+        "verify": "본인확인 제출",
+        "verifyGuidance": "모든 본인확인을 완료할 수 없습니다. 【이메일 변경 수동 신청】을 제출하여 관리자 심사를 받으세요.",
+        "gotoManual": "이메일 변경 수동 신청 제출",
+        "confirmSendTitle": "새 이메일 인증코드 발송 확인",
+        "confirmSendBody": "본인확인이 완료되었습니다. 새 이메일({new})로 6자리 인증코드를 발송합니다. 계속하시겠습니까?"
+      },
+      "manual": {
+        "entry": "이메일 변경 수동 신청 제출",
+        "submitLabel": "수동 신청 제출",
+        "confirmTitle": "이메일 변경 수동 신청 확인",
+        "confirmBody": "⚠️ 이메일 변경 수동 신청을 제출합니다. 제출 후 관리자 심사를 기다려야 하며, 심사 완료 전까지 셀프 변경이 불가능합니다. 제출 후에는 취소할 수 없습니다. 제출하시겠습니까?",
+        "submitted": "수동 신청이 제출되었습니다. 관리자 심사 대기 중"
+      },
+      "pending": {
+        "title": "이메일 변경 신청 심사 중",
+        "target": "신청한 새 이메일",
+        "hint": "관리자 심사 중입니다. 심사 완료 전까지 모든 셀프 변경 진입이 비활성화됩니다.",
+        "disabled": "심사 중에는 셀프 변경이 비활성화됩니다"
+      },
+      "rejected": {
+        "title": "이메일 변경 수동 신청이 거절되었습니다",
+        "reason": "거절 사유",
+        "canRetry": "셀프 인증을 다시 시도하거나 수동 신청을 다시 제출할 수 있습니다."
+      },
+      "exempt": {
+        "title": "수동 심사 면제 모드",
+        "warning": "관리자가 신청을 승인했습니다. 이 모드는 모든 본인확인(기존 이메일, 비밀번호, 학번, 휴폰)을 건드뛰고 이 페이지에서의 제출만으로 변경이 완료됩니다. 이 허가는 1회용이며 성공 즉시 만료됩니다.",
+        "prefill": "관리자가 승인한 이메일",
+        "confirmTitle": "⚠️ 수동 심사 면제 모드",
+        "confirmBody": "⚠️ 수동 심사 면제 모드\n연동 이메일이 다음으로 변경됩니다: {new}\n제출 즉시 적용됩니다. 다시 한번 확인해 주세요. 계속하시겠습니까?",
+        "success": "이메일이 변경되었습니다"
+      }
     }
   },
   "admin": {
@@ -1024,7 +1108,8 @@
       "config.oauth": "OAuth 채널",
       "config.sso": "SSO 신뢰 앱",
       "audit": "로그 및 감사",
-      "mailpush": "이메일 및 푸시"
+      "mailpush": "이메일 및 푸시",
+      "users.emailChange": "이메일 변경 신청 목록"
     },
     "profile": {
       "title": "Profile",
@@ -1234,6 +1319,11 @@
       "adminTrustedIpsLabel": "화이트리스트 목록 (한 줄에 하나, # 주석 지원)",
       "adminTrustedIpsPlaceholder": "# 한 줄에 하나씩, IPv4·IPv6·IPv4-CIDR·IPv6-CIDR 지원\n# 비워두면 화이트리스트 해제 — 모든 IP에서 관리자 계정 로그인 가능\n# 예시:\n127.0.0.1\n192.168.1.0/24\n::1\n2001:db8::/32",
       "adminTrustedIpsNote": "⚠️ 우선순위: 데이터베이스 웹 설정이 우선하며, 데이터베이스가 비어 있을 때만 환경 변수 ADMIN_TRUSTED_IPS를 읽습니다.",
+      "dbMaintenanceTitle": "데이터베이스 유지관리",
+      "dbMaintenanceDesc": "데이터베이스 백업 및 마이그레이션. 내보내기는 비동기 백그라운드 작업으로 실행됩니다. 제출 후 이 페이지에 머물 필요가 없으며, 진행 상황은 오른쪽 하단 플로팅 창 또는 알림 센터에서 확인할 수 있습니다.",
+      "dbExportButton": "전체 데이터베이스 내보내기 실행",
+      "dbExportSubmitted": "작업이 백그라운드로 제출되었습니다. 다른 작업을 계속할 수 있습니다. 진행 상황은 오른쪽 하단 창 또는 알림 센터에서 확인하세요.",
+      "dbExportNote": "완료되면 백업 파일이 서버 ./exports 디렉터리(0600 권한)에 저장됩니다. SFTP로 수동 다운로드하세요. 작업 기록은 직접 닫기 전까지 알림 목록에 유지됩니다.",
       "netTitle": "Network Configuration",
       "netDesc": "Reference values for backend port, listen address and site domains. Changes require manual Nginx/Caddy reload by ops.",
       "netPort": "Backend Port",
@@ -1866,6 +1956,37 @@
         "desc": "Markdown fragment notes: timeline / calendar / lazy tag creation / version snapshots / public share / admin takedown",
         "btn": "Manage"
       }
+    },
+    "emailChange": {
+      "title": "수동 계정 신청",
+      "desc": "이메일 변경 수동 신청: 승인 후 사용자가 계정 설정에서 마지막 확인을 직접 완료합니다. 관리자가 직접 이메일을 변경하지 않습니다.",
+      "filterPending": "심사 대기",
+      "filterAll": "전체",
+      "empty": "신청이 없습니다",
+      "colOldEmail": "현재 연동 이메일",
+      "colNewEmail": "신청한 새 이메일",
+      "colRemark": "신청 메모",
+      "colCreatedAt": "제출 시간",
+      "colIp": "클리이언트 IP",
+      "colFingerprint": "브라우저 지문",
+      "approve": "승인",
+      "reject": "거절",
+      "rejectReason": "거절 사유",
+      "rejectReasonPlaceholder": "거절 사유를 입력하세요(필수, 신청자에게 표시됨)",
+      "reviewedAt": "심사 시간",
+      "approveConfirm": {
+        "title": "이메일 변경 신청 승인",
+        "body": "사용자「{name}」의 이메일 변경 신청(대상: {email})을 승인하시겠습니까?\n승인은 1회용 변경 허가만 부여하며, 마지막 단계는 사용자가 계정 설정에서 직접 완료합니다. 관리자가 직접 이메일을 변경하지 않습니다."
+      },
+      "rejectConfirm": {
+        "title": "이메일 변경 신청 거절",
+        "body": "사용자「{name}」의 신청을 거절하시겠습니까? 거절 사유는 필수이며 신청자에게 표시됩니다."
+      },
+      "statuses": {
+        "pending": "심사 대기",
+        "approved": "승인됨",
+        "rejected": "거절됨"
+      }
     }
   },
   "ban": {
@@ -2149,5 +2270,23 @@
   "profileMemoTab": {
     "empty": "No moments yet",
     "viewAll": "View all"
+  },
+  "forgotPassword": {
+    "title": "비밀번호 재설정",
+    "subtitle": "등록된 이메일로 인증 코드를 받아 비밀번호를 재설정하세요",
+    "email": "등록 이메일",
+    "emailPlaceholder": "you@example.com",
+    "sendCode": "코드 전송",
+    "codeSentTip": "해당 이메일이 계정에 등록되어 있다면 인증 코드가 발송되었습니다",
+    "code": "이메일 인증 코드",
+    "codePlaceholder": "6자리 코드 입력",
+    "emailRequired": "등록된 이메일을 입력하세요",
+    "codeRequired": "인증 코드를 입력하세요",
+    "submit": "비밀번호 재설정",
+    "submitting": "처리 중…",
+    "success": "비밀번호가 재설정되었습니다",
+    "successHint": "모든 세션이 강제 로그아웃되었습니다. 로그인 페이지로 이동합니다",
+    "backToLogin": "로그인으로 돌아가기",
+    "manualEntry": "이메일을 사용할 수 없나요? 수동 복구 신청 제출"
   }
 }

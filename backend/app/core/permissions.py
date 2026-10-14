@@ -31,6 +31,7 @@ PERMISSION_MODULES = (
     "review.registrations",
     "review.bugs",
     "review.resets",
+    "review.emails",   # 更改绑定邮箱人工申请审核
     "settings",
     "users",
     # ---------- CMS 扩展 ----------
@@ -78,6 +79,11 @@ ROLE_DEFAULTS: dict[str, dict[Role, set[str]]] = {
         Role.EDITOR: {"view"},
     },
     "review.resets": {
+        Role.SUPER_ADMIN: {"view", "manage"},
+        Role.ADMIN: {"view", "manage"},
+    },
+    # 更改绑定邮箱人工申请审核（super_admin/admin view+manage；editor 不参与）
+    "review.emails": {
         Role.SUPER_ADMIN: {"view", "manage"},
         Role.ADMIN: {"view", "manage"},
     },

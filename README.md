@@ -231,18 +231,49 @@ pnpm dev                             # 访问 http://localhost:3000
 
 ```bash
 cd backend
-python -m venv .venv
+python -m venv venv
 # Windows PowerShell
-.\.venv\Scripts\Activate.ps1
+.\venv\Scripts\Activate.ps1
 # macOS / Linux
-source .venv/bin/activate
+source venv/bin/activate
 
 pip install -r requirements.txt
-cp .env.example .env                 # Windows PowerShell: copy .env.example .env
+copy .env.example .env               # Windows PowerShell；Linux/WSL/macOS: cp .env.example .env
 python run.py                        # 默认监听 http://127.0.0.1:8000
 ```
 
 健康检查：`GET http://127.0.0.1:8000/health`。首次部署需访问 `/{locale}/admin/setup` 用 Break-Glass 账号完成初始化向导。
+
+### 一键脚本与首次初始化虚拟环境
+
+仓库根目录提供统一脚本，所有 `pip / python / uvicorn / alembic` 操作**一律先激活 `backend/venv` 虚拟环境**，绝不使用系统全局 Python。虚拟环境固定位于 `backend/venv`，脚本**不负责创建**（防止重复覆盖破坏现有环境），仅首次初始化时手动执行一次：
+
+首次初始化后端虚拟环境（Linux / WSL / macOS）：
+
+```bash
+cd backend
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+Windows 首次初始化虚拟环境（PowerShell）：
+
+```powershell
+cd backend
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
+
+| 脚本 | 平台 / 模式 | 行为 |
+| --- | --- | --- |
+| `dev.sh` | Linux / WSL / macOS · 开发 | **无** git pull、**无** build、**无**自动迁移；后台并行启动 `npm run dev` 与 venv 内 `uvicorn app.main:app --reload`；Ctrl-C 统一杀死全部子进程 |
+| `dev.ps1`（或双击 `dev.bat`） | Windows · 开发 | 同上；另开两个 PowerShell 窗口（自动以 Bypass 执行策略启动，避免 `Activate.ps1` / `npm.ps1` 被拦截） |
+| `migrate.sh` / `migrate.ps1` | 手动数据库迁移 | 仅在 venv 内执行 `alembic upgrade head`，开发模式不会自动调用 |
+| `start.sh` | Linux · 生产部署 | 严格顺序：`git pull origin main` → venv 内 `pip install` → `alembic upgrade head` → `npm install` → **`npm run build`（生产必须构建）** → `pm2 restart frontend/backend` → curl 刷新 503 维护快照（健康探测，仍为 503/502/504 即判失败中止）→ `pm2 status`；任一步失败立即终止并打印失败阶段 |
+
+> 生产脚本第 5 步探测地址可用环境变量覆盖：`SITE_HEALTHCHECK_URL=https://你的域名/ ./start.sh`（默认 `http://127.0.0.1/`）。
 
 ---
 
@@ -264,6 +295,8 @@ pm2 start --name gdueca-api -- gunicorn -k uvicorn.workers.UvicornWorker -b 127.
 
 pm2 save
 ```
+
+> 上述全流程可直接执行仓库根目录的生产脚本 `./start.sh`（自动按序完成 git pull → venv 内 pip install → alembic 迁移 → npm install/build → pm2 重启 → 503 健康探测）；PM2 进程名需与脚本中的 `frontend` / `backend` 一致。
 
 ### 2. Nginx 配置
 
@@ -326,6 +359,17 @@ chmod +x deploy/scripts/post_deploy.sh
 - **Break-Glass 应急账号**：`SUPER_ADMIN_USERNAME/PASSWORD_HASH/ENABLED` 三项环境变量；缺失则进程 FATAL 退出。会话以布尔标记记录、不续期；用于「清空全部管理员」等灾难修复，操作全程高危确认与审计；
 - **系统未初始化门禁**：`system_initialized=false` 时普通账号登录被拒（仅应急账号可进入初始化向导）；
 - **阶梯防爆破**：按「账号 × IP × 浏览器指纹」独立计数，阶梯式封禁从分钟级递进至永久；对外统一返回模糊化提示（真实原因仅落审计日志）；提供封禁面板支持查看与解封。
+
+### 数据库异步导出（后台任务）
+
+数据库导出现在为**后台异步任务**（后台 → 系统设置 → 数据库维护 →「执行一次完整数据库导出」）：
+
+1. 按下导出按钮立刻返回 `task_id`，任务在服务器后台运行，**不用停留在该页面等待**；
+2. 进度可以看**右下角悬浮弹窗**，或者顶部导航栏**通知中心**（前端每 800ms 轮询一次，进入成功/失败终态后自动停止轮询）；
+3. 任务记录**永久保存在通知列表，由用户手动关闭清除，不会自动消失**；刷新页面后进入通知中心依然可见历史后台任务（任务落库 `background_tasks` 表，进程重启不丢，启动时自动把中断的 pending/running 标记为 failed）；
+4. 完成后备份文件依旧存放在服务器 `./exports`（目录 0700 / 文件 0600 权限，已 gitignore），**SFTP 手动下载**。
+
+> 导出操作照常写入全局审计日志（`system.db.export`）；`background_tasks` 仅作进度展示层，不替代审计。数据库导入维持同步执行不变（superadmin 专属 + 双重确认）。
 
 ### SEO & 爬虫适配
 

@@ -313,7 +313,25 @@
     "markAllRead": "全部标为已读",
     "unread": "未读",
     "read": "已读",
-    "unreadCount": "{count} 条未读"
+    "unreadCount": "{count} 条未读",
+    "messages": {
+      "sectionTitle": "站内私信"
+    },
+    "backgroundTask": {
+      "sectionTitle": "后台任务",
+      "category": {
+        "db_export": "数据库全量导出"
+      },
+      "statusRunning": "进行中",
+      "statusSuccess": "成功",
+      "statusFailed": "失败",
+      "currentProgress": "当前：{message}（{progress}%）",
+      "generatedFile": "生成文件：{path}",
+      "gotoMaintenance": "跳转到备份文件列表",
+      "copyError": "复制错误日志",
+      "copied": "已复制",
+      "dismiss": "关闭"
+    }
   },
   "account": {
     "title": "修改账户信息",
@@ -353,7 +371,10 @@
       "weak": "弱",
       "medium": "中",
       "strong": "强"
-    }
+    },
+    "keepCurrentDevice": "保留当前设备登录",
+    "keepCurrentDeviceHint": "取消勾选后，本次修改密码将下线所有设备（包括当前设备）",
+    "newPasswordMismatch": "两次输入的新密码不相同"
   },
   "projects": {
     "title": "项目展示",
@@ -852,6 +873,69 @@
       "none": "未绑定",
       "changeSoon": "邮箱换绑需进行验证码校验，该功能将在后续版本开放。"
     },
+    "emailChange": {
+      "title": "更换绑定邮箱",
+      "desc": "更换前需验证你的身份：支持旧邮箱验证码、自助身份核验或管理员人工审核三条路径。",
+      "current": "当前绑定",
+      "none": "未绑定有效邮箱",
+      "newEmail": "新邮箱地址",
+      "newEmailPlaceholder": "请输入要更换到的新邮箱",
+      "currentPassword": "当前登录密码",
+      "oldCode": "原邮箱验证码",
+      "newCode": "新邮箱验证码",
+      "studentId": "学号",
+      "phone": "绑定手机号",
+      "realName": "真实姓名",
+      "remark": "申请备注（原邮箱失效原因）",
+      "remarkPlaceholder": "请说明原邮箱失效原因，例如：毕业注销、忘记密码且无法登录邮箱等",
+      "uidLabel": "当前账号 UID",
+      "usernameLabel": "当前账号用户名",
+      "submit": "确认提交",
+      "sendCodes": "发送验证码",
+      "backToStep1": "返回上一步",
+      "sentHint": "两份验证码已分别发送至你的原邮箱与新邮箱（{new}），15 分钟内有效。",
+      "changeSuccess": "绑定邮箱更换成功，全部登录设备保持登录状态。",
+      "confirmSendTitle": "确认发送验证码",
+      "confirmSendBody": "系统将同时向你的原邮箱（{old}）与新邮箱（{new}）各发送一份 6 位验证码。确认发送？",
+      "confirmChangeTitle": "确认更换绑定邮箱",
+      "confirmChangeBody": "即将把账号绑定邮箱由【{old}】变更为【{new}】，提交后立即生效。请再三核对邮箱无误。确认提交？",
+      "lostOld": {
+        "entry": "原邮箱无法接收验证码？点这里",
+        "back": "返回正常流程",
+        "hint": "四项信息必须全部与账号登记记录一致（当前密码、学号、绑定手机号、真实姓名），任意一项不匹配将直接拒绝本次核验。",
+        "verify": "提交核验",
+        "verifyGuidance": "您无法完成全部身份核验，请提交【更改绑定邮箱人工申请】交由站内管理员审核。",
+        "gotoManual": "提交更改绑定邮箱人工申请",
+        "confirmSendTitle": "确认发送新邮箱验证码",
+        "confirmSendBody": "身份核验已通过，将向新邮箱（{new}）发送一份 6 位验证码。确认发送？"
+      },
+      "manual": {
+        "entry": "提交更改绑定邮箱人工申请",
+        "submitLabel": "提交人工申请",
+        "confirmTitle": "确认提交更改邮箱人工申请",
+        "confirmBody": "⚠️确认提交更改邮箱人工申请。提交之后等待管理员审核；审核完成前您无法自助修改绑定邮箱。提交后不可自行撤销，请耐心等待管理员处理。确认提交？",
+        "submitted": "人工申请已提交，待管理员审核中"
+      },
+      "pending": {
+        "title": "更改绑定邮箱申请审核中",
+        "target": "申请目标邮箱",
+        "hint": "待管理员审核中；审核完成前所有自助更换邮箱入口已禁用，请耐心等待管理员处理。",
+        "disabled": "人工申请审核中，自助更换已禁用"
+      },
+      "rejected": {
+        "title": "你的更改绑定邮箱人工申请已被驳回",
+        "reason": "驳回理由",
+        "canRetry": "你现在可以重新自助操作，或再次提交人工申请。"
+      },
+      "exempt": {
+        "title": "人工审核豁免模式",
+        "warning": "管理员已核准你的更改邮箱人工申请。此模式将跳过全部身份校验（旧邮箱、密码、学号、手机号），仅凭本页面提交完成换绑；本许可一次性有效，提交成功后立即失效。",
+        "prefill": "管理员核准的申请邮箱",
+        "confirmTitle": "⚠️人工审核豁免模式",
+        "confirmBody": "⚠️人工审核豁免模式\n即将更新账号绑定邮箱为：{new}\n确认提交之后绑定邮箱就会变更；请再三核对邮箱无误。确认继续？",
+        "success": "邮箱更换成功"
+      }
+    },
     "oauth": {
       "title": "授权管理",
       "hint": "管理你授权过的第三方应用；撤销后将无法再使用该账号登录本站",
@@ -1123,6 +1207,37 @@
         "rejected": "已拒绝"
       }
     },
+    "emailChange": {
+      "title": "人工账号申请",
+      "desc": "更改绑定邮箱人工申请：同意后用户需在账号设置自行完成最后一步换绑确认，管理员绝不直接替用户修改邮箱。",
+      "filterPending": "待审核",
+      "filterAll": "全部",
+      "empty": "暂无申请",
+      "colOldEmail": "现存绑定邮箱",
+      "colNewEmail": "目标新邮箱",
+      "colRemark": "申请备注",
+      "colCreatedAt": "提交时间",
+      "colIp": "客户端 IP",
+      "colFingerprint": "浏览器指纹",
+      "approve": "同意",
+      "reject": "驳回",
+      "rejectReason": "驳回理由",
+      "rejectReasonPlaceholder": "请填写驳回理由（必填，将展示给申请人）",
+      "reviewedAt": "审核时间",
+      "approveConfirm": {
+        "title": "同意更改绑定邮箱申请",
+        "body": "确认同意用户「{name}」的更改绑定邮箱申请（目标邮箱：{email}）？\n同意后仅为该账号打上一次性换绑许可标记，用户需自行前往账号设置-更换绑定邮箱完成最后一步确认；管理员不会直接修改其邮箱。"
+      },
+      "rejectConfirm": {
+        "title": "驳回更改绑定邮箱申请",
+        "body": "确认驳回用户「{name}」的申请？驳回理由必填，将推送给申请人。"
+      },
+      "statuses": {
+        "pending": "待审核",
+        "approved": "已同意",
+        "rejected": "已驳回"
+      }
+    },
     "review": {
       "title": "审核中心",
       "noAccess": "没有可访问的审核模块，请联系管理员开通权限",
@@ -1236,6 +1351,7 @@
       "users.members": "成员花名册",
       "users.realname": "实名审核",
       "users.review": "审核中心",
+      "users.emailChange": "更改绑定邮箱申请列表",
       "content": "内容管理",
       "content.blog": "博客管理",
       "content.memo": "说说管理",
@@ -1552,6 +1668,11 @@
       "adminTrustedIpsLabel": "白名单列表（每行一条，支持 # 注释）",
       "adminTrustedIpsPlaceholder": "# 每行一条，支持 IPv4、IPv6、IPv4-CIDR、IPv6-CIDR\n# 留空=关闭白名单，所有IP均可登录管理员账号\n# 示例：\n127.0.0.1\n192.168.1.0/24\n::1\n2001:db8::/32",
       "adminTrustedIpsNote": "⚠️ 优先级：数据库 Web 配置优先；数据库为空才读取环境变量 ADMIN_TRUSTED_IPS。",
+      "dbMaintenanceTitle": "数据库维护",
+      "dbMaintenanceDesc": "数据库备份与迁移。导出为后台异步任务：提交后无需停留本页，进度可在右下角悬浮窗或通知中心查看。",
+      "dbExportButton": "执行一次完整数据库导出",
+      "dbExportSubmitted": "任务已提交到后台运行，可继续其他操作；进度见右下角悬浮窗或顶部通知中心。",
+      "dbExportNote": "完成后备份文件保存在服务器 ./exports 目录（0600 权限），请通过 SFTP 手动下载；任务记录常驻通知列表，手动关闭前不会消失。",
       "netTitle": "网络配置",
       "netDesc": "后端服务端口、监听地址与站点域名参考值。实际生效需运维手动修改 Nginx/Caddy 并重载配置。",
       "netPort": "后端端口",
@@ -2430,5 +2551,23 @@
   "profileMemoTab": {
     "empty": "还没有发布过说说",
     "viewAll": "查看全部"
+  },
+  "forgotPassword": {
+    "title": "找回密码",
+    "subtitle": "输入绑定邮箱获取验证码，重置登录密码",
+    "email": "绑定邮箱",
+    "emailPlaceholder": "you@example.com",
+    "sendCode": "发送验证码",
+    "codeSentTip": "若该邮箱已绑定账号，验证码已发送，请查收",
+    "code": "邮箱验证码",
+    "codePlaceholder": "输入 6 位验证码",
+    "emailRequired": "请输入绑定邮箱",
+    "codeRequired": "请输入邮箱验证码",
+    "submit": "重置密码",
+    "submitting": "正在重置…",
+    "success": "密码重置成功",
+    "successHint": "所有登录会话已强制下线，即将跳转到登录页",
+    "backToLogin": "返回登录",
+    "manualEntry": "邮箱不可用？提交人工找回申请"
   }
 }

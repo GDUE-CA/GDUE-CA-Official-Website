@@ -9,6 +9,8 @@
 - 登录成功 / 失败 / 锁定 / 权限变更等关键操作写入审计日志
 """
 import hashlib
+import json
+import logging
 import re
 import secrets
 import uuid
@@ -30,7 +32,14 @@ from app.core.brute_force import (
     reset as bf_reset,
 )
 from app.core.config import get_settings
-from app.core.csrf import CSRF_COOKIE, SESSION_COOKIE, cookie_secure, new_csrf_token, set_csrf_cookie
+from app.core.csrf import (
+    CSRF_COOKIE,
+    SESSION_COOKIE,
+    cookie_secure,
+    new_csrf_token,
+    origin_allowed,
+    set_csrf_cookie,
+)
 from app.core.ip_location import resolve_location
 from app.core.middleware import get_client_ip
 from app.core.password_policy import check_password_strength
@@ -62,10 +71,14 @@ from app.db.models import (
 )
 from app.db.session import get_db
 from app.utils.crud import paginate
+from app.core.kv import get_kv
+from app.core.mailer import is_configured as mailer_configured, send_email
 from app.schemas.auth import (
     AvatarUploadOut,
     ChangePasswordRequest,
     ForgotPasswordRequest,
+    ForgotPasswordResetRequest,
+    ForgotPasswordSendCodeRequest,
     LoginRequest,
     LoginResponse,
     LoginSessionOut,
@@ -90,11 +103,18 @@ _LOGIN_DENIED = {"detail": "用户名或密码错误"}
 _SOURCE_DENIED = {"detail": "请求来源不合法"}
 _INIT_REQUIRED = {"detail": "系统尚未完成初始化，请使用应急账号登录后台完成初始化向导"}
 settings = get_settings()
+logger = logging.getLogger("gdueca.auth")
 
 
 def _log(db: AsyncSession, ctx_or_uid, action: str, detail: str | None, ip: str | None):
     """统一审计写入：ctx_or_uid 支持 ctx dict（自动区分 Break-Glass）/ int / None。"""
     log_action(db, ctx_or_uid, action, detail, ip=ip)
+
+
+def _bg_login_detail(extra: dict) -> str:
+    """Break-Glass 登录审计标记：来源校验已豁免（origin_skipped），供事后排查。"""
+    return json.dumps({"break_glass_login": True, "origin_skipped": True, **extra},
+                      ensure_ascii=False)
 
 
 def _reject_break_glass(user: dict) -> None:
@@ -267,10 +287,21 @@ async def login(
     ua = request.headers.get("user-agent", "") or ""
     now = _now()
 
+    # ================= 来源校验（按账号类型分流） =================
+    # Break-Glass 应急账号完全豁免 Origin/Referer 来源校验（反代/CDN 全链路故障时
+    # Origin 可能缺失，来源校验会把应急通道锁死）；限流 / 阶梯封禁照常生效，一项不减。
+    # 普通账号（含 admin 组普通管理员）照常校验，来源异常拒绝（CSRF 防护不放松）。
+    bg_username = settings.SUPER_ADMIN_USERNAME
+    is_bg_login = bool(bg_username and req.username and req.username == bg_username)
+    account_hint = (req.username or str(req.email) or "")[:64]
+    if not is_bg_login and not origin_allowed(request):
+        log_action(db, None, "login.origin_blocked", f"account:{account_hint}", client_ip)
+        await db.commit()
+        return fail(BizCode.CSRF_FAILED, params=_SOURCE_DENIED)
+
     # ================= Break-Glass 应急账号分支 =================
     # 凭据仅存环境变量，永不查 users 表；限流阶梯按 (账号, 维度) 组合独立计。
-    bg_username = settings.SUPER_ADMIN_USERNAME
-    if bg_username and req.username and req.username == bg_username:
+    if is_bg_login:
         ctx_bg = {"break_glass": True, "username": bg_username}
 
         # 1) 阶梯封禁检查（封禁中不做任何其他校验，直接拒绝）
@@ -291,7 +322,8 @@ async def login(
         if not verify_password(req.password, settings.SUPER_ADMIN_PASSWORD_HASH):
             entry = await bf_record_failure(BREAK_GLASS_POLICY, bg_username, bg_username, dims)
             log_action(db, ctx_bg, "bg_login.fail",
-                       f"reason:password stage:{entry.stage if entry else '-'}", client_ip)
+                       _bg_login_detail({"reason": "password",
+                                         "stage": entry.stage if entry else "-"}), client_ip)
             if entry:
                 log_action(db, ctx_bg, "bg_login.ban_triggered",
                            f"stage:{entry.stage} dim:{entry.dim} until:{entry.until or 'permanent'}",
@@ -321,7 +353,7 @@ async def login(
         )
         csrf_token = new_csrf_token()
         set_csrf_cookie(response, request, csrf_token)
-        log_action(db, ctx_bg, "bg_login.success", f"session:{sid[:8]}", client_ip)
+        log_action(db, ctx_bg, "bg_login.success", _bg_login_detail({"session": sid[:8]}), client_ip)
         await db.commit()
         return LoginResponse(
             role=Role.SUPER_ADMIN,
@@ -332,7 +364,6 @@ async def login(
         )
 
     # ================= 普通账号分支 =================
-    account_hint = (req.username or str(req.email) or "")[:64]
     user = (await db.execute(
         select(User).where(or_(User.username == req.username, User.email == req.email))
     )).scalar_one_or_none()
@@ -875,28 +906,60 @@ async def reset_avatar(
 async def change_password(
     req: ChangePasswordRequest,
     request: Request,
+    response: Response,
     user: dict = Depends(require_role(Role.MEMBER, allow_pending_password_change=True, allow_unverified_realname=True)),
     db: AsyncSession = Depends(get_db),
 ):
+    """已登录改密（个人设置）：强制旧密码，不提供邮箱验证码绕过入口。
+
+    校验顺序（需求固定）：① 旧密码哈希 → ② 新密码强度 → ③ 两次新密码一致。
+    默认保留当前设备会话（其余会话全部下线）；取消勾选 = 全部会话（含本机）下线。
+    BG 应急账号不适用（无 users 行）；其密码遗忘只能通过环境变量 + 重启重置。
+    """
     _reject_break_glass(user)
     u = await db.get(User, int(user["user_id"]))
     if not u:
         raise HTTPException(status_code=404, detail="用户不存在")
+    client_ip = get_client_ip(request)
+    fingerprint = (request.headers.get("x-browser-fingerprint") or "").strip()[:128] or None
+
+    # ① 旧密码：与数据库哈希比对，错误直接拒绝（无法跳过）
     if not verify_password(req.old_password, u.password_hash):
-        _log(db, u.id, "password.change_fail", None, get_client_ip(request))
+        _log(db, u.id, "password_change.fail", '{"method": "old_password"}', client_ip)
         await db.commit()
         raise HTTPException(status_code=400, detail="旧密码错误")
+    # ② 新密码强度（全局强密码策略）
     if req.new_password == req.old_password:
         raise HTTPException(status_code=400, detail="新密码不能与旧密码相同")
     _require_strong_password(req.new_password, u.username, u.email)
+    # ③ 两次新密码一致（后端二次校验，防御前端绕过）
+    if req.new_password != req.confirm_password:
+        raise HTTPException(status_code=400, detail="两次输入的新密码不相同")
+
     u.password_hash = hash_password(req.new_password)
     u.must_change_password = False
     u.password_changed_at = _now()
-    # 改密后其他设备全部下线
-    await _revoke_user_sessions(db, u.id, keep_jti=user.get("jti"))
-    _log(db, u.id, "password.change", None, get_client_ip(request))
+    if req.keep_current_device:
+        # 默认：保留当前设备，其余会话全部下线
+        await _revoke_user_sessions(db, u.id, keep_jti=user.get("jti"))
+        revoked_scope = "others"
+    else:
+        # 取消勾选：全部会话（含本机）强制下线，清除本机登录 Cookie
+        await _revoke_user_sessions(db, u.id)
+        revoked_scope = "all"
+    # 审计：uid / 时间(created_at) / 客户端IP / 浏览器指纹 / 验证方式 / trace_id(=request_id)
+    _log(db, u.id, "password_change", json.dumps({
+        "method": "old_password",
+        "fingerprint": fingerprint,
+        "keep_current_device": req.keep_current_device,
+        "sessions_revoked": revoked_scope,
+    }, ensure_ascii=False), client_ip)
     await db.commit()
-    return {"ok": True}
+    if revoked_scope == "all":
+        # 全部下线（含本机）：清除本机登录 Cookie，前端随后跳转登录页
+        response.delete_cookie(SESSION_COOKIE, path="/")
+        return {"ok": True, "current_session_revoked": True}
+    return {"ok": True, "current_session_revoked": False}
 
 
 # ---------- 用户管理（查看：users:view；管理：仅 super_admin） ----------
@@ -1201,6 +1264,134 @@ async def submit_forgot_password(
     _log(db, None, "password_reset.submit", f"reset:{reset_req.id}", get_client_ip(request))
     await db.commit()
     return {"ok": True, "id": reset_req.id}
+
+
+# ---------- 忘记密码：邮箱验证码（公开，独立于人工审核流） ----------
+def _email_hash(email: str) -> str:
+    return hashlib.sha256(email.strip().lower().encode("utf-8")).hexdigest()
+
+
+def _placeholder_email(email: str) -> bool:
+    """注册时未提供邮箱生成的占位地址，不视为绑定邮箱。"""
+    return email.strip().lower().endswith("@users.placeholder")
+
+
+@router.post(
+    "/forgot-password/send-code",
+    dependencies=[Depends(rate_limit("forgot-send-code", limit=5, window_seconds=3600))],
+)
+async def send_forgot_password_code(
+    req: ForgotPasswordSendCodeRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """发送忘记密码验证码到绑定邮箱（未登录找回密码专用通道）。
+
+    防账号枚举（需求硬性规定）：邮箱不存在 / 未绑定 / 占位邮箱 / 停用账号 /
+    发送失败，对外一律返回统一模糊提示；真实情况仅写审计与服务端日志。
+    限流：IP 5次/小时（rate_limit）+ 同邮箱重发间隔（KV TTL）。
+    BG 应急账号无邮箱绑定，天然不适用（其密码遗忘仅可通过环境变量重置）。
+    """
+    client_ip = get_client_ip(request)
+    email = str(req.email).strip()
+    ehash = _email_hash(email)
+    kv = get_kv()
+    sent_key = f"pwreset:sent:{ehash}"
+    code_key = f"pwreset:code:{ehash}"
+    att_key = f"pwreset:att:{ehash}"
+
+    # 重发间隔：对任何邮箱统一执行（间隔提示本身不暴露邮箱是否存在）
+    if await kv.exists(sent_key):
+        return {"ok": True, "message": "验证码发送间隔未到，请稍后查收"}
+    await kv.set(sent_key, "1", ttl_seconds=settings.EMAIL_CODE_RESEND_INTERVAL_SECONDS)
+
+    user = None
+    if not _placeholder_email(email):
+        user = (await db.execute(
+            select(User).where(User.email == email, User.is_deleted.is_(False))
+        )).scalar_one_or_none()
+        if user is not None and not user.is_active:
+            user = None
+
+    code_sent = False
+    if user is not None:
+        code = f"{secrets.randbelow(1000000):06d}"
+        await kv.setex(code_key, settings.EMAIL_CODE_TTL_SECONDS,
+                       hashlib.sha256(code.encode()).hexdigest())
+        await kv.setex(att_key, settings.EMAIL_CODE_TTL_SECONDS, "0")
+        subject = "GDUE-CA 密码重置验证码"
+        body = (
+            "您正在重置 GDUE-CA 账号的登录密码。\n\n"
+            f"验证码：{code}\n"
+            f"{max(settings.EMAIL_CODE_TTL_SECONDS // 60, 1)} 分钟内有效，"
+            "请勿泄露给他人。若非本人操作，请忽略本邮件。\n"
+        )
+        code_sent = await send_email(email, subject, body)
+        if not code_sent:
+            # SMTP 未配置或发送失败：开发兜底仅记录服务端日志（绝不通过响应回传验证码）
+            logger.warning(
+                "忘记密码验证码未成功投递（SMTP未配置或失败，仅限开发环境排查）邮箱=%s 验证码=%s",
+                email, code)
+
+    _log(db, None, "password_reset.code_sent",
+         f"email_hash:{ehash[:12]} sent:{code_sent} smtp:{mailer_configured()}", client_ip)
+    await db.commit()
+    return {"ok": True, "message": "若该邮箱已绑定账号，验证码已发送，请查收"}
+
+
+@router.post(
+    "/forgot-password/reset",
+    dependencies=[Depends(rate_limit("forgot-reset", limit=10, window_seconds=3600))],
+)
+async def reset_password_with_code(
+    req: ForgotPasswordResetRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """邮箱验证码重置密码：校验验证码 + 强密码策略 + 二次确认（schema 层）。
+
+    成功后该账号全部会话强制下线（无保留本机选项），跳转登录页重新登录。
+    验证码错误 / 过期 / 尝试次数用尽，对外统一模糊提示（防猜测防枚举）。
+    """
+    client_ip = get_client_ip(request)
+    fingerprint = (request.headers.get("x-browser-fingerprint") or "").strip()[:128] or None
+    email = str(req.email).strip()
+    ehash = _email_hash(email)
+    kv = get_kv()
+    code_key = f"pwreset:code:{ehash}"
+    att_key = f"pwreset:att:{ehash}"
+
+    raw = await kv.get(code_key)
+    if not raw:
+        raise HTTPException(status_code=400, detail="验证码无效或已过期")
+    # 每次校验尝试即计数（incrby 保留原 TTL）；超过上限立即作废
+    attempts = await kv.incrby(att_key, 1)
+    if attempts > settings.EMAIL_CODE_MAX_ATTEMPTS:
+        await kv.delete(code_key, att_key)
+        raise HTTPException(status_code=400, detail="验证码无效或已过期")
+    if raw != hashlib.sha256(req.code.encode()).hexdigest():
+        raise HTTPException(status_code=400, detail="验证码无效或已过期")
+
+    user = (await db.execute(
+        select(User).where(User.email == email, User.is_deleted.is_(False))
+    )).scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=400, detail="验证码无效或已过期")
+
+    _require_strong_password(req.new_password, user.username, user.email)
+    user.password_hash = hash_password(req.new_password)
+    user.must_change_password = False
+    user.password_changed_at = _now()
+    # 全部会话强制下线（无保留本机选项）
+    await _revoke_user_sessions(db, user.id)
+    await kv.delete(code_key, att_key, f"pwreset:sent:{ehash}")
+    _log(db, user.id, "password_reset", json.dumps({
+        "method": "email_verification_code",
+        "fingerprint": fingerprint,
+        "sessions_revoked": "all",
+    }, ensure_ascii=False), client_ip)
+    await db.commit()
+    return {"ok": True}
 
 
 # ---------- 忘记密码申请列表（仅 admin+） ----------

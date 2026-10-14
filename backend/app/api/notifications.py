@@ -12,14 +12,22 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.audit import ctx_uid
-from app.core.security import Role, require_role
-from app.db.models import Announcement, AnnouncementCategory, UserNotifyRead
+from app.core.audit import ctx_uid, is_break_glass
+from app.core.security import Role, is_admin_tier, require_role
+from app.db.models import (
+    Announcement,
+    AnnouncementCategory,
+    BackgroundTask,
+    UserMessage,
+    UserNotifyRead,
+)
 from app.db.session import get_db
+from app.schemas.background_task import BackgroundTaskOut
 from app.schemas.notification import (
     MarkReadOut,
     NotificationListOut,
     NotificationOut,
+    UserMessageOut,
 )
 
 router = APIRouter(prefix="/api/notifications", tags=["notifications"])
@@ -62,6 +70,20 @@ async def _unread_count(db: AsyncSession, user_id: int) -> int:
     return len(eff_ids) - int(read_cnt)
 
 
+async def _message_unread_count(db: AsyncSession, user_id: int) -> int:
+    """站内私信未读数（行内 is_read 标记）。"""
+    return int((await db.execute(
+        select(func.count())
+        .select_from(UserMessage)
+        .where(UserMessage.user_id == user_id, UserMessage.is_read.is_(False))
+    )).scalar_one())
+
+
+async def _total_unread(db: AsyncSession, user_id: int) -> int:
+    """角标未读总数 = 广播通知未读 + 站内私信未读。"""
+    return await _unread_count(db, user_id) + await _message_unread_count(db, user_id)
+
+
 def _uid(user) -> int:
     """当前登录用户 id；Break-Glass 应急账号不参与个人通知功能。"""
     v = ctx_uid(user)
@@ -76,7 +98,11 @@ async def list_my_notifications(
     user: dict = Depends(require_role(Role.MEMBER)),
     db: AsyncSession = Depends(get_db),
 ):
-    """后端过滤：仅返回【生效中、未过期、已启用】的信息通知，附已读状态与未读数。"""
+    """后端过滤：仅返回【生效中、未过期、已启用】的信息通知，附已读状态与未读数。
+
+    管理员级角色额外返回 background_tasks：未手动关闭的后台异步任务通知
+    （任务行即数据源，常驻不自动消失；普通成员恒为空数组）。
+    """
     items = (await db.execute(
         _effective_stmt().order_by(Announcement.priority.desc(), Announcement.created_at.desc())
     )).scalars().all()
@@ -91,6 +117,24 @@ async def list_my_notifications(
         )
         read_ids = {r[0] for r in rows.all()}
 
+    # 后台任务通知（仅管理员级；Break-Glass 无 user_id，不参与个人通知）
+    bg_tasks: list[BackgroundTask] = []
+    if not is_break_glass(user) and is_admin_tier(Role(user["role"])):
+        bg_tasks = list((await db.execute(
+            select(BackgroundTask)
+            .where(BackgroundTask.dismissed_at.is_(None))
+            .order_by(BackgroundTask.created_at.desc())
+            .limit(20)
+        )).scalars().all())
+
+    # 站内私信（每用户专属，按创建时间倒序，最新 50 条）
+    messages = list((await db.execute(
+        select(UserMessage)
+        .where(UserMessage.user_id == _uid(user))
+        .order_by(UserMessage.created_at.desc())
+        .limit(50)
+    )).scalars().all())
+
     return NotificationListOut(
         items=[
             NotificationOut(
@@ -103,7 +147,12 @@ async def list_my_notifications(
             )
             for a in items
         ],
-        unread_count=sum(1 for a in items if a.id not in read_ids),
+        unread_count=sum(1 for a in items if a.id not in read_ids)
+        + sum(1 for m in messages if not m.is_read),
+        messages=[UserMessageOut.model_validate(m) for m in messages],
+        background_tasks=[
+            BackgroundTaskOut.model_validate(t) for t in bg_tasks
+        ],
     )
 
 
@@ -129,7 +178,24 @@ async def mark_notification_read(
         db.add(UserNotifyRead(user_id=_uid(user), announcement_id=nid))
         await db.commit()
 
-    return MarkReadOut(unread_count=await _unread_count(db, _uid(user)))
+    return MarkReadOut(unread_count=await _total_unread(db, _uid(user)))
+
+
+# ---------- 单条私信标记已读 ----------
+@router.post("/messages/{mid}/read", response_model=MarkReadOut)
+async def mark_message_read(
+    mid: int,
+    user: dict = Depends(require_role(Role.MEMBER)),
+    db: AsyncSession = Depends(get_db),
+):
+    """单条站内私信标记为已读（幂等，仅本人私信可操作）。"""
+    msg = await db.get(UserMessage, mid)
+    if msg is None or msg.user_id != _uid(user):
+        raise HTTPException(status_code=404, detail="私信不存在")
+    if not msg.is_read:
+        msg.is_read = True
+        await db.commit()
+    return MarkReadOut(unread_count=await _total_unread(db, _uid(user)))
 
 
 # ---------- 全部标为已读 ----------
@@ -138,7 +204,7 @@ async def mark_all_notifications_read(
     user: dict = Depends(require_role(Role.MEMBER)),
     db: AsyncSession = Depends(get_db),
 ):
-    """把当前所有【生效中且已启用】的通知一次性标记为已读（幂等）。"""
+    """把当前所有【生效中且已启用】的通知 + 全部站内私信一次性标记为已读（幂等）。"""
     uid = _uid(user)
     eff_ids = await _effective_ids(db)
     if eff_ids:
@@ -151,6 +217,16 @@ async def mark_all_notifications_read(
         for aid in eff_ids:
             if aid not in existing:
                 db.add(UserNotifyRead(user_id=uid, announcement_id=aid))
-        await db.commit()
 
+    # 站内私信：行内标记批量置已读
+    unread_msgs = (await db.execute(
+        select(UserMessage).where(
+            UserMessage.user_id == uid,
+            UserMessage.is_read.is_(False),
+        )
+    )).scalars().all()
+    for m in unread_msgs:
+        m.is_read = True
+
+    await db.commit()
     return MarkReadOut(unread_count=0)

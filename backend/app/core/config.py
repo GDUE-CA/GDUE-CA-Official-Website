@@ -81,6 +81,23 @@ class Settings(BaseSettings):
     # 配置 redis://... 时使用 Redis（多 worker 共享）；留空使用进程内存兜底（仅单进程开发）
     REDIS_URL: str = ""
 
+    # ---- SMTP 邮件（忘记密码验证码等；底层基础设施，与业务无关） ----
+    # SMTP_HOST 留空 = 未配置邮件服务：发送方自行降级（验证码仅记录到服务端日志，仅限开发环境）
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 465
+    SMTP_USERNAME: str = ""
+    SMTP_PASSWORD: str = ""  # 授权码 / 密码
+    SMTP_FROM: str = ""  # 发件人地址；留空时取 SMTP_USERNAME
+    SMTP_FROM_NAME: str = "GDUE-CA"  # 发件人显示名
+    # True = SSL 直连（465）；False = STARTTLS（587）
+    SMTP_USE_SSL: bool = True
+    # 忘记密码验证码：有效期（秒）+ 单码最大验证尝试次数 + 同邮箱重发间隔（秒）
+    EMAIL_CODE_TTL_SECONDS: int = 600
+    EMAIL_CODE_MAX_ATTEMPTS: int = 5
+    EMAIL_CODE_RESEND_INTERVAL_SECONDS: int = 60
+    # 更换绑定邮箱验证码：有效期 15 分钟（需求规定）；尝试次数 / 重发间隔复用上面三项
+    EMAIL_CHANGE_CODE_TTL_SECONDS: int = 900
+
     @property
     def break_glass_enabled(self) -> bool:
         return self.SUPER_ADMIN_ENABLED.strip().lower() == "true"

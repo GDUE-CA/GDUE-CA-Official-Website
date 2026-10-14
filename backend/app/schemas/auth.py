@@ -287,6 +287,10 @@ class ChangePasswordRequest(BaseModel):
     old_password: str = Field(min_length=1, max_length=PASSWORD_MAX_LENGTH)
     # 强度在接口层结合用户名 / 邮箱校验
     new_password: str = Field(min_length=1, max_length=PASSWORD_MAX_LENGTH)
+    # 二次确认新密码：后端二次校验（防御前端绕过）
+    confirm_password: str = Field(min_length=1, max_length=PASSWORD_MAX_LENGTH)
+    # 改密后保留当前设备登录（默认勾选）；False = 全部会话（含本机）强制下线
+    keep_current_device: bool = True
 
 
 # ---------- 忘记密码申请 ----------
@@ -294,6 +298,25 @@ class ForgotPasswordRequest(BaseModel):
     contact_email: EmailStr
     username_hint: PlainText | None = Field(default=None, max_length=128)
     reason: MultilineText = Field(min_length=2, max_length=500)
+
+
+class ForgotPasswordSendCodeRequest(BaseModel):
+    """发送忘记密码验证码：绑定邮箱（防账号枚举：响应与邮箱是否存在无关）。"""
+    email: LooseEmail
+
+
+class ForgotPasswordResetRequest(BaseModel):
+    """邮箱验证码重置密码：验证码 + 新密码 + 二次确认。"""
+    email: LooseEmail
+    code: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
+    new_password: str = Field(min_length=1, max_length=PASSWORD_MAX_LENGTH)
+    confirm_password: str = Field(min_length=1, max_length=PASSWORD_MAX_LENGTH)
+
+    @model_validator(mode="after")
+    def _validate(self) -> "ForgotPasswordResetRequest":
+        if self.new_password != self.confirm_password:
+            raise ValueError("两次输入的新密码不相同")
+        return self
 
 
 class PasswordResetOut(BaseModel):
@@ -331,3 +354,82 @@ class SecurityQuestionUpdate(BaseModel):
     question: PlainText = Field(min_length=2, max_length=256)
     # 答案需有一定强度，防止被枚举猜中
     answer: str = Field(min_length=6, max_length=256)
+
+
+# ---------- 更换绑定邮箱（路径A 自助 / 路径B 自助核验 / 路径C 人工申请 / 豁免确认） ----------
+class EmailChangeSendCodesRequest(BaseModel):
+    """路径A 第一步：输入新邮箱，系统同时向旧邮箱+新邮箱各发一份验证码。"""
+    new_email: LooseEmail
+
+
+class EmailChangeNormalConfirmRequest(BaseModel):
+    """路径A 第二步：旧邮箱验证码 + 新邮箱验证码 + 当前登录密码，三项全部通过才换绑。"""
+    old_code: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
+    new_code: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
+    current_password: str = Field(min_length=1, max_length=PASSWORD_MAX_LENGTH)
+
+
+class EmailChangeLostOldVerifyRequest(BaseModel):
+    """路径B 第一步：四项身份核验（全部匹配才通过，任一错统一模糊拒绝）。"""
+    current_password: str = Field(min_length=1, max_length=PASSWORD_MAX_LENGTH)
+    student_id: str = Field(min_length=1, max_length=32)
+    phone: str = Field(min_length=1, max_length=32)
+    real_name: str = Field(min_length=1, max_length=64)
+
+
+class EmailChangeLostOldSendCodeRequest(BaseModel):
+    """路径B 第二步：核验通过后仅验证新邮箱所有权。"""
+    new_email: LooseEmail
+
+
+class EmailChangeLostOldConfirmRequest(BaseModel):
+    new_email: LooseEmail
+    code: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
+
+
+class EmailChangeManualRequestRequest(BaseModel):
+    """路径C：提交更改绑定邮箱人工申请（pending 期间自助入口全部禁用）。"""
+    new_email: LooseEmail
+    remark: MultilineText | None = Field(default=None, max_length=1000)
+
+
+class EmailChangeExemptConfirmRequest(BaseModel):
+    """人工审核豁免模式：跳过全部身份校验，仅凭一次性标记换绑。"""
+    new_email: LooseEmail
+
+
+class EmailChangeRejectRequest(BaseModel):
+    """管理员驳回人工申请：理由必填非空。"""
+    reason: MultilineText = Field(min_length=1, max_length=1000)
+
+
+class EmailChangeStatusOut(BaseModel):
+    """用户端换绑板块状态（GET /status）。"""
+    current_email: str
+    is_placeholder: bool
+    allow_manual_email_switch: bool
+    # 待审核申请详情（存在时用户端全部自助入口置灰禁用）
+    pending: dict | None = None
+    # 最近一条已同意申请（豁免模式预填目标邮箱）
+    approved_application: dict | None = None
+    # 最近一条驳回（含理由，用户端展示后可重新自助/再次申请）
+    last_rejected: dict | None = None
+
+
+class EmailChangeRequestOut(BaseModel):
+    """后台审核列表行。"""
+    id: int
+    user_id: int
+    username: str
+    old_email: str
+    new_email: str
+    remark: str | None
+    status: str
+    reject_reason: str | None
+    submit_ip: str | None
+    fingerprint: str | None
+    reviewed_by: int | None
+    reviewed_at: UTCDatetime | None
+    created_at: UTCDatetime
+
+    model_config = {"from_attributes": True}

@@ -6,14 +6,19 @@
  * a) 用户名：显示当前值 + 「修改」→ Dialog① 输入新用户名（/^[A-Za-z0-9_]{4,}$/）
  *    → 提交前 Dialog② 二次确认 → PUT profile {username} → 更新本地会话
  *    （后端自动写审计日志）
- * b) 密码：旧密码/新密码/确认 + 眼睛切换 + 强度指示器，POST /api/auth/change-password
+ * b) 密码：旧密码/新密码/确认（统一 PasswordInput 眼睛切换）+ 强度指示器，
+ *    POST /api/auth/change-password；强制旧密码，不提供邮箱验证码绕过入口；
+ *    「保留当前设备登录」默认勾选，取消 = 全部会话（含本机）强制下线
  * c) 预留入口：更换绑定邮箱 / 手机号（disabled + comingSoon 说明）
  */
 import { useEffect, useState } from "react";
-import { CheckCircle2, Eye, EyeOff, KeyRound, Loader2, UserCog } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { CheckCircle2, KeyRound, Loader2, UserCog } from "lucide-react";
 import { useI18n } from "@/i18n/provider";
+import { useLocalizedPath } from "@/lib/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import {
   Card,
@@ -29,7 +34,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { fetchProfile, updateProfile, changePassword } from "@/lib/api/auth";
-import { getSession, saveSession } from "@/lib/auth";
+import { getSession, saveSession, clearLocalSession } from "@/lib/auth";
 import { meetsPasswordPolicy, passwordClassCount } from "@/lib/passwordPolicy";
 import { cn } from "@/lib/utils";
 
@@ -44,6 +49,8 @@ function passwordStrength(pwd: string): "weak" | "medium" | "strong" {
 
 export function SecurityForm() {
   const { t } = useI18n();
+  const router = useRouter();
+  const lp = useLocalizedPath();
 
   // 当前用户名
   const [currentUsername, setCurrentUsername] = useState("");
@@ -61,8 +68,8 @@ export function SecurityForm() {
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [showOld, setShowOld] = useState(false);
-  const [showNew, setShowNew] = useState(false);
+  // 保留当前设备登录（默认勾选；取消 = 全部会话含本机强制下线）
+  const [keepCurrentDevice, setKeepCurrentDevice] = useState(true);
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
@@ -143,7 +150,18 @@ export function SecurityForm() {
     setPasswordError(null);
     setPasswordSuccess(false);
     try {
-      await changePassword({ old_password: oldPassword, new_password: newPassword });
+      const res = await changePassword({
+        old_password: oldPassword,
+        new_password: newPassword,
+        confirm_password: confirmPassword,
+        keep_current_device: keepCurrentDevice,
+      });
+      if (res.current_session_revoked) {
+        // 全部会话（含本机）已下线：清除本地会话并跳转登录页
+        clearLocalSession();
+        router.replace(lp("/login"));
+        return;
+      }
       setPasswordSuccess(true);
       setOldPassword("");
       setNewPassword("");
@@ -226,51 +244,29 @@ export function SecurityForm() {
           <form onSubmit={handlePasswordSubmit} className="space-y-4" noValidate>
             <div className="space-y-2">
               <Label htmlFor="sec-oldPassword">{t("account.oldPassword")}</Label>
-              <div className="relative">
-                <Input
-                  id="sec-oldPassword"
-                  type={showOld ? "text" : "password"}
-                  value={oldPassword}
-                  onChange={(e) => {
-                    setOldPassword(e.target.value);
-                    setPasswordError(null);
-                  }}
-                  placeholder={t("account.oldPasswordPlaceholder")}
-                  autoComplete="current-password"
-                  className="pr-9"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowOld(!showOld)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer text-muted-foreground hover:text-foreground"
-                >
-                  {showOld ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
+              <PasswordInput
+                id="sec-oldPassword"
+                value={oldPassword}
+                onChange={(e) => {
+                  setOldPassword(e.target.value);
+                  setPasswordError(null);
+                }}
+                placeholder={t("account.oldPasswordPlaceholder")}
+                autoComplete="current-password"
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="sec-newPassword">{t("account.newPassword")}</Label>
-              <div className="relative">
-                <Input
-                  id="sec-newPassword"
-                  type={showNew ? "text" : "password"}
-                  value={newPassword}
-                  onChange={(e) => {
-                    setNewPassword(e.target.value);
-                    setPasswordError(null);
-                  }}
-                  placeholder={t("account.newPasswordPlaceholder")}
-                  autoComplete="new-password"
-                  className="pr-9"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowNew(!showNew)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer text-muted-foreground hover:text-foreground"
-                >
-                  {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
+              <PasswordInput
+                id="sec-newPassword"
+                value={newPassword}
+                onChange={(e) => {
+                  setNewPassword(e.target.value);
+                  setPasswordError(null);
+                }}
+                placeholder={t("account.newPasswordPlaceholder")}
+                autoComplete="new-password"
+              />
               {/* 强度指示器 */}
               {strength && (
                 <div className="flex items-center gap-2">
@@ -303,9 +299,8 @@ export function SecurityForm() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="sec-confirmPassword">{t("account.confirmPassword")}</Label>
-              <Input
+              <PasswordInput
                 id="sec-confirmPassword"
-                type={showNew ? "text" : "password"}
                 value={confirmPassword}
                 onChange={(e) => {
                   setConfirmPassword(e.target.value);
@@ -315,6 +310,19 @@ export function SecurityForm() {
                 autoComplete="new-password"
               />
             </div>
+            {/* 保留当前设备登录（默认勾选；取消 = 全部会话含本机强制下线） */}
+            <label className="flex items-center gap-2.5 text-sm cursor-pointer select-none">
+              <input
+                type="checkbox"
+                className="size-4 rounded accent-primary cursor-pointer"
+                checked={keepCurrentDevice}
+                onChange={(e) => setKeepCurrentDevice(e.target.checked)}
+              />
+              {t("account.keepCurrentDevice")}
+            </label>
+            <p className="-mt-2 text-xs text-muted-foreground">
+              {t("account.keepCurrentDeviceHint")}
+            </p>
             {passwordError && (
               <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
                 {passwordError}

@@ -22,7 +22,11 @@ import {
   updateSystemSettings,
 } from "@/lib/api/system";
 import type { NetworkConfigHistory, SystemSettings } from "@/types/api";
-import { Loader2, Check, QrCode, Globe, Clock, History, AlertTriangle, ShieldBan, ShieldCheck, ArrowUpRight, Timer } from "lucide-react";
+import {
+  notifyBackgroundTaskSubmitted,
+  submitDbExport,
+} from "@/lib/api/backgroundTasks";
+import { Loader2, Check, QrCode, Globe, Clock, History, AlertTriangle, ShieldBan, ShieldCheck, ArrowUpRight, Timer, Database } from "lucide-react";
 
 export default function SettingsPage() {
   const { t } = useI18n();
@@ -58,6 +62,29 @@ export default function SettingsPage() {
   const [trustedIpsSaving, setTrustedIpsSaving] = useState(false);
   const [trustedIpsSaved, setTrustedIpsSaved] = useState(false);
   const [trustedIpsError, setTrustedIpsError] = useState<string | null>(null);
+
+  // 数据库导出（后台异步任务：提交即返回，进度在悬浮窗/通知中心查看）
+  const [exporting, setExporting] = useState(false);
+  const [exportSubmitted, setExportSubmitted] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  /** 提交一次完整数据库导出：HTTP 立刻返回 task_id，后台继续跑 */
+  async function runDbExport() {
+    if (exporting) return;
+    setExporting(true);
+    setExportSubmitted(false);
+    setExportError(null);
+    try {
+      await submitDbExport();
+      // 通知右下角悬浮窗立即开始轮询该任务
+      notifyBackgroundTaskSubmitted();
+      setExportSubmitted(true);
+    } catch (e) {
+      setExportError(e instanceof Error ? e.message : "Export failed");
+    } finally {
+      setExporting(false);
+    }
+  }
 
   async function refresh() {
     setLoading(true);
@@ -551,6 +578,41 @@ export default function SettingsPage() {
               </ul>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* ===== 数据库维护（导出为后台异步任务，进度见右下角悬浮窗 / 通知中心） ===== */}
+      <Card id="db-maintenance">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Database className="h-4 w-4" />
+            {t("admin.settings.dbMaintenanceTitle")}
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            {t("admin.settings.dbMaintenanceDesc")}
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Button onClick={runDbExport} disabled={exporting}>
+              {exporting && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+              {t("admin.settings.dbExportButton")}
+            </Button>
+          </div>
+          {exportSubmitted && (
+            <p className="text-sm text-green-600 flex items-center gap-1">
+              <Check className="h-4 w-4" />
+              {t("admin.settings.dbExportSubmitted")}
+            </p>
+          )}
+          {exportError && (
+            <p className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md">
+              {exportError}
+            </p>
+          )}
+          <p className="text-xs text-muted-foreground">
+            {t("admin.settings.dbExportNote")}
+          </p>
         </CardContent>
       </Card>
 

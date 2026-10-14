@@ -281,7 +281,25 @@
     "markAllRead": "すべて既読にする",
     "unread": "未読",
     "read": "既読",
-    "unreadCount": "未読 {count} 件"
+    "unreadCount": "未読 {count} 件",
+    "messages": {
+      "sectionTitle": "ダイレクトメッセージ"
+    },
+    "backgroundTask": {
+      "sectionTitle": "バックグラウンドタスク",
+      "category": {
+        "db_export": "データベース完全エクスポート"
+      },
+      "statusRunning": "実行中",
+      "statusSuccess": "成功",
+      "statusFailed": "失敗",
+      "currentProgress": "現在：{message}（{progress}%）",
+      "generatedFile": "生成ファイル：{path}",
+      "gotoMaintenance": "バックアップファイル一覧へ",
+      "copyError": "エラーログをコピー",
+      "copied": "コピーしました",
+      "dismiss": "閉じる"
+    }
   },
   "account": {
     "title": "アカウント情報の変更",
@@ -321,7 +339,10 @@
       "weak": "弱",
       "medium": "中",
       "strong": "強"
-    }
+    },
+    "keepCurrentDevice": "この端末のログインを維持",
+    "keepCurrentDeviceHint": "オフにすると、パスワード変更後にすべての端末（この端末を含む）からログアウトします",
+    "newPasswordMismatch": "入力した新しいパスワードが一致しません"
   },
   "projects": {
     "title": "プロジェクト展示",
@@ -692,6 +713,69 @@
     },
     "hints": {
       "appearanceInstant": "テーマと言語の変更は即時反映され、保存は不要です"
+    },
+    "emailChange": {
+      "title": "登録メールアドレスの変更",
+      "desc": "変更前に本人確認が必要です：旧メール認証コード・セルフ本人確認・管理者による手動審査の3つの経路があります。",
+      "current": "現在の登録",
+      "none": "有効なメール未登録",
+      "newEmail": "新しいメールアドレス",
+      "newEmailPlaceholder": "変更先の新しいメールアドレスを入力",
+      "currentPassword": "現在のログインパスワード",
+      "oldCode": "旧メール認証コード",
+      "newCode": "新メール認証コード",
+      "studentId": "学籍番号",
+      "phone": "登録携帯番号",
+      "realName": "氏名",
+      "remark": "申請メモ（旧メールが使えない理由）",
+      "remarkPlaceholder": "旧メールが使えない理由を記入してください（例：卒業で削除、パスワード不明でメールにログイン不可 等）",
+      "uidLabel": "現在のアカウント UID",
+      "usernameLabel": "現在のユーザー名",
+      "submit": "送信を確認",
+      "sendCodes": "認証コードを送信",
+      "backToStep1": "前のステップへ",
+      "sentHint": "2つの認証コードを旧メールと新メール（{new}）にそれぞれ送信しました。15分間有効です。",
+      "changeSuccess": "メールアドレスを変更しました。すべての端末はログイン状態を維持します。",
+      "confirmSendTitle": "認証コード送信の確認",
+      "confirmSendBody": "旧メール（{old}）と新メール（{new}）の両方に6桁の認証コードを送信します。よろしいですか？",
+      "confirmChangeTitle": "メールアドレス変更の確認",
+      "confirmChangeBody": "登録メールアドレスを【{old}】から【{new}】に変更します。送信後すぐに有効になります。内容を再確認してください。送信しますか？",
+      "lostOld": {
+        "entry": "旧メールでコードを受け取れませんか？こちら",
+        "back": "通常フローに戻る",
+        "hint": "4つの項目すべてが登録情報と一致する必要があります（現在のパスワード・学籍番号・携帯番号・氏名）。1つでも不一致の場合は拒否されます。",
+        "verify": "本人確認を送信",
+        "verifyGuidance": "すべての本人確認を完了できません。【メールアドレス変更の手動申請】を提出し、管理者の審査を受けてください。",
+        "gotoManual": "メールアドレス変更の手動申請を提出",
+        "confirmSendTitle": "新メール認証コード送信の確認",
+        "confirmSendBody": "本人確認が完了しました。新メール（{new}）に6桁の認証コードを送信します。よろしいですか？"
+      },
+      "manual": {
+        "entry": "メールアドレス変更の手動申請を提出",
+        "submitLabel": "手動申請を提出",
+        "confirmTitle": "メールアドレス変更の手動申請の確認",
+        "confirmBody": "⚠️メールアドレス変更の手動申請を送信します。送信後は管理者の審査をお待ちください。審査完了までセルフでの変更はできません。送信後は取り消せません。送信しますか？",
+        "submitted": "手動申請を送信しました。管理者の審査をお待ちください"
+      },
+      "pending": {
+        "title": "メールアドレス変更申請 審査中",
+        "target": "申請先メールアドレス",
+        "hint": "管理者の審査中です。審査完了までセルフ変更の入口はすべて無効になっています。",
+        "disabled": "審査中のためセルフ変更は無効です"
+      },
+      "rejected": {
+        "title": "メールアドレス変更の手動申請が却下されました",
+        "reason": "却下理由",
+        "canRetry": "セルフ認証をやり直すか、再度手動申請を提出できます。"
+      },
+      "exempt": {
+        "title": "手動審査 免除モード",
+        "warning": "管理者が申請を承認しました。このモードではすべての本人確認（旧メール・パスワード・学籍番号・携帯番号）をスキップし、このページからの送信のみで変更が完了します。この許可は1回限りで、成功後すぐに失効します。",
+        "prefill": "管理者が承認したメールアドレス",
+        "confirmTitle": "⚠️手動審査 免除モード",
+        "confirmBody": "⚠️手動審査 免除モード\n登録メールアドレスを次に更新します：{new}\n送信後すぐに変更されます。内容を再確認してください。続行しますか？",
+        "success": "メールアドレスを変更しました"
+      }
     }
   },
   "admin": {
@@ -998,7 +1082,8 @@
       "config.oauth": "OAuth チャネル",
       "config.sso": "SSO 信頼アプリ",
       "audit": "ログ・監査",
-      "mailpush": "メール・プッシュ通知"
+      "mailpush": "メール・プッシュ通知",
+      "users.emailChange": "メールアドレス変更申請一覧"
     },
     "profile": {
       "title": "プロフィール",
@@ -1208,6 +1293,11 @@
       "adminTrustedIpsLabel": "ホワイトリスト（1 行に 1 件、# コメント可）",
       "adminTrustedIpsPlaceholder": "# 1 行に 1 件。IPv4・IPv6・IPv4-CIDR・IPv6-CIDR に対応\n# 空欄 = ホワイトリスト無効、すべての IP から管理者アカウントにログイン可能\n# 例：\n127.0.0.1\n192.168.1.0/24\n::1\n2001:db8::/32",
       "adminTrustedIpsNote": "⚠️ 優先順位：データベースの Web 設定が優先。データベースが空の場合のみ環境変数 ADMIN_TRUSTED_IPS を読み込みます。",
+      "dbMaintenanceTitle": "データベースメンテナンス",
+      "dbMaintenanceDesc": "データベースのバックアップと移行。エクスポートは非同期バックグラウンドタスクとして実行されます。送信後このページに留まる必要はなく、進捗は右下のフローティングパネルまたは通知センターで確認できます。",
+      "dbExportButton": "完全なデータベースエクスポートを実行",
+      "dbExportSubmitted": "タスクをバックグラウンドに送信しました。作業を続けられます。進捗は右下のパネルまたは通知センターをご覧ください。",
+      "dbExportNote": "完了後、バックアップファイルはサーバーの ./exports ディレクトリ（0600 権限）に保存されます。SFTP で手動ダウンロードしてください。タスク記録は手動で閉じるまで通知リストに残ります。",
       "netTitle": "ネットワーク設定",
       "netDesc": "バックエンドのポート、リッスンアドレス、サイトドメインの参考値。実際に反映するには運用による Nginx/Caddy の手動リロードが必要です。",
       "netPort": "バックエンドポート",
@@ -1840,6 +1930,37 @@
         "desc": "Markdown断片ノート：タイムライン / カレンダー / タグ遅延生成 / バージョン / 共有リンク / 管理者停止",
         "btn": "管理へ"
       }
+    },
+    "emailChange": {
+      "title": "手動アカウント申請",
+      "desc": "メールアドレス変更の手動申請：承認後、ユーザー本人がアカウント設定で最終確認を行います。管理者が直接メールを変更することはありません。",
+      "filterPending": "審査中",
+      "filterAll": "すべて",
+      "empty": "申請はありません",
+      "colOldEmail": "現在の登録メール",
+      "colNewEmail": "申請先メール",
+      "colRemark": "申請メモ",
+      "colCreatedAt": "申請日時",
+      "colIp": "クライアント IP",
+      "colFingerprint": "ブラウザ指纹",
+      "approve": "承認",
+      "reject": "却下",
+      "rejectReason": "却下理由",
+      "rejectReasonPlaceholder": "却下理由を入力（必須・申請者に表示されます）",
+      "reviewedAt": "審査日時",
+      "approveConfirm": {
+        "title": "メールアドレス変更申請の承認",
+        "body": "ユーザー「{name}」のメールアドレス変更申請（変更先：{email}）を承認しますか？\n承認は1回限りの変更許可を付与するだけで、最終手順はユーザー本人がアカウント設定で行います。管理者が直接メールを変更することはありません。"
+      },
+      "rejectConfirm": {
+        "title": "メールアドレス変更申請の却下",
+        "body": "ユーザー「{name}」の申請を却下しますか？却下理由は必須で、申請者に表示されます。"
+      },
+      "statuses": {
+        "pending": "審査中",
+        "approved": "承認済み",
+        "rejected": "却下"
+      }
     }
   },
   "ban": {
@@ -2123,5 +2244,23 @@
   "profileMemoTab": {
     "empty": "まだモーメンツがありません",
     "viewAll": "すべて見る"
+  },
+  "forgotPassword": {
+    "title": "パスワードのリセット",
+    "subtitle": "登録済みメールアドレスに確認コードを送信します",
+    "email": "登録メールアドレス",
+    "emailPlaceholder": "you@example.com",
+    "sendCode": "コードを送信",
+    "codeSentTip": "このメールアドレスがアカウントに登録されている場合、確認コードを送信しました",
+    "code": "メール確認コード",
+    "codePlaceholder": "6桁のコードを入力",
+    "emailRequired": "登録済みメールアドレスを入力してください",
+    "codeRequired": "確認コードを入力してください",
+    "submit": "パスワードをリセット",
+    "submitting": "処理中…",
+    "success": "パスワードをリセットしました",
+    "successHint": "すべてのセッションを強制ログアウトしました。ログインページへ移動します",
+    "backToLogin": "ログインに戻る",
+    "manualEntry": "メールを使えない場合は、手動での復旧申請を送信してください"
   }
 }
