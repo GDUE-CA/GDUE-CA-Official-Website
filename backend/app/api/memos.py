@@ -25,7 +25,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import (
-    APIRouter, Depends, Query, Request, UploadFile, File,
+    APIRouter, Depends, HTTPException, Query, Request, UploadFile, File,
 )
 from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession

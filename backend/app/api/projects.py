@@ -8,6 +8,7 @@ import uuid
 
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import ctx_uid, log_action
 from app.core.bizcode import BizCode

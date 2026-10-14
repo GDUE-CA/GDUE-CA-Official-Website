@@ -82,6 +82,9 @@ const nextConfig: NextConfig = {
   // 不暴露 X-Powered-By: Next.js（减少指纹信息）
   poweredByHeader: false,
 
+  // Docker 镜像构建时输出精简的独立服务端（node server.js）；本地 pnpm start 不受影响
+  output: process.env.NEXT_OUTPUT === "standalone" ? "standalone" : undefined,
+
   // dev 服务器跨源白名单（仅 development 生效）：
   // Next 16 默认只允许 localhost 访问 HMR websocket 与跨源资源，
   // 用回环 IP / 局域网 IP / 域名访问时客户端运行时会被阻塞 → 页面停留在 SSR 初始态（白屏无文字）。

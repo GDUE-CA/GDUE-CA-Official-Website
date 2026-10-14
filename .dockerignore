@@ -1,0 +1,33 @@
+# 版本控制与编辑器
+.git
+.gitignore
+.idea
+.vscode
+.trae
+**/.DS_Store
+
+# 前端构建产物与依赖（镜像内重新安装 / 构建）
+frontend/node_modules
+frontend/.next
+frontend/out
+frontend/*.log
+frontend/.env*
+!frontend/.env.example
+
+# 后端运行时数据与密钥：绝不打进镜像
+backend/.venv
+backend/**/__pycache__
+backend/.pytest_cache
+backend/tests
+backend/.env
+backend/assoc.db*
+backend/uploads
+backend/backups
+backend/logs
+backend/.jwt_secret
+backend/initial_admin_password.txt
+
+# 其他
+deploy
+docs
+*.md
