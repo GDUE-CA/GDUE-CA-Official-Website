@@ -18,10 +18,11 @@ import { TimezoneSelect } from "@/components/layout/TimezoneSelect";
 import {
   fetchNetworkConfigHistory,
   fetchSystemSettings,
+  updateAdminTrustedIps,
   updateSystemSettings,
 } from "@/lib/api/system";
 import type { NetworkConfigHistory, SystemSettings } from "@/types/api";
-import { Loader2, Check, QrCode, Globe, Clock, History, AlertTriangle, ShieldBan, ArrowUpRight, Timer } from "lucide-react";
+import { Loader2, Check, QrCode, Globe, Clock, History, AlertTriangle, ShieldBan, ShieldCheck, ArrowUpRight, Timer } from "lucide-react";
 
 export default function SettingsPage() {
   const { t } = useI18n();
@@ -52,6 +53,12 @@ export default function SettingsPage() {
   const [sessionTimeout, setSessionTimeout] = useState(30);
   const SESSION_TIMEOUT_OPTIONS = [1, 2, 5, 10, 15, 20, 30, 60, 120];
 
+  // 管理员可信 IP 白名单
+  const [adminTrustedIpsInput, setAdminTrustedIpsInput] = useState("");
+  const [trustedIpsSaving, setTrustedIpsSaving] = useState(false);
+  const [trustedIpsSaved, setTrustedIpsSaved] = useState(false);
+  const [trustedIpsError, setTrustedIpsError] = useState<string | null>(null);
+
   async function refresh() {
     setLoading(true);
     try {
@@ -66,6 +73,7 @@ export default function SettingsPage() {
       setNetworkListenIp(s.network_listen_ip ?? "0.0.0.0");
       setNetworkDomainsInput((s.network_domains ?? []).join("\n"));
       setSessionTimeout(s.session_idle_timeout_minutes ?? 30);
+      setAdminTrustedIpsInput((s.admin_trusted_ips ?? []).join("\n"));
       try {
         setNetworkHistory(await fetchNetworkConfigHistory());
       } catch { /* 历史加载失败不阻断主流程 */ }
@@ -201,6 +209,25 @@ export default function SettingsPage() {
     }
   }
 
+  // ---------- 管理员可信 IP 白名单 ----------
+  // 原样提交全部行（含空行 / # 注释行），过滤与逐行校验由后端完成；非法行整体 400 并返回行号
+  async function saveAdminTrustedIps() {
+    setTrustedIpsSaving(true);
+    setTrustedIpsError(null);
+    setTrustedIpsSaved(false);
+    try {
+      const lines = adminTrustedIpsInput.split("\n");
+      const res = await updateAdminTrustedIps(lines);
+      setAdminTrustedIpsInput(res.admin_trusted_ips.join("\n"));
+      setTrustedIpsSaved(true);
+      setTimeout(() => setTrustedIpsSaved(false), 2500);
+    } catch (e) {
+      setTrustedIpsError(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setTrustedIpsSaving(false);
+    }
+  }
+
   if (loading) {
     return <div className="text-muted-foreground">{t("common.loading")}</div>;
   }
@@ -303,6 +330,54 @@ export default function SettingsPage() {
           >
             {t("admin.activities.save")}
           </Button>
+        </CardContent>
+      </Card>
+
+      {/* ===== 管理员可信 IP 白名单 ===== */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4" />
+            {t("admin.settings.adminTrustedIpsTitle")}
+          </CardTitle>
+          <p className="text-sm text-muted-foreground whitespace-pre-line">
+            {t("admin.settings.adminTrustedIpsDesc")}
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="space-y-2">
+            <Label htmlFor="adminTrustedIps">
+              {t("admin.settings.adminTrustedIpsLabel")}
+            </Label>
+            <Textarea
+              id="adminTrustedIps"
+              rows={8}
+              placeholder={t("admin.settings.adminTrustedIpsPlaceholder")}
+              value={adminTrustedIpsInput}
+              onChange={(e) => setAdminTrustedIpsInput(e.target.value)}
+              className="font-mono text-sm"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground whitespace-pre-line">
+            {t("admin.settings.adminTrustedIpsNote")}
+          </p>
+          {trustedIpsError && (
+            <p className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md">
+              {trustedIpsError}
+            </p>
+          )}
+          <div className="flex items-center gap-2">
+            <Button onClick={saveAdminTrustedIps} disabled={trustedIpsSaving}>
+              {trustedIpsSaving && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+              {t("admin.activities.save")}
+            </Button>
+            {trustedIpsSaved && (
+              <p className="text-sm text-emerald-600 flex items-center gap-1">
+                <Check className="h-4 w-4" />
+                {t("admin.settings.saved")}
+              </p>
+            )}
+          </div>
         </CardContent>
       </Card>
 

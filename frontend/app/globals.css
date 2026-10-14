@@ -217,6 +217,16 @@ h1 {
   font-weight: 600;
 }
 
+/* 首页 Hero 展示型主标题：h1 全局规则的特例，全站最大字号。
+ * 必须保持未分层（与上方 h1 规则同级）才能压过该规则；
+ * clamp 随视口缩放：手机端自动缩小但仍是页面最大字号。 */
+.hero-display-title {
+  font-size: clamp(3.25rem, 6vw + 1.75rem, 6rem);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+
 /* 跨平台原生控件策略（规范 §7-6）：滚动条、文本选中色、tap 高亮全部交给
  * 当前操作系统原生控件——禁止 ::-webkit-scrollbar 自定义滚动条、
  * 禁止重写 ::selection、禁止自定义 -webkit-tap-highlight-color。 */

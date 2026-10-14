@@ -1,12 +1,15 @@
 "use client";
 
 /**
- * PrivacyForm —— 规格 §4.2 隐私设置子栏目
+ * PrivacyForm —— 隐私设置（2026-10 扩展版）
  *
- * - 控制项：个性签名 / 性别 / 生日（public | private）
- * - 硬性约束：地区字段 100% 永久公开，不可关闭（仅作只读展示）
- * - 保存：PUT /api/auth/profile { profile_privacy: {...} }（合并更新）
- * profile_privacy JSON 结构：{ "bio": "public"|"private", "gender": "...", "birthday": "..." }
+ * 三组控制（合并存储于 User.profile_privacy JSON）：
+ * A. 个人资料可见权限：个性签名 / 性别 / 生日（public | private）；地区永久公开（只读）
+ * B. 发现 & 搜索权限：discoverability = all | members | none
+ * C. 内容默认可见范围：default_scope = public | members | private
+ *
+ * 黑名单管理在独立子页 /setting/privacy/blocks。
+ * 保存：PUT /api/auth/profile { profile_privacy: {...} }（后端合并更新）
  */
 import { useEffect, useRef, useState } from "react";
 import { useI18n } from "@/i18n/provider";
@@ -21,10 +24,13 @@ import {
 } from "@/components/ui/card";
 import { useDirtyGuard } from "@/components/setting/SettingGuardContext";
 import { fetchProfile, updateProfile } from "@/lib/api/auth";
-import { CheckCircle2, Loader2, Lock, Eye, EyeOff } from "lucide-react";
+import { CheckCircle2, Loader2, Lock, Eye, EyeOff, Search, FileEdit } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const PAGE_KEY = "privacy";
+
+type Discoverability = "all" | "members" | "none";
+type DefaultScope = "public" | "members" | "private";
 
 /** 单项可见性：true=公开，false=仅自己 */
 type VisibilityMap = {
@@ -33,19 +39,32 @@ type VisibilityMap = {
   birthday: boolean;
 };
 
-const DEFAULT_VISIBILITY: VisibilityMap = {
+interface PrivacyState extends VisibilityMap {
+  discoverability: Discoverability;
+  default_scope: DefaultScope;
+}
+
+const DEFAULT_STATE: PrivacyState = {
   bio: true,
   gender: true,
   birthday: true,
+  discoverability: "all",
+  default_scope: "public",
 };
 
-/** 从 profile_privacy JSON 解析可见性映射；缺失或非法值默认 true（公开） */
-function parsePrivacy(p: Record<string, string> | null | undefined): VisibilityMap {
+/** 从 profile_privacy JSON 解析；缺失项走默认值 */
+function parsePrivacy(p: Record<string, string> | null | undefined): PrivacyState {
   const get = (k: keyof VisibilityMap) => p?.[k] !== "private";
+  const disc = p?.discoverability;
+  const scope = p?.default_scope;
   return {
     bio: get("bio"),
     gender: get("gender"),
     birthday: get("birthday"),
+    discoverability:
+      disc === "members" || disc === "none" ? disc : "all",
+    default_scope:
+      scope === "members" || scope === "private" ? scope : "public",
   };
 }
 
@@ -58,7 +77,7 @@ export function PrivacyForm() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  const [visibility, setVisibility] = useState<VisibilityMap>(DEFAULT_VISIBILITY);
+  const [state, setState] = useState<PrivacyState>(DEFAULT_STATE);
   const initialRef = useRef<string>("");
 
   useEffect(() => {
@@ -66,7 +85,7 @@ export function PrivacyForm() {
       try {
         const p = await fetchProfile();
         const v = parsePrivacy(p.profile_privacy);
-        setVisibility(v);
+        setState(v);
         initialRef.current = JSON.stringify(v);
       } catch (err) {
         setError(err instanceof Error ? err.message : t("admin.profile.loadFailed"));
@@ -77,15 +96,15 @@ export function PrivacyForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const dirty = initialRef.current !== "" && JSON.stringify(visibility) !== initialRef.current;
+  const dirty = initialRef.current !== "" && JSON.stringify(state) !== initialRef.current;
 
   useEffect(() => {
     registerDirty(PAGE_KEY, dirty);
     return () => registerDirty(PAGE_KEY, false);
   }, [dirty, registerDirty]);
 
-  function toggle(key: keyof VisibilityMap, value: boolean) {
-    setVisibility((prev) => ({ ...prev, [key]: value }));
+  function setVis(key: keyof VisibilityMap, value: boolean) {
+    setState((prev) => ({ ...prev, [key]: value }));
   }
 
   async function handleSave(e: React.FormEvent) {
@@ -95,13 +114,15 @@ export function PrivacyForm() {
     setSaving(true);
     try {
       const profile_privacy: Record<string, string> = {
-        bio: visibility.bio ? "public" : "private",
-        gender: visibility.gender ? "public" : "private",
-        birthday: visibility.birthday ? "public" : "private",
+        bio: state.bio ? "public" : "private",
+        gender: state.gender ? "public" : "private",
+        birthday: state.birthday ? "public" : "private",
+        discoverability: state.discoverability,
+        default_scope: state.default_scope,
       };
       const updated = await updateProfile({ profile_privacy });
       const v = parsePrivacy(updated.profile_privacy);
-      setVisibility(v);
+      setState(v);
       initialRef.current = JSON.stringify(v);
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
@@ -121,28 +142,21 @@ export function PrivacyForm() {
   }
 
   /** 单行可见性切换：公开 ↔ 仅自己 */
-  function Row({
+  function VisibilityRow({
     label,
     fieldKey,
-    description,
   }: {
     label: string;
     fieldKey: keyof VisibilityMap;
-    description?: string;
   }) {
-    const isPublic = visibility[fieldKey];
+    const isPublic = state[fieldKey];
     return (
       <div className="flex items-center justify-between gap-4 py-3 border-b border-border last:border-0">
-        <div className="space-y-0.5">
-          <Label className="text-sm font-medium">{label}</Label>
-          {description && (
-            <p className="text-xs text-muted-foreground">{description}</p>
-          )}
-        </div>
-        <div className="flex items-center rounded-md border border-input overflow-hidden">
+        <Label className="text-sm font-medium">{label}</Label>
+        <div className="flex items-center rounded-md border border-input overflow-hidden shrink-0">
           <button
             type="button"
-            onClick={() => toggle(fieldKey, true)}
+            onClick={() => setVis(fieldKey, true)}
             className={cn(
               "px-3 py-1.5 text-xs font-medium transition-colors flex items-center gap-1",
               isPublic
@@ -156,7 +170,7 @@ export function PrivacyForm() {
           </button>
           <button
             type="button"
-            onClick={() => toggle(fieldKey, false)}
+            onClick={() => setVis(fieldKey, false)}
             className={cn(
               "px-3 py-1.5 text-xs font-medium transition-colors flex items-center gap-1 border-l border-input",
               !isPublic
@@ -173,14 +187,58 @@ export function PrivacyForm() {
     );
   }
 
+  /** 三选一选项行 */
+  function OptionRow<T extends string>({
+    value,
+    current,
+    onSelect,
+    label,
+    desc,
+  }: {
+    value: T;
+    current: T;
+    onSelect: (v: T) => void;
+    label: string;
+    desc?: string;
+  }) {
+    const active = current === value;
+    return (
+      <button
+        type="button"
+        onClick={() => onSelect(value)}
+        className={cn(
+          "w-full text-left rounded-md border px-3 py-2.5 transition-colors",
+          active
+            ? "border-primary bg-secondary/60"
+            : "border-border hover:bg-muted"
+        )}
+        aria-pressed={active}
+      >
+        <div className="flex items-center gap-2">
+          <span
+            className={cn(
+              "h-3.5 w-3.5 rounded-full border flex items-center justify-center shrink-0",
+              active ? "border-primary" : "border-muted-foreground/50"
+            )}
+          >
+            {active && <span className="h-1.5 w-1.5 rounded-full bg-primary" />}
+          </span>
+          <span className="text-sm font-medium">{label}</span>
+        </div>
+        {desc && <p className="mt-1 pl-5 ml-5 text-xs text-muted-foreground">{desc}</p>}
+      </button>
+    );
+  }
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">{t("setting.privacy.title")}</CardTitle>
-        <CardDescription>{t("setting.privacy.hint")}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSave} className="space-y-1" noValidate>
+    <form onSubmit={handleSave} className="space-y-6" noValidate>
+      {/* A. 个人资料可见权限 */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">{t("setting.privacy.title")}</CardTitle>
+          <CardDescription>{t("setting.privacy.hint")}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-1">
           {/* 地区：硬性约束永久公开 */}
           <div className="flex items-center justify-between gap-4 py-3 border-b border-border bg-muted/30 -mx-3 px-3 rounded-md">
             <div className="space-y-0.5">
@@ -192,40 +250,100 @@ export function PrivacyForm() {
                 {t("setting.privacy.regionPermanentHint")}
               </p>
             </div>
-            <span className="px-3 py-1.5 text-xs font-medium bg-primary text-primary-foreground rounded-md">
+            <span className="px-3 py-1.5 text-xs font-medium bg-primary text-primary-foreground rounded-md shrink-0">
               {t("setting.privacy.public")}
             </span>
           </div>
-          <Row label={t("setting.privacy.bio")} fieldKey="bio" />
-          <Row label={t("setting.privacy.gender")} fieldKey="gender" />
-          <Row label={t("setting.privacy.birthday")} fieldKey="birthday" />
+          <VisibilityRow label={t("setting.privacy.bio")} fieldKey="bio" />
+          <VisibilityRow label={t("setting.privacy.gender")} fieldKey="gender" />
+          <VisibilityRow label={t("setting.privacy.birthday")} fieldKey="birthday" />
+        </CardContent>
+      </Card>
 
-          {error && (
-            <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive mt-4">
-              {error}
-            </p>
-          )}
-          {success && (
-            <p className="flex items-center gap-2 rounded-md bg-green-50 px-3 py-2 text-sm text-green-600 dark:bg-green-950/20 mt-4">
-              <CheckCircle2 className="h-4 w-4" />
-              {t("setting.privacy.saved")}
-            </p>
-          )}
+      {/* B. 发现 & 搜索权限 */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Search className="h-4 w-4" />
+            {t("setting.privacy.discoverTitle")}
+          </CardTitle>
+          <CardDescription>{t("setting.privacy.discoverHint")}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <OptionRow
+            value="all"
+            current={state.discoverability}
+            onSelect={(v) => setState((p) => ({ ...p, discoverability: v }))}
+            label={t("setting.privacy.discoverAll")}
+          />
+          <OptionRow
+            value="members"
+            current={state.discoverability}
+            onSelect={(v) => setState((p) => ({ ...p, discoverability: v }))}
+            label={t("setting.privacy.discoverMembers")}
+          />
+          <OptionRow
+            value="none"
+            current={state.discoverability}
+            onSelect={(v) => setState((p) => ({ ...p, discoverability: v }))}
+            label={t("setting.privacy.discoverNone")}
+          />
+        </CardContent>
+      </Card>
 
-          <div className="flex items-center gap-3 pt-4">
-            <Button type="submit" disabled={saving || !dirty}>
-              {saving ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  {t("setting.saving")}
-                </>
-              ) : (
-                t("setting.saveChanges")
-              )}
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+      {/* C. 内容默认可见范围 */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <FileEdit className="h-4 w-4" />
+            {t("setting.privacy.scopeTitle")}
+          </CardTitle>
+          <CardDescription>{t("setting.privacy.scopeHint")}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <OptionRow
+            value="public"
+            current={state.default_scope}
+            onSelect={(v) => setState((p) => ({ ...p, default_scope: v }))}
+            label={t("setting.privacy.scopePublic")}
+          />
+          <OptionRow
+            value="members"
+            current={state.default_scope}
+            onSelect={(v) => setState((p) => ({ ...p, default_scope: v }))}
+            label={t("setting.privacy.scopeMembers")}
+          />
+          <OptionRow
+            value="private"
+            current={state.default_scope}
+            onSelect={(v) => setState((p) => ({ ...p, default_scope: v }))}
+            label={t("setting.privacy.scopePrivate")}
+          />
+        </CardContent>
+      </Card>
+
+      {error && (
+        <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {error}
+        </p>
+      )}
+      {success && (
+        <p className="flex items-center gap-2 rounded-md bg-green-50 px-3 py-2 text-sm text-green-600 dark:bg-green-950/20">
+          <CheckCircle2 className="h-4 w-4" />
+          {t("setting.privacy.saved")}
+        </p>
+      )}
+
+      <Button type="submit" disabled={saving || !dirty}>
+        {saving ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            {t("setting.saving")}
+          </>
+        ) : (
+          t("setting.saveChanges")
+        )}
+      </Button>
+    </form>
   );
 }

@@ -257,14 +257,24 @@ class ProfileUpdate(BaseModel):
             return v
         if not isinstance(v, dict):
             raise ValueError("profile_privacy 必须是 JSON 对象")
-        # 仅允许这三个键；值必须是 public / private
-        allowed_keys = {"gender", "bio", "birthday"}
+        # 字段可见性：bio / gender / birthday → public / private
+        visibility_keys = {"gender", "bio", "birthday"}
+        # 发现与搜索权限：all=全部站内用户可搜索 / members=仅社团内部 / none=不可搜索
+        discoverability_values = {"all", "members", "none"}
+        # 新建内容默认可见范围：public / members / private
+        scope_values = {"public", "members", "private"}
+        allowed_values: dict[str, set[str]] = {
+            **{k: _PRIVACY_VISIBILITY for k in visibility_keys},
+            "discoverability": discoverability_values,
+            "default_scope": scope_values,
+        }
+        allowed_keys = set(allowed_values.keys())
         bad_keys = set(v.keys()) - allowed_keys
         if bad_keys:
             raise ValueError(f"profile_privacy 不支持的键：{','.join(sorted(bad_keys))}")
         for k, val in v.items():
-            if val not in _PRIVACY_VISIBILITY:
-                raise ValueError(f"profile_privacy.{k} 取值仅支持 public / private")
+            if val not in allowed_values[k]:
+                raise ValueError(f"profile_privacy.{k} 取值不合法")
         return v
 
 

@@ -1,0 +1,111 @@
+/* =============================================================================
+ * 503 维护页样式 —— 纯静态，完全独立于主项目
+ *
+ * 样式严格对齐 Next.js 默认 404 错误页：数字 24px / 500、文案 14px / 400、
+ * 同行排列（数字左 + 1px 竖分隔线 + 文字右）、全屏垂直 + 水平居中、
+ * 纯黑白、无多余装饰、无边框阴影。
+ * 配色完全独立，无视站内用户主题，仅由 @media (prefers-color-scheme) 跟随系统深浅色：
+ *   light：背景 #ffffff / 文字 #000000
+ *   dark ：背景 #000000 / 文字 #ffffff
+ * 字体仅使用本机系统字体栈，禁止任何外部 Web 字体，零额外网络请求。
+ * ============================================================================= */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  color-scheme: light dark;
+}
+
+.mnt-root {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0 24px;
+  background: #ffffff;
+  color: #000000;
+  font-family: -apple-system, "San Francisco", "Segoe UI", Roboto, system-ui, Helvetica, Arial, sans-serif;
+}
+
+/* 同一行：左「503」+ 竖分隔线 + 右文案（对齐 Next.js 默认 404 的行内块布局） */
+.mnt-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 数字：Next.js 默认 404 同款 24px / 500 / line-height 49px + 右侧 1px 分隔线 */
+.mnt-code {
+  display: inline-block;
+  margin: 0 20px 0 0;
+  padding: 0 23px 0 0;
+  border-right: 1px solid rgba(0, 0, 0, 0.3);
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 49px;
+  vertical-align: top;
+}
+
+.mnt-msg {
+  display: inline-block;
+  text-align: left;
+}
+
+/* 文案：Next.js 默认 404 同款 14px / 400；两行合计约 49px 与数字块等高对齐 */
+.mnt-msg-cn {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 24px;
+}
+
+.mnt-msg-en {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 24px;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+@media (prefers-color-scheme: dark) {
+  .mnt-root {
+    background: #000000;
+    color: #ffffff;
+  }
+
+  .mnt-code {
+    border-right-color: rgba(255, 255, 255, 0.3);
+  }
+
+  .mnt-msg-en {
+    color: rgba(255, 255, 255, 0.6);
+  }
+}
+
+/* 窄屏防溢出：缩小英文文案与数字留白 */
+@media (max-width: 420px) {
+  .mnt-root {
+    padding: 0 16px;
+  }
+
+  .mnt-code {
+    margin-right: 14px;
+    padding-right: 14px;
+  }
+
+  .mnt-msg-en {
+    font-size: 12px;
+    line-height: 20px;
+  }
+}

@@ -1,6 +1,8 @@
 """JWT 认证、密码哈希、角色权限依赖、登录会话校验、内网访问控制。"""
+import ipaddress
 from datetime import UTC, datetime, timedelta
 from enum import Enum
+from functools import lru_cache
 
 import bcrypt
 from fastapi import Depends, HTTPException, Request, status
@@ -10,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.csrf import SESSION_COOKIE
-from app.core.middleware import get_client_ip, ip_in_networks
+from app.core.middleware import get_client_ip
 from app.db.session import get_db
 
 settings = get_settings()
@@ -47,9 +49,58 @@ def is_admin_tier(role: Role) -> bool:
     return role_at_least(ADMIN_TIER, role)
 
 
-def is_admin_network(request: Request) -> bool:
-    """请求是否来自允许访问后台的私有内网。"""
-    return ip_in_networks(get_client_ip(request), settings.ADMIN_ALLOWED_NETWORKS)
+# ---------- 管理员可信 IP 白名单（IPv4 / IPv6 / 两种 CIDR 混合） ----------
+@lru_cache
+def _cached_networks(
+    entries: tuple[str, ...],
+) -> tuple[ipaddress.IPv4Network | ipaddress.IPv6Network, ...]:
+    """把白名单条目解析为 Network 对象（单 IP 自动视为 /32、/128 网段）。
+
+    运行时容错：非法条目跳过（Web 保存时已整体校验拒绝，环境变量沿用宽松解析）。
+    """
+    nets: list[ipaddress.IPv4Network | ipaddress.IPv6Network] = []
+    for entry in entries:
+        try:
+            nets.append(ipaddress.ip_network(entry, strict=False))
+        except ValueError:
+            continue
+    return tuple(nets)
+
+
+def _ip_in_trusted_entries(ip: str | None, entries: tuple[str, ...]) -> bool:
+    """运行时匹配：源 IP 与白名单条目各按自身协议构造对象，仅同协议做网段包含判断。
+
+    - 客户端为 IPv4 → 构造 IPv4Address，只与列表内 IPv4Network 比对，跳过全部 IPv6 条目；
+    - 客户端为 IPv6 → 构造 IPv6Address，只与列表内 IPv6Network 比对，跳过全部 IPv4 条目；
+    - 命中任意一条网段即放行；不做 IPv4-mapped-IPv6 等隐式协议转换（禁止跨协议比对）。
+    """
+    if not ip:
+        return False
+    try:
+        addr = ipaddress.ip_address(ip)
+    except ValueError:
+        return False
+    return any(addr.version == n.version and addr in n for n in _cached_networks(entries))
+
+
+async def is_admin_network(request: Request, db: AsyncSession) -> bool:
+    """管理员级账号的可信来源 IP 校验（白名单开关）。
+
+    优先级：数据库 Web 配置（SystemSetting.admin_trusted_ips）→ 环境变量
+    ADMIN_TRUSTED_IPS → 全部放行。任一来源非空即开启白名单模式：仅列表内
+    IPv4 / IPv6 / CIDR 命中才放行，其余来源拒绝。
+    仅作用于管理员类账号；普通用户路径不经过此校验。
+    """
+    from app.db.models import SystemSetting
+
+    ss = await db.get(SystemSetting, 1)
+    db_entries = tuple(ss.admin_trusted_ips or []) if ss else ()
+    if db_entries:
+        return _ip_in_trusted_entries(get_client_ip(request), db_entries)
+    env_entries = tuple(settings.admin_trusted_ips_list)
+    if env_entries:
+        return _ip_in_trusted_entries(get_client_ip(request), env_entries)
+    return True
 
 
 # ---------- 密码：bcrypt 加盐哈希，只存哈希不存原文 ----------
@@ -174,8 +225,8 @@ async def _authenticate(request: Request, db: AsyncSession) -> tuple[dict, objec
         sess = await bg_session_get(jti)
         if not sess:
             raise HTTPException(status_code=401, detail="登录会话已失效，请重新登录")
-        if not is_admin_network(request):
-            raise HTTPException(status_code=403, detail="管理员账号仅允许通过内网访问")
+        if not await is_admin_network(request, db):
+            raise HTTPException(status_code=403, detail="请求来源不合法")
         return {
             "break_glass": True,
             "role": Role.SUPER_ADMIN.value,
@@ -207,9 +258,9 @@ async def _authenticate(request: Request, db: AsyncSession) -> tuple[dict, objec
         raise HTTPException(status_code=401, detail="账号不存在或已停用")
 
     role = Role(user.role.value)
-    # 管理员级账号仅允许从内网使用（即使 token 被盗，外网也无法使用）
-    if is_admin_tier(role) and not is_admin_network(request):
-        raise HTTPException(status_code=403, detail="管理员账号仅允许通过内网访问")
+    # 管理员级账号来源 IP 白名单校验（默认空 = 不限制；即使 token 被盗，名单外来源也无法使用）
+    if is_admin_tier(role) and not await is_admin_network(request, db):
+        raise HTTPException(status_code=403, detail="请求来源不合法")
 
     # 滑动续期：活跃请求自动延长会话有效期
     sess.last_active_at = now

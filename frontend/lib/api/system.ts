@@ -24,6 +24,21 @@ export function updateSystemSettings(payload: Partial<SystemSettings>) {
   });
 }
 
+/**
+ * 保存管理员可信 IP 白名单（IPv4 / IPv6 / 两种 CIDR 混合，每行一条）。
+ * 传原始行数组（含空行 / # 注释行），后端过滤校验；任一行非法整体 400 拒绝并返回行号。
+ */
+export function updateAdminTrustedIps(ips: string[]) {
+  return apiFetch<{ admin_trusted_ips: string[] }>(
+    "/api/admin/config/admin-trusted-ips",
+    {
+      method: "PUT",
+      withAuth: true,
+      body: JSON.stringify({ ips }),
+    }
+  );
+}
+
 /** 后端 IP 黑名单接口用 QUERY 参数 ?ip=xxx */
 export function addIpBlacklist(ip: string) {
   return apiFetch<{ blacklist: string[] }>(

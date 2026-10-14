@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import delete as sa_delete
 from sqlalchemy import func, select
 
-from app.api import activities, admin_stats, announcements, audit, auth, blog, bug_report, comments, content, geo, i18n_public, health, memos, media, members, notifications, oauth, projects, query, realname, recruitment, recycle, register, security, sso, stats, system, system_init, tags, themes, translations, users
+from app.api import account, activities, admin_stats, announcements, audit, auth, blog, bug_report, comments, content, geo, i18n_public, health, memos, media, members, notifications, oauth, projects, query, realname, recruitment, recycle, register, security, sso, stats, system, system_init, tags, themes, translations, users
 from app.api.auth import security_answer_digest
 from app.core.config import get_settings
 from app.core.csrf import CSRF_HEADER, csrf_middleware
@@ -164,6 +164,8 @@ async def _migrate_columns(conn):
             ("network_port", "INTEGER DEFAULT 443"),
             ("network_listen_ip", "VARCHAR(64) DEFAULT '0.0.0.0'"),
             ("network_domains", "TEXT DEFAULT '[]'"),
+            # 管理员可信来源 IP 白名单（Web 配置，优先于环境变量 ADMIN_TRUSTED_IPS）
+            ("admin_trusted_ips", "TEXT DEFAULT '[]'"),
             # Phase 5：博客评论全局开关
             ("comments_enabled", "BOOLEAN DEFAULT 1"),
             # P0：活动自动归档开关
@@ -493,6 +495,7 @@ app.include_router(health.router)
 app.include_router(geo.router)
 app.include_router(i18n_public.router)
 app.include_router(auth.router)
+app.include_router(account.router)
 app.include_router(users.router)
 app.include_router(activities.router)
 app.include_router(activities.admin_router)
@@ -522,6 +525,7 @@ app.include_router(realname.admin_router)
 app.include_router(register.router)
 app.include_router(bug_report.router)
 app.include_router(system.router)
+app.include_router(system.admin_config_router)
 app.include_router(system_init.router)
 app.include_router(translations.router)
 app.include_router(query.router)

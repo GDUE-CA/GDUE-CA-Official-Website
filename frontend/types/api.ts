@@ -531,6 +531,8 @@ export interface SystemSettings {
   network_listen_ip: string;
   /** 站点绑定域名列表（参考值） */
   network_domains: string[];
+  /** 管理员可信来源 IP 白名单（Web 配置，优先于环境变量 ADMIN_TRUSTED_IPS；空 = 未配置） */
+  admin_trusted_ips: string[];
   /** 全局登录会话空闲超时（分钟）；预设值 [1,2,5,10,15,20,30,60,120] */
   session_idle_timeout_minutes: number;
 }
@@ -1470,4 +1472,75 @@ export interface BGConfirmRequest {
   action: string;
   target?: string | null;
   confirmed: boolean;
+}
+
+/* ===================== /setting 账号自服务（/api/account） ===================== */
+
+/** 深浅色模式 */
+export type ColorScheme = "light" | "dark" | "system";
+
+/** 界面显示偏好（GET/PUT /api/account/display） */
+export interface DisplayPreference {
+  theme_name: string | null;
+  color_scheme: ColorScheme;
+  font_scale: number;
+  enable_landscape: boolean;
+  updated_at?: string | null;
+}
+
+export type DisplayPreferenceUpdate = Partial<
+  Pick<
+    DisplayPreference,
+    "theme_name" | "color_scheme" | "font_scale" | "enable_landscape"
+  >
+>;
+
+/** 通知偏好（GET/PUT /api/account/notifications；安全项只读且恒 true） */
+export interface NotificationPreference {
+  content_liked: boolean;
+  content_commented: boolean;
+  content_replied: boolean;
+  biz_task_assigned: boolean;
+  biz_task_changed: boolean;
+  biz_announcement: boolean;
+  security_new_device: boolean;
+  security_credential_change: boolean;
+  security_notice_locked: boolean;
+  updated_at?: string | null;
+}
+
+export type NotificationPreferenceUpdate = Partial<
+  Pick<
+    NotificationPreference,
+    | "content_liked"
+    | "content_commented"
+    | "content_replied"
+    | "biz_task_assigned"
+    | "biz_task_changed"
+    | "biz_announcement"
+  >
+>;
+
+/** 黑名单条目（GET /api/account/blocks） */
+export interface BlockedUser {
+  id: number;
+  username: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  blocked_at: string;
+}
+
+/** 拉黑搜索候选用户（GET /api/account/blocks/search） */
+export interface BlockCandidate {
+  id: number;
+  username: string;
+  display_name: string | null;
+  avatar_url: string | null;
+}
+
+/** 第三方 OAuth 授权记录（GET /api/account/oauth-grants） */
+export interface OAuthGrant {
+  id: number;
+  provider: OAuthProvider;
+  created_at: string;
 }

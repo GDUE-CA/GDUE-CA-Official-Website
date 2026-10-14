@@ -42,7 +42,7 @@ export function Hero() {
 
           <motion.h1
             {...fadeUp(0.05)}
-            className="mt-5 md:mt-6 text-[52px] md:text-7xl lg:text-8xl leading-[1.05] font-bold tracking-[-0.03em]"
+            className="hero-display-title mt-5 md:mt-6"
           >
             {t("home.hero.title")}
           </motion.h1>

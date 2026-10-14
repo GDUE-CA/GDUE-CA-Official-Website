@@ -293,7 +293,8 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // 匹配所有页面路径，排除后端反代（api / uploads）、静态资源、图片优化、特殊文件与预取请求
+  // 匹配所有页面路径，排除后端反代（api / uploads）、静态资源、
+  // 图片优化、特殊文件与预取请求
   matcher: [
     {
       source:

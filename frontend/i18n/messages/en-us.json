@@ -4,6 +4,28 @@
     "description": "Official website of the Computer Association of Guangdong University of Education (Huadu Campus), founded in 2008 - club intro, events, recruitment, and tech blog",
     "keywords": "Computer Association, GDUECA, GDEI_CA, Guangdong University of Education, Huadu Campus, free repair, cybersecurity"
   },
+  "auth": {
+    "login": {
+      "toRegister": "Sign Up"
+    },
+    "register": {
+      "title": "Create Account",
+      "subtitle": "Create an account and join the Computer Association",
+      "username": "Username",
+      "usernamePlaceholder": "Enter your username",
+      "displayName": "Nickname",
+      "displayNamePlaceholder": "Enter your nickname",
+      "password": "Password",
+      "confirmPassword": "Confirm Password",
+      "email": "Email",
+      "optional": "(optional)",
+      "phone": "Phone",
+      "submit": "Sign Up",
+      "submitting": "Signing up...",
+      "toLogin": "Already have an account? Log in",
+      "error": "Registration failed, please try again later"
+    }
+  },
   "nav": {
     "home": "Home",
     "about": "About",
@@ -85,7 +107,10 @@
     "disabled": "Disabled",
     "copy": "Copy",
     "prevPage": "Previous",
-    "nextPage": "Next"
+    "nextPage": "Next",
+    "saving": "Saving...",
+    "loadFailed": "Loading failed. Please try again later",
+    "saveFailed": "Failed to save. Please try again later"
   },
   "home": {
     "hero": {
@@ -210,12 +235,15 @@
     "notFound": "User not found or deactivated",
     "joinedAt": "Joined {date}",
     "tabs": {
-      "memo": "Moments"
+      "memo": "Moments",
+      "memos": "Moments",
+      "blog": "Blog"
     },
     "emptyMemos": "No public moments yet",
     "emptyBlog": "No published blog posts",
     "personalInfo": "Personal Information",
     "personalInfoHint": "Edit all your profile fields at once; click Confirm to save",
+    "phonePlaceholder": "Enter your phone number",
     "continentAsia": "Asia",
     "continentEurope": "Europe",
     "continentAmerica": "Americas",
@@ -425,6 +453,7 @@
       "phoneCc": "Country Code",
       "phoneNumber": "Phone Number",
       "phoneNumberPlaceholder": "Local phone number (without country code)",
+      "phonePlaceholder": "Enter your phone number",
       "email": "Email (optional)",
       "emailPlaceholder": "Optional, for notifications",
       "position": "Preferred Department",
@@ -444,6 +473,7 @@
         "phoneCcRequired": "Please select a country code",
         "phoneRequired": "Please enter your phone number",
         "phoneInvalid": "Phone number does not match the selected country code format",
+        "phoneNumberInvalid": "Invalid phone number format",
         "emailInvalid": "Please enter a valid email",
         "activityRequired": "Please select an activity first",
         "submitError": "Submission failed, please try again later",
@@ -610,7 +640,10 @@
   },
   "setting": {
     "comingSoon": "Coming soon",
+    "soonBadge": "Coming soon",
     "saveChanges": "Save changes",
+    "save": "Save",
+    "saved": "Saved",
     "saving": "Saving...",
     "unsavedConfirm": "You have unsaved changes. Discard them?",
     "unsavedConfirmDiscard": "Discard changes",
@@ -641,7 +674,9 @@
       "birthday": "Birthday",
       "birthdayPlaceholder": "Pick a date",
       "bio": "Bio",
-      "bioPlaceholder": "A short tagline about yourself"
+      "bioPlaceholder": "A short tagline about yourself",
+      "qrTitle": "Profile QR code",
+      "qrHint": "Scan with your phone to open your public profile directly"
     },
     "privacy": {
       "title": "Privacy",
@@ -654,7 +689,33 @@
       "public": "Public",
       "private": "Only me",
       "saved": "Privacy settings saved",
-      "saveFailed": "Failed to save privacy settings"
+      "saveFailed": "Failed to save privacy settings",
+      "discoverTitle": "Discovery & search",
+      "discoverHint": "Control who can find your profile through in-site search",
+      "discoverAll": "All site members can find me",
+      "discoverMembers": "Only association members can find me",
+      "discoverNone": "Not searchable; direct link only",
+      "scopeTitle": "Default content visibility",
+      "scopeHint": "Default permission for new notes and blog posts; each item can still be set individually",
+      "scopePublic": "Public by default",
+      "scopeMembers": "Association members only by default",
+      "scopePrivate": "Private (only me) by default"
+    },
+    "blocks": {
+      "title": "Block list",
+      "hint": "Blocked users cannot visit your profile or comment on / like your content",
+      "searchPlaceholder": "Search by username to block",
+      "searching": "Searching...",
+      "noMatch": "No matching users found",
+      "block": "Block",
+      "blocked": "Blocked",
+      "unblock": "Unblock",
+      "listTitle": "Blocked users",
+      "empty": "Your block list is empty",
+      "blockedHint": "{name} has been blocked",
+      "unblockedHint": "{name} has been unblocked",
+      "loadFailed": "Failed to load block list",
+      "actionFailed": "Action failed. Please try again later"
     },
     "region": {
       "title": "Region & Time Zone",
@@ -724,12 +785,111 @@
       "switchLangConfirm": "Switch to \"{name}\"? The page will reload.",
       "refreshNow": "Reload now"
     },
+    "display": {
+      "colorSchemeTitle": "Dark mode",
+      "colorSchemeHint": "Choose light, dark, or follow the system setting automatically",
+      "fontScaleTitle": "Font size",
+      "fontScaleHint": "Drag to scale the interface font across the site",
+      "resetFont": "Reset",
+      "fontPreview": "Preview: Account security · Notifications · Storage & cache",
+      "landscapeTitle": "Landscape mode",
+      "landscapeHint": "Allow switching to a landscape layout on mobile devices"
+    },
+    "storage": {
+      "usageTitle": "Storage usage estimate",
+      "usageHint": "Figures below are local browser estimates for reference only; your cloud account data is unaffected",
+      "estimating": "Estimating...",
+      "totalEstimate": "Total local cache (estimated)",
+      "refresh": "Re-estimate",
+      "cacheStorage": "Web cache",
+      "cacheEntries": "{count} cache entries",
+      "localStorage": "Local storage",
+      "quotaHint": "Browser storage quota: about {used} used of {total}",
+      "clearCacheTitle": "Clear web cache",
+      "clearCacheDesc": "Clears this site's static-resource cache in your browser and takes effect after refresh. No cloud account data is deleted.",
+      "clearCache": "Clear web cache",
+      "clearCacheConfirm": "Clear this site's web cache? The page will reload afterwards. Cloud data is unaffected.",
+      "clearNow": "Clear now",
+      "clearCacheFailed": "Failed to clear web cache. Please try again later",
+      "clearCookiesTitle": "Clear this site's cookies",
+      "clearCookiesDesc": "Clears all cookies this site stored in your browser and destroys every login session of your account.",
+      "clearCookies": "Clear all cookies",
+      "clearCookiesWarn": "Clear all cookies for this site? You will be signed out and need to sign in again.",
+      "clearCookiesWarn2": "This also destroys all login sessions of your account on every device.",
+      "confirmLogout": "Clear and sign out",
+      "clearCookiesFailed": "Failed to clear cookies. Please try again later"
+    },
+    "notify": {
+      "groupContent": "Engagement",
+      "groupBiz": "Work & announcements",
+      "groupSecurity": "Account security",
+      "securityLockedHint": "Security notifications cannot be turned off; they keep your account safe",
+      "liked": "My note is liked",
+      "commented": "My note receives a comment",
+      "replied": "Someone replies to my comment",
+      "taskAssigned": "A task is assigned to me",
+      "taskChanged": "A task status changes",
+      "announcement": "Site announcements",
+      "newDevice": "Sign-in from a new/remote device",
+      "credentialChange": "Password change & credential binding changes",
+      "systemTitle": "System notification permissions",
+      "systemHint": "To block browser notifications at OS level, open your system or browser notification settings.",
+      "openSystemSettings": "Open system settings"
+    },
+    "bindPhone": {
+      "title": "Linked phone number",
+      "hint": "Your phone number can be used for sign-in verification and account recovery. Changes are sensitive actions recorded in the security audit log.",
+      "current": "Currently linked",
+      "none": "Not linked",
+      "newPhone": "New phone number",
+      "invalid": "Invalid phone number (5–32 digits; country code + and spaces allowed)",
+      "saved": "Phone number updated"
+    },
+    "bindEmail": {
+      "title": "Linked email address",
+      "hint": "Your email is an important credential for sign-in and account recovery.",
+      "current": "Currently linked",
+      "none": "Not linked",
+      "changeSoon": "Changing your email requires verification codes and will become available in a later release."
+    },
+    "oauth": {
+      "title": "Authorized apps",
+      "hint": "Manage third-party apps you have authorized. Once revoked, that account can no longer be used to sign in here",
+      "empty": "No third-party authorizations yet",
+      "github": "GitHub",
+      "google": "Google",
+      "microsoft": "Microsoft",
+      "apple": "Apple",
+      "grantedAt": "Authorized on: {date}",
+      "revoke": "Revoke",
+      "revokeTitle": "Revoke authorization",
+      "revokeConfirm": "Revoke access for \"{name}\"? That account will no longer be able to sign in to this site.",
+      "revokeFailed": "Failed to revoke authorization. Please try again later"
+    },
+    "about": {
+      "title": "About",
+      "hint": "Official website of the Computer Association, Guangdong University of Education",
+      "version": "Version",
+      "repo": "Open-source repository",
+      "privacy": "Privacy Policy",
+      "terms": "Terms of Service"
+    },
+    "data": {
+      "exportTitle": "Export all my personal data",
+      "exportHint": "After you request an export, the server packages your data (profile, notes, comments) asynchronously and sends a download link via in-site notification when ready.",
+      "deleteTitle": "Delete account",
+      "deleteHint": "Account deletion requires confirmation and goes through a cooling-off period; signing in during that period cancels the request."
+    },
     "security": {
       "title": "Account Security",
       "usernameConfirm": "Change your username to \"{name}\"? You will need the new username to sign in afterwards.",
       "comingSoon": "Changing your linked email address and phone number will be available soon",
       "changeEmail": "Change linked email",
-      "changePhone": "Change linked phone"
+      "changePhone": "Change linked phone",
+      "totpTitle": "Two-factor authentication (TOTP)",
+      "totpHint": "Use an authenticator app (e.g. Google Authenticator) to generate one-time codes as a second layer of sign-in protection.",
+      "emergencyTitle": "Emergency contacts",
+      "emergencyHint": "Add emergency contacts who can help verify your identity and recover the account when you cannot sign in."
     },
     "sessions": {
       "globalTimeoutNotice": "⚠️Global session idle timeout: {minutes} minutes. You will be automatically logged out after inactivity.",
@@ -740,21 +900,49 @@
     "tabs": {
       "profile": "Profile",
       "privacy": "Privacy",
+      "password": "Change password",
+      "phone": "Linked phone",
+      "email": "Linked email",
+      "blocks": "Block list",
+      "display": "Interface & display",
+      "storage": "Storage & cache",
+      "dataExport": "Export my data",
+      "dataDelete": "Delete account",
+      "about": "About",
+      "totp": "Two-factor auth",
+      "emergencyContact": "Emergency contacts",
       "localization": "Localization",
       "region": "Region & Time Zone",
       "regionalFormat": "Regional Format",
       "appearance": "Appearance & Language",
       "security": "Account Security",
       "sessions": "Devices",
-      "connections": "Linked Accounts",
+      "connections": "Authorized apps",
       "notifications": "Notifications"
     },
     "group": {
       "profile": "Profile",
+      "security": "Account & security",
+      "privacy": "Privacy",
+      "notifications": "Notifications",
+      "display": "Interface & display",
+      "storage": "Storage & cache",
+      "oauth": "Authorized apps",
+      "data": "Data",
+      "about": "About",
+      "system": "System administration",
       "localization": "Localization",
-      "appearance": "Appearance",
-      "security": "Security",
-      "notifications": "Notifications"
+      "appearance": "Appearance"
+    },
+    "system": {
+      "dashboard": "System dashboard",
+      "users": "User management",
+      "roles": "Roles & permissions",
+      "content": "Content management",
+      "config": "Global settings",
+      "audit": "Global audit log",
+      "announcements": "Announcements",
+      "themes": "Theme management"
     },
     "hints": {
       "appearanceInstant": "Theme and language changes apply instantly — no need to save"
@@ -1067,6 +1255,7 @@
       "security.access": "Access Control",
       "config": "System Configuration",
       "config.site": "Site Basics",
+      "config.themes": "Theme Management",
       "config.locale": "Global Localization",
       "config.oauth": "OAuth Channels",
       "config.sso": "SSO Trusted Apps",
@@ -1276,6 +1465,11 @@
       "sessionIdleTimeoutDesc": "Configure the idle timeout for all login sessions. Users will be forcibly logged out after timeout. Only affects new login sessions; existing sessions are not affected.",
       "sessionIdleTimeoutMinutes": "minutes",
       "sessionIdleTimeoutNote": "Only preset values supported: 1, 2, 5, 10, 15, 20, 30, 60, 120 minutes. Maximum 120 minutes (2 hours).",
+      "adminTrustedIpsTitle": "Admin Trusted IP Whitelist",
+      "adminTrustedIpsDesc": "Note: this whitelist only restricts admin account logins; regular users are unaffected. Supports IPv4, IPv6, and CIDR ranges of both protocols. An empty list disables IP restrictions; brute-force login protection always remains active.",
+      "adminTrustedIpsLabel": "Whitelist entries (one per line, # comments supported)",
+      "adminTrustedIpsPlaceholder": "# One entry per line; IPv4, IPv6, IPv4-CIDR, IPv6-CIDR supported\n# Empty = whitelist off, all IPs can log in to admin accounts\n# Examples:\n127.0.0.1\n192.168.1.0/24\n::1\n2001:db8::/32",
+      "adminTrustedIpsNote": "⚠️ Priority: the database web config takes precedence; the env var ADMIN_TRUSTED_IPS is read only when the database list is empty.",
       "netTitle": "Network Configuration",
       "netDesc": "Reference values for backend port, listen address and site domains. Changes require manual Nginx/Caddy reload by ops.",
       "netPort": "Backend Port",
@@ -1542,6 +1736,42 @@
       "errYearInvalid": "Year must be an integer between 1900 and 3000",
       "updatedAt": "Updated",
       "invalidId": "Invalid project ID"
+    },
+    "themes": {
+      "title": "UI Theme Management",
+      "desc": "Theme variable pack CRUD: layout skeleton, light/dark CSS variables, enable & ordering; import JSON to add seasonal themes",
+      "newTitle": "New Theme",
+      "editTitle": "Edit Theme",
+      "newBtn": "New Theme",
+      "importBtn": "Import JSON",
+      "editBtn": "Edit",
+      "deleteBtn": "Delete",
+      "colKey": "Key",
+      "colName": "Theme",
+      "colLayout": "Layout",
+      "colEnabled": "Status",
+      "colSort": "Order",
+      "colActions": "Actions",
+      "empty": "No themes yet",
+      "builtin": "Built-in",
+      "fieldKey": "Theme Key",
+      "fieldName": "Display Name",
+      "fieldLayout": "Layout Skeleton",
+      "fieldCssVars": "Light CSS Variables (JSON)",
+      "fieldDarkVars": "Dark CSS Variables (JSON, leave empty to inherit base dark)",
+      "fieldEnabled": "Enable this theme",
+      "fieldSort": "Order (smaller comes first)",
+      "layoutMicrosoft": "Microsoft (two-column)",
+      "layoutApple": "Apple (three-column)",
+      "keyPlaceholder": "Starts with a lowercase letter; digits and hyphens allowed",
+      "cssVarsHint": "Keys must be CSS variable names starting with --, e.g. {\"--radius\": \"1rem\"}",
+      "deleteConfirm": "Delete theme \"{name}\"? Users who selected it will fall back to the default theme.",
+      "deleted": "Theme deleted",
+      "saved": "Theme saved",
+      "errKeyInvalid": "Invalid key format: must start with a lowercase letter, contain only lowercase letters/digits/hyphens, max 32 characters",
+      "errNameRequired": "Please enter a display name",
+      "errJsonInvalid": "CSS variables JSON is invalid (must be an object)",
+      "errImportInvalid": "The imported file is not a valid theme JSON"
     },
     "blog": {
       "title": "Blog Management",
@@ -1820,7 +2050,8 @@
       "disable": "Disable",
       "deleteConfirm": "Delete app \"{name}\"? This cannot be undone.",
       "secretTitle": "Client Secret (shown once)",
-      "secretOnceHint": "Save the secret for \"{name}\" now; it cannot be viewed again after closing"
+      "secretOnceHint": "Save the secret for \"{name}\" now; it cannot be viewed again after closing",
+      "createdAt": "Created at"
     },
     "realname": {
       "title": "Realname Review",

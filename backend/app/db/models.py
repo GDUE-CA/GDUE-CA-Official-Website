@@ -7,6 +7,7 @@ from sqlalchemy import (
     Boolean,
     DateTime,
     Enum as SAEnum,
+    Float,
     ForeignKey,
     Integer,
     String,
@@ -149,6 +150,78 @@ class LoginSession(Base):
     last_active_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     # 会话硬顶：登录时间 + token 有效期
     expires_at: Mapped[datetime] = mapped_column(DateTime)
+
+
+# ---------- 用户界面显示偏好（/setting/界面与显示，跟随账号多端同步） ----------
+class ColorScheme(str, Enum):
+    LIGHT = "light"    # 浅色
+    DARK = "dark"      # 深色
+    SYSTEM = "system"  # 跟随系统
+
+
+class UserDisplayPreference(Base):
+    """界面显示偏好：风格主题 / 深浅色 / 字体缩放 / 横屏。每用户至多一行。"""
+    __tablename__ = "user_display_preferences"
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), primary_key=True)
+    # 风格主题 key（default / apple / festival:*）；NULL = 跟随系统默认
+    theme_name: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # 深浅色模式
+    color_scheme: Mapped[ColorScheme] = mapped_column(
+        SAEnum(ColorScheme), default=ColorScheme.SYSTEM
+    )
+    # 字体缩放系数：1.0 = 默认，允许 0.85 ~ 1.30
+    font_scale: Mapped[float] = mapped_column(Float, default=1.0)
+    # 是否允许横屏（移动端偏好；前端视能力应用）
+    enable_landscape: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+
+
+# ---------- 用户通知偏好（/setting/通知设置；安全类通知强制锁定） ----------
+class UserNotificationPreference(Base):
+    """通知开关。内容互动/业务消息可自由开关；安全告警强制开启（security_notice_locked 恒为 True）。"""
+    __tablename__ = "user_notification_preferences"
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), primary_key=True)
+    # —— 内容互动类 ——
+    # 笔记被点赞
+    content_liked: Mapped[bool] = mapped_column(Boolean, default=True)
+    # 笔记收到评论
+    content_commented: Mapped[bool] = mapped_column(Boolean, default=True)
+    # 我的评论收到回复
+    content_replied: Mapped[bool] = mapped_column(Boolean, default=True)
+    # —— 业务协作类 ——
+    # 分配给我的任务
+    biz_task_assigned: Mapped[bool] = mapped_column(Boolean, default=True)
+    # 任务状态变更
+    biz_task_changed: Mapped[bool] = mapped_column(Boolean, default=True)
+    # 站内公告
+    biz_announcement: Mapped[bool] = mapped_column(Boolean, default=True)
+    # —— 账号安全类（锁死，前端置灰；后端忽略任何关闭请求） ——
+    # 异地设备登录提醒
+    security_new_device: Mapped[bool] = mapped_column(Boolean, default=True)
+    # 密码修改 / 绑定变更提醒
+    security_credential_change: Mapped[bool] = mapped_column(Boolean, default=True)
+    # 安全通知锁定标记：恒为 True，仅作语义表达与前端展示依据
+    security_notice_locked: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+
+
+# ---------- 用户黑名单（/setting/隐私设置/黑名单） ----------
+class UserBlock(Base):
+    """拉黑关系：blocker 拉黑 blocked。被拉黑者无法访问其主页、评论、点赞。"""
+    __tablename__ = "user_blocks"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    blocker_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    blocked_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("blocker_id", "blocked_id", name="uq_user_block_pair"),
+    )
 
 
 # ---------- 活动 ----------
@@ -333,6 +406,10 @@ class SystemSetting(Base):
     comments_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     # 活动自动归档开关：开启后定时任务将 end_at < 当前 UTC 时间的活动自动置为 archived
     auto_archive_events: Mapped[bool] = mapped_column(Boolean, default=False)
+    # 管理员可信来源 IP 白名单（Web 配置，优先于环境变量 ADMIN_TRUSTED_IPS）。
+    # 存原始字符串数组（单 IP 内部按 /32、/128 网段匹配）；空列表 = 未配置，
+    # 回落读取环境变量 ADMIN_TRUSTED_IPS，环境变量也为空则不限制来源
+    admin_trusted_ips: Mapped[list[str]] = mapped_column(JSON, default=list)
     # 全局登录会话空闲超时（分钟）：管理员在后台配置，预设值 [1,2,5,10,15,20,30,60,120]
     # 最大硬性限制 120 分钟（2 小时）；基于 last_active_at 滑动计算，非登录时刻
     session_idle_timeout_minutes: Mapped[int] = mapped_column(Integer, default=30)

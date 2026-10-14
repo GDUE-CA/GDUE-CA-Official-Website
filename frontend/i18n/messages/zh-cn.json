@@ -4,6 +4,28 @@
     "description": "广东第二师范学院（花都校区）计算机协会官方网站，成立于2008年 - 社团介绍、活动公告、招新报名、技术博客",
     "keywords": "计算机协会,广东二师计协,GDEI_CA,广东第二师范学院,花都校区,义务维修,网络安全"
   },
+  "auth": {
+    "login": {
+      "toRegister": "注册账号"
+    },
+    "register": {
+      "title": "用户注册",
+      "subtitle": "创建账号，加入计算机协会",
+      "username": "用户名",
+      "usernamePlaceholder": "请输入用户名",
+      "displayName": "昵称",
+      "displayNamePlaceholder": "请输入昵称",
+      "password": "密码",
+      "confirmPassword": "确认密码",
+      "email": "邮箱",
+      "optional": "（可选）",
+      "phone": "手机号",
+      "submit": "注册",
+      "submitting": "注册中...",
+      "toLogin": "已有账号？去登录",
+      "error": "注册失败，请稍后重试"
+    }
+  },
   "nav": {
     "home": "首页",
     "about": "社团介绍",
@@ -85,7 +107,10 @@
     "disabled": "已停用",
     "copy": "复制",
     "prevPage": "上一页",
-    "nextPage": "下一页"
+    "nextPage": "下一页",
+    "saving": "保存中...",
+    "loadFailed": "加载失败，请稍后重试",
+    "saveFailed": "保存失败，请稍后重试"
   },
   "home": {
     "hero": {
@@ -210,12 +235,15 @@
     "notFound": "用户不存在或已注销",
     "joinedAt": "加入于 {date}",
     "tabs": {
-      "memo": "说说"
+      "memo": "说说",
+      "memos": "说说",
+      "blog": "博客"
     },
     "emptyMemos": "暂无公开说说",
     "emptyBlog": "暂无公开博客",
     "personalInfo": "个人信息",
     "personalInfoHint": "统一编辑所有个人资料，点击确定一次性保存",
+    "phonePlaceholder": "请输入手机号码",
     "continentAsia": "亚洲",
     "continentEurope": "欧洲",
     "continentAmerica": "美洲",
@@ -425,6 +453,7 @@
       "phoneCc": "国家区号",
       "phoneNumber": "手机号",
       "phoneNumberPlaceholder": "本地手机号（不含区号）",
+      "phonePlaceholder": "请输入手机号",
       "email": "邮箱（可选）",
       "emailPlaceholder": "可选，用于接收通知",
       "position": "意向部门",
@@ -444,6 +473,7 @@
         "phoneCcRequired": "请选择国家区号",
         "phoneRequired": "请输入手机号",
         "phoneInvalid": "请输入符合该区号规范的手机号",
+        "phoneNumberInvalid": "手机号格式不正确",
         "emailInvalid": "请输入有效的邮箱",
         "activityRequired": "请先选择一个活动",
         "submitError": "提交失败，请稍后重试",
@@ -610,7 +640,10 @@
   },
   "setting": {
     "comingSoon": "敬请期待",
+    "soonBadge": "敬请期待",
     "saveChanges": "保存更改",
+    "save": "保存",
+    "saved": "已保存",
     "saving": "保存中...",
     "unsavedConfirm": "尚有未保存更改，是否丢弃修改？",
     "unsavedConfirmDiscard": "丢弃修改",
@@ -641,7 +674,9 @@
       "birthday": "生日",
       "birthdayPlaceholder": "请选择日期",
       "bio": "个性签名",
-      "bioPlaceholder": "一句话介绍自己"
+      "bioPlaceholder": "一句话介绍自己",
+      "qrTitle": "个人主页二维码",
+      "qrHint": "使用手机扫码，可直达你的个人主页"
     },
     "privacy": {
       "title": "隐私设置",
@@ -654,7 +689,33 @@
       "public": "公开",
       "private": "仅自己",
       "saved": "隐私设置已保存",
-      "saveFailed": "隐私设置保存失败"
+      "saveFailed": "隐私设置保存失败",
+      "discoverTitle": "发现与搜索权限",
+      "discoverHint": "控制谁可以通过站内搜索找到你的个人主页",
+      "discoverAll": "全部站内用户可搜索",
+      "discoverMembers": "仅社团内部成员可搜索",
+      "discoverNone": "不可搜索，仅允许通过链接直接访问",
+      "scopeTitle": "内容默认可见范围",
+      "scopeHint": "新建笔记、博客时的默认权限；单篇内容仍可单独设置",
+      "scopePublic": "默认公开",
+      "scopeMembers": "默认仅社团内部可见",
+      "scopePrivate": "默认仅自己可见（私有）"
+    },
+    "blocks": {
+      "title": "黑名单管理",
+      "hint": "被加入黑名单的用户无法访问你的主页，也无法评论、点赞你的内容",
+      "searchPlaceholder": "搜索用户名添加到黑名单",
+      "searching": "搜索中...",
+      "noMatch": "未找到匹配的用户",
+      "block": "拉黑",
+      "blocked": "已拉黑",
+      "unblock": "解除",
+      "listTitle": "已拉黑用户",
+      "empty": "黑名单为空",
+      "blockedHint": "已将 {name} 加入黑名单",
+      "unblockedHint": "已将 {name} 移出黑名单",
+      "loadFailed": "黑名单加载失败",
+      "actionFailed": "操作失败，请稍后重试"
     },
     "region": {
       "title": "地区与时区",
@@ -724,12 +785,111 @@
       "switchLangConfirm": "切换到「{name}」后页面将刷新，是否继续？",
       "refreshNow": "立即刷新"
     },
+    "display": {
+      "colorSchemeTitle": "深色模式",
+      "colorSchemeHint": "选择浅色、深色，或跟随系统设置自动切换",
+      "fontScaleTitle": "字体大小",
+      "fontScaleHint": "拖动调整全站界面字体的缩放比例",
+      "resetFont": "恢复默认",
+      "fontPreview": "预览：账号安全 · 通知设置 · 存储与缓存",
+      "landscapeTitle": "横屏模式",
+      "landscapeHint": "允许在移动端横屏时切换为横向布局"
+    },
+    "storage": {
+      "usageTitle": "存储占用估算",
+      "usageHint": "以下数据为浏览器本地估算，仅供参考；云端账号数据不受影响",
+      "estimating": "正在估算...",
+      "totalEstimate": "本地缓存总占用（估算）",
+      "refresh": "重新估算",
+      "cacheStorage": "网页缓存",
+      "cacheEntries": "共 {count} 项缓存",
+      "localStorage": "本地存储",
+      "quotaHint": "浏览器存储配额：已占用约 {used} / {total}",
+      "clearCacheTitle": "清除网页缓存",
+      "clearCacheDesc": "清除本站在浏览器中的静态资源缓存，刷新页面后生效；不会删除任何云端账号数据。",
+      "clearCache": "清除网页缓存",
+      "clearCacheConfirm": "确认清除本站网页缓存？清除后页面将自动刷新，云端数据不受影响。",
+      "clearNow": "立即清除",
+      "clearCacheFailed": "网页缓存清除失败，请稍后重试",
+      "clearCookiesTitle": "清除本站 Cookie",
+      "clearCookiesDesc": "清除本站写入浏览器的全部 Cookie，同时销毁你在本站的全部登录会话。",
+      "clearCookies": "清除全部 Cookie",
+      "clearCookiesWarn": "确认清除本站所有 Cookie？清除之后您将会被退出登录，需要重新登录。",
+      "clearCookiesWarn2": "该操作会同时销毁当前账号在所有设备上的登录会话。",
+      "confirmLogout": "确认清除并退出登录",
+      "clearCookiesFailed": "Cookie 清除失败，请稍后重试"
+    },
+    "notify": {
+      "groupContent": "内容互动",
+      "groupBiz": "业务协作",
+      "groupSecurity": "账号安全",
+      "securityLockedHint": "账号安全通知无法关闭，用于保障您账号安全",
+      "liked": "笔记被点赞",
+      "commented": "笔记收到评论",
+      "replied": "我的评论收到回复",
+      "taskAssigned": "分配给我的任务",
+      "taskChanged": "任务状态变更",
+      "announcement": "站内公告",
+      "newDevice": "异地设备登录提醒",
+      "credentialChange": "密码修改、绑定变更提醒",
+      "systemTitle": "系统通知权限",
+      "systemHint": "如需在系统层面关闭浏览器通知，请前往操作系统或浏览器的通知设置。",
+      "openSystemSettings": "前往系统设置"
+    },
+    "bindPhone": {
+      "title": "绑定手机号",
+      "hint": "手机号可用于登录验证与账号找回；变更绑定属于敏感操作，将记入安全审计日志。",
+      "current": "当前绑定",
+      "none": "未绑定",
+      "newPhone": "新手机号",
+      "invalid": "手机号格式不正确（5-32 位数字，可含区号 + 与空格）",
+      "saved": "手机号绑定已更新"
+    },
+    "bindEmail": {
+      "title": "绑定邮箱",
+      "hint": "邮箱是重要的登录与账号找回凭证。",
+      "current": "当前绑定",
+      "none": "未绑定",
+      "changeSoon": "邮箱换绑需进行验证码校验，该功能将在后续版本开放。"
+    },
+    "oauth": {
+      "title": "授权管理",
+      "hint": "管理你授权过的第三方应用；撤销后将无法再使用该账号登录本站",
+      "empty": "暂无第三方授权记录",
+      "github": "GitHub",
+      "google": "Google",
+      "microsoft": "Microsoft",
+      "apple": "Apple",
+      "grantedAt": "授权时间：{date}",
+      "revoke": "撤销授权",
+      "revokeTitle": "撤销第三方授权",
+      "revokeConfirm": "确认撤销「{name}」的授权？撤销后该账号将无法再用于登录本站。",
+      "revokeFailed": "撤销授权失败，请稍后重试"
+    },
+    "about": {
+      "title": "关于本站",
+      "hint": "广东第二师范学院计算机协会官方网站",
+      "version": "当前版本",
+      "repo": "开源仓库",
+      "privacy": "隐私政策",
+      "terms": "用户协议"
+    },
+    "data": {
+      "exportTitle": "导出我的全部个人数据",
+      "exportHint": "提交申请后由服务器异步打包（个人资料、笔记、评论），完成后通过站内通知提供下载链接。",
+      "deleteTitle": "账号注销",
+      "deleteHint": "注销需二次确认并经过冷静期；冷静期内登录可撤回申请。"
+    },
     "security": {
       "title": "账号安全",
       "usernameConfirm": "确认将用户名修改为「{name}」？修改后需使用新用户名登录。",
       "comingSoon": "更换绑定邮箱与手机号的功能即将上线",
       "changeEmail": "更换绑定邮箱",
-      "changePhone": "更换绑定手机号"
+      "changePhone": "更换绑定手机号",
+      "totpTitle": "两步验证（TOTP）",
+      "totpHint": "使用身份验证器 App（如 Google Authenticator）生成动态验证码，为登录增加第二重保护。",
+      "emergencyTitle": "应急联系人",
+      "emergencyHint": "设置应急联系人，在账号无法登录时辅助完成身份核验与找回。"
     },
     "sessions": {
       "globalTimeoutNotice": "⚠️本站全局登录空闲超时：{minutes}分钟；闲置无操作将会被自动下线。",
@@ -740,21 +900,49 @@
     "tabs": {
       "profile": "基础资料",
       "privacy": "隐私设置",
+      "password": "修改登录密码",
+      "phone": "绑定手机号",
+      "email": "绑定邮箱",
+      "blocks": "黑名单管理",
+      "display": "界面与显示",
+      "storage": "存储与缓存",
+      "dataExport": "导出个人数据",
+      "dataDelete": "账号注销",
+      "about": "关于本站",
+      "totp": "两步验证",
+      "emergencyContact": "应急联系人",
       "localization": "本地化",
       "region": "地区与时区",
       "regionalFormat": "区域格式",
       "appearance": "外观与语言",
       "security": "账号安全",
       "sessions": "登录设备",
-      "connections": "第三方账号",
-      "notifications": "通知偏好"
+      "connections": "授权管理",
+      "notifications": "通知设置"
     },
     "group": {
       "profile": "个人资料",
+      "security": "账号与安全",
+      "privacy": "隐私设置",
+      "notifications": "通知设置",
+      "display": "界面与显示",
+      "storage": "存储与缓存",
+      "oauth": "授权管理",
+      "data": "数据管理",
+      "about": "关于本站",
+      "system": "系统管理",
       "localization": "本地化",
-      "appearance": "外观",
-      "security": "账号安全",
-      "notifications": "通知"
+      "appearance": "外观"
+    },
+    "system": {
+      "dashboard": "系统仪表盘总览",
+      "users": "用户管理",
+      "roles": "角色与权限管理",
+      "content": "内容管理",
+      "config": "系统全局配置",
+      "audit": "全局审计日志",
+      "announcements": "公告管理",
+      "themes": "主题管理"
     },
     "hints": {
       "appearanceInstant": "主题与语言切换即时生效，无需保存"
@@ -1359,6 +1547,11 @@
       "sessionIdleTimeoutDesc": "配置全站登录会话的空闲超时时间，超时后用户将被强制下线。仅影响新登录会话，存量会话不受影响。",
       "sessionIdleTimeoutMinutes": "分钟",
       "sessionIdleTimeoutNote": "仅支持预设值：1, 2, 5, 10, 15, 20, 30, 60, 120 分钟。最大 120 分钟（2 小时）。",
+      "adminTrustedIpsTitle": "管理员可信 IP 白名单",
+      "adminTrustedIpsDesc": "说明：本白名单仅限制管理员账号登录；普通用户不受影响。支持 IPv4、IPv6 以及两种协议的 CIDR 网段。列表为空时关闭 IP 限制；防爆破登录限制始终生效。",
+      "adminTrustedIpsLabel": "白名单列表（每行一条，支持 # 注释）",
+      "adminTrustedIpsPlaceholder": "# 每行一条，支持 IPv4、IPv6、IPv4-CIDR、IPv6-CIDR\n# 留空=关闭白名单，所有IP均可登录管理员账号\n# 示例：\n127.0.0.1\n192.168.1.0/24\n::1\n2001:db8::/32",
+      "adminTrustedIpsNote": "⚠️ 优先级：数据库 Web 配置优先；数据库为空才读取环境变量 ADMIN_TRUSTED_IPS。",
       "netTitle": "网络配置",
       "netDesc": "后端服务端口、监听地址与站点域名参考值。实际生效需运维手动修改 Nginx/Caddy 并重载配置。",
       "netPort": "后端端口",
@@ -1857,7 +2050,8 @@
       "disable": "停用",
       "deleteConfirm": "确定删除应用「{name}」？该操作不可恢复。",
       "secretTitle": "Client Secret（仅本次展示）",
-      "secretOnceHint": "请立即保存「{name}」的 Secret，关闭后无法再次查看"
+      "secretOnceHint": "请立即保存「{name}」的 Secret，关闭后无法再次查看",
+      "createdAt": "创建时间"
     },
     "realname": {
       "title": "实名审核",

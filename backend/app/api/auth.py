@@ -86,6 +86,8 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 # 对外统一防信息泄露文案（响应壳 message.params.detail）；真实原因仅写入审计日志
 _LOGIN_DENIED = {"detail": "用户名或密码错误"}
+# 管理员来源 IP 白名单（ADMIN_TRUSTED_IPS 非空且未命中）时的对外提示
+_SOURCE_DENIED = {"detail": "请求来源不合法"}
 _INIT_REQUIRED = {"detail": "系统尚未完成初始化，请使用应急账号登录后台完成初始化向导"}
 settings = get_settings()
 
@@ -279,11 +281,11 @@ async def login(
             await db.commit()
             return fail(BizCode.LOGIN_BLOCKED, params=_LOGIN_DENIED)
 
-        # 2) 应急账号仅允许内网登录（IP 白名单校验不可豁免；外网拒绝不消耗密码尝试）
-        if not is_admin_network(request):
+        # 2) 应急账号来源 IP 白名单校验（默认空 = 不限制；外网拒绝不消耗密码尝试）
+        if not await is_admin_network(request, db):
             log_action(db, ctx_bg, "bg_login.network_denied", None, client_ip)
             await db.commit()
-            return fail(BizCode.LOGIN_BLOCKED, params=_LOGIN_DENIED)
+            return fail(BizCode.LOGIN_BLOCKED, params=_SOURCE_DENIED)
 
         # 3) 密码校验；错误计入阶梯（即使 SUPER_ADMIN_ENABLED=false 仍计数）
         if not verify_password(req.password, settings.SUPER_ADMIN_PASSWORD_HASH):
@@ -381,11 +383,11 @@ async def login(
         await db.commit()
         return fail(BizCode.LOGIN_BLOCKED, params=_LOGIN_DENIED)
 
-    # 管理员级账号只能从内网登录
-    if is_admin_tier(Role(user.role.value)) and not is_admin_network(request):
+    # 管理员级账号来源 IP 白名单校验（默认空 = 不限制；普通用户不经过此校验）
+    if is_admin_tier(Role(user.role.value)) and not await is_admin_network(request, db):
         log_action(db, user.id, "login.denied_network", None, client_ip)
         await db.commit()
-        return fail(BizCode.LOGIN_BLOCKED, params=_LOGIN_DENIED)
+        return fail(BizCode.LOGIN_BLOCKED, params=_SOURCE_DENIED)
 
     # 登录成功：仅本账号成功才清零本账号两套维度的计数与惩罚阶段
     await bf_reset(NORMAL_POLICY, uid, dims)
@@ -556,6 +558,39 @@ async def revoke_other_sessions(
     _log(db, user, "session.revoke_others",
          f"count:{len(rows)}", get_client_ip(request))
     await db.commit()
+    return {"ok": True, "revoked": len(rows)}
+
+
+@router.post("/sessions/revoke-all")
+async def revoke_all_sessions(
+    request: Request,
+    response: Response,
+    user: dict = Depends(require_role(Role.MEMBER, allow_unverified_realname=True)),
+    db: AsyncSession = Depends(get_db),
+):
+    """销毁当前用户的全部会话（含当前会话），并清除登录 Cookie。
+
+    用途：/setting/存储与缓存 →「清除本站 Cookie」，强制全端登出。
+    敏感操作写审计日志（只增不改不删）。
+    """
+    _reject_break_glass(user)
+    uid = int(user["user_id"])
+    rows = (
+        await db.execute(
+            select(LoginSession).where(
+                LoginSession.user_id == uid,
+                LoginSession.revoked.is_(False),
+            )
+        )
+    ).scalars().all()
+    now = _now()
+    for r in rows:
+        r.revoked = True
+        r.revoked_at = now
+    _log(db, user, "session.revoke_all",
+         f"count:{len(rows)}", get_client_ip(request))
+    await db.commit()
+    response.delete_cookie(SESSION_COOKIE, path="/")
     return {"ok": True, "revoked": len(rows)}
 
 
@@ -1241,8 +1276,14 @@ def security_answer_digest(answer: str) -> str:
     return hashlib.sha256(answer.strip().lower().encode("utf-8")).hexdigest()
 
 
+# 安全问题紧急恢复始终仅限内网（与管理员登录白名单 ADMIN_TRUSTED_IPS 相互独立）
+_INTRANET_NETWORKS = "127.0.0.0/8,::1/128,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fc00::/7"
+
+
 def _require_intranet(request: Request) -> None:
-    if not is_admin_network(request):
+    from app.core.middleware import ip_in_networks
+
+    if not ip_in_networks(get_client_ip(request), _INTRANET_NETWORKS):
         raise HTTPException(status_code=403, detail="该功能仅允许通过内网访问")
 
 

@@ -1,7 +1,8 @@
-"use client";
+import { redirect } from "next/navigation";
+import { getServerLocale } from "@/lib/server-locale";
 
-import { AppearanceForm } from "@/components/setting/AppearanceForm";
-
-export default function SettingAppearancePage() {
-  return <AppearanceForm />;
+/** 旧路由 /setting/appearance 已合并进 /setting/display */
+export default async function LegacyAppearancePage() {
+  const locale = await getServerLocale();
+  redirect(`/${locale}/setting/display`);
 }

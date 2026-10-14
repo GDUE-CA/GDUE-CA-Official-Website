@@ -28,7 +28,8 @@ import { useDirtyGuard } from "@/components/setting/SettingGuardContext";
 import { fetchProfile, updateProfile } from "@/lib/api/auth";
 import { fetchGeoCountries } from "@/lib/api/geo";
 import type { AdminUser, GeoCountry } from "@/types/api";
-import { CheckCircle2, Loader2 } from "lucide-react";
+import { CheckCircle2, Loader2, QrCode } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { cn } from "@/lib/utils";
 import { utcToLocalInput, localInputToUtcIso } from "@/lib/utils";
 
@@ -318,6 +319,32 @@ export function ProfileForm() {
           </form>
         </CardContent>
       </Card>
+
+      {/* 个人主页二维码：扫码直达 /{locale}/u/{username} */}
+      {profile?.username && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <QrCode className="h-4 w-4" />
+              {t("setting.profile.qrTitle")}
+            </CardTitle>
+            <CardDescription>{t("setting.profile.qrHint")}</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center gap-3 py-4">
+            <div className="rounded-lg border border-border bg-white p-3">
+              <QRCodeSVG
+                value={`${window.location.origin}/${locale}/u/${encodeURIComponent(profile.username)}`}
+                size={168}
+                level="M"
+                includeMargin={false}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground text-center break-all">
+              {`${window.location.origin}/${locale}/u/${profile.username}`}
+            </p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

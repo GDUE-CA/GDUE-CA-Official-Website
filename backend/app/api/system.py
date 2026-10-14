@@ -1,4 +1,7 @@
-"""系统配置接口：站点信息、IP 黑名单、域名白名单、网络配置。"""
+"""系统配置接口：站点信息、IP 黑名单、域名白名单、网络配置、管理员可信 IP 白名单。"""
+import ipaddress
+import json
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,6 +12,7 @@ from app.core.permissions import require_permission
 from app.db.models import AuditLog, NetworkConfigHistory, SystemSetting
 from app.db.session import get_db
 from app.schemas.system import (
+    AdminTrustedIpsUpdate,
     NetworkConfigHistoryOut,
     SystemSettingOut,
     SystemSettingPublicOut,
@@ -16,6 +20,8 @@ from app.schemas.system import (
 )
 
 router = APIRouter(prefix="/api/system", tags=["system"])
+# 管理员可信 IP 白名单独立路由（前端设置页专用）
+admin_config_router = APIRouter(prefix="/api/admin/config", tags=["system"])
 
 
 def _log(db: AsyncSession, ctx_or_uid, action: str, detail: str | None, ip: str | None):
@@ -164,3 +170,51 @@ async def remove_ip_from_blacklist(
     _log(db, user, "ip.blacklist.remove", ip,
          get_client_ip(request))
     return {"blacklist": rec.ip_blacklist}
+
+
+# ---------- 管理员可信 IP 白名单（PUT /api/admin/config/admin-trusted-ips） ----------
+def _parse_trusted_ip_lines(raw_lines: list[str]) -> list[str]:
+    """解析白名单原始行数组：去前后空白、滤空行与 `#` 注释行，逐行校验格式。
+
+    每行须为合法 IPv4 / IPv6 地址或两者的 CIDR 网段（单 IP 内部按 /32、/128
+    Network 对象做包含判断，存储保留原始写法）。任一行非法整体拒绝，
+    报错带原始行号（从 1 起）。返回过滤后的有效条目。
+    """
+    entries: list[str] = []
+    for line_no, raw in enumerate(raw_lines, start=1):
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        try:
+            ipaddress.ip_network(line, strict=False)
+        except ValueError:
+            raise ValueError(
+                f"第{line_no}行：无效IP/CIDR格式，仅支持IPv4、IPv6以及两者的CIDR网段"
+            )
+        entries.append(line)
+    return entries
+
+
+@admin_config_router.put("/admin-trusted-ips")
+async def update_admin_trusted_ips(
+    req: AdminTrustedIpsUpdate,
+    request: Request,
+    user: dict = Depends(require_permission("settings", "manage")),
+    db: AsyncSession = Depends(get_db),
+):
+    """保存管理员可信 IP 白名单（支持 IPv4 / IPv6 / 两种 CIDR 混合存放）。
+
+    - 任一行格式非法 → HTTP 400，提示含行号，整体拒绝保存；
+    - 清空列表 → 回到默认状态（数据库为空回落环境变量，仍为空则全部放行）；
+    - 审计日志原样记录原始字符串数组（含空行 / 注释行，不做转换）。
+    """
+    try:
+        entries = _parse_trusted_ip_lines(req.ips)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    rec = await _get_or_create_settings(db)
+    rec.admin_trusted_ips = entries
+    # 审计：原样保存原始字符串数组，不做任何转换
+    _log(db, user, "system.admin_trusted_ips.update",
+         json.dumps(req.ips, ensure_ascii=False), get_client_ip(request))
+    return {"admin_trusted_ips": entries}

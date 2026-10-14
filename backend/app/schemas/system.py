@@ -45,6 +45,8 @@ class SystemSettingOut(BaseModel):
     network_port: int = 443
     network_listen_ip: str = "0.0.0.0"
     network_domains: list[str] = []
+    # 管理员可信来源 IP 白名单（Web 配置，优先于环境变量 ADMIN_TRUSTED_IPS）
+    admin_trusted_ips: list[str] = []
     # 全局登录会话空闲超时（分钟），预设值 [1,2,5,10,15,20,30,60,120]
     session_idle_timeout_minutes: int = 30
 
@@ -155,6 +157,15 @@ class SystemSettingUpdate(BaseModel):
         if v not in allowed:
             raise ValueError(f"无效的超时时间，允许值：{sorted(allowed)}")
         return v
+
+
+class AdminTrustedIpsUpdate(BaseModel):
+    """管理员可信 IP 白名单保存请求：原始行数组（原样入审计日志）。
+
+    每行一条；空行与 `#` 开头注释行过滤；其余逐行校验必须为合法
+    IPv4 / IPv6 地址或两者的 CIDR 网段，任一行非法整体拒绝（400 + 行号）。
+    """
+    ips: list[str] = Field(default_factory=list, max_length=500)
 
 
 class NetworkConfigHistoryOut(BaseModel):

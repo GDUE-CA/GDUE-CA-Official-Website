@@ -47,10 +47,10 @@ class Settings(BaseSettings):
     ALLOWED_HOSTS: str = ""  # 逗号分隔；空则不校验
 
     # ---- 网络访问控制（GB/T 22239 访问控制 / 边界防护） ----
-    # 管理员级账号（editor / admin / super_admin）仅允许从这些网段访问；逗号分隔 CIDR
-    ADMIN_ALLOWED_NETWORKS: str = (
-        "127.0.0.0/8,::1/128,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fc00::/7"
-    )
+    # 管理员级账号（editor / admin / super_admin 及 Break-Glass）可信来源 IP 白名单；
+    # 逗号分隔 IP / CIDR。默认空 = 不限制来源 IP（防爆破 / 指纹限流照常生效）；
+    # 填入一个或多个条目后开启白名单模式：仅列表内来源可登录 / 使用管理员账号
+    ADMIN_TRUSTED_IPS: str = ""
     # 可信反向代理（Nginx / Caddy / Next.js rewrites）；只有来自这些地址的
     # X-Forwarded-For 才会被采信，防止客户端伪造 IP 绕过内网限制
     TRUSTED_PROXIES: str = "127.0.0.1/32,::1/128"
@@ -94,8 +94,8 @@ class Settings(BaseSettings):
         return [h.strip() for h in self.ALLOWED_HOSTS.split(",") if h.strip()]
 
     @property
-    def admin_networks_list(self) -> list[str]:
-        return [n.strip() for n in self.ADMIN_ALLOWED_NETWORKS.split(",") if n.strip()]
+    def admin_trusted_ips_list(self) -> list[str]:
+        return [n.strip() for n in self.ADMIN_TRUSTED_IPS.split(",") if n.strip()]
 
     @property
     def trusted_proxies_list(self) -> list[str]:

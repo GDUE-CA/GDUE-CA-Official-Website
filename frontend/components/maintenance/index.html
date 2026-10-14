@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>503 Service Unavailable</title>
+  <!-- 相对路径引用样式，可直接被 Nginx 挂载使用（无需编译 / 构建 / 运行时） -->
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <!-- 独立静态 503 维护页：无导航、无页脚、不接入 i18n，中英文硬编码 -->
+  <div class="mnt-root" role="alert" aria-live="assertive">
+    <div class="mnt-box">
+      <h1 class="mnt-code">503</h1>
+      <div class="mnt-msg">
+        <p class="mnt-msg-cn">本站点正在维护中，敬请期待。</p>
+        <p class="mnt-msg-en">This site is under maintenance, please stay tuned.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
