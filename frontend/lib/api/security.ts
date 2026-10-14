@@ -1,14 +1,15 @@
 /**
  * Security API - 对应后端 app/api/security.py
  *
- * IP 黑白名单 CRUD、封禁状态查询、网络配置读写。
+ * IP 黑白名单 CRUD、封禁状态查询。
+ * 网络配置（端口/监听 IP/绑定域名）的网页编辑入口已下线，
+ * 后端接口保留读取存量配置，部署层（环境变量/Caddy/Nginx）管控监听参数。
  */
 import { apiFetch } from "./client";
 import type {
   BanStatus,
   IpRule,
   IpRuleCreate,
-  NetworkConfig,
   BanEntry,
   BanResetRequest,
   BGConfirmRequest,
@@ -45,20 +46,6 @@ export function deleteIpRule(ruleId: number) {
   return apiFetch<null>(`/api/security/ip-rules/${ruleId}`, {
     method: "DELETE",
     withAuth: true,
-  });
-}
-
-/** 读取网络配置（监听端口 / IP / 域名） */
-export function fetchNetworkConfig() {
-  return apiFetch<NetworkConfig>("/api/security/network", { withAuth: true });
-}
-
-/** 修改网络配置 */
-export function updateNetworkConfig(payload: Partial<NetworkConfig>) {
-  return apiFetch<NetworkConfig>("/api/security/network", {
-    method: "PUT",
-    withAuth: true,
-    body: JSON.stringify(payload),
   });
 }
 

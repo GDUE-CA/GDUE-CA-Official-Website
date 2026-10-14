@@ -1,10 +1,11 @@
 /**
  * System Settings API - 对应后端 app/api/system.py
  *
- * 站点设置读写、IP 黑名单管理、网络配置变更历史。
+ * 站点设置读写、IP 黑名单管理。
+ * 网络配置变更历史随网络配置网页入口一并下线（后端接口保留，不再从前端调用）。
  */
 import { apiFetch } from "./client";
-import type { NetworkConfigHistory, PublicSystemSettings, SystemSettings } from "@/types/api";
+import type { PublicSystemSettings, SystemSettings } from "@/types/api";
 
 /** 公开站点信息（站点名、页脚、备案、系统时区等；不含安全配置） */
 export function fetchPublicSettings() {
@@ -60,10 +61,3 @@ export function removeIpBlacklist(ip: string) {
   );
 }
 
-/** 网络配置变更历史（最近 5 条） */
-export function fetchNetworkConfigHistory() {
-  return apiFetch<NetworkConfigHistory[]>(
-    "/api/system/network-config/history",
-    { withAuth: true }
-  );
-}

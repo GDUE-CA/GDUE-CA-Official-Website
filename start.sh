@@ -86,14 +86,14 @@ stage "前端依赖安装 npm install"
 (
   trap - ERR
   cd frontend
-  npm install
+  pnpm install
 )
 
 stage "前端生产构建 npm run build"
 (
   trap - ERR
   cd frontend
-  npm run build
+  pnpm run build
 )
 
 # ----------------------------------------------------------------- 5. pm2

@@ -33,7 +33,7 @@ try {
     if (-not (Test-Path -LiteralPath $FrontendDir)) {
         throw "未找到前端目录：$FrontendDir，请确认脚本位于仓库根目录。"
     }
-    if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
+    if (-not (Get-Command pnpm -ErrorAction SilentlyContinue)) {
         throw "未找到 npm，请先安装 Node.js（含 npm）并重新打开 PowerShell。"
     }
 
@@ -42,7 +42,7 @@ try {
     $feCommand = @(
         "`$host.UI.RawUI.WindowTitle = 'GDUE-CA frontend (npm run dev)'"
         "Set-Location -LiteralPath '$feLocation'"
-        "npm run dev"
+        "pnpm run dev"
     ) -join "; "
 
     Start-Process -FilePath "powershell.exe" `

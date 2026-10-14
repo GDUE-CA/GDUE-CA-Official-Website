@@ -649,21 +649,6 @@ export interface SystemSettings {
   session_idle_timeout_minutes: number;
 }
 
-/** 网络配置变更历史条目 */
-export interface NetworkConfigHistory {
-  id: number;
-  config_snapshot: {
-    network_port: number;
-    network_listen_ip: string;
-    network_domains: string[];
-  };
-  change_summary: string | null;
-  user_id: number | null;
-  ip: string | null;
-  /** 带大写 Z 的 UTC ISO 字符串 */
-  created_at: string | null;
-}
-
 /* ===================== CMS 扩展类型骨架（Phase 1 预定义） ===================== */
 /* 各模块的 Create/Update/Out 变体在实现对应 API 时细化；此处先建共用骨架。 */
 
@@ -1102,13 +1087,6 @@ export interface BanStatus {
   /** null = 永久封禁 */
   expires_at: string | null;
   permanent: boolean;
-}
-
-/** 网络配置（GET/PUT /api/security/network，仅含网络 3 字段） */
-export interface NetworkConfig {
-  network_port: number;
-  network_listen_ip: string;
-  network_domains: string[];
 }
 
 /* ---------- 第三方登录（Phase 6，对齐后端 schemas/oauth.py） ---------- */

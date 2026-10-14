@@ -67,7 +67,7 @@ trap shutdown INT TERM
 # 前端（后台运行）
 (
   cd frontend
-  exec npm run dev
+  exec pnpm run dev
 ) &
 FE_PID=$!
 

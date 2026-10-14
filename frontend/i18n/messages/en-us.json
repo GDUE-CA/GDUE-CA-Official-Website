@@ -1693,6 +1693,7 @@
       }
     },
     "security": {
+      "accessDesc": "Configure IP blacklist, IP whitelist, admin trusted IPs, and domain whitelist (CORS Origins / Allowed Hosts) access-control rules",
       "blacklistTitle": "IP Blacklist",
       "blacklistDesc": "IPs that match the blacklist are blocked site-wide; the front-end shows the violation reason, a countdown to unban, and a link to contact the administrator",
       "whitelistTitle": "IP Whitelist",

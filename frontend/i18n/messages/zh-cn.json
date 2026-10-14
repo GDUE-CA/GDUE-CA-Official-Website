@@ -1806,6 +1806,7 @@
       }
     },
     "security": {
+      "accessDesc": "配置 IP 黑名单、IP 白名单、管理员可信 IP 与域名白名单（CORS Origins / Allowed Hosts）等访问控制规则",
       "blacklistTitle": "IP 黑名单",
       "blacklistDesc": "命中黑名单的 IP 将被全站拦截，前端展示违规原因 + 解封倒计时 + 联系管理员",
       "whitelistTitle": "IP 白名单",

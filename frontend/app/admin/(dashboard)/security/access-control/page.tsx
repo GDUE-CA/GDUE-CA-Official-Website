@@ -1,28 +1,30 @@
 "use client";
 
 /**
- * /admin/security/access-control - 访问控制（Tab 合并）
- * 三个 Tab：IP 白名单 ｜ IP 黑名单 ｜ 域名监听
+ * /admin/security/access-control - 访问控制（Tab 合并 · 系统安全）
+ * 四个 Tab：IP 黑名单 ｜ IP 白名单 ｜ 管理员可信 IP ｜ 域名白名单
  * - IP 白/黑名单：复用 IpRulesManager 组件（既有业务逻辑、防自锁保护原样保留）
- * - 域名监听：复用 NetworkConfigPanel（网络配置/绑定域名）
+ * - 管理员可信 IP：管理员账号登录来源白名单（admin_trusted_ips，自基础站点页迁入）
+ * - 域名白名单：CORS Origins + Allowed Hosts（自基础站点页迁入）
  * 底层 access_control_rule 表与优先级规则不变：
  *   IP 黑名单(自动+手动) → IP 白名单总控 → Referer 域名校验
- * 本页仅做页面排布合并，不改任何业务逻辑。
+ * 网络配置（端口/监听 IP/绑定域名）网页编辑入口已下线，本页仅做配置排布，不改业务逻辑。
  */
 import { useState, useEffect } from "react";
-import { ShieldCheck, ShieldBan, Globe } from "lucide-react";
+import { ShieldCheck, ShieldBan, Globe, KeyRound } from "lucide-react";
 import { useI18n } from "@/i18n/provider";
 import { IpRulesManager } from "@/components/admin/security/IpRulesManager";
-import { NetworkConfigPanel } from "@/components/admin/security/NetworkConfigPanel";
+import { TrustedAdminIpsPanel } from "@/components/admin/security/TrustedAdminIpsPanel";
+import { DomainWhitelistPanel } from "@/components/admin/security/DomainWhitelistPanel";
 import { cn } from "@/lib/utils";
 
-type Tab = "whitelist" | "blacklist" | "domain";
+type Tab = "blacklist" | "whitelist" | "trusted" | "domains";
 
-const TAB_ORDER: Tab[] = ["whitelist", "blacklist", "domain"];
+const TAB_ORDER: Tab[] = ["blacklist", "whitelist", "trusted", "domains"];
 
 export default function AccessControlPage() {
   const { t } = useI18n();
-  const [tab, setTab] = useState<Tab>("whitelist");
+  const [tab, setTab] = useState<Tab>("blacklist");
 
   // URL ?tab= 深链支持（用 window 读取避免 useSearchParams 的 Suspense 边界要求）
   useEffect(() => {
@@ -33,20 +35,21 @@ export default function AccessControlPage() {
   }, []);
 
   const tabs: { key: Tab; label: string; icon: typeof ShieldCheck }[] = [
-    { key: "whitelist", label: t("admin.security.whitelistTitle"), icon: ShieldCheck },
     { key: "blacklist", label: t("admin.security.blacklistTitle"), icon: ShieldBan },
-    { key: "domain", label: t("admin.security.networkTitle"), icon: Globe },
+    { key: "whitelist", label: t("admin.security.whitelistTitle"), icon: ShieldCheck },
+    { key: "trusted", label: t("admin.settings.adminTrustedIpsTitle"), icon: KeyRound },
+    { key: "domains", label: t("admin.settings.domainWhitelist"), icon: Globe },
   ];
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Globe className="h-6 w-6 text-primary" />
+          <ShieldCheck className="h-6 w-6 text-primary" />
           {t("admin.nav.security.access")}
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          {t("admin.security.networkDesc")}
+          {t("admin.security.accessDesc")}
         </p>
       </div>
 
@@ -74,9 +77,10 @@ export default function AccessControlPage() {
 
       {/* Tab 内容 */}
       <div>
-        {tab === "whitelist" && <IpRulesManager type="whitelist" />}
         {tab === "blacklist" && <IpRulesManager type="blacklist" />}
-        {tab === "domain" && <NetworkConfigPanel />}
+        {tab === "whitelist" && <IpRulesManager type="whitelist" />}
+        {tab === "trusted" && <TrustedAdminIpsPanel />}
+        {tab === "domains" && <DomainWhitelistPanel />}
       </div>
     </div>
   );
