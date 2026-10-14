@@ -22,7 +22,7 @@ export function getClientIp(request: NextRequest): string | null {
 }
 
 /** 去空白、去 IPv4 映射前缀（::ffff:1.2.3.4），非法返回 null */
-function normalizeIp(raw: string | null | undefined): string | null {
+export function normalizeIp(raw: string | null | undefined): string | null {
   if (!raw) return null;
   let ip = raw.trim();
   if (ip.toLowerCase().startsWith("::ffff:") && isIP(ip.slice(7)) === 4) ip = ip.slice(7);

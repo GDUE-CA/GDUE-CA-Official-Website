@@ -5,7 +5,7 @@ import { TURNSTILE_ACTION } from "./turnstile";
  * 访问检测页（检测中 / 人机验证 / 拒绝访问 三态）
  *
  * 由 proxy.ts 直接返回的独立 HTML（不经 React 渲染）：不依赖站点脚本包、在原 URL 原地展示，
- * 通过后刷新即进入原页面。风控接口由访客浏览器直接请求（接口按来源 IP 自行判定），
+ * 通过后刷新即进入原页面。风控接口由访客浏览器直接请求（接口按来源 IP 自行判定并签名），
  * 视觉沿用站点「克制科技风」：中性灰 + 信号绿、细边框、等宽辅助信息。
  */
 
@@ -309,9 +309,13 @@ export interface GatePageInput {
   ip: string;
   apiUrl: string;
   apiTimeoutMs: number;
+  /** 请求风控令牌的 aud（本站主机名）与本站签名的一次性 nonce */
+  aud: string;
+  riskNonce: string;
   /** 空字符串表示未配置 Turnstile，风险访客改用工作量证明 */
   turnstileSiteKey: string;
-  pow: PowChallenge;
+  /** 仅在未配置 Turnstile 时下发 */
+  pow: PowChallenge | null;
   passHours: number;
   contactEmail: string;
   contactUrl: string;
@@ -328,9 +332,10 @@ function jsonForScript(value: unknown): string {
 
 /**
  * 浏览器端流程（ES5，兼容旧浏览器）：
- *   check()     请求风控接口（不带 Cookie），按结果分流
- *   runPow()    纯 JS SHA-256 求解工作量证明（HTTP 局域网访问时 crypto.subtle 不可用）
- *   challenge() 风险 / 检测失败：Turnstile，未配置则工作量证明
+ *   check()       带 aud / nonce 请求风控接口（不带 Cookie），按结果分流
+ *   submitToken() 干净：把签名令牌原样交给本站验签，服务端可改判（next: challenge / blocked）
+ *   challenge()   风险 / 检测失败：Turnstile，未配置则工作量证明
+ *   runPow()      纯 JS SHA-256 求解工作量证明（HTTP 局域网访问时 crypto.subtle 不可用）
  *   blocked()   IDC + 代理：拒绝页，生成带诊断信息的 mailto
  */
 const CLIENT_SCRIPT = `
@@ -365,7 +370,11 @@ function turnstile(){var el=$("s-challenge");$("widget").hidden=false;state(el,t
     "error-callback":function(){state(el,t.widgetError,"err");},"expired-callback":function(){window.turnstile.reset("#ts");}});};
   var s=document.createElement("script");s.src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=onTurnstileLoad";s.async=true;s.nonce=C.nonce;
   s.onerror=function(){state(el,t.widgetError,"err");};document.head.appendChild(s);}
-function challenge(){view("challenge");fillMeta();$("challenge-lead").textContent=checkFailed?t.leadFailed:t.leadRisky;if(C.siteKey)turnstile();else runPow($("s-challenge"));}
+function challenge(){view("challenge");fillMeta();$("challenge-lead").textContent=checkFailed?t.leadFailed:t.leadRisky;if(C.siteKey)turnstile();else if(C.pow)runPow($("s-challenge"));else state($("s-challenge"),t.failed,"err");}
+function submitToken(token){var el=$("s-check");state(el,t.computing,"",true);
+  fetch(C.verifyPath,{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({mode:"token",token:token})})
+    .then(function(r){if(r.ok)return enter(el);return r.json().catch(function(){return {};}).then(function(b){if(b&&b.next==="blocked")return blocked();checkFailed=!(b&&b.next==="challenge"&&verdict&&(verdict.isRisky||verdict.isIdc||verdict.isProxy));challenge();});},
+      function(){checkFailed=true;challenge();});}
 function blocked(){view("blocked");fillMeta();
   var diag=[t.ip+": "+(ip||"-"),t.requestId+": "+C.requestId,t.reason+": "+reasons().join(" + "),t.time+": "+$("m-time").textContent].join("\\n");
   var mail=$("mail");if(mail)mail.href="mailto:"+encodeURIComponent(C.contactEmail)+"?subject="+encodeURIComponent(t.mailSubject+" ("+(ip||"-")+")")+"&body="+encodeURIComponent(diag+"\\n\\n");
@@ -373,10 +382,12 @@ function blocked(){view("blocked");fillMeta();
 function check(){view("check");state($("s-check"),t.checking,"",true);
   var ctl=typeof AbortController==="function"?new AbortController():null,timer=setTimeout(function(){if(ctl)ctl.abort();},C.timeout);
   var opts={credentials:"omit",cache:"no-store",headers:{Accept:"application/json"}};if(ctl)opts.signal=ctl.signal;
-  fetch(C.apiUrl,opts).then(function(r){if(!r.ok)throw new Error(String(r.status));return r.json();}).then(function(d){clearTimeout(timer);
+  var url=C.apiUrl+(C.apiUrl.indexOf("?")<0?"?":"&")+"aud="+encodeURIComponent(C.aud)+"&nonce="+encodeURIComponent(C.riskNonce);
+  fetch(url,opts).then(function(r){if(!r.ok)throw new Error(String(r.status));return r.json();}).then(function(d){clearTimeout(timer);
     if(!d||typeof d.isRisky!=="boolean"||typeof d.isIdc!=="boolean"||typeof d.isProxy!=="boolean")throw new Error("format");
     verdict=d;if(typeof d.ip==="string"&&d.ip.length<=64)ip=d.ip;
-    if(d.isIdc&&d.isProxy)blocked();else if(d.isRisky||d.isIdc||d.isProxy)challenge();else runPow($("s-check"));
+    if(d.isIdc&&d.isProxy)blocked();else if(d.isRisky||d.isIdc||d.isProxy)challenge();
+    else if(typeof d.token==="string"&&d.token)submitToken(d.token);else{checkFailed=true;challenge();}
   }).catch(function(){clearTimeout(timer);if(verdict)return;checkFailed=true;challenge();});}
 check();
 `;
@@ -386,6 +397,8 @@ export function renderGatePage(input: GatePageInput): string {
   const config = {
     apiUrl: input.apiUrl,
     timeout: input.apiTimeoutMs,
+    aud: input.aud,
+    riskNonce: input.riskNonce,
     siteKey: input.turnstileSiteKey,
     action: TURNSTILE_ACTION,
     tsLang: t.tsLang,

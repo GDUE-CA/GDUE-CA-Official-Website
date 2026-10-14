@@ -8,6 +8,7 @@ import { riskLog } from "./log";
 import { gateCsp, renderGatePage, VERIFY_PATH } from "./pages";
 import { issuePassToken, PASS_COOKIE, verifyPassToken } from "./passToken";
 import { issuePowChallenge, verifyPow } from "./pow";
+import { issueNonce, verifyRiskToken } from "./riskToken";
 import { verifyTurnstile } from "./turnstile";
 
 /**
@@ -16,13 +17,12 @@ import { verifyTurnstile } from "./turnstile";
  * 服务端只负责「门」：
  *   内网 IP / 白名单 / 持有有效通行凭证 / 经 DNS 校验的搜索引擎爬虫 → 放行
  *   链接预览机器人（按 UA 识别，每 IP 限次）→ 放行
- *   其余 → 返回检测页，由访客浏览器直接请求风控接口（接口按来源 IP 自行判定）：
- *     三项均为 false        → 自动完成工作量证明，换取通行凭证后刷新
- *     isIdc 且 isProxy      → 显示拒绝访问（附管理员联系方式），不发凭证
- *     其余任一为 true       → Turnstile 验证码（未配置时改用工作量证明）
- *     接口故障 / 超时 / 跨域失败 → 同上，一律要求验证
- *
- * 风控结果在浏览器端得出、服务端无法验真，因此换取凭证至少要付出一次工作量证明。
+ *   其余 → 返回检测页，由访客浏览器带上本站下发的 aud / nonce 直接请求风控接口 v2
+ *          （接口按来源 IP 自行判定，并对结果做 Ed25519 签名），再把令牌原样交回本站验签：
+ *     三项均为 false 且令牌有效 → 签发通行凭证，刷新进入
+ *     isIdc 且 isProxy          → 显示拒绝访问（附管理员联系方式），不发凭证
+ *     其余任一为 true           → Turnstile 验证码（未配置时改用工作量证明）
+ *     接口故障 / 超时 / 令牌无效（验签、过期、aud、nonce、IP 不一致）→ 同上，一律要求验证
  */
 
 export { VERIFY_PATH };
@@ -62,6 +62,7 @@ export async function riskGuard(request: NextRequest, ctx: GuardContext): Promis
   }
 
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
+  const turnstile = isTurnstileConfigured(cfg);
   const html = renderGatePage({
     locale: ctx.locale,
     nonce,
@@ -69,8 +70,10 @@ export async function riskGuard(request: NextRequest, ctx: GuardContext): Promis
     ip,
     apiUrl: cfg.apiUrl,
     apiTimeoutMs: cfg.apiTimeoutMs,
-    turnstileSiteKey: isTurnstileConfigured(cfg) ? cfg.turnstileSiteKey : "",
-    pow: issuePowChallenge(ipScope(ip), cfg),
+    aud: audienceFor(request, cfg.audiences),
+    riskNonce: issueNonce(ipScope(ip), cfg),
+    turnstileSiteKey: turnstile ? cfg.turnstileSiteKey : "",
+    pow: turnstile ? null : issuePowChallenge(ipScope(ip), cfg),
     passHours: cfg.passTtlSeconds / 3600,
     contactEmail: cfg.contactEmail,
     contactUrl: cfg.contactUrl,
@@ -84,6 +87,21 @@ export async function riskGuard(request: NextRequest, ctx: GuardContext): Promis
       "X-Robots-Tag": "noindex, nofollow",
     },
   });
+}
+
+/**
+ * 页面请求风控令牌时使用的 aud：风控接口要求它等于浏览器 Origin 的主机名，
+ * 因此优先用本次访问的主机名（须在白名单内）；验签时只认白名单，不信任 Host 头
+ */
+function audienceFor(request: NextRequest, audiences: string[]): string {
+  const host = (request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? "").split(",")[0].trim();
+  let hostname = "";
+  try {
+    hostname = new URL(`http://${host}`).hostname.toLowerCase();
+  } catch {
+    /* 非法 Host 走白名单首项 */
+  }
+  return audiences.includes(hostname) ? hostname : (audiences[0] ?? hostname);
 }
 
 function json(body: object, status: number): NextResponse {
@@ -103,9 +121,10 @@ function isSameOrigin(request: NextRequest): boolean {
 }
 
 /**
- * POST /__risk/verify：校验工作量证明或 Turnstile 令牌，成功则签发通行 Cookie
- *   { mode: "pow", challenge, nonce }
- *   { mode: "turnstile", token }
+ * POST /__risk/verify：校验后签发通行 Cookie
+ *   { mode: "token", token }          风控接口签名令牌；判定为风险时返回 next 指示前端下一步
+ *   { mode: "turnstile", token }      Turnstile 令牌
+ *   { mode: "pow", challenge, nonce } 工作量证明（仅在未配置 Turnstile 时接受，避免攻击者选择更便宜的路径）
  */
 export async function handleVerify(request: NextRequest, ctx: GuardContext): Promise<NextResponse> {
   const cfg = getRiskGuardConfig();
@@ -119,10 +138,22 @@ export async function handleVerify(request: NextRequest, ctx: GuardContext): Pro
 
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
   const requestId = requestIdOf(request);
+  const turnstile = isTurnstileConfigured(cfg);
   let passed = false;
-  if (body?.mode === "pow") {
+  if (body?.mode === "token") {
+    const token = typeof body.token === "string" && body.token.length <= 4096 ? body.token : "";
+    const result = await verifyRiskToken(token, ip, cfg, requestId);
+    if (!result.ok) {
+      riskLog("INFO", requestId, `风控令牌无效（${result.reason}）ip=${ip}，转人机验证`);
+      return json({ ok: false, next: "challenge" }, 403);
+    }
+    const { isRisky, isIdc, isProxy } = result.claims;
+    if (isIdc && isProxy) return json({ ok: false, next: "blocked" }, 403);
+    if (isRisky || isIdc || isProxy) return json({ ok: false, next: "challenge" }, 403);
+    passed = true;
+  } else if (body?.mode === "pow" && !turnstile) {
     passed = verifyPow(body.challenge, body.nonce, scope, cfg);
-  } else if (body?.mode === "turnstile" && isTurnstileConfigured(cfg)) {
+  } else if (body?.mode === "turnstile" && turnstile) {
     const token = typeof body.token === "string" ? body.token : "";
     passed = token.length > 0 && token.length <= 2048 && (await verifyTurnstile(token, ip, cfg, requestId));
   } else {

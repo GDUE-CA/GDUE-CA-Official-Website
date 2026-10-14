@@ -8,20 +8,31 @@ function intEnv(name: string, fallback: number, min: number, max = Number.MAX_SA
   return Number.isFinite(n) && n >= min && n <= max ? n : fallback;
 }
 
-const DEFAULT_API_URL = "https://risk.catyuki.com/api/v1/ip";
+const DEFAULT_API_URL = "https://risk.catyuki.com/api/v2/ip";
 
-/** 风控接口须为 http(s) 绝对地址（会写入 CSP connect-src），非法时回退默认值 */
-function apiUrlEnv(): string {
-  const raw = process.env.RISK_API_URL;
-  if (!raw) return DEFAULT_API_URL;
+/** 须为 http(s) 绝对地址（风控接口会写入 CSP connect-src），非法时回退默认值 */
+function urlEnv(name: string, fallback: string): string {
+  const raw = process.env[name];
+  if (!raw) return fallback;
   try {
     const url = new URL(raw);
     if (url.protocol === "https:" || url.protocol === "http:") return url.toString();
   } catch {
     /* 落到下方告警 */
   }
-  console.warn(`risk_guard | RISK_API_URL 非法（${raw}），改用默认 ${DEFAULT_API_URL}`);
-  return DEFAULT_API_URL;
+  console.warn(`risk_guard | ${name} 非法（${raw}），改用默认 ${fallback}`);
+  return fallback;
+}
+
+/** 允许的令牌 aud：RISK_TOKEN_AUD，未配置时取站点地址的主机名 */
+function audiencesEnv(): string[] {
+  const list = listEnv("RISK_TOKEN_AUD").map((a) => a.toLowerCase());
+  if (list.length > 0) return list;
+  try {
+    return process.env.NEXT_PUBLIC_SITE_URL ? [new URL(process.env.NEXT_PUBLIC_SITE_URL).hostname] : [];
+  } catch {
+    return [];
+  }
 }
 
 function listEnv(name: string): string[] {
@@ -33,8 +44,12 @@ function listEnv(name: string): string[] {
 
 export interface RiskGuardConfig {
   enabled: boolean;
-  /** 风控接口地址：由访客浏览器直接请求，接口按请求来源 IP 自行判定 */
+  /** 风控接口（v2，签名版）：由访客浏览器直接请求，接口按请求来源 IP 自行判定并签发令牌 */
   apiUrl: string;
+  /** 验签公钥集（JWK Set） */
+  keysUrl: string;
+  /** 本站可接受的令牌 aud（主机名）；须与浏览器访问本站时的主机名一致 */
+  audiences: string[];
   /** 浏览器端请求风控接口的超时（毫秒），超时按「检测失败」处理 */
   apiTimeoutMs: number;
   /** 免检 IP / 网段（管理员手动放行） */
@@ -45,11 +60,11 @@ export interface RiskGuardConfig {
   previewBotUa: string[];
   turnstileSiteKey: string;
   turnstileSecretKey: string;
-  /** 工作量证明难度（SHA-256 前导零位数），每 +1 计算量翻倍 */
+  /** 工作量证明难度（SHA-256 前导零位数），每 +1 计算量翻倍；仅在未配置 Turnstile 时用于人机验证 */
   powDifficulty: number;
   /** 通过检测后的免检时长（秒） */
   passTtlSeconds: number;
-  /** 通行凭证 / PoW 题目签名密钥；未配置时由 Turnstile 密钥派生 */
+  /** 通行凭证 / nonce / PoW 题目签名密钥；未配置时由 Turnstile 密钥派生 */
   passSecret: string;
   contactEmail: string;
   contactUrl: string;
@@ -61,7 +76,9 @@ export function getRiskGuardConfig(): RiskGuardConfig {
   if (cached) return cached;
   cached = {
     enabled: process.env.RISK_GUARD_ENABLED === "true",
-    apiUrl: apiUrlEnv(),
+    apiUrl: urlEnv("RISK_API_URL", DEFAULT_API_URL),
+    keysUrl: urlEnv("RISK_KEYS_URL", new URL("/.well-known/risk-keys.json", urlEnv("RISK_API_URL", DEFAULT_API_URL)).toString()),
+    audiences: audiencesEnv(),
     apiTimeoutMs: intEnv("RISK_API_TIMEOUT_MS", 4000, 500),
     allowlist: listEnv("RISK_IP_ALLOWLIST"),
     allowPreviewBots: process.env.RISK_ALLOW_PREVIEW_BOTS !== "false",
