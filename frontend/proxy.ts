@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { locales, defaultLocale, urlLangToLocale, localeToUrlLang, type Locale } from "@/lib/i18n";
+import { handleVerify, riskGuard, VERIFY_PATH } from "@/lib/riskGuard";
 
 /**
  * Proxy（原 middleware，Next.js 16 唯一入口：禁止再新建 middleware.ts，
@@ -17,6 +18,7 @@ import { locales, defaultLocale, urlLangToLocale, localeToUrlLang, type Locale }
  *    - 混合大小写（如 /zh-CN/x）→ 301 归一到全小写规范形式
  *    - 旧 /en 前缀 → 兼容重定向到 /en-us
  *    admin/setting/auth 全部纳入 locale 前缀规则（经 next.config rewrites 内部映射到实际页面路由）
+ * 5. 访问风控：按外部 IP 风控结果对风险访客下发人机验证或直接拒绝（见 lib/riskGuard）
  */
 
 const SESSION_COOKIE = "gdueca_session";
@@ -260,7 +262,21 @@ function localeRedirect(request: NextRequest): URL | null {
   return url;
 }
 
-export function proxy(request: NextRequest) {
+function requestIsHttps(request: NextRequest): boolean {
+  const forwardedProto = request.headers.get("x-forwarded-proto")?.split(",")[0].trim();
+  return (forwardedProto ?? request.nextUrl.protocol.replace(":", "")) === "https";
+}
+
+export async function proxy(request: NextRequest) {
+  const isHttps = requestIsHttps(request);
+  const guardCtx = {
+    locale: stripLocale(request.nextUrl.pathname).locale ?? detectLocale(request),
+    isHttps,
+  };
+
+  // 人机验证提交接口（挑战页同源 POST），须在 locale 重定向之前处理
+  if (request.nextUrl.pathname === VERIFY_PATH) return handleVerify(request, guardCtx);
+
   // 后台守卫优先于 i18n 路由（/admin/** 不再豁免 locale 前缀，guard 在剥离 locale 后判定）
   const guardRedirect = adminGuard(request);
   if (guardRedirect) return NextResponse.redirect(guardRedirect);
@@ -272,9 +288,10 @@ export function proxy(request: NextRequest) {
   const redirectUrl = localeRedirect(request);
   if (redirectUrl) return NextResponse.redirect(redirectUrl);
 
+  const blocked = await riskGuard(request, guardCtx);
+  if (blocked) return blocked;
+
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
-  const forwardedProto = request.headers.get("x-forwarded-proto")?.split(",")[0].trim();
-  const isHttps = (forwardedProto ?? request.nextUrl.protocol.replace(":", "")) === "https";
   const csp = buildCsp(nonce, isHttps);
 
   // 通过请求头把 nonce 传给渲染层：Next.js 自动为框架脚本加 nonce，布局中手写脚本读 x-nonce
