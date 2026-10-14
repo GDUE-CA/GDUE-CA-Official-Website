@@ -119,5 +119,8 @@ def _ensure_jwt_secret(settings: Settings) -> None:
 @lru_cache
 def get_settings() -> Settings:
     settings = Settings()
+    # 首次加载配置时即初始化统一日志，保证启动阶段（含下面的密钥告警）也是统一格式
+    from app.core.log import setup_logging
+    setup_logging(settings.LOG_LEVEL, settings.LOG_FORMAT)
     _ensure_jwt_secret(settings)
     return settings

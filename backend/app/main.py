@@ -42,7 +42,8 @@ from app.db.models import (
 from app.db.session import async_session, engine
 
 settings = get_settings()
-# 统一日志格式（含 traceId）：尽早初始化，覆盖启动阶段与 uvicorn 自身日志
+# 统一日志格式（含 traceId）：get_settings() 首次加载时已初始化；
+# 以 `uvicorn app.main:app` / gunicorn 启动时 uvicorn 会先套用自己的日志配置，这里再覆盖一次
 setup_logging(settings.LOG_LEVEL, settings.LOG_FORMAT)
 logger = logging.getLogger("gdueca")
 

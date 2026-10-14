@@ -1,0 +1,55 @@
+# GDUECA 官网一体化部署：docker compose up -d --build
+# 访问 http://<服务器IP>:8080 ；数据持久化在命名卷 gdueca-data（/data）
+services:
+  gdueca:
+    build:
+      context: .
+      args:
+        # 构建时固化进前端（sitemap / robots 绝对地址、可选 Umami 统计）
+        NEXT_PUBLIC_SITE_URL: "https://gdue-ca.paperee.guru"
+        NEXT_PUBLIC_UMAMI_WEBSITE_ID: ""
+        NEXT_PUBLIC_UMAMI_SRC: ""
+    image: gdueca:latest
+    container_name: gdueca
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - gdueca-data:/data
+    environment:
+      # 后端配置见 backend/.env.example；也可把 .env 放进数据卷的 /data/.env
+      JWT_SECRET_KEY: ""            # 留空则自动生成并保存在 /data/.jwt_secret
+      COOKIE_SECURE: "auto"
+      LOG_FORMAT: "text"            # 接入日志系统时改为 json
+      # 管理员账号可信来源 IP / CIDR（逗号分隔）；留空不限制来源
+      ADMIN_TRUSTED_IPS: ""
+      # Break-Glass 应急账号：默认 admin / admin，上线前【务必】替换密码哈希。
+      # 生成：python -c "import bcrypt;print(bcrypt.hashpw(b'新密码',bcrypt.gensalt()).decode())"
+      # 哈希中的每个 $ 在 compose 文件里要写成 $$
+      # SUPER_ADMIN_USERNAME: "admin"
+      # SUPER_ADMIN_PASSWORD_HASH: "$$2b$$12$$..."
+      # SUPER_ADMIN_ENABLED: "true"
+      # 默认 SQLite 存于 /data；使用 PostgreSQL 时改为 postgresql+asyncpg://...
+      # DATABASE_URL: "sqlite+aiosqlite:////data/assoc.db"
+      # 多 worker / 多实例时配置，用于共享限流与会话状态
+      # REDIS_URL: "redis://redis:6379/0"
+      # 容器前面还有负载均衡 / CDN / 宿主机 Nginx 时【必须】填写其网段，
+      # 否则来源 IP 全部是上游地址，管理员 IP 白名单与登录限流会失效
+      REAL_IP_FROM: ""
+      # 访问风控 / 人机验证（前端运行时读取，说明见 frontend/.env.example）
+      RISK_GUARD_ENABLED: "false"
+      TURNSTILE_SITE_KEY: ""
+      TURNSTILE_SECRET_KEY: ""
+      RISK_PASS_SECRET: ""
+      RISK_IP_ALLOWLIST: ""
+      RISK_CONTACT_EMAIL: ""
+    read_only: true                 # 根文件系统只读，仅 /data 与 /tmp 可写
+    tmpfs:
+      - /tmp
+      - /app/frontend/.next/cache:uid=10001,gid=10001   # Next.js 运行时缓存
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  gdueca-data:

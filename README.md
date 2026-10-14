@@ -259,8 +259,9 @@ pm2 start pnpm --name gdueca-web -- start      # next start 绑定 127.0.0.1:300
 
 # 后端（多 worker 时必须配置 REDIS_URL）
 cd ../backend
-gunicorn -k uvicorn.workers.UvicornWorker -b 127.0.0.1:8000 app.main:app
-pm2 start --name gdueca-api -- gunicorn -k uvicorn.workers.UvicornWorker -b 127.0.0.1:8000 app.main:app
+# FORWARDED_ALLOW_IPS="" 关闭 uvicorn 自带的代理头改写，由应用按 TRUSTED_PROXIES 判定真实 IP
+FORWARDED_ALLOW_IPS="" gunicorn -k uvicorn.workers.UvicornWorker -b 127.0.0.1:8000 app.main:app
+FORWARDED_ALLOW_IPS="" pm2 start --name gdueca-api -- gunicorn -k uvicorn.workers.UvicornWorker -b 127.0.0.1:8000 app.main:app
 
 pm2 save
 ```
@@ -289,6 +290,21 @@ chmod +x deploy/scripts/post_deploy.sh
 - 套用 Cloudflare 时，用官方 IP 列表 `set_real_ip_from` + `real_ip_header CF-Connecting-IP` 还原访客真实 IP（表单 submit_ip 与访问统计依赖）；
 - Cloudflare 可能缓存 `502/504`：建议对 HTML 关闭「Always Online」缓存回源，或确保源站返回的 503 静态维护页携带 `no-store` 头以穿透 CDN；
 - 部署新版本前如需主动停机，可临时在 Nginx 层让主站返回 503（指向静态维护页），再滚动更新后端，使访客始终看到维护页。
+
+### 5. Docker 一体化部署（可选）
+
+单镜像内含 Nginx（对外 `:8080`）+ Next.js（`127.0.0.1:3000`）+ FastAPI（`127.0.0.1:8000`），由 tini 托管，全部以非 root 用户运行：
+
+```bash
+docker compose up -d --build        # 访问 http://<服务器IP>:8080
+docker compose logs -f              # Nginx / 前端 / 后端统一日志格式，按 trace 串联
+```
+
+- **持久化**：数据库、上传文件、`.jwt_secret` 均位于命名卷 `gdueca-data`（容器内 `/data`）；也可把后端 `.env` 放到 `/data/.env`；
+- **配置**：后端变量与 `backend/.env.example` 相同，写在 `docker-compose.yml` 的 `environment`；`NEXT_PUBLIC_*` 在构建时固化，写在 `build.args`；
+- **真实 IP**：容器前面还有 CDN / 负载均衡 / 宿主机 Nginx 时，必须设置 `REAL_IP_FROM`（上游网段，逗号分隔），否则管理员 IP 白名单与登录限流都只能看到上游地址；
+- **Break-Glass**：默认凭据 admin/admin，上线前务必通过 `SUPER_ADMIN_PASSWORD_HASH` 替换（compose 文件中 `$` 需写成 `$$`）；
+- **健壮性**：根文件系统只读、`cap_drop: ALL`；任一进程退出即整体重启；Next.js 未就绪时 Nginx 返回 503 静态维护页；内置健康检查同时探测前后端。
 
 ---
 
