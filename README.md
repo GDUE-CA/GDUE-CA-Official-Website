@@ -44,7 +44,7 @@
 ### 用户系统
 
 - **RBAC 四级角色**：`super_admin` / `admin` / `editor` / `member`（外加匿名访客），配合细粒度模块权限矩阵；
-- **完整账号闭环**：注册 / 登录 / 找回密码 / 修改密码 / 实名认证 / 邮箱与手机绑定 / TOTP 二次验证；
+- **完整账号闭环**：注册 / 登录 / 找回密码（邮箱验证码）/ 修改密码（强制旧密码 + 会话撤消管理）/ 实名认证 / 邮箱与手机绑定 / **换绑邮箱三路径**（双验证码 · 四项核验 · 人工审核）/ TOTP 二次验证；
 - **个人主页与隐私权限**：`/{locale}/u/{username}` 个人主页，可见性、屏蔽名单等隐私开关由用户自主控制；
 - **服务端会话**：可撤销、硬顶过期、空闲超时、记住设备 30 天、心跳滑动续期，登录设备可远程登出。
 
@@ -191,6 +191,16 @@ ADMIN_TRUSTED_IPS=
 
 # 通用 KV 存储（生产必配，多 worker 共享限流 / 封禁计数）
 REDIS_URL=
+
+# SMTP 邮件服务（忘记密码 / 换绑邮箱验证码；
+# SMTP_HOST 留空 = 未配置邮件服务，验证码仅记录到服务端日志，仅限开发环境）
+SMTP_HOST=
+SMTP_PORT=465
+SMTP_USERNAME=
+SMTP_PASSWORD=                       # 授权码 / 密码
+SMTP_FROM=                           # 发件人地址；留空时取 SMTP_USERNAME
+SMTP_FROM_NAME=GDUE-CA
+SMTP_USE_SSL=true                    # true = SSL 直连（465）；false = STARTTLS（587）
 ```
 
 ### 前端（`frontend/.env.local`，完整以 `frontend/.env.example` 为准）
@@ -371,6 +381,13 @@ chmod +x deploy/scripts/post_deploy.sh
 
 > 导出操作照常写入全局审计日志（`system.db.export`）；`background_tasks` 仅作进度展示层，不替代审计。数据库导入维持同步执行不变（superadmin 专属 + 双重确认）。
 
+### 换绑邮箱三路径与站内私信
+
+- **路径 A · 双验证码**（旧邮箱仍可用）：旧 / 新邮箱验证码同时下发，加当前密码三项核验通过即换绑，不撤销任何会话；
+- **路径 B · 四项核验**（旧邮箱不可用）：密码 / 学号 / 手机 / 实名四项全部一致才放行，任一错误统一返回模糊 403（防枚举），连续失败 5 次锁定 1 小时；核验通过后仅需新邮箱验证码；
+- **路径 C · 人工审核**（自助均不可用）：提交申请进入待审状态（期间禁止一切自助换绑），管理员在后台「换绑邮箱审核」（`review.emails` 权限）同意后，再由用户本人最后确认才正式生效；
+- **站内私信通知**：审核通过 / 驳回（含理由）/ 换绑成功三类结果自动写入 `user_messages` 站内私信，与公告广播合并计入通知中心未读角标，支持单条已读与一键全部已读。
+
 ### SEO & 爬虫适配
 
 - `robots.txt` + **动态 `sitemap.xml`**（按全部语言自动展开所有静态与内容页）；
@@ -386,7 +403,7 @@ chmod +x deploy/scripts/post_deploy.sh
 
 1. **分支策略**：`main` 始终保持可运行、可部署；从 `main` 切功能分支 `feat/<模块>-<简述>`、`fix/<问题简述>`、`docs/<主题>`，完成后发起 Pull Request，至少一名成员 review 后合并。
 2. **提交信息**：采用 [Conventional Commits](https://www.conventionalcommits.org/)（`feat` / `fix` / `docs` / `refactor` / `perf` / `test` / `chore`）。
-3. **代码规范**：前端 TypeScript 严格模式零错误（`tsc --noEmit`）并通过 ESLint；后端保持既有分层（`api → schemas → core/db`），业务状态只用枚举、统一响应壳与 `BizException`、管理员变更必写审计、删除一律软删除；Edge 层只有 `proxy.ts`，**严禁新建 `middleware.ts`**。
+3. **代码规范**：前端 TypeScript 严格模式零错误（`tsc --noEmit`）并通过 ESLint；后端保持既有分层（`api → schemas → core/db`），业务状态只用枚举、统一响应壳与 `BizException`、管理员变更必写审计、删除一律软删除；Edge 层只有 `proxy.ts`，**严禁新建 `middleware.ts`**；密码输入一律复用全局 `PasswordInput` 组件（每框独立眼睛切换、刷新自动复位，禁止手写原生 `type="password"`）。
 4. **提交前自检**：后端 `pytest` 全通过、前端 `tsc` / `lint` 无错误、翻译 key 已补齐、未提交密钥与本地产物。
 
 ---
