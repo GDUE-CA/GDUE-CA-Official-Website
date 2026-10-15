@@ -239,6 +239,11 @@ export interface IpSourceStat {
   /** GeoIP 可读属地（查不到为 null，前端显示「未知」） */
   location_zh: string | null;
   location_en: string | null;
+  /** ISO-3166-1 alpha-2 国家代码（大写）；非公网 / 查不到为 null */
+  country_code: string | null;
+  /** 自治系统号（如 AS24547）与运营商名，查不到为 null */
+  asn: string | null;
+  org: string | null;
 }
 
 /** 访问来源统计（后台概览） */

@@ -81,6 +81,10 @@ class Settings(BaseSettings):
     # 配置 redis://... 时使用 Redis（多 worker 共享）；留空使用进程内存兜底（仅单进程开发）
     REDIS_URL: str = ""
 
+    # ---- IP 情报（后台访问统计的国家 / ASN；留空则只用本地 GeoLite2） ----
+    # 请求 {IP_INFO_API_URL}/{ip}，返回 ipinfo / iplocate / maxmind 多源结果
+    IP_INFO_API_URL: str = "https://risk.catyuki.com/api/v1/info"
+
     # ---- SMTP 邮件（忘记密码验证码等；底层基础设施，与业务无关） ----
     # SMTP_HOST 留空 = 未配置邮件服务：发送方自行降级（验证码仅记录到服务端日志，仅限开发环境）
     SMTP_HOST: str = ""
