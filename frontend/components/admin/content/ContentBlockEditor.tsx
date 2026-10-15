@@ -7,7 +7,8 @@
  * - 保存走 upsert（首次写入即创建）；展示最近更新时间
  */
 import { useEffect, useState } from "react";
-import { Loader2, Save } from "lucide-react";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import Save from "@/assets/icons/action/save.svg";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

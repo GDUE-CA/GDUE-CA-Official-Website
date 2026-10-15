@@ -16,10 +16,15 @@ import { useI18n } from "@/i18n/provider";
 import { cn } from "@/lib/utils";
 import { MarkdownRenderer } from "@/components/blog/MarkdownRenderer";
 import { BadgeList } from "@/components/user/BadgeChip";
-import {
-  Heart, Bookmark, MessageCircle, Lock, Users, Globe, Archive,
-  MoreHorizontal, Eye,
-} from "lucide-react";
+import Heart from "@/assets/icons/status/heart.svg";
+import Bookmark from "@/assets/icons/status/bookmark.svg";
+import MessageCircle from "@/assets/icons/status/message-circle.svg";
+import Lock from "@/assets/icons/status/lock.svg";
+import Users from "@/assets/icons/user/users.svg";
+import Globe from "@/assets/icons/navigation/globe.svg";
+import Archive from "@/assets/icons/action/archive.svg";
+import MoreHorizontal from "@/assets/icons/navigation/more-horizontal.svg";
+import Eye from "@/assets/icons/status/eye.svg";
 import {
   toggleLike, toggleFavorite, deleteMemo, archiveMemo, unarchiveMemo,
 } from "@/lib/api/memos";

@@ -9,14 +9,12 @@
  * 专业归属学院；班级关联学院/年级/专业。全部下拉数据来自后台列表 API。
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  ArrowDown,
-  ArrowUp,
-  Loader2,
-  Pencil,
-  Plus,
-  RefreshCw,
-} from "lucide-react";
+import ArrowDown from "@/assets/icons/navigation/arrow-down.svg";
+import ArrowUp from "@/assets/icons/navigation/arrow-up.svg";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import Pencil from "@/assets/icons/action/pencil.svg";
+import Plus from "@/assets/icons/action/plus.svg";
+import RefreshCw from "@/assets/icons/action/refresh-cw.svg";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

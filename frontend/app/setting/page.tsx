@@ -1,11 +1,9 @@
-import { redirect } from "next/navigation";
-import { getServerLocale } from "@/lib/server-locale";
-
 /**
- * /{locale}/setting 默认页：重定向到第一个 Tab（基础资料）
- * locale 取 proxy 注入的 x-locale 头。
+ * /{locale}/setting 默认页：不再强制重定向到个人资料。
+ * 直接渲染空内容，由外层 SettingShell 接管：
+ * - 桌面端：展示一级菜单 + 当前分组二级菜单（内容区为空，等用户选择）
+ * - 移动端：展示一级菜单列表（不自动跳入子页，修复返回死循环 BUG）
  */
-export default async function SettingIndexPage() {
-  const locale = await getServerLocale();
-  redirect(`/${locale}/setting/profile`);
+export default function SettingIndexPage() {
+  return null;
 }

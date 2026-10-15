@@ -32,14 +32,12 @@ import {
 } from "@/lib/api/schoolVerify";
 import { uploadRealnameEvidence } from "@/lib/api/realname";
 import type { SchoolVerifyStatusOut } from "@/types/api";
-import {
-  Building2,
-  CheckCircle2,
-  Clock,
-  Loader2,
-  Paperclip,
-  XCircle,
-} from "lucide-react";
+import Building2 from "@/assets/icons/status/building-2.svg";
+import CheckCircle2 from "@/assets/icons/status/check-circle-2.svg";
+import Clock from "@/assets/icons/status/clock.svg";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import Paperclip from "@/assets/icons/action/paperclip.svg";
+import XCircle from "@/assets/icons/status/x-circle.svg";
 import { cn } from "@/lib/utils";
 
 const PAGE_KEY = "school-verify";

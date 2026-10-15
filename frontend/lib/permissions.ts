@@ -39,6 +39,8 @@ export const PERMISSION_MODULES = [
   "audit_logs",
   // ---------- Phase 8 Memo 碎片笔记 ----------
   "memo",
+  // ---------- V0.5.5 §3.2 角色管理 ----------
+  "roles",
 ] as const;
 
 export type PermissionModule = (typeof PERMISSION_MODULES)[number];
@@ -76,6 +78,7 @@ export const ROLE_DEFAULTS: Record<string, Partial<Record<PermissionModule, Perm
     realname: ["view", "manage"],
     stats: ["view", "manage"],
     audit_logs: ["view", "manage"],
+    roles: ["view", "manage"],
   },
   admin: {
     dashboard: ["view"],
@@ -106,6 +109,8 @@ export const ROLE_DEFAULTS: Record<string, Partial<Record<PermissionModule, Perm
     realname: ["view"],
     stats: ["view"],
     audit_logs: ["view"],
+    // 角色管理：安全类模块，admin 仅查看，manage 留 super_admin
+    roles: ["view"],
   },
   editor: {
     dashboard: ["view"],
@@ -129,6 +134,7 @@ export const ROLE_DEFAULTS: Record<string, Partial<Record<PermissionModule, Perm
     realname: ["view"],
     stats: ["view"],
     audit_logs: ["view"],
+    roles: ["view"],
   },
   member: {},
 };

@@ -1,13 +1,13 @@
 /**
  * 浮动批量操作栏：有选中项时显示在右下角，三类审核业务共用同一交互规范
  */
-import type { LucideIcon } from "lucide-react";
+import type { IconComponent } from "@/types/icons";
 import { Button } from "@/components/ui/button";
 
 export type BatchAction = {
   key: string;
   label: string;
-  icon: LucideIcon;
+  icon: IconComponent;
   onClick: () => void;
   variant?: "default" | "outline" | "destructive";
 };

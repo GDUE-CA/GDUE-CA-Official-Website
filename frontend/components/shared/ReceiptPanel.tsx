@@ -10,7 +10,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
-import { Check, Copy, Ticket, AlertTriangle } from "lucide-react";
+import Check from "@/assets/icons/action/check.svg";
+import Copy from "@/assets/icons/action/copy.svg";
+import Ticket from "@/assets/icons/status/ticket.svg";
+import AlertTriangle from "@/assets/icons/status/alert-triangle.svg";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
 

@@ -7,7 +7,7 @@
  */
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowRight } from "lucide-react";
+import ArrowRight from "@/assets/icons/navigation/arrow-right.svg";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { CountUp } from "@/components/shared/CountUp";
@@ -73,7 +73,7 @@ export function Hero() {
               </Link>
             </Button>
             <Button asChild size="lg" variant="outline">
-              <Link href={`/${locale}/about`} transitionTypes={["nav-forward"]}>
+              <Link href={`/${locale}/events`} transitionTypes={["nav-forward"]}>
                 {t("home.hero.cta2")}
               </Link>
             </Button>

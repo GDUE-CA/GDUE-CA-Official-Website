@@ -23,7 +23,10 @@ import { updateProfile, changePassword } from "@/lib/api/auth";
 import { getSession, saveSession, clearLocalSession } from "@/lib/auth";
 import { meetsPasswordPolicy, passwordClassCount } from "@/lib/passwordPolicy";
 import { PasswordInput } from "@/components/ui/password-input";
-import { CheckCircle2, Loader2, KeyRound, UserCog } from "lucide-react";
+import CheckCircle2 from "@/assets/icons/status/check-circle-2.svg";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import KeyRound from "@/assets/icons/status/key-round.svg";
+import UserCog from "@/assets/icons/user/user-cog.svg";
 import { cn } from "@/lib/utils";
 
 /** 用户名格式：≥4 字符，字母/数字/下划线 */

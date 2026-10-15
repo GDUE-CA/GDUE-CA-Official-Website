@@ -9,7 +9,10 @@
  * - 下方直接复用 components/profile/LoginSessionsCard（不改其内部逻辑）
  */
 import { useState, useEffect } from "react";
-import { AlertTriangle, CheckCircle2, Loader2, LogOut } from "lucide-react";
+import AlertTriangle from "@/assets/icons/status/alert-triangle.svg";
+import CheckCircle2 from "@/assets/icons/status/check-circle-2.svg";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import LogOut from "@/assets/icons/navigation/log-out.svg";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
 import {

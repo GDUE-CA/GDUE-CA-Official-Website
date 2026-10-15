@@ -7,7 +7,9 @@
  * 后端 profile.update 写审计日志。手机号同时是账号找回凭证。
  */
 import { useEffect, useRef, useState } from "react";
-import { CheckCircle2, Loader2, Phone } from "lucide-react";
+import CheckCircle2 from "@/assets/icons/status/check-circle-2.svg";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import Phone from "@/assets/icons/status/phone.svg";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

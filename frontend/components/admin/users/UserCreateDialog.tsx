@@ -5,7 +5,7 @@
  * 创建的账号为管理员代设初始密码，首次登录强制修改（后端 must_change_password）
  */
 import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

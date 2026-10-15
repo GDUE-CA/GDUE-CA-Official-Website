@@ -5,7 +5,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import ArrowLeft from "@/assets/icons/navigation/arrow-left.svg";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
 import { useI18n } from "@/i18n/provider";
 import { MemoDetail } from "@/components/memo/MemoDetail";
 import { getMemo } from "@/lib/api/memos";

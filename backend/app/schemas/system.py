@@ -23,6 +23,8 @@ class SystemSettingPublicOut(BaseModel):
     sys_default_timezone: str | None = "Asia/Shanghai"
     sys_default_region: str | None = None
     sys_default_currency: str | None = None
+    # 邮件收发模块就绪开关（V0.5.5 §3.3）：后台菜单门禁用，非敏感配置
+    mail_system_ready: bool = False
 
     model_config = {"from_attributes": True}
 
@@ -49,6 +51,8 @@ class SystemSettingOut(BaseModel):
     admin_trusted_ips: list[str] = []
     # 全局登录会话空闲超时（分钟），预设值 [1,2,5,10,15,20,30,60,120]
     session_idle_timeout_minutes: int = 30
+    # 邮件收发模块就绪开关（V0.5.5 §3.3）
+    mail_system_ready: bool = False
 
     model_config = {"from_attributes": True}
 
@@ -72,6 +76,8 @@ class SystemSettingUpdate(BaseModel):
     network_domains: list[str] | None = None
     # 全局登录会话空闲超时（分钟），预设值 [1,2,5,10,15,20,30,60,120]，硬性上限 120
     session_idle_timeout_minutes: int | None = Field(default=None, ge=1, le=120)
+    # 邮件收发模块就绪开关（V0.5.5 §3.3）：后台「邮件与推送」菜单门禁
+    mail_system_ready: bool | None = None
 
     @field_validator("ip_blacklist")
     @classmethod

@@ -1,252 +1,291 @@
-# 全局重构标准规范（执行层）
+# 项目重构标准化开发文档 v0.5.2（最终定稿）
 
-> **文档定位**：`docs/SPEC.md` 是本项目的产品 / 工程终极规范（唯一真值源）。本文档是它的**执行层配套**，只描述分阶段重构的施工规范：目录标准、阶段表、施工红线、验收清单。
-> **冲突时以 `docs/SPEC.md` 为准**；本文档不得与 SPEC.md 矛盾。
->
-> 本文件为活文档：每完成一个重构子阶段，回写该阶段的实际结论（清点结果、取舍决定、验证记录）。
+## 版本日志
 
----
-
-## 一、重构总阶段表
-
-| 阶段 | 内容 | 状态 |
-| --- | --- | --- |
-| 阶段 1 | 修复阻断性报错，`npm run dev` 跑通，冒烟测试 | ✔ |
-| 阶段 2 | 清理工程垃圾：死代码、无用 import、临时 console；eslint / prettier 开启导入排序 | — |
-| 阶段 3 | **标准化基础** | — |
-| ├ 3-1 | 抽全局常量 → `constants/` | — |
-| ├ 3-2 | 抽公共 hooks → `hooks/` | — |
-| ├ 3-3 | 抽公共工具函数 → `utils/` | — |
-| ├ 3-4 | 抽全局共享 types → `types/` | — |
-| └ **3-5** | **【新增】图标矢量化（SVG）**（放在 3-1~3-4 之后、阶段 4 之前执行） | — |
-| 阶段 4 | 核对 `'use client'` 边界；抽重复 UI 公共组件；存量目录尽量不动 | — |
-| 阶段 5 | 完整回归全量测试（**必须额外增加：图标专项校验**） | — |
-
-> 阶段 3-5 的完整施工规范见第二章、可执行步骤见第三章。
+- **v0.5.0** 基础标准化重构、SVG 矢量化、BreakGlass、i18n、三栏布局架构落地
+- **v0.5.1** 移动端基础适配、布局统一、图标规范落地
+- **v0.5.2（最终定稿）**
+  - 统一 Admin / Setting 全局主题样式双向强绑定对齐（CSS / 配色 / 圆角 / 阴影 / 交互 100% 同源）
+  - 修复移动端 /setting 自动跳转个人资料、返回卡死、页面死循环 BUG
+  - 首页按钮结构重构：社团报名 / 活动报名 前台双主按钮，低频入口下沉抽屉
+  - Admin 顶部全面优化（去标题、去用户名、纯头像、同源语言 SVG 按钮）
+  - 访问来源移动端彻底重构为卡片布局，彻底解决表格错位、IPv6 溢出
+  - 全部图标彻底矢量化、全站样式统一、结构标准化、零外部图标依赖
 
 ---
 
-## 二、图标资源标准（阶段 3-5）
+## 1. 全局重构铁律（不可突破）
 
-### 2.1 目标与通用约束（叠加在原有重构约束之上）
-
-1. 原有全部业务、UI、交互、路由、数据库**不变**。
-2. **只替换图标资源来源**；最终视觉（尺寸、间距、颜色、hover、断点表现）必须与替换前**逐像素一致**。
-3. 移除所有外部图标 CDN / 第三方图标包，全部改用本地 `.svg` 文件（内联组件形式消费）。
-4. 阶段位置：在【抽常量 / 工具】之后、【组件整理】之前执行。
-
-### 2.2 现状盘点（实测结论，2026-10-15）
-
-| 项 | 实测结果 |
-| --- | --- |
-| 第三方图标库 | `lucide-react@^0.460.0`（`frontend/package.json`） |
-| 引用图标库的文件数 | **143 个**（`.tsx` / `.ts`） |
-| 不同图标名（去重） | **138 个**（含 1 个类型 `LucideIcon`，实际图标组件 **137 个**） |
-| 内联硬编码 `<svg>` | **仅 1 处**：`frontend/components/home/EventsPreview.tsx`（装饰性波浪线，`viewBox="0 0 560 110"`） |
-| png / jpg 位图图标 | **无**（仓库内 `.png/.ico` 均非图标资源，`public/` 仅 Next 默认示例 svg） |
-| 其他第三方图标包 | `country-flag-icons@1.6.20`（`frontend/components/admin/stats/CountryFlag.tsx`，国旗集，按需动态加载） |
-| 品牌 logo | `frontend/components/shared/BrandMark.tsx`（`>_` 方块 + `GDUECA` 字标，**纯 CSS/文本实现，非图片**） |
-| 图标渲染方式 | 全部为 React 组件消费，调用点通过 `className`（如 `h-4 w-4` / `h-5 w-5`）控制尺寸 |
-| strokeWidth 覆盖 | 调用点**无** `strokeWidth` / `absoluteStrokeWidth` 传参 → 全站统一 lucide 默认 `stroke-width=2` |
-
-**存量图标清单（137 项，按建议分类，执行时以步骤①清点结果为准）**
-
-- **navigation/**（导航、位移、层级、入口）：
-  `menu` `chevron-down` `chevron-up` `chevron-left` `chevron-right` `arrow-left` `arrow-right` `arrow-up` `arrow-down` `arrow-up-right` `more-horizontal` `home` `external-link` `link-2` `log-in` `log-out` `layout-dashboard` `layout-grid` `settings` `folder-open` `folder-kanban` `history` `globe`
-- **action/**（执行类动作）：
-  `search` `plus` `x` `trash-2` `pencil` `refresh-cw` `rotate-ccw` `download` `upload` `copy` `send` `save` `share-2` `check` `check-check` `square` `square-check` `reply` `file-edit` `pen-line` `image-plus` `paperclip` `power` `power-off` `archive` `archive-restore` `wand-2` `hammer` `wrench` `calculator` `qr-code` `sliders-horizontal` `type`
-- **status/**（状态、提示、反馈、安全、加载、主题、领域标记）：
-  `loader-2` `check-circle-2` `x-circle` `alert-triangle` `info` `shield-alert` `shield-check` `shield-ban` `shield` `badge-check` `ban` `circle` `star` `bookmark` `heart` `heart-pulse` `sun` `moon` `palette` `sparkles` `bell` `bell-ring` `message-circle` `message-square` `bug` `timer` `clock` `lock` `lock-keyhole` `key-round` `eye` `eye-off` `fingerprint` `id-card` `mail` `mail-question` `mail-warning` `mail-plus` `cookie` `life-buoy` `ticket` `tag` `tags` `database` `hard-drive` `monitor` `monitor-smartphone` `laptop` `smartphone` `map-pin` `bar-chart-3` `calendar` `calendar-days` `calendar-check` `file-text` `newspaper` `scroll-text` `megaphone` `graduation-cap` `building-2` `briefcase` `wallet` `image` `image-icon`
-- **user/**（用户、身份、账号、权限）：
-  `user` `users` `user-circle` `user-round` `users-round` `user-plus` `user-cog` `user-x` `user-pen`
-- **brand/**（品牌、logo、第三方平台标识）：
-  `github` `apple` `chrome`（第三方平台标识，非商标复用，仅作登录渠道/技术栈标识）
-- **类型（非图标）**：`LucideIcon` → 迁移为本地 `IconComponent` 类型（见 2.6）。
-
-### 2.3 存放路径规范
-
-本项目**没有 `src/` 目录**，前端根即 `frontend/`，故路径落点为 `frontend/assets/icons/`（`tsconfig.json` 已配 `"@/*": ["./*"]`，因此可用 `@/assets/icons/...` 引用）。
-
-```
-frontend/
-└── assets/
-    └── icons/
-        ├── navigation/   # 导航类：菜单、展开收起、抽屉、位移箭头
-        ├── action/       # 操作类：提交、复制、刷新、删除、编辑
-        ├── status/       # 状态类：警告、成功、错误、信息、加载
-        └── user/         # 用户类：用户、头像、个人主页
-        └── brand/        # 品牌类：logo、第三方平台标识
-```
-
-- 所有图标均为**独立 `.svg` 文件**；**禁止把 `<svg>` 内嵌写死在 tsx 里**。
-- **唯一特例**：极小的一次性私有图标允许留在组件内部，但必须加注释标记：
-  `// @ICON-LOCAL 仅本组件私有图标，不抽全局`
-  （现状中 `EventsPreview.tsx` 的装饰波浪线属于此类，保留原处并打标记。）
-
-### 2.4 SVG 文件编写硬性标准
-
-1. 去掉所有外部引用、`id`、无用注释、编辑器垃圾属性（Illustrator / Figma 导出残留、`<style>` 块、`xmlns:xlink`、空 `<g>` 等）。
-2. **禁止硬编码 `fill` / `stroke` 颜色**，统一使用 `currentColor`（跟随父元素色，明暗主题自动适配）。
-3. 统一基准 `viewBox="0 0 24 24"`；特殊尺寸图标保留原生 `viewBox` 并在文件头注释备注原因。
-4. 文件名：**kebab-case**（短横线小写），如 `menu-open.svg`、`warning-alert.svg`、`user-profile.svg`。
-   PascalCase 组件名 → kebab-case 文件名，规则：`Trash2` → `trash-2.svg`、`CheckCircle2` → `check-circle-2.svg`。
-5. **视觉等价硬约束（最关键）**：为保证与 lucide 现有渲染逐像素一致，每个迁移出的 SVG 根节点必须复刻 lucide 默认几何：
-   ```xml
-   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-        fill="none" stroke="currentColor" stroke-width="2"
-        stroke-linecap="round" stroke-linejoin="round">
-     <path d="..." />
-   </svg>
-   ```
-   - `d`（路径数据）必须与 lucide 原图标**一模一样**，不得重绘、不得美化；
-   - 不得增删 `stroke-width`、`stroke-linecap`、`stroke-linejoin`；
-   - 不得改动图标内部坐标以「顺手优化」。
-
-### 2.5 技术方案与配置
-
-采用**内联 SVG 组件方案**（可完美继承 `currentColor`，颜色随父组件、适配明暗主题）。
-
-#### 方案 A（首选）：`@svgr/webpack`
-
-> ⚠️ **本项目为 Next.js 16.3.5，dev 与 build 默认使用 Turbopack**。
-> 用户示例中的 `webpack(config) { ... push @svgr/webpack ... }` 写法在 Turbopack 下**不会生效**，必须改写为 `turbopack.rules`。
-
-`frontend/next.config.ts` 中已存在空的 `turbopack: {}` 配置块，在其中补入规则（**不要**新增 `webpack()` 配置）：
-
-```ts
-const nextConfig: NextConfig = {
-  // ...既有配置保持不变...
-  turbopack: {
-    rules: {
-      "*.svg": {
-        loaders: ["@svgr/webpack"],
-        as: "*.js",
-      },
-    },
-  },
-};
-```
-
-配合 `tsconfig.json` 增加类型声明（`frontend/types/svg.d.ts` 或 `next-env.d.ts` 同级）：
-
-```ts
-declare module "*.svg" {
-  import type { IconComponent } from "@/types/icons";
-  const component: IconComponent;
-  export default component;
-}
-```
-
-> **依赖前置条件（当前阻塞）**：`@svgr/webpack` 未安装，且实测 `npm view @svgr/webpack` 返回 `ECONNRESET`（`registry.npmjs.org` 不可达）；本机 pnpm 亦无法联网拉取。
-> 因此**方案 A 需等待网络恢复后**执行：`pnpm add -D @svgr/webpack`（须能同步更新 `pnpm-lock.yaml`）。
-
-#### 方案 B（兜底，零新依赖，当前环境可直接执行）：构建脚本生成 `.tsx` 组件
-
-在**不联网、不加依赖**的前提下，用本地 Node 脚本把 `assets/icons/**/*.svg` 机械转换为内联 React 组件：
-
-- 脚本位置：`frontend/scripts/gen-icons.mjs`（构建期/手动执行，产物纳入版本库）。
-- 产物位置：`frontend/components/icons/<category>/<Name>.tsx` + 桶文件 `frontend/components/icons/index.ts`。
-- 转换规则：把 `<svg>` 转为 JSX（`stroke-width`→`strokeWidth` 等驼峰化），保留 `fill="none"` / `stroke="currentColor"` / `width={24}` / `height={24}` / `viewBox`，透传 `className` 等 props。
-- 与方案 A **产出一致**（同为内联 SVG 组件、支持 `currentColor`、受编译期类型检查），故后续可平滑切换、替换面极小。
-
-**两种方案的取舍记录**：
-
-| 方案 | 优点 | 缺点 |
-| --- | --- | --- |
-| `public/assets/icons` + `next/image` | 最简单 | `img` 方式**无法继承 `currentColor`**，明暗主题需额外处理 → **不采用** |
-| 内联导入（svgr / 脚本生成） | 完美支持 `currentColor`，跟随父组件 color，适配明暗主题，编译期检查 | 需配置（A）或维护脚本（B） |
-
-### 2.6 统一调用约定
-
-- 统一入口组件（保留用户指定的路径与形态）：`frontend/components/ui/icon.tsx`
-  - 若走**方案 A/B 的内联组件**：`icon.tsx` 只做「尺寸/颜色默认值 + `className` 合并 + `aria-hidden` 语义」的薄封装，**不使用 `next/image`**（`Image` 无法继承 `currentColor`）。
-  - 骨架示意：
-    ```tsx
-    "use client";
-    import type { IconComponent } from "@/types/icons";
-    import { cn } from "@/lib/utils";
-
-    export function Icon({ icon: Glyph, size = 24, className }: {
-      icon: IconComponent; size?: number; className?: string;
-    }) {
-      return <Glyph width={size} height={size} aria-hidden className={cn("inline-block shrink-0", className)} />;
-    }
-    ```
-- 统一类型：`frontend/types/icons.ts`
-  ```ts
-  import type { ComponentType, SVGProps } from "react";
-  export type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
-  ```
-  `LucideIcon` 的所有引用改为 `IconComponent`。
-- **尺寸沿用现有调用点写法**：继续使用 `className="h-4 w-4"` / `h-5 w-5` 等，不新增/不修改尺寸 props（CSS `width/height` 优先级高于 svg 的 `width/height` 属性，故与原 lucide 表现一致）。
-
-### 2.7 迁移顺序与逐项视觉核对
-
-**顺序**（严格）：① 导航菜单 → ② 抽屉 → ③ 设置页 → ④ 表单 → ⑤ 状态提示 → ⑥ 后台管理。
-
-**每个图标替换后立即核对**（当场比对，不留到最后）：
-
-1. **清点**：确认该图标在哪些文件被引用、各调用点的 `className`（尺寸 / 颜色 / margin）。
-2. **替换**：改为本地 SVG（内联组件）引用，`d` 与默认几何原样复刻。
-3. **校验**：
-   - 尺寸一致（`h-4 w-4` 等实际渲染像素不变）；
-   - 间距一致（外层 `gap` / `mr-*` / `shrink-0` 原样保留）；
-   - 颜色一致（`text-muted-foreground` 等父级 `color` 生效，明暗两套主题下均正确）；
-   - `hover` 状态一致（无肉眼可见差别）；
-   - 放大浏览器图标**锐利无模糊**（矢量特性验证）。
-4. 不允许因替换而出现的偏移、变形、粗细变化、留白变化。
-
-### 2.8 红线禁令（叠加原有重构禁令）
-
-1. ❌ **禁止借图标替换顺便改动图标造型**；形状必须与原图标一模一样，只换资源来源。
-2. ❌ **禁止随便改图标大小、margin / padding**；原有布局间距原样保留。
-3. ❌ **禁止把一次性局部图标强制挪进全局 `assets/icons`**；允许留在组件内并打 `// @ICON-LOCAL` 标记。
-4. ❌ **SVG 禁止硬编码 `fill` / `stroke` 颜色**；统一 `currentColor` 以适配明暗主题。
-
-### 2.9 图标专项回归清单（并入阶段 5）
-
-- [ ] 全部 UI 图标已矢量化；**无外部 CDN 图标**；代码中**不再 import `lucide-react`**（依赖包移除视联网情况单独执行）。
-- [ ] 深色 / 浅色主题切换时，所有图标颜色跟随主题（`currentColor` 生效）。
-- [ ] 所有图标尺寸、间距、hover 效果与重构前**完全一样**，无偏移、无变形。
-- [ ] 放大浏览器倍数，图标保持锐利无模糊（矢量特性验证）。
-- [ ] 移动端、桌面端各断点图标表现一致。
+1. 纯重构原则：只改结构、样式、文件、变量、命名、布局。业务逻辑 / 数据库 / API / 权限 100% 不改动。
+2. 所有页面样式、卡片、按钮、阴影、圆角、交互 必须同源复用，禁止两套样式。
+3. 全站图标 全部本地 SVG 矢量化，统一 currentColor，禁止 emoji、禁止第三方图标库。
+4. 统一响应式断点：`md = 768px`。
+5. 桌面端若无明确修改需求 永久冻结原样，只优化移动端异常布局。
+6. 所有公共组件全局唯一，禁止复制副本。
 
 ---
 
-## 三、阶段 3-5 可执行实施步骤
+## 2. 项目结构 & 命名标准化（本次核心重构目标）
 
-> 前置：阶段 3-1~3-4（常量 / hooks / 工具 / types）已完成。
+### 2.1 文件命名规范
 
-1. **① 建立目录与清点**
-   - 新建 `frontend/assets/icons/{navigation,action,status,user,brand}/`；
-   - 按 2.2 清单逐个清点（遍历 `frontend/` 下全部 `.tsx/.ts`，排除 `node_modules`、`.next`），产出「图标名 → 引用文件 → 调用点 className」台账，写回本文档 2.2。
-2. **② 打通工具链（二选一，见 2.5）**
-   - 首选：联网后 `pnpm add -D @svgr/webpack` + 配置 `turbopack.rules`（**禁用 `webpack()` 写法**）+ 加 `*.svg` 类型声明；
-   - 兜底：落地 `frontend/scripts/gen-icons.mjs` 生成脚本（零依赖，当前环境可立即执行）。
-3. **③ 归一化调用入口**
-   - 建 `frontend/types/icons.ts`（`IconComponent`）；
-   - 建 / 改造 `frontend/components/ui/icon.tsx`（薄封装，不用 `next/image`）；
-   - 把 `LucideIcon` 引用全部替换为 `IconComponent`。
-4. **④ 生成 / 落地 SVG 资源**
-   - 按 2.4 标准落地 137 个 SVG（`currentColor`、`viewBox 0 0 24 24`、`d` 原样复刻、kebab-case 命名）；
-   - `assets/icons` 落点见 2.3。
-5. **⑤ 按序替换导入并逐项核对**
-   - 顺序见 2.7；每项替换后立即执行「尺寸 / 间距 / 颜色 / hover」四项核对（必须当场比对）。
-6. **⑥ 清理内联 SVG**
-   - `EventsPreview.tsx` 装饰波浪线：保留原处（属 `@ICON-LOCAL`），补标记注释；
-   - 全库 `grep "<svg"` 复核，确认无遗漏硬编码图标。
-7. **⑦ 第三方包与依赖清理（视联网情况）**
-   - 代码层：确认全库无 `from "lucide-react"` 引用后，`pnpm remove lucide-react`（**须能同步 `pnpm-lock.yaml`；联网不可用时此步挂起**，保持依赖安装不影响运行）；
-   - `country-flag-icons`：**待确认项**——国旗集属内容 / 数据资源（已是 SVG、按需动态加载），非 UI 图标，默认**不纳入**本阶段；若要移除需单独立项评估（200+ 国旗文件）。
-8. **⑧ 阶段验收**
-   - `tsc --noEmit` 零错误；
-   - 执行 2.9 图标专项清单全项；
-   - 回写本文档 2.2 的实际清点与取舍结论。
+- 组件：大驼峰 `UserCard.tsx`
+- 工具 / 钩子：小驼峰 `formatTime.ts` / `useLocale.ts`
+- 文件夹：短横线 kebab-case
+- 常量 / 类型：统一集中存放
+
+### 2.2 目录强制标准化
+
+```
+src/
+├── assets/icons/     # 全站唯一 SVG 图标库（全部矢量化）
+├── constants/        # 全局常量、配置、文本、枚举
+├── types/            # 全局 TS 类型
+├── utils/            # 纯工具函数
+├── hooks/            # 全局通用 hooks
+├── components/ui/    # 全局通用 UI 组件
+└── components/layouts/  # 全局统一布局
+```
+
+> 注：本项目前端根目录为 `frontend/`（无 `src/` 层），上述目录均落在 `frontend/` 下，通过 `@/*` 路径别名引用。详见 `docs/icon-vectorization-exec.md` 2.3。
+
+### 2.3 代码标准化
+
+- 变量语义化、常量大写蛇形
+- 函数动词开头、事件统一 `handleXxx`
+- Import 严格排序
+- 清除死代码、清除无效 console
+- 统一 ESLint + Prettier
 
 ---
 
-## 四、更新记录
+## 3. 全站图标矢量化规范（强制落地）
 
-| 日期 | 变更 |
-| --- | --- |
-| 2026-10-15 | 初版：新增阶段 3-5「图标矢量化」；建立【图标资源标准】章节（路径、命名、SVG 标准、Turbopack/svgr 配置、`currentColor` 规则、迁移顺序、红线、回归清单、可执行步骤）；记录实测盘点与两项待确认项（npm 不可达 → 兜底方案 B；`country-flag-icons` 是否纳入）。 |
+1. 所有图标 彻底移除第三方库、CDN、emoji。
+2. 全部使用本地 SVG，存放 `src/assets/icons`。
+3. SVG 禁止硬编码颜色，统一使用 `currentColor`。
+4. 统一 `viewBox="0 0 24 24"`。
+5. 全局统一使用 `@svgr/webpack` 编译为组件。
+
+**效果**：深浅主题自动适配、全站图标风格统一、无限放大不失真。
+
+> 完整执行层规范（137 项图标盘点、Turbopack 适配、兜底方案 B、逐项核对流程）见 `docs/icon-vectorization-exec.md`。
+
+---
+
+## 4. Admin / Setting 全局主题样式双向绑定对齐【v0.5.2 终极核心】
+
+### 4.1 需求说明
+
+此前存在问题：
+
+- `/admin` 一套样式
+- `/setting` 一套样式
+- 圆角、卡片、阴影、间距、hover、配色、边框不统一
+
+### 4.2 最终强制规范（永久生效）
+
+`/admin` 与 `/setting` 主题、CSS、布局、交互、配色、卡片样式 双向完全绑定同源。
+
+**强制规则**：
+
+1. 所有外层布局容器完全复用同一个公共三栏布局组件。
+2. 卡片圆角、阴影、padding、margin 全局唯一变量。
+3. 按钮样式、hover、active、聚焦状态 完全一致。
+4. 主题色、次要色、文本色、边框色 同源读取。
+5. 动画过渡、弹窗动画、下拉动画 统一一套。
+6. 明暗主题切换同步生效，无差异。
+
+**最终效果**：
+
+- 电脑端、手机端 Admin / Setting 视觉完全孪生统一。
+- 以后改一处全局全部同步，彻底杜绝两套 UI 跑偏。
+
+---
+
+## 5. 移动端 Setting 死循环 BUG 彻底修复【v0.5.2 关键修复】
+
+### 5.1 BUG 原因
+
+移动端路由初始化逻辑错误：
+
+- 页面挂载自动强制跳转 `/个人资料`
+- 移动端无正确路由回退栈
+- 返回事件被路由守卫覆盖，导致卡死、回弹、死循环无法退出
+
+### 5.2 修复方案
+
+1. 移除移动端自动默认跳转个人资料的挂载逻辑。
+2. 移动端 Setting 打开默认停留在一级菜单主页，不自动进入子页面。
+3. 重构移动端路由栈、返回逻辑。
+4. 修复移动端菜单激活高亮错误问题。
+
+### 5.3 修复后最终表现
+
+- 手机打开 `/setting` 不会自动跳进个人资料。
+- 点击返回正常退出、不会回弹卡死。
+- 可自由切换各个设置子页面。
+- 菜单选中状态正常、无错乱。
+
+---
+
+## 6. Admin 后台顶部栏全局最终定稿（桌面 + 手机全部统一）
+
+### 6.1 左上角
+
+- 永久移除「管理后台」四个汉字（所有设备）。
+- 只保留汉堡菜单。
+- 页面面包屑文字不受影响。
+
+### 6.2 右上角
+
+- 永久移除用户名（所有设备）。
+- 只保留头像圆形按钮。
+- 头像下拉菜单功能完全不变。
+
+### 6.3 语言选择器
+
+- 彻底复用首页电脑版同款语言组件。
+- 使用本地 SVG 矢量图标（禁止地球 emoji）。
+- 桌面完整样式、手机紧凑按钮样式。
+- 全站语言选择 UI 100% 统一。
+
+---
+
+## 7. Admin 访问来源页面移动端彻底重构
+
+**问题**：手机端表格挤压、错位、IPv6 超长溢出、完全不可用。
+
+**最终方案**：
+
+- 桌面端：保留原表格 100% 不动。
+- 移动端：彻底弃用表格，改为单条目独立卡片布局。
+- 每条 IP 单独卡片、IPv6 自动换行、字段分行展示。
+- 卡片样式与后台首页统计卡片完全统一。
+
+---
+
+## 8. 首页入口结构最终定稿（高频前置、低频收纳）
+
+### 8.1 首页前台双主按钮（永久固定）
+
+1. 社团报名（原加入我们，路由不变）
+2. 活动报名（新增前台主入口）
+
+### 8.2 下沉至汉堡抽屉菜单
+
+1. 关于我们（原了解社团）
+2. 提交（原首页底部提交按钮）
+
+**最终结构逻辑**：
+
+- 首页只放最高频两大报名入口。
+- 低频功能全部收纳抽屉，界面干净整洁。
+- 桌面、手机完全统一表现。
+
+---
+
+## 9. 公共布局系统统一
+
+1. 全局三栏布局组件统一管理 `/admin` / `/setting`。
+2. 桌面三栏、手机折叠栈式布局。
+3. 左右侧边栏样式、宽度、阴影、圆角全局统一。
+4. 菜单 hover / active 样式全站统一。
+
+---
+
+## 10. 登录系统统一
+
+- 废弃双登录页。
+- 唯一入口 `/login`。
+- 后端自动识别：普通用户 / 管理员 / BreakGlass。
+- 登录自动对应跳转。
+
+---
+
+## 11. BreakGlass 超级账号规范
+
+- 密码环境变量存储，不入库。
+- 首次登录强制改密。
+- 独立阶梯封禁策略。
+- 设备 + 账号隔离封禁。
+- 全部操作审计日志留存。
+
+---
+
+## 12. i18n 国际化最终规范
+
+- UI 语言、区域格式化 双独立配置。
+- 优先级：用户设置 > URL > Cookie > 浏览器 > 系统默认。
+- 空值自动回退系统默认，不复制存储默认值。
+- 非法语种自动 fallback zh-CN。
+
+---
+
+## 13. 用户资料 & 隐私系统
+
+- 支持性别、生日存储。
+- 个人主页公开访问。
+- 隐私开关可控：签名 / 性别 / 生日。
+- 地区永久公开不可隐藏。
+
+---
+
+## 14. 主题系统
+
+- 支持 Windows 默认 / Apple 质感主题 / 节日主题。
+- 用户主题配置全局生效。
+- Admin / Setting 主题完全同步绑定。
+
+---
+
+## 15. 全量回归测试清单（最终验收）
+
+### 样式统一
+
+- [ ] Admin / Setting 圆角、阴影、卡片、配色、hover 完全一致
+- [ ] 全站图标纯 SVG、无 emoji、无第三方库
+
+### Setting 移动端修复
+
+- [ ] 手机打开 Setting 不会自动跳个人资料
+- [ ] 返回正常、无死循环、无卡死回弹
+
+### Admin 顶部
+
+- [ ] 无“管理后台”文字
+- [ ] 右上角仅头像、无用户名
+- [ ] 语言按钮与首页同源、SVG 图标正常
+
+### 访问来源
+
+- [ ] 桌面表格不变
+- [ ] 手机卡片布局完整、IPv6 正常换行
+
+### 首页结构
+
+- [ ] 首页双主按钮：社团报名 / 活动报名
+- [ ] 关于我们、提交收纳进抽屉菜单
+
+### 功能完整性
+
+- [ ] 全部原有业务功能零改动
+- [ ] 路由、权限、数据库、API 完全一致
+
+---
+
+## 16. 最终红线禁止规则
+
+- ❌ 禁止新增 / 删除 / 修改任何业务功能
+- ❌ 禁止两套 UI 样式、禁止脱离全局统一布局
+- ❌ 禁止使用 emoji、第三方图标
+- ❌ 禁止桌面端私自改动样式
+- ❌ 禁止复制公共组件、必须全局复用
+- ❌ 禁止用户默认配置落地存储空覆盖
+
+---
+
+## ✅ 文档状态
+
+- **版本**：v0.5.2 最终完整版（正式归档版）
+- **包含**：所有历史需求 + 最后两项核心修复 + 全站样式强统一 + BUG 修复 + 布局标准化 + 结构规范化

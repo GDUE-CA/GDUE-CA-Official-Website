@@ -22,14 +22,12 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import {
-  Check,
-  Languages,
-  Moon,
-  Palette,
-  Search,
-  Sun,
-} from "lucide-react";
+import Check from "@/assets/icons/action/check.svg";
+import Languages from "@/assets/icons/navigation/languages.svg";
+import Moon from "@/assets/icons/status/moon.svg";
+import Palette from "@/assets/icons/status/palette.svg";
+import Search from "@/assets/icons/action/search.svg";
+import Sun from "@/assets/icons/status/sun.svg";
 import { useI18n } from "@/i18n/provider";
 import { useSwitchLocale } from "@/lib/navigation";
 import { useTheme, type Theme } from "@/lib/hooks/useTheme";

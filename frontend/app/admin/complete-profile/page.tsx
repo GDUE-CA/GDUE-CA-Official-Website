@@ -11,7 +11,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Loader2, UserPlus } from "lucide-react";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import UserPlus from "@/assets/icons/user/user-plus.svg";
 import { useI18n } from "@/i18n/provider";
 import { useLocalizedPath } from "@/lib/navigation";
 import { Button } from "@/components/ui/button";

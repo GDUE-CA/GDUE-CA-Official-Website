@@ -12,7 +12,9 @@ import { useState } from "react";
 import { useI18n } from "@/i18n/provider";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { X, Plus, Hash } from "lucide-react";
+import X from "@/assets/icons/action/x.svg";
+import Plus from "@/assets/icons/action/plus.svg";
+import Hash from "@/assets/icons/status/hash.svg";
 import { cn } from "@/lib/utils";
 
 interface TagInputProps {

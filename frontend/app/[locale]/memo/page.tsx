@@ -17,15 +17,13 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useI18n } from "@/i18n/provider";
-import {
-  Loader2,
-  Search,
-  Image as ImageIcon,
-  ChevronDown,
-  CalendarDays,
-  PenLine,
-  X,
-} from "lucide-react";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import Search from "@/assets/icons/action/search.svg";
+import ImageIcon from "@/assets/icons/status/image.svg";
+import ChevronDown from "@/assets/icons/navigation/chevron-down.svg";
+import CalendarDays from "@/assets/icons/status/calendar-days.svg";
+import PenLine from "@/assets/icons/action/pen-line.svg";
+import X from "@/assets/icons/action/x.svg";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/shared/PageHeader";

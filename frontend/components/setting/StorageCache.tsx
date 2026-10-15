@@ -11,15 +11,13 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Trash2,
-  Cookie,
-  HardDrive,
-  Loader2,
-  AlertTriangle,
-  RefreshCw,
-  Database,
-} from "lucide-react";
+import Trash2 from "@/assets/icons/action/trash-2.svg";
+import Cookie from "@/assets/icons/status/cookie.svg";
+import HardDrive from "@/assets/icons/status/hard-drive.svg";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import AlertTriangle from "@/assets/icons/status/alert-triangle.svg";
+import RefreshCw from "@/assets/icons/action/refresh-cw.svg";
+import Database from "@/assets/icons/status/database.svg";
 import { useI18n } from "@/i18n/provider";
 import { useLocalizedPath } from "@/lib/navigation";
 import { Button } from "@/components/ui/button";

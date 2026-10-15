@@ -6,7 +6,8 @@
  * - 使用 AnimatePresence 实现 Sun/Moon 图标平滑过渡
  */
 import { motion, AnimatePresence } from "framer-motion";
-import { Sun, Moon } from "lucide-react";
+import Sun from "@/assets/icons/status/sun.svg";
+import Moon from "@/assets/icons/status/moon.svg";
 import { useI18n } from "@/i18n/provider";
 import { useTheme } from "@/lib/hooks/useTheme";
 import { Button } from "@/components/ui/button";

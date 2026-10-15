@@ -75,6 +75,7 @@ from app.core.kv import get_kv
 from app.core.mailer import is_configured as mailer_configured, send_email
 from app.schemas.auth import (
     AvatarUploadOut,
+    BannerUploadOut,
     ChangePasswordRequest,
     ForgotPasswordRequest,
     ForgotPasswordResetRequest,
@@ -657,6 +658,8 @@ async def me(
 AVATAR_MAX_SIZE = 5 * 1024 * 1024  # 压缩后落盘上限 5MB
 AVATAR_RAW_MAX_SIZE = 15 * 1024 * 1024  # 原始上传上限：大图先压缩，压缩后仍超限才拒绝
 AVATAR_DIR = Path("uploads/avatars")
+# 个人主页封面（V0.5.5 §9.3）：与头像同一套压缩/格式校验，尺寸更宽松
+BANNER_DIR = Path("uploads/banners")
 
 
 def _sniff_image(data: bytes) -> str | None:
@@ -840,6 +843,9 @@ async def update_profile(
         u.bio = req.bio.strip() or None
     if req.theme is not None:
         u.theme = req.theme.strip() or None
+    # 个人主页封面纯色（V0.5.5 §9.3）：空字符串=恢复系统默认（存 NULL）
+    if req.profile_banner_color is not None:
+        u.profile_banner_color = req.profile_banner_color.strip() or None
     # profile_privacy：用 exclude_unset 区分「未传」与「显式传 null/空 dict=重置默认」。
     # 传入非空 dict 则合并更新（保留旧值中未提供的键）。
     raw_data = req.model_dump(exclude_unset=True)
@@ -919,6 +925,72 @@ async def reset_avatar(
             old_path.unlink(missing_ok=True)
         u.avatar_url = None
         _log(db, u.id, "avatar.reset", None, get_client_ip(request))
+        await db.commit()
+    return {"ok": True}
+
+
+# ---------- 个人主页封面（V0.5.5 §9.3） ----------
+@router.post("/banner", response_model=BannerUploadOut)
+async def upload_banner(
+    request: Request,
+    file: UploadFile = File(...),
+    user: dict = Depends(require_role(Role.MEMBER, allow_unverified_realname=True)),
+    db: AsyncSession = Depends(get_db),
+):
+    """上传个人主页封面（jpg/png/webp，原始最大 15MB）；与头像同一套
+    魔数识别 + 80% 压缩；压缩后仍超 5MB 拒绝。旧封面文件同步清理。"""
+    _reject_break_glass(user)
+    data = await file.read(AVATAR_RAW_MAX_SIZE + 1)
+    if len(data) > AVATAR_RAW_MAX_SIZE:
+        raise HTTPException(status_code=400, detail="文件大小不能超过 15MB")
+    ext = _sniff_image(data)
+    if not ext:
+        raise HTTPException(status_code=400, detail="仅支持 JPG/PNG/WEBP 格式")
+
+    from app.core.images import compress_image
+
+    data, ext = compress_image(data, ext)
+    if len(data) > AVATAR_MAX_SIZE:
+        raise HTTPException(status_code=400, detail="压缩后文件仍超过 5MB，请降低分辨率后重试")
+
+    filename = f"{user['user_id']}_{uuid.uuid4().hex}{ext}"
+    BANNER_DIR.mkdir(parents=True, exist_ok=True)
+    (BANNER_DIR / filename).write_bytes(data)
+
+    u = await db.get(User, int(user["user_id"]))
+    if not u:
+        raise HTTPException(status_code=404, detail="用户不存在")
+
+    # 删除旧封面文件（只允许删除封面目录内的文件）
+    if u.profile_banner:
+        old_path = (BANNER_DIR / Path(u.profile_banner).name).resolve()
+        if old_path.parent == BANNER_DIR.resolve() and old_path.exists():
+            old_path.unlink(missing_ok=True)
+
+    banner_url = f"/uploads/banners/{filename}"
+    u.profile_banner = banner_url
+    _log(db, u.id, "banner.upload", None, get_client_ip(request))
+    await db.commit()
+    return BannerUploadOut(banner_url=banner_url)
+
+
+@router.delete("/banner")
+async def reset_banner(
+    request: Request,
+    user: dict = Depends(require_role(Role.MEMBER, allow_unverified_realname=True)),
+    db: AsyncSession = Depends(get_db),
+):
+    """恢复默认封面：清空 profile_banner 并删除旧封面文件（纯色设置不受影响）。"""
+    _reject_break_glass(user)
+    u = await db.get(User, int(user["user_id"]))
+    if not u:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    if u.profile_banner:
+        old_path = (BANNER_DIR / Path(u.profile_banner).name).resolve()
+        if old_path.parent == BANNER_DIR.resolve() and old_path.exists():
+            old_path.unlink(missing_ok=True)
+        u.profile_banner = None
+        _log(db, u.id, "banner.reset", None, get_client_ip(request))
         await db.commit()
     return {"ok": True}
 
@@ -1127,6 +1199,10 @@ async def update_user(
             if not isinstance(actions, list) or any(a not in ("view", "manage") for a in actions):
                 raise HTTPException(status_code=400, detail="权限动作仅支持 view / manage")
         u.permission_overrides = req.permission_overrides or None
+        # V0.5.5 §3.2：覆盖矩阵变更加专门审计（detail 带模块清单，区别于笼统 user.update）
+        _log(db, user, "user.permission_overrides",
+             f"user:{user_id} {json.dumps(req.permission_overrides, ensure_ascii=False)}",
+             get_client_ip(request))
 
     if req.username is not None and req.username != u.username:
         dup = await db.execute(select(User).where(User.username == req.username))

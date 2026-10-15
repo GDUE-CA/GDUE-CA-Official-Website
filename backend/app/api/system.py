@@ -115,6 +115,10 @@ async def update_settings(
     _log(db, user, "system.settings.update",
          f"changed: {changed_keys}" if changed_keys else "no-op",
          client_ip)
+    # 邮件模块开关单独留痕（V0.5.5 §3.3：后台菜单门禁的状态来源）
+    if "mail_system_ready" in changed_keys:
+        _log(db, user, "system.mail_system_ready.update",
+             str(rec.mail_system_ready), client_ip)
     # 网络配置变更 → 写历史 + 修剪
     if network_changed:
         _log_network_change(db, rec, uid, network_changed, client_ip)

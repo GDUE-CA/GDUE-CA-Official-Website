@@ -6,7 +6,7 @@
  * 规范校验：名称/描述/分类/报名起止必填，人数上限为 ≥0 整数，截止须晚于开始。
  */
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
 import { useI18n } from "@/i18n/provider";
 import { utcToLocalInput } from "@/lib/utils";
 import { Button } from "@/components/ui/button";

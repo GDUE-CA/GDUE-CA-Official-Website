@@ -7,7 +7,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Github, ExternalLink } from "lucide-react";
+import Github from "@/assets/icons/brand/github.svg";
+import ExternalLink from "@/assets/icons/navigation/external-link.svg";
 import { useI18n } from "@/i18n/provider";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";

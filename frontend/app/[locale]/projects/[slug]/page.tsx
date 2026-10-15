@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Github, ExternalLink } from "lucide-react";
+import ArrowLeft from "@/assets/icons/navigation/arrow-left.svg";
+import Github from "@/assets/icons/brand/github.svg";
+import ExternalLink from "@/assets/icons/navigation/external-link.svg";
 import { getDictionary } from "@/i18n/dictionary";
 import { getPublicProject } from "@/lib/api/projects";
 import { Button } from "@/components/ui/button";

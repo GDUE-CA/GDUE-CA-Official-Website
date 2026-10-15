@@ -10,7 +10,9 @@
  * - 位于 (dashboard) 路由组，自动获得侧边栏与登录态守卫
  */
 import { useCallback, useEffect, useState } from "react";
-import { Loader2, ShieldBan, ShieldAlert } from "lucide-react";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import ShieldBan from "@/assets/icons/status/shield-ban.svg";
+import ShieldAlert from "@/assets/icons/status/shield-alert.svg";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

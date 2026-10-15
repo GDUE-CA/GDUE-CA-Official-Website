@@ -18,54 +18,54 @@
  * admin/editor 未实名→/admin/realname；must_change_password→/admin/change-password。
  * 权限过滤仅界面层，接口权限由后端强制校验。
  */
-import { useEffect, useState, useRef } from "react";
+import { Suspense, useEffect, useState, useRef } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import {
-  LayoutDashboard,
-  Bell,
-  CalendarDays,
-  Users as UsersIcon,
-  Settings,
-  LogOut,
-  Menu,
-  X,
-  ExternalLink,
-  ShieldCheck,
-  Megaphone,
-  Newspaper,
-  UsersRound,
-  UserPlus,
-  MessageSquare,
-  KeyRound,
-  Fingerprint,
-  BadgeCheck,
-  FileText,
-  Globe,
-  ShieldBan,
-  ScrollText,
-  Trash2,
-  FolderOpen,
-  Mail,
-  UserCircle,
-  ChevronRight,
-  ClipboardList,
-  MailPlus,
-  Palette,
-  GraduationCap,
-  Database,
-} from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import LayoutDashboard from "@/assets/icons/navigation/layout-dashboard.svg";
+import Bell from "@/assets/icons/status/bell.svg";
+import CalendarDays from "@/assets/icons/status/calendar-days.svg";
+import UsersIcon from "@/assets/icons/user/users.svg";
+import Settings from "@/assets/icons/navigation/settings.svg";
+import LogOut from "@/assets/icons/navigation/log-out.svg";
+import Menu from "@/assets/icons/navigation/menu.svg";
+import X from "@/assets/icons/action/x.svg";
+import ExternalLink from "@/assets/icons/navigation/external-link.svg";
+import ShieldCheck from "@/assets/icons/status/shield-check.svg";
+import Megaphone from "@/assets/icons/status/megaphone.svg";
+import Newspaper from "@/assets/icons/status/newspaper.svg";
+import UsersRound from "@/assets/icons/user/users-round.svg";
+import UserPlus from "@/assets/icons/user/user-plus.svg";
+import MessageSquare from "@/assets/icons/status/message-square.svg";
+import KeyRound from "@/assets/icons/status/key-round.svg";
+import Fingerprint from "@/assets/icons/status/fingerprint.svg";
+import BadgeCheck from "@/assets/icons/status/badge-check.svg";
+import FileText from "@/assets/icons/status/file-text.svg";
+import Globe from "@/assets/icons/navigation/globe.svg";
+import ShieldBan from "@/assets/icons/status/shield-ban.svg";
+import ScrollText from "@/assets/icons/status/scroll-text.svg";
+import Trash2 from "@/assets/icons/action/trash-2.svg";
+import FolderOpen from "@/assets/icons/navigation/folder-open.svg";
+import Mail from "@/assets/icons/status/mail.svg";
+import UserCircle from "@/assets/icons/user/user-circle.svg";
+import ChevronRight from "@/assets/icons/navigation/chevron-right.svg";
+import ClipboardList from "@/assets/icons/action/clipboard-list.svg";
+import MailPlus from "@/assets/icons/status/mail-plus.svg";
+import Palette from "@/assets/icons/status/palette.svg";
+import GraduationCap from "@/assets/icons/status/graduation-cap.svg";
+import Database from "@/assets/icons/status/database.svg";
+import Bug from "@/assets/icons/status/bug.svg";
+import { LanguagePopover } from "@/components/layout/LanguagePopover";
 import { motion, AnimatePresence } from "framer-motion";
 import { useI18n } from "@/i18n/provider";
 import { useLocalizedPath } from "@/lib/navigation";
-import { useAdminLocale } from "@/app/admin/AdminProviders";
-import { locales, localeDisplayName, type Locale } from "@/lib/i18n";
+import { type Locale } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { BanModal } from "@/components/shared/BanModal";
 import { BackgroundTaskFloat } from "@/components/notifications/BackgroundTaskFloat";
 import { fetchMe } from "@/lib/api/auth";
 import { fetchOverview } from "@/lib/api/adminStats";
+import { fetchPublicSettings } from "@/lib/api/system";
 import { API_BASE_URL, ApiError } from "@/lib/api/client";
 import { clearLocalSession, isAdminRole, logout, saveSession, type AdminSession } from "@/lib/auth";
 import {
@@ -87,7 +87,7 @@ type SecondLevel = {
   placeholder?: boolean;
 };
 
-/** 一级菜单项（固定 9 项，顺序不可调换） */
+/** 一级菜单项（V0.5.5 §3.1 起 10 项，顺序不可调换） */
 type FirstLevel = {
   key: string;
   icon: typeof LayoutDashboard;
@@ -98,8 +98,10 @@ type FirstLevel = {
   /** 整组权限模块（用于无 href 时判定整组可见性；有 children 时按子项判定） */
   modules?: PermissionModule[];
   children?: SecondLevel[];
-  /** 整组占位（如邮件与推送） */
+  /** 整组占位（业务未实现本轮不做） */
   placeholder?: boolean;
+  /** V0.5.5 §3.3：功能门禁——跟随 SystemSetting 布尔配置；false 时置灰 + tooltip（仍可点击） */
+  gate?: "mail_system_ready";
 };
 
 /** 二级项可见性：按有效权限判定（与既有逻辑一致） */
@@ -114,8 +116,9 @@ function canAccessSecond(
 
 /**
  * 一级菜单（顺序严格固定，开发时禁止调换）：
- * 概览 → 用户管理 → 内容管理 → 通知管理 → 活动管理 → 系统安全 → 系统配置 → 日志与审计 → 邮件与推送
+ * 概览 → 用户管理 → 审核中心 → 内容管理 → 通知管理 → 活动管理 → 系统安全 → 系统配置 → 日志与审计 → 邮件与推送
  * 标注：⏳占位 = 业务未实现本轮不做；↩归入 = 存量页面就近挂载。
+ * V0.5.5 §3.1：审核类子项全部迁出用户管理/活动管理，统一收纳进一级【审核中心】。
  */
 const firstLevelItems: FirstLevel[] = [
   // 1. 概览（无二级，直接仪表盘）
@@ -132,15 +135,25 @@ const firstLevelItems: FirstLevel[] = [
     modules: ["users"],
     children: [
       { key: "admin.nav.users.list", href: "/admin/users", icon: UsersIcon, modules: ["users"] },
-      { key: "admin.nav.users.roles", icon: KeyRound, placeholder: true }, // ⏳角色 CRUD 未实现
+      { key: "admin.nav.users.roles", href: "/admin/roles", icon: KeyRound, modules: ["roles"] }, // V0.5.5 §3.2：角色管理（后端鉴权，前端不硬置灰）
       { key: "admin.nav.users.members", href: "/admin/members", icon: UsersRound, modules: ["members"] }, // ↩成员花名册
       { key: "admin.nav.users.realname", href: "/admin/realname-review", icon: BadgeCheck, modules: ["realname"] }, // ↩实名审核
-      { key: "admin.nav.users.review", href: "/admin/review", icon: ClipboardList, modules: ["review.registrations", "review.bugs", "review.resets"] }, // ↩审核中心
-      { key: "admin.nav.users.emailChange", href: "/admin/email-change-requests", icon: MailPlus, modules: ["review.emails"] }, // ↩人工账号申请：更改绑定邮箱申请列表
-      { key: "admin.nav.users.schoolVerify", href: "/admin/school-verify", icon: GraduationCap, modules: ["review.school"] }, // Module D：学校身份人工验证审核
     ],
   },
-  // 3. 内容管理
+  // 3. 审核中心（V0.5.5 §3.1：统一收纳全部申请/审核/工单业务，原分散入口全部迁移至此）
+  {
+    key: "admin.nav.reviewCenter",
+    icon: ClipboardList,
+    children: [
+      { key: "admin.review.tabs.registrations", href: "/admin/review?tab=registrations", icon: ClipboardList, modules: ["review.registrations"] }, // 报名审核
+      { key: "admin.nav.activities.clubApply", href: "/admin/club-apply", icon: UserPlus, modules: ["recruitment"] }, // ↩社团报名审核（原活动管理子项迁移）
+      { key: "admin.review.tabs.bugs", href: "/admin/review?tab=bugs", icon: Bug, modules: ["review.bugs"] }, // Bug 反馈工单
+      { key: "admin.review.tabs.resets", href: "/admin/review?tab=resets", icon: KeyRound, modules: ["review.resets"] }, // 账号重置申请
+      { key: "admin.nav.users.schoolVerify", href: "/admin/school-verify", icon: GraduationCap, modules: ["review.school"] }, // ↩学校身份核验
+      { key: "admin.nav.users.emailChange", href: "/admin/email-change-requests", icon: MailPlus, modules: ["review.emails"] }, // ↩更换绑定邮箱申请列表
+    ],
+  },
+  // 4. 内容管理
   {
     key: "admin.nav.content",
     icon: Newspaper,
@@ -153,7 +166,7 @@ const firstLevelItems: FirstLevel[] = [
       { key: "admin.nav.content.recycle", href: "/admin/recycle", icon: Trash2 }, // ↩内容回收站
     ],
   },
-  // 4. 通知管理
+  // 5. 通知管理
   {
     key: "admin.nav.notifications",
     icon: Megaphone,
@@ -163,7 +176,7 @@ const firstLevelItems: FirstLevel[] = [
       { key: "admin.nav.notifications.messages", icon: MessageSquare, placeholder: true }, // ⏳私信系统未实现
     ],
   },
-  // 5. 活动管理
+  // 6. 活动管理（V0.5.5 §3.1：社团报名审核子项已迁入审核中心）
   {
     key: "admin.nav.activities",
     icon: CalendarDays,
@@ -172,10 +185,9 @@ const firstLevelItems: FirstLevel[] = [
       { key: "admin.nav.activities.list", href: "/admin/activities", icon: CalendarDays, modules: ["activities"] },
       { key: "admin.nav.activities.registrations", icon: ClipboardList, placeholder: true }, // ⏳跨活动报名汇总未实现
       { key: "admin.nav.activities.recruitment", href: "/admin/recruitment", icon: UserPlus, modules: ["recruitment"] }, // ↩招新管理
-      { key: "admin.nav.activities.clubApply", href: "/admin/club-apply", icon: ClipboardList, modules: ["recruitment"] }, // Module D：社团报名审核
     ],
   },
-  // 6. 系统安全（admin 角色）
+  // 7. 系统安全（admin 角色）
   {
     key: "admin.nav.security",
     icon: ShieldCheck,
@@ -187,7 +199,7 @@ const firstLevelItems: FirstLevel[] = [
       { key: "admin.nav.security.access", href: "/admin/security/access-control", icon: Globe, modules: ["security"] }, // 访问控制 Tab
     ],
   },
-  // 7. 系统配置（admin 角色）
+  // 8. 系统配置（admin 角色）
   {
     key: "admin.nav.config",
     icon: Settings,
@@ -202,18 +214,19 @@ const firstLevelItems: FirstLevel[] = [
       { key: "admin.nav.config.sso", href: "/admin/sso", icon: Fingerprint, modules: ["sso"] }, // ↩SSO 受信应用
     ],
   },
-  // 8. 日志与审计（无二级，单页）
+  // 9. 日志与审计（无二级，单页）
   {
     key: "admin.nav.audit",
     icon: ScrollText,
     href: "/admin/audit-logs",
     modules: ["audit_logs"],
   },
-  // 9. 邮件与推送（无二级，整组占位）
+  // 10. 邮件与推送（无二级；V0.5.5 §3.3：功能门禁跟随后端 mail_system_ready，false 时置灰+tooltip，仍可点击）
   {
     key: "admin.nav.mailpush",
     icon: Mail,
-    placeholder: true, // ⏳SMTP/推送后端未实现
+    href: "/admin/mailpush",
+    gate: "mail_system_ready",
   },
 ];
 
@@ -239,8 +252,10 @@ export default function AdminDashboardLayout({
   const [isBreakGlass, setIsBreakGlass] = useState(false);
   /** 侧边栏折叠状态：false=展开宽栏，true=折叠窄栏；mount 时从 localStorage 读取 */
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  /** V0.5.5 §3.3：邮件收发模块门禁（公开系统配置 mail_system_ready；默认 false 置灰） */
+  const [mailSystemReady, setMailSystemReady] = useState(false);
 
-  /** 读取持久化的折叠状态（客户端才能读 localStorage） */
+  /** 读取持久化的折叠状态（客户端才能读 localStorage）+ 公开系统配置（邮件门禁） */
   useEffect(() => {
     try {
       const v = window.localStorage.getItem(SIDEBAR_KEY);
@@ -248,6 +263,10 @@ export default function AdminDashboardLayout({
     } catch {
       /* localStorage 不可用时忽略，默认展开 */
     }
+    // 门禁状态跟随后端配置，前端绝不写死（V0.5.5 铁律 5）；失败静默保持默认 false
+    fetchPublicSettings()
+      .then((s) => setMailSystemReady(s.mail_system_ready))
+      .catch(() => {});
   }, []);
 
   /** 切换侧边栏折叠/展开，并持久化 */
@@ -330,10 +349,7 @@ export default function AdminDashboardLayout({
     router.replace(lp("/login"));
   }
 
-  /** 菜单项激活判断（基于 pathname 前缀） */
-  function isActive(href: string) {
-    return pathname.startsWith(href);
-  }
+  /** 菜单项激活判断由 SidebarContent 内部 isItemActive 处理（V0.5.5 §3.1：支持 ?tab= 深链精确匹配） */
 
   // 非管理员访问后台：403 Forbidden
   if (forbidden) {
@@ -378,17 +394,19 @@ export default function AdminDashboardLayout({
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-muted/20">
+    // V0.5.5 §2：根容器锁死视口高度并关闭自身滚动——页面级滚动条只允许出现
+    // 在左侧边栏 nav 层与右侧 main 内部（浏览器全局滚动条禁止出现）
+    <div className="h-dvh overflow-hidden flex flex-col bg-muted/20">
       <BanModal />
       <BackgroundTaskFloat />
       {/* Layer 1: BG 顶部红条警告横幅（横跨全宽，永远第一行，不可关闭） */}
       {isBreakGlass && (
-        <div className="bg-destructive text-destructive-foreground text-center text-sm font-medium px-4 py-2">
+        <div className="shrink-0 bg-destructive text-destructive-foreground text-center text-sm font-medium px-4 py-2">
           {t("admin.breakGlass.bannerWarning")}
         </div>
       )}
-      {/* Layer 2: 顶部 Header 通栏（底色跟随侧边栏，仅底部极淡分隔线） */}
-      <header className="h-14 border-b border-border bg-sidebar/95 backdrop-blur-md flex items-center justify-between px-3 sm:px-4 sticky top-0 z-30">
+      {/* Layer 2: 顶部 Header 通栏（底色跟随侧边栏，仅底部极淡分隔线；flex 子元素天然固定，不再用 sticky） */}
+      <header className="h-14 shrink-0 border-b border-border bg-sidebar/95 backdrop-blur-md flex items-center justify-between px-3 sm:px-4 z-30">
         <div className="flex items-center gap-2">
           {/* 桌面端汉堡按钮：切换侧边栏折叠/展开 */}
           <Button
@@ -410,9 +428,6 @@ export default function AdminDashboardLayout({
           >
             <Menu className="h-5 w-5" />
           </Button>
-          <span className="font-display font-bold text-sm">
-            {t("admin.dashboard.title")}
-          </span>
         </div>
         <div className="flex items-center gap-1 sm:gap-2">
           <PendingBadge />
@@ -428,23 +443,27 @@ export default function AdminDashboardLayout({
         </div>
       </header>
 
-      {/* Layer 3: 主体 = 左侧单一可折叠 Sider + 右侧主内容区 */}
+      {/* Layer 3: 主体 = 左侧单一可折叠 Sider + 右侧主内容区（各自独立滚动） */}
       <div className="flex-1 flex min-h-0">
-        {/* 桌面侧边栏：单一可折叠 */}
+        {/* 桌面侧边栏：单一可折叠；高度由 flex 拉伸继承（禁 sticky/calc，防布局跳动），
+            内部滚动交给 SidebarContent 的 nav 层（本层不加 overflow，避免裁切折叠模式 popover） */}
         <aside
           className={cn(
-            "hidden md:flex md:flex-col md:sticky md:top-14 md:h-[calc(100vh-3.5rem)] md:flex-none md:border-r md:border-border bg-sidebar transition-[width] duration-[180ms] ease-in-out",
+            "hidden md:flex md:flex-col md:flex-none md:border-r md:border-border bg-sidebar transition-[width] duration-[180ms] ease-in-out",
             sidebarCollapsed ? "md:w-16" : "md:w-64"
           )}
         >
-          <SidebarContent
-            t={t}
-            locale={locale}
-            permCtx={permCtx}
-            pathname={pathname}
-            isActive={isActive}
-            collapsed={sidebarCollapsed}
-          />
+          {/* Suspense：SidebarContent 使用 useSearchParams（?tab= 深链），防 CSR bailout 报错 */}
+          <Suspense fallback={null}>
+            <SidebarContent
+              t={t}
+              locale={locale}
+              permCtx={permCtx}
+              pathname={pathname}
+              mailSystemReady={mailSystemReady}
+              collapsed={sidebarCollapsed}
+            />
+          </Suspense>
         </aside>
 
         {/* 移动端抽屉（默认展开模式，点击外部或导航后关闭） */}
@@ -465,10 +484,7 @@ export default function AdminDashboardLayout({
                 transition={{ type: "spring", damping: 30, stiffness: 300 }}
                 className="md:hidden fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] bg-sidebar border-r border-border flex flex-col"
               >
-                <div className="h-14 flex items-center justify-between px-3 border-b border-border">
-                  <span className="font-display font-bold text-sm">
-                    {t("admin.dashboard.title")}
-                  </span>
+                <div className="h-14 flex items-center justify-end px-3 border-b border-border">
                   <Button
                     variant="ghost"
                     size="icon"
@@ -478,28 +494,32 @@ export default function AdminDashboardLayout({
                     <X className="h-5 w-5" />
                   </Button>
                 </div>
-                <SidebarContent
-                  t={t}
-                  locale={locale}
-                  permCtx={permCtx}
-                  pathname={pathname}
-                  isActive={isActive}
-                  collapsed={false}
-                  onNavigate={() => setMobileNavOpen(false)}
-                />
+                <Suspense fallback={null}>
+                  <SidebarContent
+                    t={t}
+                    locale={locale}
+                    permCtx={permCtx}
+                    pathname={pathname}
+                    mailSystemReady={mailSystemReady}
+                    collapsed={false}
+                    onNavigate={() => setMobileNavOpen(false)}
+                  />
+                </Suspense>
               </motion.aside>
             </>
           )}
         </AnimatePresence>
 
-        {/* 右侧主内容区（顶部面包屑 + 主内容） */}
+        {/* 右侧主内容区（顶部面包屑固定 + 主内容独立滚动；V0.5.5 §2） */}
         <div className="flex-1 flex flex-col min-w-0">
-          <AdminBreadcrumb
-            locale={locale}
-            pathname={pathname}
-            permCtx={permCtx}
-          />
-          <main className="flex-1 p-6">{children}</main>
+          <div className="shrink-0">
+            <AdminBreadcrumb
+              locale={locale}
+              pathname={pathname}
+              permCtx={permCtx}
+            />
+          </div>
+          <main className="flex-1 overflow-y-auto overscroll-contain p-6">{children}</main>
         </div>
       </div>
     </div>
@@ -530,22 +550,25 @@ function PendingBadge() {
   );
 }
 
-/** 顶栏语言切换（localStorage 持久化，切换后全后台即时生效） */
+/** 顶栏语言切换：复用首页同款 LanguagePopover，地球图标按钮触发（移动端紧凑） */
 function LocaleSelect() {
-  const { locale, setLocale } = useAdminLocale();
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
   return (
-    <select
-      value={locale}
-      onChange={(e) => setLocale(e.target.value as Locale)}
-      aria-label="Language"
-      className="h-8 rounded-md border border-input bg-background px-1.5 text-xs font-medium"
-    >
-      {locales.map((l) => (
-        <option key={l} value={l}>
-          {localeDisplayName(l)}
-        </option>
-      ))}
-    </select>
+    <LanguagePopover
+      open={open}
+      onOpenChange={setOpen}
+      anchor={
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={t("nav.language")}
+          className="h-8 w-8"
+        >
+          <Globe className="h-4 w-4" />
+        </Button>
+      }
+    />
   );
 }
 
@@ -596,12 +619,9 @@ function UserMenu({
         ) : (
           <UserCircle className="h-7 w-7 shrink-0 text-muted-foreground" />
         )}
-        <span className="hidden sm:inline font-medium truncate max-w-32">
-          {session?.username ?? "admin"}
-        </span>
         {/* BG 红标签（Layer 2 警告） */}
         {isBreakGlass && (
-          <span className="hidden md:inline-flex items-center rounded-md bg-destructive px-1.5 py-0.5 text-[10px] font-semibold text-destructive-foreground">
+          <span className="inline-flex items-center rounded-md bg-destructive px-1.5 py-0.5 text-[10px] font-semibold text-destructive-foreground">
             BG
           </span>
         )}
@@ -658,7 +678,7 @@ function SidebarContent({
   locale,
   permCtx,
   pathname,
-  isActive,
+  mailSystemReady,
   onNavigate,
   collapsed = false,
 }: {
@@ -666,16 +686,34 @@ function SidebarContent({
   locale: Locale;
   permCtx: { role: string; overrides: PermissionOverrides | null } | null;
   pathname: string;
-  isActive: (h: string) => boolean;
+  /** V0.5.5 §3.3：邮件模块门禁开关（跟随后端 SystemSetting，前端不写死） */
+  mailSystemReady: boolean;
   onNavigate?: () => void;
   collapsed?: boolean;
 }) {
   const lp = useLocalizedPath();
   const isAdmin = permCtx ? isAdminRole(permCtx.role) : false;
+  // ?tab= 深链精确匹配激活态（V0.5.5 §3.1：审核中心多个子项共用 /admin/review）
+  const searchParams = useSearchParams();
   /** 当前展开的一级项 key（仅展开模式生效；折叠模式用 popover） */
   const [expandedFirst, setExpandedFirst] = useState<string | null>(null);
   /** 折叠模式下当前悬浮的一级项 key（控制 popover 显示） */
   const [hoveredFirst, setHoveredFirst] = useState<string | null>(null);
+
+  /**
+   * 菜单项激活判断：href 可能带查询串（/admin/review?tab=bugs）。
+   * - 路径部分：pathname 前缀匹配
+   * - 查询部分：逐参数精确匹配（无查询串时仅路径匹配）
+   */
+  function isItemActive(href: string): boolean {
+    const [path, query] = href.split("?");
+    if (!pathname.startsWith(path)) return false;
+    if (!query) return true;
+    for (const [k, v] of new URLSearchParams(query)) {
+      if (searchParams.get(k) !== v) return false;
+    }
+    return true;
+  }
 
   /** 过滤后的有效一级项（角色守卫 + 子项权限过滤后非空）。
    *  href 在此统一本地化为 /{locale}/admin/... */
@@ -702,10 +740,10 @@ function SidebarContent({
       return false;
     });
 
-  /** 当前激活的一级项 = 其直达 href 或任一子项 href 命中 pathname 的项 */
+  /** 当前激活的一级项 = 其直达 href 或任一子项 href 命中（含 ?tab= 精确匹配）的项 */
   const activeFirstLevel = visibleFirstLevel.find((fl) => {
-    if (fl.href && isActive(lp(fl.href))) return true;
-    return fl.visibleChildren.some((c) => c.href && isActive(c.href));
+    if (fl.href && isItemActive(lp(fl.href))) return true;
+    return fl.visibleChildren.some((c) => c.href && isItemActive(c.href));
   });
 
   /** 初始展开 active 一级项（仅展开模式；折叠模式不展开，靠 popover） */
@@ -753,7 +791,7 @@ function SidebarContent({
           "inline-flex items-center justify-start gap-3 whitespace-nowrap rounded-sm text-[15px] leading-[1.2] font-medium transition-all duration-[180ms] ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 cursor-pointer [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
           "hover:bg-sidebar-accent hover:text-accent-foreground",
           "w-full px-[14px] py-[10px]",
-          isActive(item.href)
+          isItemActive(item.href)
             ? "bg-primary text-primary-foreground font-semibold hover:bg-primary/90 hover:text-primary-foreground"
             : "text-muted-foreground"
         )}
@@ -771,6 +809,8 @@ function SidebarContent({
     const isPlaceholder = fl.placeholder || !href;
     const hasChildren = fl.visibleChildren.length > 0;
     const isExpanded = expandedFirst === fl.key;
+    // V0.5.5 §3.3：门禁未放行 → 视觉置灰但仍可点击，悬浮显示 tooltip 引导文案
+    const gated = fl.gate === "mail_system_ready" && !mailSystemReady;
 
     // 折叠模式：仅图标 + 悬浮 popover
     if (collapsed) {
@@ -796,12 +836,14 @@ function SidebarContent({
           <Link
             href={href!}
             onClick={onNavigate}
-            title={t(fl.key)}
+            title={gated ? t("admin.nav.mailpush.tooltip") : t(fl.key)}
             className={cn(
               "flex items-center justify-center w-full h-10 rounded-sm transition-all duration-[180ms] ease-in-out",
-              isActiveItem
+              isActiveItem && !gated
                 ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-sidebar-accent hover:text-accent-foreground"
+                : gated
+                  ? "text-muted-foreground/50"
+                  : "text-muted-foreground hover:bg-sidebar-accent hover:text-accent-foreground"
             )}
           >
             <fl.icon className="h-5 w-5" />
@@ -860,13 +902,15 @@ function SidebarContent({
           <Link
             href={href!}
             onClick={onNavigate}
-            title={t(fl.key)}
+            title={gated ? t("admin.nav.mailpush.tooltip") : t(fl.key)}
             className={cn(
               "inline-flex items-center justify-start gap-3 whitespace-nowrap rounded-sm text-[15px] leading-[1.2] font-semibold transition-all duration-[180ms] ease-in-out cursor-pointer [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
               "hover:bg-sidebar-accent hover:text-accent-foreground w-full px-[14px] py-[10px]",
-              isActiveItem
+              isActiveItem && !gated
                 ? "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
-                : "text-foreground"
+                : gated
+                  ? "text-muted-foreground/50"
+                  : "text-foreground"
             )}
           >
             <fl.icon className="h-4 w-4" />
@@ -886,10 +930,10 @@ function SidebarContent({
   return (
     <nav
       className={cn(
-        "flex-1 py-3",
+        "flex-1 min-h-0 py-3",
         // 折叠模式不裁切 overflow，让 popover 能溢出 aside 边界显示
-        // 展开模式 overflow-y-auto，让长子菜单可滚动
-        collapsed ? "px-2" : "px-3 overflow-y-auto"
+        // 展开模式 overflow-y-auto + overscroll-contain，让长子菜单可独立滚动且不向主区链入（V0.5.5 §2）
+        collapsed ? "px-2" : "px-3 overflow-y-auto overscroll-contain"
       )}
     >
       <div className="space-y-0.5">{visibleFirstLevel.map(renderFirstItem)}</div>
@@ -900,8 +944,21 @@ function SidebarContent({
 /**
  * 面包屑导航：放置在右侧主内容区顶部。
  * 从 pathname 反查当前一级 / 二级菜单项，生成 管理后台 / 一级 / 二级 面包屑。
+ * 内层使用 useSearchParams（审核中心 ?tab= 深链），故用 Suspense 包裹防 CSR bailout。
  */
-function AdminBreadcrumb({
+function AdminBreadcrumb(props: {
+  locale: Locale;
+  pathname: string;
+  permCtx: { role: string; overrides: PermissionOverrides | null } | null;
+}) {
+  return (
+    <Suspense fallback={<div className="h-10 shrink-0 border-b border-border bg-background" />}>
+      <AdminBreadcrumbInner {...props} />
+    </Suspense>
+  );
+}
+
+function AdminBreadcrumbInner({
   locale,
   pathname,
   permCtx,
@@ -913,6 +970,19 @@ function AdminBreadcrumb({
   const { t, messages } = useI18n();
   const lp = useLocalizedPath();
   const isAdmin = permCtx ? isAdminRole(permCtx.role) : false;
+  const searchParams = useSearchParams();
+
+  /** 面包屑命中：path 前缀 + query 精确（无 query 的 href 仅判路径） */
+  function hrefMatches(rawHref: string): boolean {
+    const localized = lp(rawHref);
+    const [path, query] = localized.split("?");
+    if (!pathname.startsWith(path)) return false;
+    if (!query) return true;
+    for (const [k, v] of new URLSearchParams(query)) {
+      if (searchParams.get(k) !== v) return false;
+    }
+    return true;
+  }
 
   /**
    * 翻译 helper：先 t() 标准查找；失败（返回 key 本身）则尝试把末尾多段
@@ -943,29 +1013,39 @@ function AdminBreadcrumb({
     return key;
   }
 
-  /** 反查当前一级 / 二级（与 SidebarContent 同过滤逻辑） */
+  /** 反查当前一级 / 二级（与 SidebarContent 同过滤逻辑）。
+   *  优先 query 精确匹配（/admin/review?tab=bugs）；同路径但无 query 命中时
+   *  （如裸 /admin/review），回退该路径第一个可见子项。 */
   let matchedFirst: FirstLevel | null = null;
   let matchedSecond: SecondLevel | null = null;
+  let pathFallback: { fl: FirstLevel; c: SecondLevel } | null = null;
   for (const fl of firstLevelItems) {
     if (fl.roleGuard && !isAdmin) continue;
-    if (fl.href && pathname.startsWith(lp(fl.href))) {
+    if (fl.href && hrefMatches(fl.href)) {
       matchedFirst = fl;
       break;
     }
     if (fl.children) {
-      // 占位项（无 href）不参与匹配，但 placeholder=true 的整组跳过
       const visibleChildren = fl.children.filter((c) =>
         canAccessSecond(c, permCtx)
       );
       for (const c of visibleChildren) {
-        if (c.href && pathname.startsWith(lp(c.href))) {
-          matchedFirst = fl;
-          matchedSecond = c;
-          break;
+        if (!c.href) continue;
+        if (hrefMatches(c.href)) {
+          if (c.href.includes("?")) {
+            matchedFirst = fl;
+            matchedSecond = c;
+            break;
+          }
+          if (!pathFallback) pathFallback = { fl, c };
         }
       }
       if (matchedFirst) break;
     }
+  }
+  if (!matchedFirst && pathFallback) {
+    matchedFirst = pathFallback.fl;
+    matchedSecond = pathFallback.c;
   }
 
   return (

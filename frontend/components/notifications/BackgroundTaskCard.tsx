@@ -11,14 +11,12 @@
  */
 import { useState } from "react";
 import Link from "next/link";
-import {
-  CheckCircle2,
-  Copy,
-  Check,
-  Loader2,
-  X,
-  XCircle,
-} from "lucide-react";
+import CheckCircle2 from "@/assets/icons/status/check-circle-2.svg";
+import Copy from "@/assets/icons/action/copy.svg";
+import Check from "@/assets/icons/action/check.svg";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import X from "@/assets/icons/action/x.svg";
+import XCircle from "@/assets/icons/status/x-circle.svg";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/i18n/provider";
 import { useLocalizedPath } from "@/lib/navigation";

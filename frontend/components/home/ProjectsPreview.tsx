@@ -6,7 +6,8 @@
  */
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowRight, Github } from "lucide-react";
+import ArrowRight from "@/assets/icons/navigation/arrow-right.svg";
+import Github from "@/assets/icons/brand/github.svg";
 import { useI18n } from "@/i18n/provider";
 import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";

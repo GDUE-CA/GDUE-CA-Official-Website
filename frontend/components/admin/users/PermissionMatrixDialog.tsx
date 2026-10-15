@@ -8,7 +8,8 @@
  * - 仅 super_admin 可操作，且不能修改自己的覆盖（与后端校验一致）
  */
 import { useEffect, useState } from "react";
-import { Loader2, Wand2 } from "lucide-react";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import Wand2 from "@/assets/icons/action/wand-2.svg";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,6 +26,12 @@ import {
   type PermissionAction,
 } from "@/lib/permissions";
 import type { AdminUser } from "@/types/api";
+
+/** 弹窗实际只使用这 4 个字段；角色管理页可直接传入轻量 OverrideUser（结构兼容） */
+export type PermissionMatrixTarget = Pick<
+  AdminUser,
+  "id" | "username" | "role" | "permission_overrides"
+>;
 
 /** 预设角色模板（super_admin 恒有全权限，无需模板） */
 const PRESETS: { key: string; overrides: Record<string, string[]> }[] = [
@@ -61,7 +68,7 @@ export function PermissionMatrixDialog({
   onOpenChange,
   onSaved,
 }: {
-  user: AdminUser | null;
+  user: PermissionMatrixTarget | null;
   onOpenChange: (open: boolean) => void;
   onSaved: () => void;
 }) {

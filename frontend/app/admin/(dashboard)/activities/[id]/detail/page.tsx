@@ -6,7 +6,7 @@
  */
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import ArrowLeft from "@/assets/icons/navigation/arrow-left.svg";
 import { useI18n } from "@/i18n/provider";
 import { useLocalizedPath } from "@/lib/navigation";
 import { ActivityDetail } from "@/components/admin/activities/ActivityDetail";

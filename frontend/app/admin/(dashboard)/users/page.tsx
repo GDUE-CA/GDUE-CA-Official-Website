@@ -8,22 +8,20 @@
  */
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
-import {
-  Loader2,
-  Trash2,
-  Plus,
-  Pencil,
-  Power,
-  PowerOff,
-  ShieldCheck,
-  Shield,
-  UserPen,
-  UserRound,
-  X,
-  KeyRound,
-  SlidersHorizontal,
-  IdCard,
-} from "lucide-react";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import Trash2 from "@/assets/icons/action/trash-2.svg";
+import Plus from "@/assets/icons/action/plus.svg";
+import Pencil from "@/assets/icons/action/pencil.svg";
+import Power from "@/assets/icons/action/power.svg";
+import PowerOff from "@/assets/icons/action/power-off.svg";
+import ShieldCheck from "@/assets/icons/status/shield-check.svg";
+import Shield from "@/assets/icons/status/shield.svg";
+import UserPen from "@/assets/icons/user/user-pen.svg";
+import UserRound from "@/assets/icons/user/user-round.svg";
+import X from "@/assets/icons/action/x.svg";
+import KeyRound from "@/assets/icons/status/key-round.svg";
+import SlidersHorizontal from "@/assets/icons/action/sliders-horizontal.svg";
+import IdCard from "@/assets/icons/status/id-card.svg";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

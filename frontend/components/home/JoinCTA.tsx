@@ -4,7 +4,7 @@
  * JoinCTA - 首页底部行动区：反色面板 + 强调色按钮（全页唯一的信号绿按钮）
  */
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import ArrowRight from "@/assets/icons/navigation/arrow-right.svg";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
 

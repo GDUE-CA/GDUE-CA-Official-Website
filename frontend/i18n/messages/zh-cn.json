@@ -123,7 +123,7 @@
       "subtitle": "服务广大同学，推广校园计算机文化",
       "description": "广东二师计协成立于2008年5月31日，是花都校区学术科技类社团。我们以每周常规授课、义务维修、网络安全竞赛和电子竞技为特色，提高会员计算机应用水平。",
       "cta1": "加入我们",
-      "cta2": "了解社团",
+      "cta2": "活动报名",
       "stat1": "在册会员",
       "stat2": "年度活动",
       "stat3": "覆盖院系",
@@ -247,10 +247,27 @@
     "schoolGrade": "年级",
     "schoolClass": "班级",
     "tabs": {
+      "about": "主页",
+      "posts": "随手笔记 / 博客",
       "memo": "说说",
       "memos": "说说",
       "blog": "博客"
     },
+    "follow": "关注",
+    "following": "已关注",
+    "mutual": "互相关注",
+    "followers": "粉丝",
+    "followingLabel": "关注",
+    "editProfile": "编辑资料",
+    "followFailed": "操作失败，请稍后重试",
+    "genderLabel": "性别",
+    "genderMale": "男",
+    "genderFemale": "女",
+    "birthdayLabel": "生日",
+    "aboutBioTitle": "个人简介",
+    "aboutEmptyBio": "该用户尚未填写个人简介",
+    "postsNotesTitle": "公开笔记",
+    "postsBlogTitle": "公开博客",
     "emptyMemos": "暂无公开说说",
     "emptyBlog": "暂无公开博客",
     "personalInfo": "个人信息",
@@ -702,6 +719,20 @@
       "uploadError": "头像上传失败",
       "tooLarge": "图片超过 5MB 限制，请压缩后重试",
       "typeError": "仅支持 JPG / PNG / WEBP 格式"
+    },
+    "banner": {
+      "title": "个人主页封面",
+      "desc": "展示在个人主页顶部的横幅。可上传封面图；未上传时使用纯色，均未设置时使用系统默认背景。",
+      "upload": "上传封面",
+      "reset": "删除封面图",
+      "success": "封面设置已保存",
+      "resetSuccess": "已删除封面图，回退纯色背景",
+      "uploadError": "封面上传失败",
+      "tooLarge": "图片超过 15MB 限制，请压缩后重试",
+      "colorLabel": "封面纯色",
+      "colorHint": "无封面图时生效；填写 #RGB 或 #RRGGBB 十六进制色值，留空使用系统默认色。",
+      "colorDefault": "恢复默认色",
+      "colorInvalid": "请输入合法的十六进制颜色（#RGB 或 #RRGGBB）"
     },
     "profile": {
       "title": "基础资料",
@@ -1423,6 +1454,7 @@
     "nav": {
       "dashboard": "概览",
       "users": "用户管理",
+      "reviewCenter": "审核中心",
       "users.list": "用户列表",
       "users.roles": "角色管理",
       "users.members": "成员花名册",
@@ -1456,7 +1488,16 @@
       "config.oauth": "OAuth 渠道",
       "config.sso": "SSO 受信应用",
       "audit": "日志与审计",
-      "mailpush": "邮件与推送"
+      "mailpush": "邮件与推送",
+      "mailpush.tooltip": "邮件收发服务尚未完成域名与DNS配置，请先完成Cloudflare邮件路由以及服务器收发相关配置后启用该模块"
+    },
+    "mailpush": {
+      "title": "邮件与推送",
+      "warning": "邮件收发服务尚未完成域名与DNS配置，请先完成Cloudflare邮件路由以及服务器收发相关配置后启用该模块",
+      "empty": "邮件与推送模块尚未启用",
+      "emptyHint": "完成域名、MX 记录与 Cloudflare 邮件路由配置后，请管理员在系统设置中开启邮件服务，本模块将自动生效。",
+      "ready": "邮件收发服务已就绪",
+      "readyHint": "邮件收发与推送功能入口将在后续版本提供。"
     },
     "sysdata": {
       "title": "学院专业数据",
@@ -1976,8 +2017,35 @@
         "stats": "数据统计",
         "audit_logs": "操作日志",
         "memo": "说说管理",
-        "badges": "徽章管理"
+        "badges": "徽章管理",
+        "roles": "角色管理"
       }
+    },
+    "rolesPage": {
+      "title": "角色管理",
+      "subtitle": "角色为系统内置，不可新增或删除；此处查看各角色默认权限矩阵与成员分布，并管理账号的模块级权限覆盖。",
+      "roleDefsTitle": "角色定义与默认权限",
+      "memberCount": "成员 {count} 人",
+      "matrixTitle": "默认权限矩阵",
+      "matrixHint": "「管理」天然包含「查看」；super_admin 恒有全部权限。账号级覆盖在下方单独管理。",
+      "colModule": "权限模块",
+      "actionManage": "管理",
+      "actionView": "查看",
+      "actionNone": "—",
+      "overridesTitle": "权限覆盖账号",
+      "overridesDesc": "以下账号配置了模块级权限覆盖；覆盖矩阵完全替代该账号所属角色的默认动作。",
+      "colUser": "账号",
+      "colRole": "角色",
+      "colModules": "覆盖模块",
+      "colStatus": "状态",
+      "edit": "编辑权限",
+      "emptyOverrides": "暂无权限覆盖账号。可在用户列表中打开账号详情，为单个账号配置自定义权限。",
+      "statusActive": "正常",
+      "statusDisabled": "已停用",
+      "manageHint": "仅超级管理员可修改账号权限覆盖；你当前为只读视图。",
+      "goUsers": "前往用户列表",
+      "loadError": "角色数据加载失败，请稍后重试",
+      "moduleCount": "{count} 个模块"
     },
     "security": {
       "accessDesc": "配置 IP 黑名单、IP 白名单、管理员可信 IP 与域名白名单（CORS Origins / Allowed Hosts）等访问控制规则",

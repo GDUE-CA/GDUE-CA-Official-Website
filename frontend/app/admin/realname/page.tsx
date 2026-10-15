@@ -10,14 +10,12 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import {
-  Loader2,
-  BadgeCheck,
-  Clock,
-  ShieldAlert,
-  Upload,
-  CheckCircle2,
-} from "lucide-react";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import BadgeCheck from "@/assets/icons/status/badge-check.svg";
+import Clock from "@/assets/icons/status/clock.svg";
+import ShieldAlert from "@/assets/icons/status/shield-alert.svg";
+import Upload from "@/assets/icons/action/upload.svg";
+import CheckCircle2 from "@/assets/icons/status/check-circle-2.svg";
 import { useI18n } from "@/i18n/provider";
 import { useLocalizedPath } from "@/lib/navigation";
 import { Button } from "@/components/ui/button";

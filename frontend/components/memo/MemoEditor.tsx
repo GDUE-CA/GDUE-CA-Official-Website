@@ -14,7 +14,9 @@ import { useRef, useState } from "react";
 import { useI18n } from "@/i18n/provider";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Loader2, ImagePlus, X } from "lucide-react";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import ImagePlus from "@/assets/icons/action/image-plus.svg";
+import X from "@/assets/icons/action/x.svg";
 import { VisibilitySelect } from "./VisibilitySelect";
 import { TagInput } from "./TagInput";
 import {

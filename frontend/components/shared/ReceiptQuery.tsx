@@ -9,7 +9,11 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Loader2, Search, CheckCircle2, XCircle, QrCode } from "lucide-react";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import Search from "@/assets/icons/action/search.svg";
+import CheckCircle2 from "@/assets/icons/status/check-circle-2.svg";
+import XCircle from "@/assets/icons/status/x-circle.svg";
+import QrCode from "@/assets/icons/action/qr-code.svg";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

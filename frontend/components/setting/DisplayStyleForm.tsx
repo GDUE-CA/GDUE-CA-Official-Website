@@ -7,18 +7,16 @@
  * 同时写本地缓存 gdueca-display 供下次进入时即时应用。
  */
 import { useEffect, useState } from "react";
-import {
-  Sun,
-  Moon,
-  Monitor,
-  LayoutGrid,
-  Apple,
-  Sparkles,
-  Loader2,
-  RotateCcw,
-  Smartphone,
-  Type,
-} from "lucide-react";
+import Sun from "@/assets/icons/status/sun.svg";
+import Moon from "@/assets/icons/status/moon.svg";
+import Monitor from "@/assets/icons/status/monitor.svg";
+import LayoutGrid from "@/assets/icons/navigation/layout-grid.svg";
+import Apple from "@/assets/icons/brand/apple.svg";
+import Sparkles from "@/assets/icons/status/sparkles.svg";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import RotateCcw from "@/assets/icons/action/rotate-ccw.svg";
+import Smartphone from "@/assets/icons/status/smartphone.svg";
+import Type from "@/assets/icons/action/type.svg";
 import { useI18n } from "@/i18n/provider";
 import {
   Card,

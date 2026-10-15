@@ -4,7 +4,10 @@
  * 重置密码弹窗：确认 → 生成一次性临时密码（仅显示一次）+ 复制
  */
 import { useEffect, useState } from "react";
-import { Check, Copy, KeyRound, Loader2 } from "lucide-react";
+import Check from "@/assets/icons/action/check.svg";
+import Copy from "@/assets/icons/action/copy.svg";
+import KeyRound from "@/assets/icons/status/key-round.svg";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
 import {

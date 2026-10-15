@@ -8,16 +8,14 @@
  * - 语言：6 语言 grid；切换需确认（页面将刷新）→ setLocale + reload，同样不算 dirty
  */
 import { useEffect, useState } from "react";
-import {
-  Sun,
-  Moon,
-  Monitor,
-  Check,
-  Loader2,
-  LayoutGrid,
-  Apple,
-  Sparkles,
-} from "lucide-react";
+import Sun from "@/assets/icons/status/sun.svg";
+import Moon from "@/assets/icons/status/moon.svg";
+import Monitor from "@/assets/icons/status/monitor.svg";
+import Check from "@/assets/icons/action/check.svg";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import LayoutGrid from "@/assets/icons/navigation/layout-grid.svg";
+import Apple from "@/assets/icons/brand/apple.svg";
+import Sparkles from "@/assets/icons/status/sparkles.svg";
 import { useI18n } from "@/i18n/provider";
 import { useAdminLocale } from "@/app/admin/AdminProviders";
 import {

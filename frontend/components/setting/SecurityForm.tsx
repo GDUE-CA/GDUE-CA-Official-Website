@@ -13,7 +13,10 @@
  */
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, KeyRound, Loader2, UserCog } from "lucide-react";
+import CheckCircle2 from "@/assets/icons/status/check-circle-2.svg";
+import KeyRound from "@/assets/icons/status/key-round.svg";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import UserCog from "@/assets/icons/user/user-cog.svg";
 import { useI18n } from "@/i18n/provider";
 import { useLocalizedPath } from "@/lib/navigation";
 import { Button } from "@/components/ui/button";

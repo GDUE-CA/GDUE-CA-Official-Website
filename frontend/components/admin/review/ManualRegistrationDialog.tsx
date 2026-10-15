@@ -6,7 +6,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, UserPlus } from "lucide-react";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import UserPlus from "@/assets/icons/user/user-plus.svg";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

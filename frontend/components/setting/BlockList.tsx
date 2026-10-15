@@ -8,7 +8,11 @@
  * - 被拉黑用户：无法访问本人主页、无法评论、无法点赞（后端业务侧执行）
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Ban, Loader2, Search, UserCircle, UserX } from "lucide-react";
+import Ban from "@/assets/icons/status/ban.svg";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import Search from "@/assets/icons/action/search.svg";
+import UserCircle from "@/assets/icons/user/user-circle.svg";
+import UserX from "@/assets/icons/user/user-x.svg";
 import { useI18n } from "@/i18n/provider";
 import {
   Card,

@@ -11,7 +11,9 @@
  * - 语言列表来自 messages 目录扫描结果（lib/i18n/locales.generated.ts），无硬编码。
  */
 import { useMemo, useRef, useState } from "react";
-import { Check, ChevronDown, Search } from "lucide-react";
+import Check from "@/assets/icons/action/check.svg";
+import ChevronDown from "@/assets/icons/navigation/chevron-down.svg";
+import Search from "@/assets/icons/action/search.svg";
 import { useI18n } from "@/i18n/provider";
 import { useSwitchLocale } from "@/lib/navigation";
 import { updateProfile } from "@/lib/api/auth";

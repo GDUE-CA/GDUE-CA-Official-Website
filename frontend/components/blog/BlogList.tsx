@@ -7,7 +7,12 @@
 import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Calendar, Tag, Heart, MessageCircle, Share2, Star } from "lucide-react";
+import Calendar from "@/assets/icons/status/calendar.svg";
+import Tag from "@/assets/icons/status/tag.svg";
+import Heart from "@/assets/icons/status/heart.svg";
+import MessageCircle from "@/assets/icons/status/message-circle.svg";
+import Share2 from "@/assets/icons/action/share-2.svg";
+import Star from "@/assets/icons/status/star.svg";
 import { useI18n } from "@/i18n/provider";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";

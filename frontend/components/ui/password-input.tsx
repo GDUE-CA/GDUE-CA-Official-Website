@@ -2,7 +2,8 @@
 
 import * as React from "react";
 import { useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import Eye from "@/assets/icons/status/eye.svg";
+import EyeOff from "@/assets/icons/status/eye-off.svg";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 

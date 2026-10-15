@@ -10,17 +10,15 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Monitor,
-  Smartphone,
-  Laptop,
-  RefreshCw,
-  Loader2,
-  ChevronDown,
-  ChevronUp,
-  LogOut,
-  MapPin,
-} from "lucide-react";
+import Monitor from "@/assets/icons/status/monitor.svg";
+import Smartphone from "@/assets/icons/status/smartphone.svg";
+import Laptop from "@/assets/icons/status/laptop.svg";
+import RefreshCw from "@/assets/icons/action/refresh-cw.svg";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import ChevronDown from "@/assets/icons/navigation/chevron-down.svg";
+import ChevronUp from "@/assets/icons/navigation/chevron-up.svg";
+import LogOut from "@/assets/icons/navigation/log-out.svg";
+import MapPin from "@/assets/icons/status/map-pin.svg";
 import { useI18n } from "@/i18n/provider";
 import { useLocalizedPath } from "@/lib/navigation";
 import { Button } from "@/components/ui/button";

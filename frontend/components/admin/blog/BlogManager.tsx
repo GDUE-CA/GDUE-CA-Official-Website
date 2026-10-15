@@ -9,7 +9,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Loader2, Plus, Pencil, Trash2, Newspaper, Tags } from "lucide-react";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import Plus from "@/assets/icons/action/plus.svg";
+import Pencil from "@/assets/icons/action/pencil.svg";
+import Trash2 from "@/assets/icons/action/trash-2.svg";
+import Newspaper from "@/assets/icons/status/newspaper.svg";
+import Tags from "@/assets/icons/status/tags.svg";
+import Check from "@/assets/icons/action/check.svg";
+import X from "@/assets/icons/action/x.svg";
 import { useI18n } from "@/i18n/provider";
 import { useLocalizedPath } from "@/lib/navigation";
 import { Button } from "@/components/ui/button";
@@ -277,9 +284,9 @@ export function BlogManager() {
                       </td>
                       <td className="px-3 py-2 text-center hidden xl:table-cell">
                         {p.allow_comments ? (
-                          <span className="text-emerald-600 font-semibold" title={t("admin.blog.allowCommentsYes")}>✓</span>
+                          <span className="text-emerald-600 font-semibold" title={t("admin.blog.allowCommentsYes")}><Check className="inline h-4 w-4" /></span>
                         ) : (
-                          <span className="text-muted-foreground" title={t("admin.blog.allowCommentsNo")}>×</span>
+                          <span className="text-muted-foreground" title={t("admin.blog.allowCommentsNo")}><X className="inline h-4 w-4" /></span>
                         )}
                       </td>
                       <td className="px-3 py-2">

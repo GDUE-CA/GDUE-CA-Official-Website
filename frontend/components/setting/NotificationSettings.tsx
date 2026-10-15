@@ -12,20 +12,18 @@
  * 移动端提供「前往系统设置」入口（跳转浏览器/操作系统通知权限）。
  */
 import { useEffect, useState } from "react";
-import {
-  Bell,
-  Heart,
-  MessageSquare,
-  Reply,
-  ClipboardList,
-  RefreshCw,
-  Megaphone,
-  ShieldAlert,
-  Loader2,
-  CheckCircle2,
-  Smartphone,
-  Lock,
-} from "lucide-react";
+import Bell from "@/assets/icons/status/bell.svg";
+import Heart from "@/assets/icons/status/heart.svg";
+import MessageSquare from "@/assets/icons/status/message-square.svg";
+import Reply from "@/assets/icons/action/reply.svg";
+import ClipboardList from "@/assets/icons/action/clipboard-list.svg";
+import RefreshCw from "@/assets/icons/action/refresh-cw.svg";
+import Megaphone from "@/assets/icons/status/megaphone.svg";
+import ShieldAlert from "@/assets/icons/status/shield-alert.svg";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import CheckCircle2 from "@/assets/icons/status/check-circle-2.svg";
+import Smartphone from "@/assets/icons/status/smartphone.svg";
+import Lock from "@/assets/icons/status/lock.svg";
 import { useI18n } from "@/i18n/provider";
 import {
   Card,

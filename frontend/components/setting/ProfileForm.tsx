@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/card";
 import { SearchableSelect, type SearchableSelectOption } from "@/components/setting/SearchableSelect";
 import { AvatarUploader } from "@/components/setting/AvatarUploader";
+import { BannerUploader } from "@/components/setting/BannerUploader";
 import {
   EMPTY_SCHOOL_CASCADE,
   SchoolCascadeSelects,
@@ -36,7 +37,9 @@ import { fetchProfile, updateProfile } from "@/lib/api/auth";
 import { fetchPublicProfile } from "@/lib/api/profile";
 import { fetchGeoCountries } from "@/lib/api/geo";
 import type { AdminUser, BadgeOut, GeoCountry } from "@/types/api";
-import { CheckCircle2, Loader2, QrCode } from "lucide-react";
+import CheckCircle2 from "@/assets/icons/status/check-circle-2.svg";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import QrCode from "@/assets/icons/action/qr-code.svg";
 import { QRCodeSVG } from "qrcode.react";
 import { cn } from "@/lib/utils";
 import { utcToLocalInput, localInputToUtcIso } from "@/lib/utils";
@@ -259,6 +262,19 @@ export function ProfileForm() {
         username={profile?.username ?? ""}
         onChanged={(url) =>
           setProfile((p) => (p ? { ...p, avatar_url: url } : p))
+        }
+      />
+
+      {/* 个人主页封面（V0.5.5 §9.3：图片 / 纯色 / 系统默认；独立接口即时生效） */}
+      <BannerUploader
+        bannerUrl={profile?.profile_banner ?? null}
+        bannerColor={profile?.profile_banner_color ?? null}
+        onChanged={({ banner_url, banner_color }) =>
+          setProfile((p) =>
+            p
+              ? { ...p, profile_banner: banner_url, profile_banner_color: banner_color }
+              : p
+          )
         }
       />
 

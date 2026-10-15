@@ -14,7 +14,7 @@
  */
 import { useI18n } from "@/i18n/provider";
 import { cn } from "@/lib/utils";
-import { Archive } from "lucide-react";
+import Archive from "@/assets/icons/action/archive.svg";
 import type { RuntimeStatus } from "@/types/api";
 
 const STATUS_STYLES: Record<

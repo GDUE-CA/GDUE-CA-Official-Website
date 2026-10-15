@@ -12,7 +12,8 @@
  */
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Check, Search } from "lucide-react";
+import Check from "@/assets/icons/action/check.svg";
+import Search from "@/assets/icons/action/search.svg";
 import { useI18n } from "@/i18n/provider";
 import {
   locales,

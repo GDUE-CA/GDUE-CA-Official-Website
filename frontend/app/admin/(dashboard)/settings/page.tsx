@@ -28,7 +28,11 @@ import {
   notifyBackgroundTaskSubmitted,
   submitDbExport,
 } from "@/lib/api/backgroundTasks";
-import { Loader2, Check, QrCode, Timer, Database } from "lucide-react";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import Check from "@/assets/icons/action/check.svg";
+import QrCode from "@/assets/icons/action/qr-code.svg";
+import Timer from "@/assets/icons/status/timer.svg";
+import Database from "@/assets/icons/status/database.svg";
 
 export default function SettingsPage() {
   const { t } = useI18n();

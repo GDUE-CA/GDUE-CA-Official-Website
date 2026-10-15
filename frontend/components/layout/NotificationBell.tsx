@@ -7,7 +7,7 @@
  * 必须渲染为真正的 <button>（可聚焦、可键盘触发）；aria-label 本地化并带未读数，角标对读屏隐藏避免重复朗读
  */
 import { useEffect, useState } from "react";
-import { Bell } from "lucide-react";
+import Bell from "@/assets/icons/status/bell.svg";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/i18n/provider";
 import { listMyNotifications } from "@/lib/api/notifications";

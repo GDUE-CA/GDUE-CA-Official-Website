@@ -17,13 +17,11 @@ import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import {
-  Loader2,
-  MailQuestion,
-  ArrowLeft,
-  CheckCircle2,
-  LifeBuoy,
-} from "lucide-react";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import MailQuestion from "@/assets/icons/status/mail-question.svg";
+import ArrowLeft from "@/assets/icons/navigation/arrow-left.svg";
+import CheckCircle2 from "@/assets/icons/status/check-circle-2.svg";
+import LifeBuoy from "@/assets/icons/status/life-buoy.svg";
 import { useI18n } from "@/i18n/provider";
 import { useAdminLocale } from "@/app/admin/AdminProviders";
 import { useLocalizedPath, useSwitchLocale } from "@/lib/navigation";

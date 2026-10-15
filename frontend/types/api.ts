@@ -81,6 +81,9 @@ export interface AdminUser {
   real_name: string;
   phone: string;
   avatar_url: string | null;
+  /** V0.5.5 §9.3：个人主页封面图 / 纯色（null = 系统默认） */
+  profile_banner: string | null;
+  profile_banner_color: string | null;
   /** ---- Module D：身份分类与学校资料 ---- */
   /** 学校身份人工验证是否通过（false = 社会成员；学校资料字段隐藏 + 后端拦截） */
   identity_school_verified: boolean;
@@ -203,12 +206,19 @@ export interface ProfileUpdate {
   bio?: string;
   /** 主题预设：default / apple / festival:*；空字符串 = 跟随系统默认 */
   theme?: string;
+  /** 个人主页封面纯色（#RGB/#RRGGBB）；空字符串 = 恢复系统默认色（存 NULL） */
+  profile_banner_color?: string;
   /** 隐私设置；传入 dict 则合并更新；显式传 null = 重置为默认 */
   profile_privacy?: Record<string, string> | null;
 }
 
 export interface AvatarUploadOut {
   avatar_url: string;
+}
+
+/** V0.5.5 §9.3：个人主页封面上传响应 */
+export interface BannerUploadOut {
+  banner_url: string;
 }
 
 /** 学校信息块（GET /api/users/{username}/profile 的 school_info；后端联表组装） */
@@ -230,6 +240,10 @@ export interface UserProfile {
   username: string;
   display_name: string;
   avatar_url: string | null;
+  /** V0.5.5 §9.3：个人主页封面图 URL；null = 使用纯色（banner_color 或系统默认） */
+  profile_banner: string | null;
+  /** 自定义封面纯色；null = 系统默认色 */
+  profile_banner_color: string | null;
   /** 个性签名；privacy=private 时为 null */
   bio: string | null;
   /** 性别；privacy=private 或显式 hidden 时为 null */
@@ -254,6 +268,15 @@ export interface UserProfile {
   subdiv2_code: string | null;
   locality_text: string | null;
   created_at: string;
+  // ---- 社交关注（V0.5.5 §9.2）：计数恒返回；关系字段未登录 / BG / 本人访问时为 null ----
+  follower_count: number;
+  following_count: number;
+  /** 访问者是否已关注主页主人 */
+  is_following: boolean | null;
+  /** 主页主人是否已关注访问者 */
+  follows_me: boolean | null;
+  /** 双向互关（自动视为好友） */
+  is_friend: boolean | null;
 }
 
 /** 博客指标操作结果（POST /api/blog/{slug}/{share|like|unlike|favourite|unfavourite}） */
@@ -676,7 +699,8 @@ export interface BugReportCreate {
 export type PublicSystemSettings = Pick<
   SystemSettings,
   "site_name" | "footer" | "icp_info" | "club_checkin_open" |
-  "sys_default_locale" | "sys_default_timezone" | "sys_default_region" | "sys_default_currency"
+  "sys_default_locale" | "sys_default_timezone" | "sys_default_region" | "sys_default_currency" |
+  "mail_system_ready"
 >;
 
 /** 完整系统配置（GET /api/system/settings/admin，需 admin） */
@@ -688,6 +712,8 @@ export interface SystemSettings {
   allowed_hosts: string[];
   cors_origins: string[];
   club_checkin_open: boolean;
+  /** V0.5.5 §3.3：邮件收发模块就绪开关（false 时导航置灰 + 页面黄色警告横幅） */
+  mail_system_ready: boolean;
   /** 本地化系统全局默认（用户字段 NULL 时回退此处） */
   sys_default_locale: string | null;
   sys_default_timezone: string | null;
@@ -703,6 +729,31 @@ export interface SystemSettings {
   admin_trusted_ips: string[];
   /** 全局登录会话空闲超时（分钟）；预设值 [1,2,5,10,15,20,30,60,120] */
   session_idle_timeout_minutes: number;
+}
+
+/* ----------------------- 角色管理（V0.5.5 §3.2） ----------------------- */
+
+/** GET /api/admin/roles：角色定义 + 默认权限矩阵 */
+export interface RoleDef {
+  role: string;
+  user_count: number;
+  /** 默认权限矩阵摘要：module -> actions（super_admin 恒全模块 view+manage） */
+  default_modules: Record<string, string[]>;
+}
+
+export interface RolesOverview {
+  roles: RoleDef[];
+  modules: string[];
+}
+
+/** GET /api/admin/roles/overrides：配置了权限覆盖的账号（轻量列表项） */
+export interface OverrideUser {
+  id: number;
+  username: string;
+  display_name: string | null;
+  role: string;
+  is_active: boolean;
+  permission_overrides: Record<string, string[]>;
 }
 
 /* ===================== CMS 扩展类型骨架（Phase 1 预定义） ===================== */

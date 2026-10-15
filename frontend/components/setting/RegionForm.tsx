@@ -14,7 +14,8 @@
  * - 地区与时区互不影响
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CheckCircle2, Loader2 } from "lucide-react";
+import CheckCircle2 from "@/assets/icons/status/check-circle-2.svg";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

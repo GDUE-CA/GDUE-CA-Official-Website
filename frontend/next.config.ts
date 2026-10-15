@@ -195,6 +195,15 @@ const nextConfig: NextConfig = {
   // Turbopack 配置（顶层，Next.js 16 不再需要 experimental）
   turbopack: {
     // 根目录别名已在 tsconfig.json 中配置
+    // 图标矢量化（规范 §3 / icon-vectorization-exec.md 2.5 方案 A）：
+    // 全部 .svg 经 @svgr/webpack 编译为内联 React 组件（支持 currentColor 主题继承）。
+    // 禁止改用 webpack() 写法——Next.js 16 dev/build 默认 Turbopack，webpack() 不生效。
+    rules: {
+      "*.svg": {
+        loaders: ["@svgr/webpack"],
+        as: "*.js",
+      },
+    },
   },
 };
 

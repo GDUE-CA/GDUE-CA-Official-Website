@@ -9,15 +9,13 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
-import {
-  Loader2,
-  Plus,
-  Pencil,
-  Trash2,
-  Download,
-  ClipboardList,
-  FileText,
-} from "lucide-react";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import Plus from "@/assets/icons/action/plus.svg";
+import Pencil from "@/assets/icons/action/pencil.svg";
+import Trash2 from "@/assets/icons/action/trash-2.svg";
+import Download from "@/assets/icons/action/download.svg";
+import ClipboardList from "@/assets/icons/action/clipboard-list.svg";
+import FileText from "@/assets/icons/status/file-text.svg";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

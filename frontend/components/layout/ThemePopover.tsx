@@ -8,7 +8,9 @@
  * 选中立即生效并写入 localStorage（逻辑收敛于 useTheme）。
  */
 import type { ReactNode } from "react";
-import { Check, Moon, Sun } from "lucide-react";
+import Check from "@/assets/icons/action/check.svg";
+import Moon from "@/assets/icons/status/moon.svg";
+import Sun from "@/assets/icons/status/sun.svg";
 import { useI18n } from "@/i18n/provider";
 import { useTheme, type Theme } from "@/lib/hooks/useTheme";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";

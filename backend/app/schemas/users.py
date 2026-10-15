@@ -30,6 +30,15 @@ class UserProfileOut(BaseModel):
     birthday: UTCDatetime | None = None
     # 用户徽章（系统徽章动态计算 + 自定义徽章）
     badges: list[BadgeOut] = []
+    # ---- 个人主页外观（V0.5.5 §9）：公开装饰字段，不走隐私过滤 ----
+    profile_banner: str | None = None
+    profile_banner_color: str | None = None
+    # ---- 社交关注（V0.5.5 §9.2）：未登录访问者 is_following/is_friends 为 None ----
+    follower_count: int = 0
+    following_count: int = 0
+    is_following: bool | None = None   # 访问者 → 目标用户
+    follows_me: bool | None = None     # 目标用户 → 访问者
+    is_friend: bool | None = None      # 双向互关（好友）
     # ---- 地区字段（永久公开） ----
     country: str | None = None
     region: str | None = None

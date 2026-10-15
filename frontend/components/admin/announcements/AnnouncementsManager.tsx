@@ -8,7 +8,11 @@
  * - 时间以 datetime-local 输入，提交时转 UTC ISO；展示用 FormattedUserActionTime
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Loader2, Plus, Pencil, Trash2, Megaphone } from "lucide-react";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import Plus from "@/assets/icons/action/plus.svg";
+import Pencil from "@/assets/icons/action/pencil.svg";
+import Trash2 from "@/assets/icons/action/trash-2.svg";
+import Megaphone from "@/assets/icons/status/megaphone.svg";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

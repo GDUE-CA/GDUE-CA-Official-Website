@@ -9,17 +9,15 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import {
-  ArrowLeft,
-  Check,
-  ChevronDown,
-  ChevronUp,
-  Loader2,
-  Pencil,
-  Plus,
-  Trash2,
-  X,
-} from "lucide-react";
+import ArrowLeft from "@/assets/icons/navigation/arrow-left.svg";
+import Check from "@/assets/icons/action/check.svg";
+import ChevronDown from "@/assets/icons/navigation/chevron-down.svg";
+import ChevronUp from "@/assets/icons/navigation/chevron-up.svg";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import Pencil from "@/assets/icons/action/pencil.svg";
+import Plus from "@/assets/icons/action/plus.svg";
+import Trash2 from "@/assets/icons/action/trash-2.svg";
+import X from "@/assets/icons/action/x.svg";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
