@@ -8,7 +8,8 @@
  */
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { Loader2, Ticket } from "lucide-react";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import Ticket from "@/assets/icons/status/ticket.svg";
 import { useI18n } from "@/i18n/provider";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ReceiptQuery } from "@/components/shared/ReceiptQuery";

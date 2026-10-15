@@ -11,7 +11,7 @@
  */
 import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
 import { AdminProviders } from "@/app/admin/AdminProviders";
 import { useLocalizedPath } from "@/lib/navigation";
 import { SettingShell } from "@/components/setting/SettingShell";

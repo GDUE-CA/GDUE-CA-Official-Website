@@ -3,7 +3,7 @@
 /**
  * /setting/data/export —— 导出我的全部个人数据（异步打包，后续迭代开放）
  */
-import { Download } from "lucide-react";
+import Download from "@/assets/icons/action/download.svg";
 import { useI18n } from "@/i18n/provider";
 import { ComingSoonCard } from "@/components/setting/ComingSoonCard";
 

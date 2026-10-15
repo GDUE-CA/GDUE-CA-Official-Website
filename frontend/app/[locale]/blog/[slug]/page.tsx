@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Calendar, User } from "lucide-react";
+import ArrowLeft from "@/assets/icons/navigation/arrow-left.svg";
+import Calendar from "@/assets/icons/status/calendar.svg";
+import User from "@/assets/icons/user/user.svg";
 import { getDictionary } from "@/i18n/dictionary";
 import { getPublicPost } from "@/lib/api/blog";
 import { ApiError } from "@/lib/api/client";

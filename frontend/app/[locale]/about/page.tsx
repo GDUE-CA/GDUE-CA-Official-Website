@@ -8,7 +8,17 @@ import { MembersSection } from "@/components/about/MembersSection";
 import { ScrollToHash } from "@/components/shared/ScrollToHash";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CalendarCheck, Briefcase, Handshake, Megaphone, Wallet, Wrench, GraduationCap, Mail, Github, MessageCircle, Smartphone } from "lucide-react";
+import CalendarCheck from "@/assets/icons/status/calendar-check.svg";
+import Briefcase from "@/assets/icons/status/briefcase.svg";
+import Handshake from "@/assets/icons/status/handshake.svg";
+import Megaphone from "@/assets/icons/status/megaphone.svg";
+import Wallet from "@/assets/icons/status/wallet.svg";
+import Wrench from "@/assets/icons/action/wrench.svg";
+import GraduationCap from "@/assets/icons/status/graduation-cap.svg";
+import Mail from "@/assets/icons/status/mail.svg";
+import Github from "@/assets/icons/brand/github.svg";
+import MessageCircle from "@/assets/icons/status/message-circle.svg";
+import Smartphone from "@/assets/icons/status/smartphone.svg";
 
 /**
  * 社团介绍页 - 历史时间线、组织架构、指导老师、社团荣誉、活动室位置

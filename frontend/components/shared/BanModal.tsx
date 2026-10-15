@@ -10,7 +10,7 @@
  */
 import { useEffect, useState, useCallback, useRef } from "react";
 import { usePathname } from "next/navigation";
-import { ShieldAlert } from "lucide-react";
+import ShieldAlert from "@/assets/icons/status/shield-alert.svg";
 import { motion, AnimatePresence } from "framer-motion";
 import { fetchBanStatus } from "@/lib/api/security";
 import type { BanStatus } from "@/types/api";

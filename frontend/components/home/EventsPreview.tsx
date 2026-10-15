@@ -7,7 +7,7 @@
  */
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowRight } from "lucide-react";
+import ArrowRight from "@/assets/icons/navigation/arrow-right.svg";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
 import type { ClubEvent } from "@/types/api";
@@ -41,7 +41,10 @@ function typeLabel(t: (key: string) => string, type: string) {
 const cardClass =
   "rounded-2xl border border-border bg-card transition-colors hover:border-foreground/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
-/** 节点线条插图：主线 + 分支 + 合并点（强调色）；Git 主题活动附带分支名标注 */
+/**
+ * 节点线条插图：主线 + 分支 + 合并点（强调色）；Git 主题活动附带分支名标注
+ * @ICON-LOCAL 仅本组件私有装饰插图（非 UI 图标，特殊 viewBox 0 0 560 110），不抽全局 assets/icons
+ */
 function CommitGraph({ labelled }: { labelled: boolean }) {
   return (
     <svg viewBox="0 0 560 110" fill="none" aria-hidden="true" className="h-20 md:h-[110px] w-full">

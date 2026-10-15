@@ -7,7 +7,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useI18n } from "@/i18n/provider";
-import { Loader2, FileText, Archive, Heart, Bookmark } from "lucide-react";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import FileText from "@/assets/icons/status/file-text.svg";
+import Archive from "@/assets/icons/action/archive.svg";
+import Heart from "@/assets/icons/status/heart.svg";
+import Bookmark from "@/assets/icons/status/bookmark.svg";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { MemoCard } from "@/components/memo/MemoCard";

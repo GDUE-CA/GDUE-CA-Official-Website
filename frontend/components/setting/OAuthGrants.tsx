@@ -7,15 +7,13 @@
  * 平台、授权时间；可撤销授权（DELETE /api/account/oauth-grants/{id}，后端写审计日志）。
  */
 import { useCallback, useEffect, useState } from "react";
-import {
-  KeyRound,
-  Loader2,
-  Link2,
-  Github,
-  Chrome,
-  Apple as AppleIcon,
-  ShieldCheck,
-} from "lucide-react";
+import KeyRound from "@/assets/icons/status/key-round.svg";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import Link2 from "@/assets/icons/navigation/link-2.svg";
+import Github from "@/assets/icons/brand/github.svg";
+import Chrome from "@/assets/icons/brand/chrome.svg";
+import AppleIcon from "@/assets/icons/brand/apple.svg";
+import ShieldCheck from "@/assets/icons/status/shield-check.svg";
 import { useI18n } from "@/i18n/provider";
 import {
   Card,

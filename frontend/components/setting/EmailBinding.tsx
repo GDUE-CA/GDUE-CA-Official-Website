@@ -14,17 +14,15 @@
  * - Superadmin(Break-Glass)：前端完全隐藏全部 UI（fetchMe 判定）
  */
 import { useCallback, useEffect, useState } from "react";
-import {
-  AlertTriangle,
-  ArrowLeft,
-  CheckCircle2,
-  Clock,
-  Info,
-  Loader2,
-  Mail,
-  MailWarning,
-  ShieldAlert,
-} from "lucide-react";
+import AlertTriangle from "@/assets/icons/status/alert-triangle.svg";
+import ArrowLeft from "@/assets/icons/navigation/arrow-left.svg";
+import CheckCircle2 from "@/assets/icons/status/check-circle-2.svg";
+import Clock from "@/assets/icons/status/clock.svg";
+import Info from "@/assets/icons/status/info.svg";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import Mail from "@/assets/icons/status/mail.svg";
+import MailWarning from "@/assets/icons/status/mail-warning.svg";
+import ShieldAlert from "@/assets/icons/status/shield-alert.svg";
 import { useI18n } from "@/i18n/provider";
 import { fetchMe } from "@/lib/api/auth";
 import {

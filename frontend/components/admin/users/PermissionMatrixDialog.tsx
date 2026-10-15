@@ -8,7 +8,8 @@
  * - 仅 super_admin 可操作，且不能修改自己的覆盖（与后端校验一致）
  */
 import { useEffect, useState } from "react";
-import { Loader2, Wand2 } from "lucide-react";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import Wand2 from "@/assets/icons/action/wand-2.svg";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
 import {

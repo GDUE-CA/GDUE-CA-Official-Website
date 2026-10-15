@@ -13,7 +13,9 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Loader2, CheckCircle2, Send } from "lucide-react";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import CheckCircle2 from "@/assets/icons/status/check-circle-2.svg";
+import Send from "@/assets/icons/action/send.svg";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

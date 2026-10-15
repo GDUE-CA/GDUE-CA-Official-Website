@@ -17,7 +17,12 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Sun, Moon, ChevronDown, UserCircle, Settings as SettingsIcon } from "lucide-react";
+import X from "@/assets/icons/action/x.svg";
+import Sun from "@/assets/icons/status/sun.svg";
+import Moon from "@/assets/icons/status/moon.svg";
+import ChevronDown from "@/assets/icons/navigation/chevron-down.svg";
+import UserCircle from "@/assets/icons/user/user-circle.svg";
+import SettingsIcon from "@/assets/icons/navigation/settings.svg";
 import { locales, localeDisplayName, type Locale } from "@/lib/i18n";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
@@ -43,7 +48,10 @@ const communityItems = [
 ] as const;
 
 /** 末尾一级导航项 */
-const tailItems = [{ key: "nav.about", href: "/about" }] as const;
+const tailItems = [
+  { key: "nav.about", href: "/about" },
+  { key: "nav.submit", href: "/submit" },
+] as const;
 
 /** 拼接头像完整 URL（与 UserMenu 规则一致） */
 function avatarFullUrl(url: string | null | undefined): string {

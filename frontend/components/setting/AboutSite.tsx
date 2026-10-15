@@ -5,15 +5,13 @@
  * 版本号 / 开源仓库 / 隐私政策 / 用户协议
  */
 import Link from "next/link";
-import {
-  Info,
-  Github,
-  ShieldCheck,
-  FileText,
-  Tag,
-  ChevronLeft,
-  ExternalLink,
-} from "lucide-react";
+import Info from "@/assets/icons/status/info.svg";
+import Github from "@/assets/icons/brand/github.svg";
+import ShieldCheck from "@/assets/icons/status/shield-check.svg";
+import FileText from "@/assets/icons/status/file-text.svg";
+import Tag from "@/assets/icons/status/tag.svg";
+import ChevronLeft from "@/assets/icons/navigation/chevron-left.svg";
+import ExternalLink from "@/assets/icons/navigation/external-link.svg";
 import { useI18n } from "@/i18n/provider";
 import { useLocalizedPath } from "@/lib/navigation";
 import { APP_VERSION } from "@/lib/version";

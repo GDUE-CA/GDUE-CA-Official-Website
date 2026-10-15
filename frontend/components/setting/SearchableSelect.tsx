@@ -8,7 +8,9 @@
  * - 触屏 / 粗指针：渲染原生 <select>，触发系统原生 picker
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronDown, Search } from "lucide-react";
+import Check from "@/assets/icons/action/check.svg";
+import ChevronDown from "@/assets/icons/navigation/chevron-down.svg";
+import Search from "@/assets/icons/action/search.svg";
 import { useI18n } from "@/i18n/provider";
 import { cn } from "@/lib/utils";
 

@@ -6,7 +6,10 @@
  */
 import { useState } from "react";
 import { useI18n } from "@/i18n/provider";
-import { Copy, Check, RefreshCw, X } from "lucide-react";
+import Copy from "@/assets/icons/action/copy.svg";
+import Check from "@/assets/icons/action/check.svg";
+import RefreshCw from "@/assets/icons/action/refresh-cw.svg";
+import X from "@/assets/icons/action/x.svg";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { createShareLink, revokeShareLink } from "@/lib/api/memos";

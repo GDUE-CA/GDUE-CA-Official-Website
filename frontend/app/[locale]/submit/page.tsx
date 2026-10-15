@@ -9,7 +9,8 @@
  */
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Users, Bug } from "lucide-react";
+import Users from "@/assets/icons/user/users.svg";
+import Bug from "@/assets/icons/status/bug.svg";
 import { useI18n } from "@/i18n/provider";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

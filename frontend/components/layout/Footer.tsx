@@ -7,7 +7,9 @@
  * 链接触摸高度 ≥44px；底部 padding 适配手势安全区（env(safe-area-inset-bottom)）
  */
 import Link from "next/link";
-import { Github, Mail, MapPin } from "lucide-react";
+import Github from "@/assets/icons/brand/github.svg";
+import Mail from "@/assets/icons/status/mail.svg";
+import MapPin from "@/assets/icons/status/map-pin.svg";
 import { useI18n } from "@/i18n/provider";
 import { BrandMark } from "@/components/shared/BrandMark";
 import { APP_VERSION } from "@/lib/version";

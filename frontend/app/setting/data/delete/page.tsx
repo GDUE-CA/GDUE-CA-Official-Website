@@ -3,7 +3,7 @@
 /**
  * /setting/data/delete —— 账号注销（P2：二次确认 + 冷静期，占位页）
  */
-import { UserX } from "lucide-react";
+import UserX from "@/assets/icons/user/user-x.svg";
 import { useI18n } from "@/i18n/provider";
 import { ComingSoonCard } from "@/components/setting/ComingSoonCard";
 

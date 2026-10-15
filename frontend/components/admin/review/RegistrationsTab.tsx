@@ -7,7 +7,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
-import { UserPlus } from "lucide-react";
+import UserPlus from "@/assets/icons/user/user-plus.svg";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -38,7 +38,14 @@ import type {
   RegistrationType,
   TranslationResult,
 } from "@/types/api";
-import { Download, Check, X, Languages, CheckCheck, XCircle, Square, SquareCheck } from "lucide-react";
+import Download from "@/assets/icons/action/download.svg";
+import Check from "@/assets/icons/action/check.svg";
+import X from "@/assets/icons/action/x.svg";
+import Languages from "@/assets/icons/navigation/languages.svg";
+import CheckCheck from "@/assets/icons/action/check-check.svg";
+import XCircle from "@/assets/icons/status/x-circle.svg";
+import Square from "@/assets/icons/action/square.svg";
+import SquareCheck from "@/assets/icons/action/square-check.svg";
 
 const STATUSES: RegistrationStatus[] = ["pending", "approved", "rejected", "checked_in"];
 const TYPES: RegistrationType[] = ["activity", "club"];

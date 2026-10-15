@@ -12,7 +12,10 @@
  * 主题逻辑收敛到 useTheme hook。
  */
 import { useState } from "react";
-import { Settings, ChevronRight, Languages, Palette } from "lucide-react";
+import Settings from "@/assets/icons/navigation/settings.svg";
+import ChevronRight from "@/assets/icons/navigation/chevron-right.svg";
+import Languages from "@/assets/icons/navigation/languages.svg";
+import Palette from "@/assets/icons/status/palette.svg";
 import { useI18n } from "@/i18n/provider";
 import {
   DropdownMenu,

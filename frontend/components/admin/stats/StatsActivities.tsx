@@ -5,7 +5,8 @@
  * 展示活动结束后自动生成的报名统计快照：总数/待审/通过/拒绝/签到。
  */
 import { useEffect, useState } from "react";
-import { Loader2, RefreshCw } from "lucide-react";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import RefreshCw from "@/assets/icons/action/refresh-cw.svg";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";

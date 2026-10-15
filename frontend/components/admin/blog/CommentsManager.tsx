@@ -13,14 +13,12 @@
  * - 永久物理删除：DELETE 数据库行（不可逆，需确认弹窗）
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  Eye,
-  EyeOff,
-  Loader2,
-  MessageSquare,
-  Power,
-  Trash2,
-} from "lucide-react";
+import Eye from "@/assets/icons/status/eye.svg";
+import EyeOff from "@/assets/icons/status/eye-off.svg";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import MessageSquare from "@/assets/icons/status/message-square.svg";
+import Power from "@/assets/icons/action/power.svg";
+import Trash2 from "@/assets/icons/action/trash-2.svg";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

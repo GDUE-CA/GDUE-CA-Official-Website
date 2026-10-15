@@ -7,7 +7,8 @@
  */
 import { useEffect, useState } from "react";
 import { useI18n } from "@/i18n/provider";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import ChevronLeft from "@/assets/icons/navigation/chevron-left.svg";
+import ChevronRight from "@/assets/icons/navigation/chevron-right.svg";
 import { Button } from "@/components/ui/button";
 import { getMemoByDate, getTimeline } from "@/lib/api/memos";
 import { cn } from "@/lib/utils";

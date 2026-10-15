@@ -11,7 +11,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Loader2, Plus, Pencil, Trash2, FolderKanban } from "lucide-react";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import Plus from "@/assets/icons/action/plus.svg";
+import Pencil from "@/assets/icons/action/pencil.svg";
+import Trash2 from "@/assets/icons/action/trash-2.svg";
+import FolderKanban from "@/assets/icons/navigation/folder-kanban.svg";
 import { useI18n } from "@/i18n/provider";
 import { useLocalizedPath } from "@/lib/navigation";
 import { Button } from "@/components/ui/button";

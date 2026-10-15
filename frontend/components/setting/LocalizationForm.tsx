@@ -20,7 +20,9 @@
  * 「切换语言时保存为我的默认界面语言」复选框：勾选后保存时跳转到新 locale URL。
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CheckCircle2, Loader2, RotateCcw } from "lucide-react";
+import CheckCircle2 from "@/assets/icons/status/check-circle-2.svg";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import RotateCcw from "@/assets/icons/action/rotate-ccw.svg";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";

@@ -11,14 +11,15 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useI18n } from "@/i18n/provider";
-import { Hammer, type LucideIcon } from "lucide-react";
+import Hammer from "@/assets/icons/action/hammer.svg";
+import type { IconComponent } from "@/types/icons";
 
 export function ComingSoonCard({
   icon: Icon = Hammer,
   title,
   description,
 }: {
-  icon?: LucideIcon;
+  icon?: IconComponent;
   title: string;
   description?: string;
 }) {

@@ -11,7 +11,9 @@
  * - 【重置为匹配地区默认值】根据当前 country_code 一键填充对应地区原生格式
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CheckCircle2, Loader2, RotateCcw } from "lucide-react";
+import CheckCircle2 from "@/assets/icons/status/check-circle-2.svg";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import RotateCcw from "@/assets/icons/action/rotate-ccw.svg";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";

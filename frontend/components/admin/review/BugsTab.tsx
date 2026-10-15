@@ -6,7 +6,13 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Check, RotateCcw, Languages, CheckCheck, XCircle, Square, SquareCheck } from "lucide-react";
+import Check from "@/assets/icons/action/check.svg";
+import RotateCcw from "@/assets/icons/action/rotate-ccw.svg";
+import Languages from "@/assets/icons/navigation/languages.svg";
+import CheckCheck from "@/assets/icons/action/check-check.svg";
+import XCircle from "@/assets/icons/status/x-circle.svg";
+import Square from "@/assets/icons/action/square.svg";
+import SquareCheck from "@/assets/icons/action/square-check.svg";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";

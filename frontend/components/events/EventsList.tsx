@@ -13,7 +13,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useI18n } from "@/i18n/provider";
 import { cn } from "@/lib/utils";
-import { ArrowRight } from "lucide-react";
+import ArrowRight from "@/assets/icons/navigation/arrow-right.svg";
 import { RuntimeStatusBadge } from "@/components/events/RuntimeStatusBadge";
 import { EnrolButton } from "@/components/events/EnrolButton";
 import type { ClubEvent } from "@/types/api";

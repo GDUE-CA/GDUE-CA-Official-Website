@@ -24,7 +24,13 @@ import {
 } from "@/components/ui/card";
 import { useDirtyGuard } from "@/components/setting/SettingGuardContext";
 import { fetchProfile, updateProfile } from "@/lib/api/auth";
-import { CheckCircle2, Loader2, Lock, Eye, EyeOff, Search, FileEdit } from "lucide-react";
+import CheckCircle2 from "@/assets/icons/status/check-circle-2.svg";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import Lock from "@/assets/icons/status/lock.svg";
+import Eye from "@/assets/icons/status/eye.svg";
+import EyeOff from "@/assets/icons/status/eye-off.svg";
+import Search from "@/assets/icons/action/search.svg";
+import FileEdit from "@/assets/icons/action/file-edit.svg";
 import { cn } from "@/lib/utils";
 
 const PAGE_KEY = "privacy";

@@ -12,14 +12,12 @@
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import {
-  Loader2,
-  ImageIcon,
-  Upload,
-  X,
-  ArrowLeft,
-  Plus,
-} from "lucide-react";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import ImageIcon from "@/assets/icons/status/image-icon.svg";
+import Upload from "@/assets/icons/action/upload.svg";
+import X from "@/assets/icons/action/x.svg";
+import ArrowLeft from "@/assets/icons/navigation/arrow-left.svg";
+import Plus from "@/assets/icons/action/plus.svg";
 import { useI18n } from "@/i18n/provider";
 import { useLocalizedPath } from "@/lib/navigation";
 import { Button } from "@/components/ui/button";

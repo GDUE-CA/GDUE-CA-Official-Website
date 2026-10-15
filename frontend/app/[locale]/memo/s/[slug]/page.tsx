@@ -8,7 +8,8 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useI18n } from "@/i18n/provider";
-import { Loader2, Share2 } from "lucide-react";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import Share2 from "@/assets/icons/action/share-2.svg";
 import { MemoDetail } from "@/components/memo/MemoDetail";
 import { getSharedMemo } from "@/lib/api/memos";
 import type { MemoOut } from "@/types/api";

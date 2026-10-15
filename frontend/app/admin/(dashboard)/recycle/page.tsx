@@ -10,7 +10,11 @@
  * 只读浏览无需权限模块限制；操作权限由后端按角色强制校验。
  */
 import { useCallback, useEffect, useState } from "react";
-import { Loader2, RotateCcw, Trash2, UserRound, CalendarDays } from "lucide-react";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import RotateCcw from "@/assets/icons/action/rotate-ccw.svg";
+import Trash2 from "@/assets/icons/action/trash-2.svg";
+import UserRound from "@/assets/icons/user/user-round.svg";
+import CalendarDays from "@/assets/icons/status/calendar-days.svg";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

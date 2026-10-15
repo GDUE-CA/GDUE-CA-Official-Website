@@ -7,7 +7,7 @@
  */
 import { ViewTransition } from "react";
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
+import ArrowUpRight from "@/assets/icons/navigation/arrow-up-right.svg";
 import { useI18n } from "@/i18n/provider";
 
 export function QuickNav() {

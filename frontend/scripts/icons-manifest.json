@@ -1,0 +1,462 @@
+{
+  "AlertTriangle": {
+    "cat": "status",
+    "file": "alert-triangle"
+  },
+  "Apple": {
+    "cat": "brand",
+    "file": "apple"
+  },
+  "Archive": {
+    "cat": "action",
+    "file": "archive"
+  },
+  "ArrowDown": {
+    "cat": "navigation",
+    "file": "arrow-down"
+  },
+  "ArrowLeft": {
+    "cat": "navigation",
+    "file": "arrow-left"
+  },
+  "ArrowRight": {
+    "cat": "navigation",
+    "file": "arrow-right"
+  },
+  "ArrowUp": {
+    "cat": "navigation",
+    "file": "arrow-up"
+  },
+  "ArrowUpRight": {
+    "cat": "navigation",
+    "file": "arrow-up-right"
+  },
+  "Ban": {
+    "cat": "status",
+    "file": "ban"
+  },
+  "BarChart3": {
+    "cat": "status",
+    "file": "bar-chart-3"
+  },
+  "Bell": {
+    "cat": "status",
+    "file": "bell"
+  },
+  "BellRing": {
+    "cat": "status",
+    "file": "bell-ring"
+  },
+  "Bookmark": {
+    "cat": "status",
+    "file": "bookmark"
+  },
+  "Bug": {
+    "cat": "status",
+    "file": "bug"
+  },
+  "Building2": {
+    "cat": "status",
+    "file": "building-2"
+  },
+  "Calculator": {
+    "cat": "action",
+    "file": "calculator"
+  },
+  "Calendar": {
+    "cat": "status",
+    "file": "calendar"
+  },
+  "CalendarDays": {
+    "cat": "status",
+    "file": "calendar-days"
+  },
+  "Check": {
+    "cat": "action",
+    "file": "check"
+  },
+  "CheckCheck": {
+    "cat": "action",
+    "file": "check-check"
+  },
+  "CheckCircle2": {
+    "cat": "status",
+    "file": "check-circle-2"
+  },
+  "ChevronDown": {
+    "cat": "navigation",
+    "file": "chevron-down"
+  },
+  "ChevronLeft": {
+    "cat": "navigation",
+    "file": "chevron-left"
+  },
+  "ChevronRight": {
+    "cat": "navigation",
+    "file": "chevron-right"
+  },
+  "ChevronUp": {
+    "cat": "navigation",
+    "file": "chevron-up"
+  },
+  "Chrome": {
+    "cat": "brand",
+    "file": "chrome"
+  },
+  "Circle": {
+    "cat": "status",
+    "file": "circle"
+  },
+  "ClipboardList": {
+    "cat": "action",
+    "file": "clipboard-list"
+  },
+  "Clock": {
+    "cat": "status",
+    "file": "clock"
+  },
+  "Cookie": {
+    "cat": "status",
+    "file": "cookie"
+  },
+  "Copy": {
+    "cat": "action",
+    "file": "copy"
+  },
+  "Database": {
+    "cat": "status",
+    "file": "database"
+  },
+  "Download": {
+    "cat": "action",
+    "file": "download"
+  },
+  "ExternalLink": {
+    "cat": "navigation",
+    "file": "external-link"
+  },
+  "Eye": {
+    "cat": "status",
+    "file": "eye"
+  },
+  "EyeOff": {
+    "cat": "status",
+    "file": "eye-off"
+  },
+  "FileEdit": {
+    "cat": "action",
+    "file": "file-edit"
+  },
+  "FileText": {
+    "cat": "status",
+    "file": "file-text"
+  },
+  "FolderKanban": {
+    "cat": "navigation",
+    "file": "folder-kanban"
+  },
+  "Github": {
+    "cat": "brand",
+    "file": "github"
+  },
+  "Globe": {
+    "cat": "navigation",
+    "file": "globe"
+  },
+  "Hammer": {
+    "cat": "action",
+    "file": "hammer"
+  },
+  "HardDrive": {
+    "cat": "status",
+    "file": "hard-drive"
+  },
+  "Hash": {
+    "cat": "status",
+    "file": "hash"
+  },
+  "Heart": {
+    "cat": "status",
+    "file": "heart"
+  },
+  "HeartPulse": {
+    "cat": "status",
+    "file": "heart-pulse"
+  },
+  "History": {
+    "cat": "navigation",
+    "file": "history"
+  },
+  "Image": {
+    "cat": "status",
+    "file": "image"
+  },
+  "ImageIcon": {
+    "cat": "status",
+    "file": "image-icon"
+  },
+  "ImagePlus": {
+    "cat": "action",
+    "file": "image-plus"
+  },
+  "Info": {
+    "cat": "status",
+    "file": "info"
+  },
+  "KeyRound": {
+    "cat": "status",
+    "file": "key-round"
+  },
+  "Languages": {
+    "cat": "navigation",
+    "file": "languages"
+  },
+  "Laptop": {
+    "cat": "status",
+    "file": "laptop"
+  },
+  "LayoutDashboard": {
+    "cat": "navigation",
+    "file": "layout-dashboard"
+  },
+  "LayoutGrid": {
+    "cat": "navigation",
+    "file": "layout-grid"
+  },
+  "Link2": {
+    "cat": "navigation",
+    "file": "link-2"
+  },
+  "Loader2": {
+    "cat": "status",
+    "file": "loader-2"
+  },
+  "Lock": {
+    "cat": "status",
+    "file": "lock"
+  },
+  "LockKeyhole": {
+    "cat": "status",
+    "file": "lock-keyhole"
+  },
+  "LogOut": {
+    "cat": "navigation",
+    "file": "log-out"
+  },
+  "Mail": {
+    "cat": "status",
+    "file": "mail"
+  },
+  "MailWarning": {
+    "cat": "status",
+    "file": "mail-warning"
+  },
+  "MapPin": {
+    "cat": "status",
+    "file": "map-pin"
+  },
+  "Megaphone": {
+    "cat": "status",
+    "file": "megaphone"
+  },
+  "Menu": {
+    "cat": "navigation",
+    "file": "menu"
+  },
+  "MessageCircle": {
+    "cat": "status",
+    "file": "message-circle"
+  },
+  "MessageSquare": {
+    "cat": "status",
+    "file": "message-square"
+  },
+  "Monitor": {
+    "cat": "status",
+    "file": "monitor"
+  },
+  "MonitorSmartphone": {
+    "cat": "status",
+    "file": "monitor-smartphone"
+  },
+  "Moon": {
+    "cat": "status",
+    "file": "moon"
+  },
+  "MoreHorizontal": {
+    "cat": "navigation",
+    "file": "more-horizontal"
+  },
+  "Newspaper": {
+    "cat": "status",
+    "file": "newspaper"
+  },
+  "Palette": {
+    "cat": "status",
+    "file": "palette"
+  },
+  "Paperclip": {
+    "cat": "action",
+    "file": "paperclip"
+  },
+  "PenLine": {
+    "cat": "action",
+    "file": "pen-line"
+  },
+  "Pencil": {
+    "cat": "action",
+    "file": "pencil"
+  },
+  "Phone": {
+    "cat": "status",
+    "file": "phone"
+  },
+  "Plus": {
+    "cat": "action",
+    "file": "plus"
+  },
+  "Power": {
+    "cat": "action",
+    "file": "power"
+  },
+  "QrCode": {
+    "cat": "action",
+    "file": "qr-code"
+  },
+  "RefreshCw": {
+    "cat": "action",
+    "file": "refresh-cw"
+  },
+  "Reply": {
+    "cat": "action",
+    "file": "reply"
+  },
+  "RotateCcw": {
+    "cat": "action",
+    "file": "rotate-ccw"
+  },
+  "Save": {
+    "cat": "action",
+    "file": "save"
+  },
+  "ScrollText": {
+    "cat": "status",
+    "file": "scroll-text"
+  },
+  "Search": {
+    "cat": "action",
+    "file": "search"
+  },
+  "Send": {
+    "cat": "action",
+    "file": "send"
+  },
+  "Settings": {
+    "cat": "navigation",
+    "file": "settings"
+  },
+  "Share2": {
+    "cat": "action",
+    "file": "share-2"
+  },
+  "ShieldAlert": {
+    "cat": "status",
+    "file": "shield-alert"
+  },
+  "ShieldCheck": {
+    "cat": "status",
+    "file": "shield-check"
+  },
+  "SlidersHorizontal": {
+    "cat": "action",
+    "file": "sliders-horizontal"
+  },
+  "Smartphone": {
+    "cat": "status",
+    "file": "smartphone"
+  },
+  "Sparkles": {
+    "cat": "status",
+    "file": "sparkles"
+  },
+  "Square": {
+    "cat": "action",
+    "file": "square"
+  },
+  "SquareCheck": {
+    "cat": "action",
+    "file": "square-check"
+  },
+  "Star": {
+    "cat": "status",
+    "file": "star"
+  },
+  "Sun": {
+    "cat": "status",
+    "file": "sun"
+  },
+  "Tag": {
+    "cat": "status",
+    "file": "tag"
+  },
+  "Tags": {
+    "cat": "status",
+    "file": "tags"
+  },
+  "Ticket": {
+    "cat": "status",
+    "file": "ticket"
+  },
+  "Trash2": {
+    "cat": "action",
+    "file": "trash-2"
+  },
+  "Type": {
+    "cat": "action",
+    "file": "type"
+  },
+  "Upload": {
+    "cat": "action",
+    "file": "upload"
+  },
+  "User": {
+    "cat": "user",
+    "file": "user"
+  },
+  "UserCircle": {
+    "cat": "user",
+    "file": "user-circle"
+  },
+  "UserCog": {
+    "cat": "user",
+    "file": "user-cog"
+  },
+  "UserPlus": {
+    "cat": "user",
+    "file": "user-plus"
+  },
+  "UserX": {
+    "cat": "user",
+    "file": "user-x"
+  },
+  "Users": {
+    "cat": "user",
+    "file": "users"
+  },
+  "UsersRound": {
+    "cat": "user",
+    "file": "users-round"
+  },
+  "Wand2": {
+    "cat": "action",
+    "file": "wand-2"
+  },
+  "X": {
+    "cat": "action",
+    "file": "x"
+  },
+  "XCircle": {
+    "cat": "status",
+    "file": "x-circle"
+  }
+}

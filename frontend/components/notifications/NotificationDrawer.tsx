@@ -14,7 +14,10 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BellRing, CheckCheck, ExternalLink, Loader2 } from "lucide-react";
+import BellRing from "@/assets/icons/status/bell-ring.svg";
+import CheckCheck from "@/assets/icons/action/check-check.svg";
+import ExternalLink from "@/assets/icons/navigation/external-link.svg";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
 import {
   Dialog,
   DialogContent,

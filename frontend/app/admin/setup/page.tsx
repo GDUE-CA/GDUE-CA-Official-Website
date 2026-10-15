@@ -12,15 +12,13 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import {
-  Loader2,
-  ShieldCheck,
-  Check,
-  Copy,
-  AlertTriangle,
-  ArrowRight,
-  ArrowLeft,
-} from "lucide-react";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import ShieldCheck from "@/assets/icons/status/shield-check.svg";
+import Check from "@/assets/icons/action/check.svg";
+import Copy from "@/assets/icons/action/copy.svg";
+import AlertTriangle from "@/assets/icons/status/alert-triangle.svg";
+import ArrowRight from "@/assets/icons/navigation/arrow-right.svg";
+import ArrowLeft from "@/assets/icons/navigation/arrow-left.svg";
 import { useI18n } from "@/i18n/provider";
 import { useLocalizedPath } from "@/lib/navigation";
 import { Button } from "@/components/ui/button";

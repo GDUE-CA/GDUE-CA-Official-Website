@@ -3,7 +3,7 @@
 /**
  * /setting/security/totp —— 两步验证 TOTP（P1，占位页）
  */
-import { ShieldCheck } from "lucide-react";
+import ShieldCheck from "@/assets/icons/status/shield-check.svg";
 import { useI18n } from "@/i18n/provider";
 import { ComingSoonCard } from "@/components/setting/ComingSoonCard";
 

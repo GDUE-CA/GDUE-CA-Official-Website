@@ -9,7 +9,12 @@
  * - 「导入 JSON」：读取本地 .json 文件预填新建表单（管理员上传节日主题无需改前端代码）
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Loader2, Plus, Pencil, Trash2, Palette, Upload } from "lucide-react";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import Plus from "@/assets/icons/action/plus.svg";
+import Pencil from "@/assets/icons/action/pencil.svg";
+import Trash2 from "@/assets/icons/action/trash-2.svg";
+import Palette from "@/assets/icons/status/palette.svg";
+import Upload from "@/assets/icons/action/upload.svg";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

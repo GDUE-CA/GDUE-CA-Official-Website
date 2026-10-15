@@ -10,7 +10,10 @@
  * - 头像接口即时生效，不计入表单 dirty
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Upload, RotateCcw, Loader2, CheckCircle2 } from "lucide-react";
+import Upload from "@/assets/icons/action/upload.svg";
+import RotateCcw from "@/assets/icons/action/rotate-ccw.svg";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import CheckCircle2 from "@/assets/icons/status/check-circle-2.svg";
 import { API_BASE_URL } from "@/lib/api/client";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";

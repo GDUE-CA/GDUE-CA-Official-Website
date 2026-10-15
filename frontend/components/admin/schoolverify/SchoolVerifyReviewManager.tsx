@@ -7,7 +7,11 @@
  * 审核完成由后端发送站内信。对应后端 /api/admin/school-verify*。
  */
 import { useCallback, useEffect, useState } from "react";
-import { Check, Loader2, RefreshCw, Search, X } from "lucide-react";
+import Check from "@/assets/icons/action/check.svg";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import RefreshCw from "@/assets/icons/action/refresh-cw.svg";
+import Search from "@/assets/icons/action/search.svg";
+import X from "@/assets/icons/action/x.svg";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

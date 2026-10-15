@@ -8,7 +8,8 @@
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/i18n/provider";
 import Link from "next/link";
-import { ArrowLeft, Info } from "lucide-react";
+import ArrowLeft from "@/assets/icons/navigation/arrow-left.svg";
+import Info from "@/assets/icons/status/info.svg";
 import { createMemo } from "@/lib/api/memos";
 import { Button } from "@/components/ui/button";
 
@@ -53,7 +54,7 @@ import { VisibilitySelect } from "@/components/memo/VisibilitySelect";
 import { TagInput } from "@/components/memo/TagInput";
 import { listTags } from "@/lib/api/tags";
 import { useEffect } from "react";
-import { Loader2 } from "lucide-react";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
 import type { MemoVisibility } from "@/types/api";
 
 function NewMemoForm({ onCreated }: { onCreated: (id: number) => void }) {

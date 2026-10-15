@@ -8,7 +8,10 @@
  * - 驳回：理由必填非空；用户端展示理由并解除自助禁用
  */
 import { useCallback, useEffect, useState } from "react";
-import { Check, Loader2, Mail, X } from "lucide-react";
+import Check from "@/assets/icons/action/check.svg";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import Mail from "@/assets/icons/status/mail.svg";
+import X from "@/assets/icons/action/x.svg";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";

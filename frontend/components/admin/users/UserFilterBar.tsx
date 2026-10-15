@@ -3,7 +3,8 @@
 /**
  * 人员管理筛选栏：搜索 + 角色筛选 + 启用状态筛选 + 清除
  */
-import { Search, X } from "lucide-react";
+import Search from "@/assets/icons/action/search.svg";
+import X from "@/assets/icons/action/x.svg";
 import { useI18n } from "@/i18n/provider";
 import { Input } from "@/components/ui/input";
 import {

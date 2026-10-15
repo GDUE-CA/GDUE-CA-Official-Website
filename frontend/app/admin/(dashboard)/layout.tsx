@@ -21,45 +21,43 @@
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import {
-  LayoutDashboard,
-  Bell,
-  CalendarDays,
-  Users as UsersIcon,
-  Settings,
-  LogOut,
-  Menu,
-  X,
-  ExternalLink,
-  ShieldCheck,
-  Megaphone,
-  Newspaper,
-  UsersRound,
-  UserPlus,
-  MessageSquare,
-  KeyRound,
-  Fingerprint,
-  BadgeCheck,
-  FileText,
-  Globe,
-  ShieldBan,
-  ScrollText,
-  Trash2,
-  FolderOpen,
-  Mail,
-  UserCircle,
-  ChevronRight,
-  ClipboardList,
-  MailPlus,
-  Palette,
-  GraduationCap,
-  Database,
-} from "lucide-react";
+import LayoutDashboard from "@/assets/icons/navigation/layout-dashboard.svg";
+import Bell from "@/assets/icons/status/bell.svg";
+import CalendarDays from "@/assets/icons/status/calendar-days.svg";
+import UsersIcon from "@/assets/icons/user/users.svg";
+import Settings from "@/assets/icons/navigation/settings.svg";
+import LogOut from "@/assets/icons/navigation/log-out.svg";
+import Menu from "@/assets/icons/navigation/menu.svg";
+import X from "@/assets/icons/action/x.svg";
+import ExternalLink from "@/assets/icons/navigation/external-link.svg";
+import ShieldCheck from "@/assets/icons/status/shield-check.svg";
+import Megaphone from "@/assets/icons/status/megaphone.svg";
+import Newspaper from "@/assets/icons/status/newspaper.svg";
+import UsersRound from "@/assets/icons/user/users-round.svg";
+import UserPlus from "@/assets/icons/user/user-plus.svg";
+import MessageSquare from "@/assets/icons/status/message-square.svg";
+import KeyRound from "@/assets/icons/status/key-round.svg";
+import Fingerprint from "@/assets/icons/status/fingerprint.svg";
+import BadgeCheck from "@/assets/icons/status/badge-check.svg";
+import FileText from "@/assets/icons/status/file-text.svg";
+import Globe from "@/assets/icons/navigation/globe.svg";
+import ShieldBan from "@/assets/icons/status/shield-ban.svg";
+import ScrollText from "@/assets/icons/status/scroll-text.svg";
+import Trash2 from "@/assets/icons/action/trash-2.svg";
+import FolderOpen from "@/assets/icons/navigation/folder-open.svg";
+import Mail from "@/assets/icons/status/mail.svg";
+import UserCircle from "@/assets/icons/user/user-circle.svg";
+import ChevronRight from "@/assets/icons/navigation/chevron-right.svg";
+import ClipboardList from "@/assets/icons/action/clipboard-list.svg";
+import MailPlus from "@/assets/icons/status/mail-plus.svg";
+import Palette from "@/assets/icons/status/palette.svg";
+import GraduationCap from "@/assets/icons/status/graduation-cap.svg";
+import Database from "@/assets/icons/status/database.svg";
+import { LanguagePopover } from "@/components/layout/LanguagePopover";
 import { motion, AnimatePresence } from "framer-motion";
 import { useI18n } from "@/i18n/provider";
 import { useLocalizedPath } from "@/lib/navigation";
-import { useAdminLocale } from "@/app/admin/AdminProviders";
-import { locales, localeDisplayName, type Locale } from "@/lib/i18n";
+import { type Locale } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { BanModal } from "@/components/shared/BanModal";
@@ -410,9 +408,6 @@ export default function AdminDashboardLayout({
           >
             <Menu className="h-5 w-5" />
           </Button>
-          <span className="font-display font-bold text-sm">
-            {t("admin.dashboard.title")}
-          </span>
         </div>
         <div className="flex items-center gap-1 sm:gap-2">
           <PendingBadge />
@@ -465,10 +460,7 @@ export default function AdminDashboardLayout({
                 transition={{ type: "spring", damping: 30, stiffness: 300 }}
                 className="md:hidden fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] bg-sidebar border-r border-border flex flex-col"
               >
-                <div className="h-14 flex items-center justify-between px-3 border-b border-border">
-                  <span className="font-display font-bold text-sm">
-                    {t("admin.dashboard.title")}
-                  </span>
+                <div className="h-14 flex items-center justify-end px-3 border-b border-border">
                   <Button
                     variant="ghost"
                     size="icon"
@@ -530,22 +522,25 @@ function PendingBadge() {
   );
 }
 
-/** 顶栏语言切换（localStorage 持久化，切换后全后台即时生效） */
+/** 顶栏语言切换：复用首页同款 LanguagePopover，地球图标按钮触发（移动端紧凑） */
 function LocaleSelect() {
-  const { locale, setLocale } = useAdminLocale();
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
   return (
-    <select
-      value={locale}
-      onChange={(e) => setLocale(e.target.value as Locale)}
-      aria-label="Language"
-      className="h-8 rounded-md border border-input bg-background px-1.5 text-xs font-medium"
-    >
-      {locales.map((l) => (
-        <option key={l} value={l}>
-          {localeDisplayName(l)}
-        </option>
-      ))}
-    </select>
+    <LanguagePopover
+      open={open}
+      onOpenChange={setOpen}
+      anchor={
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={t("nav.language")}
+          className="h-8 w-8"
+        >
+          <Globe className="h-4 w-4" />
+        </Button>
+      }
+    />
   );
 }
 
@@ -596,12 +591,9 @@ function UserMenu({
         ) : (
           <UserCircle className="h-7 w-7 shrink-0 text-muted-foreground" />
         )}
-        <span className="hidden sm:inline font-medium truncate max-w-32">
-          {session?.username ?? "admin"}
-        </span>
         {/* BG 红标签（Layer 2 警告） */}
         {isBreakGlass && (
-          <span className="hidden md:inline-flex items-center rounded-md bg-destructive px-1.5 py-0.5 text-[10px] font-semibold text-destructive-foreground">
+          <span className="inline-flex items-center rounded-md bg-destructive px-1.5 py-0.5 text-[10px] font-semibold text-destructive-foreground">
             BG
           </span>
         )}

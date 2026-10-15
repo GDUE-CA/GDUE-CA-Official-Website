@@ -6,7 +6,8 @@
  * + 来源明细表（IP、国旗 / 地区徽章、来源构成、次数、最近访问）。
  */
 import { useEffect, useState } from "react";
-import { Loader2, RefreshCw } from "lucide-react";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import RefreshCw from "@/assets/icons/action/refresh-cw.svg";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -100,7 +101,8 @@ export function StatsVisits() {
             </Card>
           </div>
 
-          <Card>
+          {/* 桌面端：原表格 100% 不动 */}
+          <Card className="hidden md:block">
             <CardContent className="py-4 overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -144,6 +146,61 @@ export function StatsVisits() {
               </table>
             </CardContent>
           </Card>
+
+          {/* 移动端：单 IP 独立卡片布局，IPv6 自动换行 */}
+          <div className="md:hidden space-y-3">
+            {stats.top_ips.map((row: IpSourceStat) => {
+              const source = [
+                row.admin_actions > 0 && `${t("admin.dashboard.accessSourceAdmin")}×${row.admin_actions}`,
+                row.registrations > 0 && `${t("admin.dashboard.accessSourceRegistrations")}×${row.registrations}`,
+                row.bugs > 0 && `${t("admin.dashboard.accessSourceBugs")}×${row.bugs}`,
+              ].filter(Boolean).join(" · ") || "—";
+              return (
+                <Card key={row.ip}>
+                  <CardContent className="py-3 space-y-2 text-sm">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="font-mono text-xs break-all min-w-0 flex-1">
+                        {row.ip}
+                      </span>
+                      <span className="font-medium text-foreground shrink-0">
+                        {row.total}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">
+                        {t("admin.dashboard.accessColRegion")}
+                      </span>
+                      {row.country_code ? (
+                        <CountryFlag
+                          code={row.country_code}
+                          locale={locale}
+                          title={[row.asn, row.org].filter(Boolean).join(" · ") || undefined}
+                        />
+                      ) : (
+                        regionBadge(row.region)
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs text-muted-foreground shrink-0">
+                        {t("admin.dashboard.accessColSource")}
+                      </span>
+                      <span className="text-xs text-muted-foreground text-right break-words">
+                        {source}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">
+                        {t("admin.dashboard.accessColLastSeen")}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {row.last_seen ? <FormattedUserActionTime utcIso={row.last_seen} /> : "—"}
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
         </>
       ) : null}
     </div>

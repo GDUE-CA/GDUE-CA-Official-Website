@@ -11,14 +11,12 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import {
-  UserCircle,
-  MapPin,
-  CalendarDays,
-  FileText,
-  Newspaper,
-  Loader2,
-} from "lucide-react";
+import UserCircle from "@/assets/icons/user/user-circle.svg";
+import MapPin from "@/assets/icons/status/map-pin.svg";
+import CalendarDays from "@/assets/icons/status/calendar-days.svg";
+import FileText from "@/assets/icons/status/file-text.svg";
+import Newspaper from "@/assets/icons/status/newspaper.svg";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
 import { useI18n } from "@/i18n/provider";
 import { useLocalizedPath } from "@/lib/navigation";
 import { BadgeList } from "@/components/user/BadgeChip";

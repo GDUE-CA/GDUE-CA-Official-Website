@@ -24,7 +24,10 @@ import { fetchMe } from "@/lib/api/auth";
 import { API_BASE_URL, ApiError } from "@/lib/api/client";
 import { clearLocalSession, isAdminRole, isLogged, logout } from "@/lib/auth";
 import type { AdminUser } from "@/types/api";
-import { User, LayoutDashboard, LogOut, Check } from "lucide-react";
+import User from "@/assets/icons/user/user.svg";
+import LayoutDashboard from "@/assets/icons/navigation/layout-dashboard.svg";
+import LogOut from "@/assets/icons/navigation/log-out.svg";
+import Check from "@/assets/icons/action/check.svg";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,

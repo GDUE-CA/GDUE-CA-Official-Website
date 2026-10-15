@@ -7,7 +7,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Loader2, MailQuestion, ArrowLeft, CheckCircle2 } from "lucide-react";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import MailQuestion from "@/assets/icons/status/mail-question.svg";
+import ArrowLeft from "@/assets/icons/navigation/arrow-left.svg";
+import CheckCircle2 from "@/assets/icons/status/check-circle-2.svg";
 import { useI18n } from "@/i18n/provider";
 import { useLocalizedPath } from "@/lib/navigation";
 import { Button } from "@/components/ui/button";

@@ -9,15 +9,13 @@
  * - type=whitelist：展示绑定账号（opt-in 自动登录）
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  Loader2,
-  Plus,
-  Trash2,
-  ShieldCheck,
-  ShieldAlert,
-  Clock,
-  UserCircle,
-} from "lucide-react";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import Plus from "@/assets/icons/action/plus.svg";
+import Trash2 from "@/assets/icons/action/trash-2.svg";
+import ShieldCheck from "@/assets/icons/status/shield-check.svg";
+import ShieldAlert from "@/assets/icons/status/shield-alert.svg";
+import Clock from "@/assets/icons/status/clock.svg";
+import UserCircle from "@/assets/icons/user/user-circle.svg";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

@@ -7,7 +7,9 @@
  */
 import { useState, ViewTransition } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { CalendarDays, Users, Search } from "lucide-react";
+import CalendarDays from "@/assets/icons/status/calendar-days.svg";
+import Users from "@/assets/icons/user/users.svg";
+import Search from "@/assets/icons/action/search.svg";
 import { useI18n } from "@/i18n/provider";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

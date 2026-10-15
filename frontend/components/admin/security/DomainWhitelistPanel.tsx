@@ -9,7 +9,8 @@
  * - PUT /api/system/settings 为部分更新，本面板仅提交这两个字段。
  */
 import { useEffect, useState } from "react";
-import { Loader2, Check } from "lucide-react";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import Check from "@/assets/icons/action/check.svg";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";

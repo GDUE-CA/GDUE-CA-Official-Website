@@ -18,19 +18,17 @@ import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Loader2,
-  LogIn,
-  ArrowLeft,
-  Github,
-  Apple,
-  Chrome,
-  LayoutGrid,
-  UserPlus,
-  LayoutDashboard,
-  Home,
-  Check,
-} from "lucide-react";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import LogIn from "@/assets/icons/navigation/log-in.svg";
+import ArrowLeft from "@/assets/icons/navigation/arrow-left.svg";
+import Github from "@/assets/icons/brand/github.svg";
+import Apple from "@/assets/icons/brand/apple.svg";
+import Chrome from "@/assets/icons/brand/chrome.svg";
+import LayoutGrid from "@/assets/icons/navigation/layout-grid.svg";
+import UserPlus from "@/assets/icons/user/user-plus.svg";
+import LayoutDashboard from "@/assets/icons/navigation/layout-dashboard.svg";
+import Home from "@/assets/icons/navigation/home.svg";
+import Check from "@/assets/icons/action/check.svg";
 import { useI18n } from "@/i18n/provider";
 import { useAdminLocale } from "@/app/admin/AdminProviders";
 import { useLocalizedPath, useSwitchLocale } from "@/lib/navigation";

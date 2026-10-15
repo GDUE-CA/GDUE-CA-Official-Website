@@ -7,7 +7,12 @@
  * 对应后端 /api/admin/audit-logs。
  */
 import { useCallback, useEffect, useState } from "react";
-import { Check, Copy, Download, Loader2, RefreshCw, Search } from "lucide-react";
+import Check from "@/assets/icons/action/check.svg";
+import Copy from "@/assets/icons/action/copy.svg";
+import Download from "@/assets/icons/action/download.svg";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import RefreshCw from "@/assets/icons/action/refresh-cw.svg";
+import Search from "@/assets/icons/action/search.svg";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

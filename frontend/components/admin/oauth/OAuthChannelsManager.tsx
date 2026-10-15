@@ -7,7 +7,8 @@
  * / Redirect URI。对应后端 GET/PUT /api/admin/oauth/channels。
  */
 import { useEffect, useState } from "react";
-import { Loader2, RefreshCw } from "lucide-react";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import RefreshCw from "@/assets/icons/action/refresh-cw.svg";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

@@ -6,7 +6,7 @@
  * 显示未读角标，点击打开 NotificationDrawer 抽屉。未登录时不渲染。
  */
 import { useEffect, useState } from "react";
-import { Bell } from "lucide-react";
+import Bell from "@/assets/icons/status/bell.svg";
 import { Button } from "@/components/ui/button";
 import { listMyNotifications } from "@/lib/api/notifications";
 import { isLogged } from "@/lib/auth";

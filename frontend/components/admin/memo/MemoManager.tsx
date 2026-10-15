@@ -7,7 +7,11 @@
  */
 import { useEffect, useState } from "react";
 import { useI18n } from "@/i18n/provider";
-import { Loader2, Search, Eye, Ban, RotateCcw } from "lucide-react";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import Search from "@/assets/icons/action/search.svg";
+import Eye from "@/assets/icons/status/eye.svg";
+import Ban from "@/assets/icons/status/ban.svg";
+import RotateCcw from "@/assets/icons/action/rotate-ccw.svg";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MemoCard } from "@/components/memo/MemoCard";

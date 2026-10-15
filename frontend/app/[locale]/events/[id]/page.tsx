@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, CalendarDays, Clock, Users } from "lucide-react";
+import ArrowLeft from "@/assets/icons/navigation/arrow-left.svg";
+import CalendarDays from "@/assets/icons/status/calendar-days.svg";
+import Clock from "@/assets/icons/status/clock.svg";
+import Users from "@/assets/icons/user/users.svg";
 import { getDictionary } from "@/i18n/dictionary";
 import { fetchActivityById } from "@/lib/api/activities";
 import { Badge } from "@/components/ui/badge";

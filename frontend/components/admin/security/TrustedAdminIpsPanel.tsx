@@ -9,7 +9,9 @@
  *   含空行 / # 注释行，过滤与逐行校验由后端完成；非法行整体 400 并返回行号）
  */
 import { useEffect, useState } from "react";
-import { Loader2, Check, ShieldCheck } from "lucide-react";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import Check from "@/assets/icons/action/check.svg";
+import ShieldCheck from "@/assets/icons/status/shield-check.svg";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";

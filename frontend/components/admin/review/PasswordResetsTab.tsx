@@ -5,7 +5,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Check, X, Mail, CheckCheck, XCircle, Square, SquareCheck } from "lucide-react";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import Check from "@/assets/icons/action/check.svg";
+import X from "@/assets/icons/action/x.svg";
+import Mail from "@/assets/icons/status/mail.svg";
+import CheckCheck from "@/assets/icons/action/check-check.svg";
+import XCircle from "@/assets/icons/status/x-circle.svg";
+import Square from "@/assets/icons/action/square.svg";
+import SquareCheck from "@/assets/icons/action/square-check.svg";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";

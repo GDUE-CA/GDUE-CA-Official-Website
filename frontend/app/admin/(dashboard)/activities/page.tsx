@@ -22,7 +22,13 @@ import {
 import { ActivityForm } from "@/components/admin/activities/ActivityForm";
 import { FormattedUserActionTime } from "@/components/shared/FormattedUserActionTime";
 import type { Activity } from "@/types/api";
-import { Loader2, Plus, Pencil, Trash2, QrCode, Archive, ArchiveRestore } from "lucide-react";
+import Loader2 from "@/assets/icons/status/loader-2.svg";
+import Plus from "@/assets/icons/action/plus.svg";
+import Pencil from "@/assets/icons/action/pencil.svg";
+import Trash2 from "@/assets/icons/action/trash-2.svg";
+import QrCode from "@/assets/icons/action/qr-code.svg";
+import Archive from "@/assets/icons/action/archive.svg";
+import ArchiveRestore from "@/assets/icons/action/archive-restore.svg";
 import { cn } from "@/lib/utils";
 
 /** 归档筛选：全部 / 未归档 / 已归档（P0 归档语义：归档 ≠ 删除） */

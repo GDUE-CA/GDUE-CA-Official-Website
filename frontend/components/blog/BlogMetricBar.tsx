@@ -11,7 +11,10 @@
  * 计数为冗余计数器（仅计数不存身份），故前端乐观更新 + 失败回滚。
  */
 import { useState } from "react";
-import { Heart, MessageCircle, Share2, Star } from "lucide-react";
+import Heart from "@/assets/icons/status/heart.svg";
+import MessageCircle from "@/assets/icons/status/message-circle.svg";
+import Share2 from "@/assets/icons/action/share-2.svg";
+import Star from "@/assets/icons/status/star.svg";
 import { useI18n } from "@/i18n/provider";
 import { sharePost, likePost, unlikePost, favouritePost, unfavouritePost } from "@/lib/api/blog";
 import { ApiError } from "@/lib/api/client";

@@ -11,7 +11,10 @@
  * 网络配置（端口/监听 IP/绑定域名）网页编辑入口已下线，本页仅做配置排布，不改业务逻辑。
  */
 import { useState, useEffect } from "react";
-import { ShieldCheck, ShieldBan, Globe, KeyRound } from "lucide-react";
+import ShieldCheck from "@/assets/icons/status/shield-check.svg";
+import ShieldBan from "@/assets/icons/status/shield-ban.svg";
+import Globe from "@/assets/icons/navigation/globe.svg";
+import KeyRound from "@/assets/icons/status/key-round.svg";
 import { useI18n } from "@/i18n/provider";
 import { IpRulesManager } from "@/components/admin/security/IpRulesManager";
 import { TrustedAdminIpsPanel } from "@/components/admin/security/TrustedAdminIpsPanel";
