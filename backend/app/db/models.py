@@ -58,6 +58,11 @@ class User(Base):
     real_name: Mapped[str] = mapped_column(String(64))               # 真实姓名
     phone: Mapped[str] = mapped_column(String(32))                   # 手机号（含区号）
     avatar_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    # ---- 个人主页外观（V0.5.5 §9.3）：NULL = 系统默认 ----
+    # 封面图片 URL（/uploads/banners/ 下）；NULL 时回退 banner_color / 默认纯色
+    profile_banner: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    # 自定义封面纯色（hex，如 #1e293b）；仅当无封面图时展示
+    profile_banner_color: Mapped[str | None] = mapped_column(String(16), nullable=True)
     # IANA 时区（如 Asia/Shanghai）；NULL = 使用浏览器自动探测
     timezone: Mapped[str | None] = mapped_column(String(64), nullable=True)
     # 用户物理位置：国家 + 省份/城市（手动设置或浏览器 Geolocation 自动定位）
@@ -142,6 +147,25 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+# ---------- 社交关注（V0.5.5 §9.2）：单向关注；双向互关自动视为好友 ----------
+class UserFollow(Base):
+    __tablename__ = "user_follows"
+    __table_args__ = (
+        UniqueConstraint("follower_id", "followee_id", name="uq_user_follows_pair"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    # 关注发起方
+    follower_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id"), index=True
+    )
+    # 被关注方（单列索引供粉丝侧查询）
+    followee_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id"), index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
 # ---------- 登录会话（设备管理 / 踢出登录 / 30 分钟滑动超时） ----------
@@ -443,6 +467,9 @@ class SystemSetting(Base):
     sys_default_locale: Mapped[str | None] = mapped_column(String(16), nullable=True)   # 如 zh-cn
     sys_default_region: Mapped[str | None] = mapped_column(String(16), nullable=True)   # 如 CN
     sys_default_currency: Mapped[str | None] = mapped_column(String(8), nullable=True)  # ISO-4217 如 CNY
+    # 邮件收发模块就绪开关（V0.5.5 §3.3）：false = 后台「邮件与推送」置灰 + 访问页黄横幅；
+    # 状态完全由后端配置驱动，前端禁止写死禁用
+    mail_system_ready: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
 # ---------- 操作日志 ----------

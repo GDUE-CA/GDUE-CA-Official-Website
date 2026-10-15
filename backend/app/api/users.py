@@ -12,11 +12,11 @@
 - 用户徽章随 profile / memo author 输出（系统徽章动态计算 + 自定义徽章）。
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import or_, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.badges import badges_for_user, is_club_member
-from app.core.security import Role, get_optional_user
+from app.core.security import Role, get_optional_user, require_role
 from app.db.models import (
     BlogPost,
     BlogPostStatus,
@@ -27,6 +27,7 @@ from app.db.models import (
     SysGrade,
     SysMajor,
     User,
+    UserFollow,
 )
 from app.db.session import get_db
 from app.api.memos import _fill_attachment_rows, _liked_fav_ids, _memo_brief_dict
@@ -101,6 +102,9 @@ def _public_profile(u: User, viewer_ctx: dict | None, badges: list[dict],
         "avatar_url": u.avatar_url,
         "created_at": u.created_at,
         "badges": badges,
+        # ---- 个人主页外观（V0.5.5 §9.3）：公开装饰字段，不走隐私过滤 ----
+        "profile_banner": u.profile_banner,
+        "profile_banner_color": u.profile_banner_color,
         # 地区字段永久公开（硬性约束）
         "country": u.country,
         "region": u.region,
@@ -162,7 +166,96 @@ async def get_user_profile(
     school_info = None
     if _is_self(viewer_ctx, u) or (u.profile_privacy or {}).get("school_info") == "public":
         school_info = await _school_info(db, u)
-    return _public_profile(u, viewer_ctx, badges, school_info=school_info)
+    profile = _public_profile(u, viewer_ctx, badges, school_info=school_info)
+    # ---- 社交关注（V0.5.5 §9.2）：计数恒有；方向/好友状态仅登录的非本人访问者有意义 ----
+    profile.update(await _follow_stats(db, u, viewer_ctx))
+    return profile
+
+
+# ---------- 社交关注（V0.5.5 §9.2）：单向关注；双向互关自动视为好友 ----------
+async def _follow_stats(db: AsyncSession, u: User, viewer_ctx: dict | None) -> dict:
+    """关注计数 + 访问者视角关系状态。未登录 / BG / 本人 → 三个关系字段为 None。"""
+    follower_count = (await db.execute(
+        select(func.count()).select_from(UserFollow).where(UserFollow.followee_id == u.id)
+    )).scalar_one()
+    following_count = (await db.execute(
+        select(func.count()).select_from(UserFollow).where(UserFollow.follower_id == u.id)
+    )).scalar_one()
+
+    viewer_id: int | None = None
+    if viewer_ctx and not viewer_ctx.get("break_glass"):
+        raw = viewer_ctx.get("user_id")
+        viewer_id = int(raw) if raw else None
+    if viewer_id is None or viewer_id == u.id:
+        return {
+            "follower_count": follower_count,
+            "following_count": following_count,
+            "is_following": None,
+            "follows_me": None,
+            "is_friend": None,
+        }
+    following = (await db.execute(
+        select(UserFollow.id).where(
+            UserFollow.follower_id == viewer_id, UserFollow.followee_id == u.id).limit(1)
+    )).scalar_one_or_none() is not None
+    followed = (await db.execute(
+        select(UserFollow.id).where(
+            UserFollow.follower_id == u.id, UserFollow.followee_id == viewer_id).limit(1)
+    )).scalar_one_or_none() is not None
+    return {
+        "follower_count": follower_count,
+        "following_count": following_count,
+        "is_following": following,
+        "follows_me": followed,
+        "is_friend": following and followed,  # 双向互关 = 好友（EXISTS 判定，不拉全量）
+    }
+
+
+def _viewer_user_id(user: dict) -> int:
+    """提取登录用户 ID；BG / 异常会话直接 403（BG 无 users 行，无社交身份）。"""
+    raw = user.get("user_id")
+    if user.get("break_glass") or not raw:
+        raise HTTPException(status_code=403, detail="该操作不适用于当前账号")
+    return int(raw)
+
+
+@router.post("/{username}/follow")
+async def follow_user(
+    username: str,
+    user: dict = Depends(require_role(Role.MEMBER)),
+    db: AsyncSession = Depends(get_db),
+):
+    """关注用户（单向）。重复关注幂等返回；禁止自关。"""
+    me_id = _viewer_user_id(user)
+    target = await _load_user_or_404(db, username)
+    if me_id == target.id:
+        raise HTTPException(status_code=400, detail="不能关注自己")
+    existing = (await db.execute(
+        select(UserFollow.id).where(
+            UserFollow.follower_id == me_id, UserFollow.followee_id == target.id).limit(1)
+    )).scalar_one_or_none()
+    if existing:
+        return {"ok": True, "following": True, "already": True}
+    db.add(UserFollow(follower_id=me_id, followee_id=target.id))
+    await db.commit()
+    return {"ok": True, "following": True}
+
+
+@router.delete("/{username}/follow")
+async def unfollow_user(
+    username: str,
+    user: dict = Depends(require_role(Role.MEMBER)),
+    db: AsyncSession = Depends(get_db),
+):
+    """取消关注（幂等：未关注时返回 ok=False 状态不变）。"""
+    me_id = _viewer_user_id(user)
+    target = await _load_user_or_404(db, username)
+    result = await db.execute(
+        delete(UserFollow).where(
+            UserFollow.follower_id == me_id, UserFollow.followee_id == target.id)
+    )
+    await db.commit()
+    return {"ok": True, "following": False, "removed": result.rowcount}
 
 
 @router.get("/{username}/memos", response_model=dict)

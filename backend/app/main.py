@@ -2,8 +2,10 @@
 import asyncio
 import logging
 import os
+import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import delete as sa_delete
 from sqlalchemy import func, select
 
-from app.api import account, activities, admin_stats, announcements, audit, auth, background_tasks, badges, blog, bug_report, club_apply, comments, content, db_maintenance, email_change, geo, i18n_public, health, memos, media, members, notifications, oauth, projects, query, realname, recruitment, recycle, register, school_verify, security, sso, stats, sys_data, system, system_init, tags, themes, translations, users, version
+from app.api import account, activities, admin_stats, announcements, audit, auth, background_tasks, badges, blog, bug_report, club_apply, comments, content, db_maintenance, email_change, geo, i18n_public, health, memos, media, members, notifications, oauth, projects, query, realname, recruitment, recycle, register, roles, school_verify, security, sso, stats, sys_data, system, system_init, tags, themes, translations, users, version
 from app.api.auth import security_answer_digest
 from app.core.config import get_settings
 from app.core.csrf import CSRF_HEADER, csrf_middleware
@@ -162,6 +164,9 @@ async def _migrate_columns(conn):
             ("major_id", "INTEGER NULL"),
             ("grade_id", "INTEGER NULL"),
             ("class_id", "INTEGER NULL"),
+            # ---- V0.5.5 §9.3：个人主页外观 ----
+            ("profile_banner", "VARCHAR(256) NULL"),
+            ("profile_banner_color", "VARCHAR(16) NULL"),
         ],
         "activities": [
             ("checkin_open", "BOOLEAN DEFAULT 0"),
@@ -237,6 +242,8 @@ async def _migrate_columns(conn):
             ("sys_default_locale", "VARCHAR(16) NULL"),
             ("sys_default_region", "VARCHAR(16) NULL"),
             ("sys_default_currency", "VARCHAR(8) NULL"),
+            # V0.5.5 §3.3：邮件收发模块就绪开关
+            ("mail_system_ready", "BOOLEAN DEFAULT 0"),
         ],
     }
     if conn.dialect.name == "postgresql":
@@ -388,8 +395,36 @@ async def _init_db():
 
 
 # ---------- 全局定时任务（P0，每小时） ----------
+def _cleanup_expired_mail_attachments() -> int:
+    """V0.5.5 §4：站内邮件大附件 7 天生命周期清理（只删磁盘文件，邮件正文不动）。
+
+    扫描 uploads/mail-attachments/ 全部文件，mtime 超过 MAIL_ATTACHMENT_RETENTION_DAYS
+    的直接删除；附件下载链接随文件删除而失效。目录不存在时为 no-op
+    （邮件收发系统落地前无附件可清理，本钩子先行占位）。
+    """
+    from app.core.config import get_settings
+    retention_days = get_settings().MAIL_ATTACHMENT_RETENTION_DAYS
+    attachment_dir = Path("uploads/mail-attachments")
+    if not attachment_dir.is_dir():
+        return 0
+    cutoff = time.time() - retention_days * 86400
+    removed = 0
+    for f in attachment_dir.rglob("*"):
+        try:
+            if f.is_file() and f.stat().st_mtime < cutoff:
+                f.unlink(missing_ok=True)
+                removed += 1
+        except OSError:
+            logger.warning("邮件附件清理失败：%s", f)
+    if removed:
+        logger.info("定时任务：已清理 %d 个超期邮件附件（保存期 %d 天）", removed, retention_days)
+    return removed
+
+
 async def _run_maintenance() -> None:
-    """①软删除超期（30 天）记录物理清除；②自动归档开关开启时归档过期活动。"""
+    """①软删除超期（30 天）记录物理清除；②自动归档开关开启时归档过期活动；
+    ③邮件大附件超期磁盘清理（V0.5.5 §4）。"""
+    _cleanup_expired_mail_attachments()
     now = datetime.now(timezone.utc).replace(tzinfo=None)
     threshold = now - timedelta(days=RETENTION_DAYS)
     async with async_session() as s:
@@ -607,6 +642,7 @@ app.include_router(audit.bg_router)
 app.include_router(recycle.router)
 app.include_router(security.router)
 app.include_router(security.admin_router)
+app.include_router(roles.router)
 # 后台异步任务（数据库导出等）：任务查询/关闭 + 数据库维护提交入口
 app.include_router(background_tasks.router)
 app.include_router(db_maintenance.router)

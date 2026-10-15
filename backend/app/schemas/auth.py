@@ -145,6 +145,9 @@ class UserOut(BaseModel):
     real_name: str
     phone: str
     avatar_url: str | None = None
+    # 个人主页封面（V0.5.5 §9.3）：NULL 封面图 = 纯色（profile_banner_color 或系统默认）
+    profile_banner: str | None = None
+    profile_banner_color: str | None = None
     # 社团职务（展示层）：president / vice_president / member；null = 外部注册用户
     club_position: str | None = None
     # ---- Module D：身份分类与学校资料（外键 ID；展示文本由前端按 /api/sys/* 映射） ----
@@ -254,6 +257,8 @@ class ProfileUpdate(BaseModel):
     bio: MultilineText | None = Field(default=None, max_length=200)
     # 主题预设：default / apple / festival:* ；空字符串=跟随系统默认（存 NULL）
     theme: PlainText | None = Field(default=None, max_length=32)
+    # 个人主页封面纯色（V0.5.5 §9.3）：hex 颜色（#RGB / #RRGGBB）；空字符串=恢复默认（存 NULL）
+    profile_banner_color: PlainText | None = Field(default=None, max_length=16)
     # 隐私设置 JSON：{"gender":"public|private","bio":"public|private","birthday":"public|private"}
     # 不传=不修改；显式传 null = 重置为默认（全部 public）；传入 dict 则合并更新
     profile_privacy: dict | None = None
@@ -276,6 +281,16 @@ class ProfileUpdate(BaseModel):
         if not re.match(_THEME_PATTERN, v):
             raise ValueError("theme 取值需为合法主题 key（小写字母开头 + 小写字母/数字/连字符）")
         return v
+
+    @field_validator("profile_banner_color")
+    @classmethod
+    def _validate_banner_color(cls, v: str | None) -> str | None:
+        if v is None or v == "":
+            return v  # 空串 = 清空回默认色
+        import re
+        if not re.fullmatch(r"#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})", v.strip()):
+            raise ValueError("profile_banner_color 需为 hex 颜色（#RGB / #RRGGBB）")
+        return v.strip().lower()
 
     @field_validator("profile_privacy")
     @classmethod
@@ -309,6 +324,11 @@ class ProfileUpdate(BaseModel):
 
 class AvatarUploadOut(BaseModel):
     avatar_url: str
+
+
+class BannerUploadOut(BaseModel):
+    """个人主页封面上传结果（V0.5.5 §9.3）。"""
+    banner_url: str
 
 
 # ---------- 修改密码 ----------

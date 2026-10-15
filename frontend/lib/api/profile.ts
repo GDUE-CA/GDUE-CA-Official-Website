@@ -28,3 +28,21 @@ export function listUserBlog(username: string, page = 1, pageSize = 10) {
     `/api/users/${encodeURIComponent(username)}/blog?page=${page}&page_size=${pageSize}`
   );
 }
+
+/* ---------- 社交关注（V0.5.5 §9.2）：底层单向关注，互关自动视为好友 ---------- */
+
+/** 关注用户（单向；重复关注幂等）。需登录普通账号（BG 403）。 */
+export function followUser(username: string) {
+  return apiFetch<{ ok: boolean; following: boolean; already?: boolean }>(
+    `/api/users/${encodeURIComponent(username)}/follow`,
+    { method: "POST", withAuth: true }
+  );
+}
+
+/** 取消关注（幂等） */
+export function unfollowUser(username: string) {
+  return apiFetch<{ ok: boolean; following: boolean; removed?: number }>(
+    `/api/users/${encodeURIComponent(username)}/follow`,
+    { method: "DELETE", withAuth: true }
+  );
+}

@@ -12,6 +12,7 @@ import type {
   AdminUser,
   ProfileUpdate,
   AvatarUploadOut,
+  BannerUploadOut,
   ChangePasswordRequest,
   ChangePasswordResult,
   ForgotPasswordRequest,
@@ -123,6 +124,36 @@ export async function uploadAvatar(file: File): Promise<AvatarUploadOut> {
 /** 恢复默认头像（删除自定义头像，回到首字母占位） */
 export function deleteAvatar() {
   return apiFetch<{ ok: boolean }>("/api/auth/avatar", {
+    method: "DELETE",
+    withAuth: true,
+  });
+}
+
+/* ---------- 个人主页封面（V0.5.5 §9.3） ---------- */
+
+/** 上传个人主页封面（FormData；jpg/png/webp，服务端压缩） */
+export async function uploadBanner(file: File): Promise<BannerUploadOut> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const res = await secureFetch("/api/auth/banner", {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => null);
+    throw new Error(
+      (data as { detail?: string })?.detail ?? "封面上传失败"
+    );
+  }
+
+  return res.json();
+}
+
+/** 删除自定义封面（恢复纯色默认） */
+export function deleteBanner() {
+  return apiFetch<{ ok: boolean }>("/api/auth/banner", {
     method: "DELETE",
     withAuth: true,
   });

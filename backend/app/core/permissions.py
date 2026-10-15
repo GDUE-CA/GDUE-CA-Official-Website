@@ -56,6 +56,8 @@ PERMISSION_MODULES = (
     "memo",            # Memo 后台管理（浏览全部 / 下架 / 恢复）；普通成员 view 仅自己可见范围
     # ---------- 用户徽章管理（纯展示装饰，与鉴权解耦） ----------
     "badges",          # 用户自定义徽章的增删改与排序
+    # ---------- 角色管理（V0.5.5 §3.2） ----------
+    "roles",           # 角色定义查看 + 用户权限覆盖矩阵管理（manage 仅 super_admin）
 )
 
 # 角色默认矩阵：module -> role -> 允许的动作集合（member 无后台权限，不列出）
@@ -198,6 +200,12 @@ ROLE_DEFAULTS: dict[str, dict[Role, set[str]]] = {
     "badges": {
         Role.SUPER_ADMIN: {"view", "manage"},
         Role.ADMIN: {"view", "manage"},
+    },
+    # ---------- 角色管理（V0.5.5 §3.2）：安全类模块，admin 仅 view，manage 仅 super_admin ----------
+    "roles": {
+        Role.SUPER_ADMIN: {"view", "manage"},
+        Role.ADMIN: {"view"},
+        Role.EDITOR: {"view"},
     },
 }
 

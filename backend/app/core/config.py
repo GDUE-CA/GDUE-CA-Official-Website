@@ -105,6 +105,9 @@ class Settings(BaseSettings):
     EMAIL_CODE_RESEND_INTERVAL_SECONDS: int = 60
     # 更换绑定邮箱验证码：有效期 15 分钟（需求规定）；尝试次数 / 重发间隔复用上面三项
     EMAIL_CHANGE_CODE_TTL_SECONDS: int = 900
+    # V0.5.5 §4：站内邮件大附件保存期限（天）。到期定时任务只删除磁盘附件文件，
+    # 邮件正文完整保留；邮件系统落地后将附件记录清理接入 maintenance 清理钩子
+    MAIL_ATTACHMENT_RETENTION_DAYS: int = 7
 
     @property
     def break_glass_enabled(self) -> bool:
