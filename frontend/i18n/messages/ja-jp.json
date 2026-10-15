@@ -12,6 +12,8 @@
     "join": "申し込み",
     "blog": "技術ブログ",
     "contact": "お問い合わせ",
+    "community": "コミュニティ",
+    "submit": "送信",
     "language": "言語",
     "timezone": "タイムゾーン",
     "timezoneAuto": "自動（ブラウザのタイムゾーンを検出）",
@@ -26,6 +28,8 @@
     "backend": "管理画面",
     "logout": "ログアウト",
     "guest": "ゲスト",
+    "guestHint": "ログインしてすべての個人機能を利用",
+    "goToSettings": "設定へ移動",
     "login": "ログイン",
     "register": "新規登録",
     "memo": "モーメンツ",
@@ -207,6 +211,14 @@
     "cmsFormerMembersTitle": "往届メンバー"
   },
   "profile": {
+    "tagSchool": "本校の学生",
+    "tagClub": "サークルメンバー",
+    "schoolInfoTitle": "学校情報",
+    "schoolStudentId": "学籍番号",
+    "schoolCollege": "学院",
+    "schoolMajor": "専攻",
+    "schoolGrade": "学年",
+    "schoolClass": "クラス",
     "personalInfo": "個人情報",
     "personalInfoHint": "すべてのプロフィールを一括編集、確定ボタンでまとめて保存",
     "continentAsia": "アジア",
@@ -429,6 +441,10 @@
       "finance": "財務部"
     },
     "form": {
+      "enrollYear": "入学年度",
+      "classSuffix": "クラス接尾辞",
+      "classPreview": "完全なクラス名",
+      "loginRequired": "申請にはログインが必要です",
       "title": "オンライン申し込み",
       "subtitle": "以下の情報をご記入ください",
       "name": "氏名",
@@ -458,6 +474,8 @@
         "studentIdRequired": "学籍番号を入力してください",
         "majorRequired": "専攻を入力してください",
         "collegeRequired": "学院を入力してください",
+        "enrollYearInvalid": "入学年度は4桁の数字で入力してください",
+        "classSuffixInvalid": "クラス接尾辞は A-Z の大文字1文字で入力してください",
         "phoneCcRequired": "国番号を選択してください",
         "phoneRequired": "電話番号を入力してください",
         "phoneInvalid": "選択した国番号の形式に合致する電話番号を入力してください",
@@ -524,6 +542,7 @@
     "connect": "フォローする",
     "copyright": "© 2026 広東第二師範学院コンピュータ協会. All rights reserved.",
     "madeWith": "広東二師計協が丁寧に作成",
+    "version": "バージョン",
     "terms": "利用規約",
     "privacy": "プライバシーポリシー",
     "disclaimer": "免責事項"
@@ -646,7 +665,10 @@
     "profile": {
       "title": "基本情報",
       "phoneDialCode": "国コード",
-      "phonePlaceholder": "電話番号を入力してください"
+      "phonePlaceholder": "電話番号を入力してください",
+      "badgesPreview": "マイバッジ",
+      "badgesEmpty": "バッジはまだありません",
+      "badgesPreviewHint": "バッジは表示専用で、管理者が付与します。自分で編集することはできません。"
     },
     "region": {
       "title": "地域とタイムゾーン",
@@ -776,6 +798,55 @@
         "confirmBody": "⚠️手動審査 免除モード\n登録メールアドレスを次に更新します：{new}\n送信後すぐに変更されます。内容を再確認してください。続行しますか？",
         "success": "メールアドレスを変更しました"
       }
+    },
+    "privacy": {
+      "realName": "本名",
+      "realNameHint": "オンにすると、訪問者がプロフィールページで本名を見られます。オフの場合は本人のみ表示されます。",
+      "schoolInfo": "学校情報",
+      "schoolInfoHint": "オンにすると、訪問者がプロフィールページで学院・クラス・学籍番号を見られます。オフの場合は本人のみ表示されます。"
+    },
+    "school": {
+      "title": "学校身元認証",
+      "hint": "学校情報を提出して管理者の手動審査を受けます。承認されると学籍番号・学院・専攻などの資料編集が解放されます。サークル申請では学校認証は自動的に通過しません。",
+      "statusNone": "未提出",
+      "statusPending": "審査中",
+      "statusApproved": "承認済み",
+      "statusRejected": "却下",
+      "status_none": "未提出",
+      "status_pending": "審査中",
+      "status_approved": "承認済み",
+      "status_rejected": "却下",
+      "approvedHint": "学校身元認証が承認されました。「基本資料」で学校情報を維持できます。",
+      "pendingHint": "申請は審査中です。審査完了後、サイト内メッセージで通知します。重複して提出しないでください。",
+      "rejectedHint": "内容を修正して再度提出できます。",
+      "rejectionReason": "却下理由",
+      "studentId": "学籍番号",
+      "studentIdPlaceholder": "11桁の学籍番号を入力",
+      "studentIdHint": "11桁の数字。入学年度は直近8年以内である必要があります。特殊な場合は管理者に連絡してください。",
+      "studentIdInvalid": "学籍番号は11桁の数字で入力してください",
+      "college": "学院",
+      "collegePlaceholder": "学院を選択",
+      "grade": "学年",
+      "gradePlaceholder": "学年を選択",
+      "major": "専攻",
+      "majorPlaceholder": "専攻を選択",
+      "majorSelectCollegeFirst": "先に学院を選択してください",
+      "class": "クラス",
+      "classPlaceholder": "クラスを選択",
+      "incomplete": "学籍番号・学院・学年・専攻・クラスをすべて入力してください",
+      "remark": "備考",
+      "remarkPlaceholder": "特記事項（任意）",
+      "attach": "添付ファイル（任意）",
+      "attachPlaceholder": "添付ファイル未選択",
+      "attachHint": "学生証・キャンパスカードの写真など、5MB以下",
+      "attachUpload": "画像を選択",
+      "attachFailed": "添付ファイルのアップロードに失敗しました",
+      "submit": "認証を申請",
+      "submitted": "申請を提出しました。審査をお待ちください。",
+      "submitFailed": "提出に失敗しました。しばらくしてから再度お試しください",
+      "history": "申請履歴",
+      "profileSection": "学校情報",
+      "profileSectionHint": "学校身元認証の承認後、「基本資料」で学籍番号と学院・学年・専攻・クラスを編集できます。"
     }
   },
   "admin": {
@@ -1083,7 +1154,86 @@
       "config.sso": "SSO 信頼アプリ",
       "audit": "ログ・監査",
       "mailpush": "メール・プッシュ通知",
-      "users.emailChange": "メールアドレス変更申請一覧"
+      "users.emailChange": "メールアドレス変更申請一覧",
+      "users.schoolVerify": "学校認証審査"
+    },
+    "sysdata": {
+      "title": "学院・専攻データ",
+      "subtitle": "学院・学年・専攻・クラスの基礎データを管理。フロントのフォーム選択肢はすべてこのデータから取得します",
+      "tab.college": "学院管理",
+      "tab.grade": "学年管理",
+      "tab.major": "専攻管理",
+      "tab.class": "クラス管理",
+      "create": "新規作成",
+      "dialogHint": "入力して保存。参照中のデータは削除できず、無効化のみ可能です。",
+      "empty": "データがありません。「新規作成」から最初の項目を作成してください",
+      "noDeleteHint": "基礎データは物理削除に対応していません。業務データから参照されている場合は無効化のみ可能で、無効化するとフロントの選択肢から表示されなくなります。",
+      "nameRequired": "名前を入力してください",
+      "yearInvalid": "学年は1900〜2999の4桁の年で入力してください",
+      "collegeRequired": "所属学院を選択してください",
+      "collegeName": "学院名",
+      "gradeYear": "学年（入学年）",
+      "belongCollege": "所属学院",
+      "belongGrade": "所属学年",
+      "belongMajor": "所属専攻",
+      "selectCollege": "学院を選択",
+      "selectGrade": "学年を選択",
+      "selectMajor": "専攻を選択",
+      "majorName": "専攻名",
+      "classDisplayName": "クラス表示名",
+      "classSuffix": "クラス接尾辞",
+      "disabled": "無効",
+      "enable": "有効化",
+      "disable": "無効化",
+      "moveUp": "上へ移動",
+      "moveDown": "下へ移動"
+    },
+    "schoolVerify": {
+      "title": "学校認証審査",
+      "subtitle": "ユーザーが提出した学校身元認証申請を手動審査。承認されると学校情報を維持できます",
+      "filter.pending": "審査待ち",
+      "filter.approved": "承認済み",
+      "filter.rejected": "却下",
+      "filter.all": "すべて",
+      "searchPlaceholder": "ユーザー名 / ニックネーム / 学籍番号で検索",
+      "empty": "申請記録がありません",
+      "approve": "承認",
+      "reject": "却下",
+      "approveConfirm": "{name} の学校身元認証申請を承認しますか？承認すると学校情報が保存され、在学生タグが有効になります。",
+      "rejectTitle": "学校認証申請を却下",
+      "rejectHint": "却下理由を入力してください。サイト内メッセージでユーザーに通知されます。ユーザーのアカウント情報は変更されません。",
+      "rejectRemarkRequired": "却下理由を入力してください",
+      "rejectConfirm": "却下を確認",
+      "remarkLabel": "審査メモ",
+      "total": "全 {total} 件"
+    },
+    "clubApply": {
+      "title": "サークル申請審査",
+      "subtitle": "フロントから提出されたサークル申請を処理。承認/拒否後、サイト内メッセージで申請者に通知します",
+      "filter.pending": "審査待ち",
+      "filter.accept": "承認済み",
+      "filter.reject": "拒否",
+      "filter.all": "すべて",
+      "searchPlaceholder": "ユーザー名 / 氏名 / 学籍番号で検索",
+      "empty": "申請記録がありません",
+      "accept": "承認",
+      "reject": "拒否",
+      "acceptConfirm": "{name} のサークル申請を承認しますか？",
+      "rejectTitle": "サークル申請を拒否",
+      "rejectHint": "メモを入力してください。サイト内メッセージで申請者に通知されます。",
+      "rejectNoteRequired": "メモを入力してください",
+      "rejectConfirm": "拒否を確認",
+      "statusPending": "審査待ち",
+      "statusAccept": "承認済み",
+      "statusReject": "拒否",
+      "typeSchool": "在学生",
+      "phone": "電話番号",
+      "enrollYear": "入学年度",
+      "className": "クラス",
+      "departments": "希望部門",
+      "intro": "自己紹介",
+      "adminNote": "メモ",
+      "total": "全 {total} 件"
     },
     "profile": {
       "title": "プロフィール",
@@ -1396,6 +1546,21 @@
         "admin": "管理者",
         "editor": "編集者",
         "member": "一般メンバー"
+      },
+      "detailBtn": "詳細",
+      "detail": {
+        "back": "ユーザー一覧に戻る",
+        "title": "ユーザー詳細",
+        "notFound": "ユーザーが存在しないか削除されました",
+        "basicInfo": "基本情報",
+        "clubPosition": "クラブ役職",
+        "positionNone": "役職なし",
+        "positionSaved": "役職を更新しました",
+        "positions": {
+          "president": "部長",
+          "vice_president": "副部長",
+          "member": "部員"
+        }
       }
     },
     "permissions": {
@@ -1427,7 +1592,8 @@
         "realname": "実名状況",
         "stats": "統計",
         "audit_logs": "操作ログ",
-        "memo": "モーメンツ管理"
+        "memo": "モーメンツ管理",
+        "badges": "バッジ管理"
       }
     },
     "security": {
@@ -1961,6 +2127,35 @@
         "approved": "承認済み",
         "rejected": "却下"
       }
+    },
+    "badges": {
+      "title": "ユーザーバッジ管理",
+      "limit": "カスタムバッジは最大 {limit} 個",
+      "systemTitle": "システムバッジ",
+      "systemNone": "システムバッジなし",
+      "systemHint": "アカウントのロールに基づき自動生成され、手動で変更できません。",
+      "customTitle": "カスタムバッジ",
+      "add": "バッジを追加",
+      "limitReached": "上限（{limit}個）に達しました。先に削除してください。",
+      "empty": "カスタムバッジはまだありません",
+      "saved": "保存しました",
+      "deleteConfirm": "バッジ「{name}」を削除しますか？",
+      "active": "有効",
+      "inactive": "無効",
+      "moveUp": "上へ",
+      "moveDown": "下へ",
+      "edit": "編集",
+      "deactivate": "無効化",
+      "activate": "有効化",
+      "delete": "削除",
+      "save": "保存",
+      "cancel": "キャンセル",
+      "name": "バッジテキスト",
+      "namePlaceholder": "例：技術の達人",
+      "emoji": "絵文字",
+      "emojiPlaceholder": "例：🌟",
+      "bgColor": "背景色",
+      "textColor": "文字色"
     }
   },
   "ban": {
@@ -2008,6 +2203,10 @@
       "open": "未処理",
       "resolved": "解決済み"
     }
+  },
+  "submit": {
+    "title": "送信",
+    "subtitle": "入会申し込みと問題報告"
   },
   "bug": {
     "title": "バグ報告",
@@ -2262,5 +2461,13 @@
     "successHint": "すべてのセッションを強制ログアウトしました。ログインページへ移動します",
     "backToLogin": "ログインに戻る",
     "manualEntry": "メールを使えない場合は、手動での復旧申請を送信してください"
+  },
+  "badges": {
+    "system": {
+      "president": "部長",
+      "vice_president": "副部長",
+      "admin": "クラブ管理者",
+      "member": "クラブメンバー"
+    }
   }
 }

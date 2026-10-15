@@ -13,6 +13,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.schemas.badge import BadgeOut
 from app.schemas.common import MultilineText, UTCDatetime
 
 
@@ -164,10 +165,13 @@ class MemoAttachmentOut(BaseModel):
 
 # ---------- 作者摘要（嵌入到 Memo 输出中） ----------
 class MemoAuthorBrief(BaseModel):
-    """Memo 作者摘要：仅暴露 username + avatar_url，不暴露真实姓名/手机号/学号。"""
+    """Memo 作者摘要：仅暴露 username/display_name/avatar/badges，不暴露真实姓名/手机号/学号。"""
     id: int
     username: str
+    display_name: str | None = None
     avatar_url: str | None = None
+    # 徽章由端点分页后批量回填（ORM 无此属性，from_attributes 走默认值）
+    badges: list[BadgeOut] = []
 
     model_config = {"from_attributes": True}
 

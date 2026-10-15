@@ -15,6 +15,7 @@ import { useState } from "react";
 import { useI18n } from "@/i18n/provider";
 import { cn } from "@/lib/utils";
 import { MarkdownRenderer } from "@/components/blog/MarkdownRenderer";
+import { BadgeList } from "@/components/user/BadgeChip";
 import {
   Heart, Bookmark, MessageCircle, Lock, Users, Globe, Archive,
   MoreHorizontal, Eye,
@@ -85,6 +86,29 @@ export function MemoCard({
     return "";
   })();
 
+  // 作者显示名：对外主名称一律 display_name，username 仅以 @ 前缀作次要附属信息
+  const authorUsername = memo.author?.username ?? null;
+  const authorDisplay =
+    memo.author?.display_name || memo.author?.username || "(deleted)";
+  const authorHome = authorUsername ? localePath(`/u/${authorUsername}`) : null;
+
+  const avatarInner = (
+    <div className="h-7 w-7 rounded-full overflow-hidden bg-muted shrink-0">
+      {memo.author?.avatar_url ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={memo.author.avatar_url}
+          alt={authorDisplay}
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        <div className="h-full w-full flex items-center justify-center text-xs text-muted-foreground">
+          {authorDisplay.slice(0, 1).toUpperCase()}
+        </div>
+      )}
+    </div>
+  );
+
   async function withBusy(key: string, fn: () => Promise<unknown>) {
     setBusy(key);
     try {
@@ -105,44 +129,55 @@ export function MemoCard({
         className,
       )}
     >
-      {/* 头部 */}
+      {/* 头部：头像 / 昵称均可点击跳转个人主页；主名称 display_name，@username 次要 */}
       <header className="flex items-center gap-2 mb-2">
-        <div className="h-7 w-7 rounded-full overflow-hidden bg-muted shrink-0">
-          {memo.author?.avatar_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={memo.author.avatar_url}
-              alt={memo.author.username}
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <div className="h-full w-full flex items-center justify-center text-xs text-muted-foreground">
-              {memo.author?.username.slice(0, 1).toUpperCase() ?? "?"}
-            </div>
-          )}
-        </div>
-        <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap text-xs">
-          <span className="font-medium text-foreground truncate">
-            {memo.author?.username ?? "(deleted)"}
-          </span>
-          <span className="inline-flex items-center gap-0.5 px-1.5 h-5 rounded-full bg-muted text-muted-foreground">
-            {visibilityIcon(memo.visibility)}
-            {t(`memo.visibility.${memo.visibility}`)}
-          </span>
-          {memo.archived && (
-            <span className="inline-flex items-center gap-0.5 px-1.5 h-5 rounded-full bg-yellow-500/15 text-yellow-700 dark:text-yellow-300 text-[10px]">
-              <Archive className="h-3 w-3" />
-              {t("memo.card.archived")}
+        {authorHome ? (
+          <Link
+            href={authorHome}
+            className="shrink-0 rounded-full max-md:p-2 max-md:-m-2"
+            aria-label={authorDisplay}
+          >
+            {avatarInner}
+          </Link>
+        ) : (
+          avatarInner
+        )}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {authorHome ? (
+              <Link
+                href={authorHome}
+                className="font-medium text-foreground text-sm truncate hover:underline max-md:py-1"
+              >
+                {authorDisplay}
+              </Link>
+            ) : (
+              <span className="font-medium text-foreground text-sm truncate">
+                {authorDisplay}
+              </span>
+            )}
+            <BadgeList badges={memo.author?.badges} />
+          </div>
+          <div className="flex items-center gap-1.5 flex-wrap text-xs text-muted-foreground mt-0.5">
+            {authorUsername && <span className="truncate">@{authorUsername}</span>}
+            <span>{timeAgo(memo.created_at)}</span>
+            <span className="inline-flex items-center gap-0.5 px-1.5 h-5 rounded-full bg-muted">
+              {visibilityIcon(memo.visibility)}
+              {t(`memo.visibility.${memo.visibility}`)}
             </span>
-          )}
-          <span className="text-muted-foreground">·</span>
-          <span className="text-muted-foreground">{timeAgo(memo.created_at)}</span>
+            {memo.archived && (
+              <span className="inline-flex items-center gap-0.5 px-1.5 h-5 rounded-full bg-yellow-500/15 text-yellow-700 dark:text-yellow-300 text-[10px]">
+                <Archive className="h-3 w-3" />
+                {t("memo.card.archived")}
+              </span>
+            )}
+          </div>
         </div>
         {isAuthor && (
           <button
             type="button"
             onClick={() => setShowMore((s) => !s)}
-            className="p-1 rounded hover:bg-muted"
+            className="p-1 rounded hover:bg-muted max-md:h-11 max-md:w-11 max-md:p-0 max-md:inline-flex max-md:items-center max-md:justify-center max-md:shrink-0"
             aria-label="more"
           >
             <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
@@ -183,7 +218,7 @@ export function MemoCard({
             <Link
               key={tg.id}
               href={localePath(`/memo?tag=${encodeURIComponent(tg.slug)}`)}
-              className="inline-flex items-center px-1.5 h-5 rounded-full bg-primary/10 text-primary text-[10px] hover:bg-primary/20"
+              className="inline-flex items-center px-1.5 h-5 rounded-full bg-primary/10 text-primary text-[10px] hover:bg-primary/20 max-md:h-11 max-md:px-3 max-md:text-xs"
             >
               #{tg.name}
             </Link>
@@ -191,7 +226,7 @@ export function MemoCard({
         </div>
       )}
 
-      {/* 互动按钮 */}
+      {/* 互动按钮（移动端触摸目标 ≥44px） */}
       <footer className="mt-3 flex items-center gap-1 text-xs text-muted-foreground">
         <button
           type="button"
@@ -202,7 +237,7 @@ export function MemoCard({
               : router.push(localePath("/login"))
           }
           className={cn(
-            "inline-flex items-center gap-1 px-2 h-7 rounded hover:bg-muted transition-colors",
+            "inline-flex items-center gap-1 px-2 h-7 rounded hover:bg-muted transition-colors max-md:h-11 max-md:px-3",
             memo.liked_by_me && "text-pink-500",
           )}
         >
@@ -220,7 +255,7 @@ export function MemoCard({
               : router.push(localePath("/login"))
           }
           className={cn(
-            "inline-flex items-center gap-1 px-2 h-7 rounded hover:bg-muted transition-colors",
+            "inline-flex items-center gap-1 px-2 h-7 rounded hover:bg-muted transition-colors max-md:h-11 max-md:px-3",
             memo.favorited_by_me && "text-yellow-500",
           )}
         >
@@ -231,7 +266,7 @@ export function MemoCard({
         </button>
         <Link
           href={localePath(`/memo/${memo.id}#comments`)}
-          className="inline-flex items-center gap-1 px-2 h-7 rounded hover:bg-muted"
+          className="inline-flex items-center gap-1 px-2 h-7 rounded hover:bg-muted max-md:h-11 max-md:px-3"
         >
           <MessageCircle className="h-3.5 w-3.5" />
           {memo.comment_count}
@@ -239,7 +274,7 @@ export function MemoCard({
         {!compact && (
           <Link
             href={localePath(`/memo/${memo.id}`)}
-            className="ml-auto inline-flex items-center gap-1 px-2 h-7 rounded hover:bg-muted"
+            className="ml-auto inline-flex items-center gap-1 px-2 h-7 rounded hover:bg-muted max-md:h-11 max-md:px-3"
           >
             <Eye className="h-3.5 w-3.5" />
             {t("memo.card.more")}

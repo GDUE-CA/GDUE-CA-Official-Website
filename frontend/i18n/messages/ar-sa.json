@@ -40,7 +40,18 @@
   "privacy.visibilityPublic": "",
   "privacy.visibilityPrivateOnly": "",
   "nav": {
-    "memo": "اللحظات"
+    "memo": "اللحظات",
+    "community": "المجتمع",
+    "submit": "إرسال",
+    "guestHint": "سجّل الدخول لفتح كل الميزات الشخصية",
+    "goToSettings": "الانتقال إلى الإعدادات"
+  },
+  "footer": {
+    "version": "الإصدار"
+  },
+  "submit": {
+    "title": "إرسال",
+    "subtitle": "التسجيل في النادي والإبلاغ عن المشكلات"
   },
   "memo": {
     "pageTitle": "اللحظات",

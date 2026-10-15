@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import delete as sa_delete
 from sqlalchemy import func, select
 
-from app.api import account, activities, admin_stats, announcements, audit, auth, background_tasks, blog, bug_report, comments, content, db_maintenance, email_change, geo, i18n_public, health, memos, media, members, notifications, oauth, projects, query, realname, recruitment, recycle, register, security, sso, stats, system, system_init, tags, themes, translations, users
+from app.api import account, activities, admin_stats, announcements, audit, auth, background_tasks, badges, blog, bug_report, club_apply, comments, content, db_maintenance, email_change, geo, i18n_public, health, memos, media, members, notifications, oauth, projects, query, realname, recruitment, recycle, register, school_verify, security, sso, stats, sys_data, system, system_init, tags, themes, translations, users, version
 from app.api.auth import security_answer_digest
 from app.core.config import get_settings
 from app.core.csrf import CSRF_HEADER, csrf_middleware
@@ -52,6 +52,54 @@ _LEGACY_SECURITY_QUESTION = ("计算机协会成立于哪一年？", "2008")
 
 
 # ---------- 启动时：建表 + 轻量列迁移 + 初始化超级管理员 ----------
+async def _rebuild_users_student_id_nullable(conn):
+    """users.student_id 由 NOT NULL 改为可空（V1.2 Module D：社会成员无学号）。
+
+    SQLite 不支持 ALTER COLUMN，需整表重建（12-step 流程）：
+    按 sqlite_master 原始 DDL 复制建 users_new（仅补丁 student_id 可空）→
+    原样复制数据 → DROP 旧表（连带旧索引）→ RENAME 回 users → 重建原索引。
+    本项目 SQLite 未开启外键 pragma（announcements.py 等处已确认），
+    DROP users 不会触发子表 FK 校验；子表 FK 文本引用的表名在 RENAME 后保持有效。
+    """
+    import re
+
+    from sqlalchemy import text
+
+    rows = await conn.execute(text("PRAGMA table_info(users)"))
+    infos = rows.fetchall()
+    if not infos:
+        return  # 全新库：create_all 已按新模型建表（student_id 本就可空）
+    sid = next((c for c in infos if c[1] == "student_id"), None)
+    if sid is None or sid[3] == 0:
+        return  # 列不存在或已可空
+
+    ddl = (await conn.execute(text(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='users'"
+    ))).scalar_one()
+    new_ddl = ddl.replace("CREATE TABLE users", "CREATE TABLE users_new", 1)
+    patched = re.sub(
+        r'(?P<col>"?student_id"?)\s+VARCHAR\(32\)\s+NOT\s+NULL',
+        r"\g<col> VARCHAR(32)",
+        new_ddl,
+        count=1,
+    )
+    if patched == new_ddl:
+        logger.warning("users 重建迁移：未能定位 student_id NOT NULL 定义，跳过")
+        return
+    # 先取出旧表索引 DDL（DROP TABLE 会连索引一起删除；索引 DDL 引用表名 users，RENAME 后可直接复用）
+    idx_ddls = [r[0] for r in (await conn.execute(text(
+        "SELECT sql FROM sqlite_master WHERE type='index' AND tbl_name='users' "
+        "AND sql IS NOT NULL"
+    ))).fetchall()]
+    await conn.execute(text(patched))
+    await conn.execute(text("INSERT INTO users_new SELECT * FROM users"))
+    await conn.execute(text("DROP TABLE users"))
+    await conn.execute(text("ALTER TABLE users_new RENAME TO users"))
+    for stmt in idx_ddls:
+        await conn.execute(text(stmt))
+    logger.info("users.student_id 已迁移为可空（整表重建，%d 列）", len(infos))
+
+
 async def _migrate_columns(conn):
     """SQLite 轻量迁移：为已有表补缺失列（create_all 不会给旧表加列）。"""
     from sqlalchemy import text
@@ -106,6 +154,14 @@ async def _migrate_columns(conn):
             ("profile_privacy", "JSON NULL"),
             # 更改绑定邮箱人工审核一次性豁免标记（用完即清）
             ("allow_manual_email_switch", "BOOLEAN DEFAULT 0"),
+            # 社团职务（展示层，与权限解耦）：president / vice_president / member
+            ("club_position", "VARCHAR(32) NULL"),
+            # ---- Module D：身份分类与学校资料（外键 ID 关联系统基础表） ----
+            ("identity_school_verified", "BOOLEAN DEFAULT 0"),
+            ("college_id", "INTEGER NULL"),
+            ("major_id", "INTEGER NULL"),
+            ("grade_id", "INTEGER NULL"),
+            ("class_id", "INTEGER NULL"),
         ],
         "activities": [
             ("checkin_open", "BOOLEAN DEFAULT 0"),
@@ -248,6 +304,8 @@ async def _migrate_columns(conn):
 async def _init_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # 必须先于 _migrate_columns：重建基于原始 DDL（INSERT SELECT * 要求列数一致）
+        await _rebuild_users_student_id_nullable(conn)
         await _migrate_columns(conn)
 
     # 预置系统设置记录
@@ -502,6 +560,7 @@ app.middleware("http")(trace_middleware)
 
 # ---------- 注册路由 ----------
 app.include_router(health.router)
+app.include_router(version.router)
 app.include_router(geo.router)
 app.include_router(i18n_public.router)
 app.include_router(auth.router)
@@ -559,6 +618,14 @@ app.include_router(memos.public_router)
 app.include_router(memos.author_router)
 app.include_router(memos.user_router)
 app.include_router(memos.admin_router)
+app.include_router(badges.router)
+# ---------- Module D：系统基础数据（学院/年级/专业/班级）+ 学校验证 + 社团报名 ----------
+app.include_router(sys_data.public_router)
+app.include_router(sys_data.admin_router)
+app.include_router(school_verify.router)
+app.include_router(school_verify.admin_router)
+app.include_router(club_apply.router)
+app.include_router(club_apply.admin_router)
 
 # ---------- 静态文件服务（头像上传 + 成员头像 + 博客图片 + Memo 附件） ----------
 os.makedirs("uploads/avatars", exist_ok=True)

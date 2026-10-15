@@ -105,7 +105,7 @@ class UserCreate(BaseModel):
 
 
 class UserUpdate(BaseModel):
-    """更新账号信息：自己可改基础资料，super_admin 额外可改 role/is_active/permission_overrides"""
+    """更新账号信息：自己可改基础资料，super_admin 额外可改 role/is_active/permission_overrides/club_position"""
     username: PlainText | None = Field(default=None, min_length=2, max_length=64)
     real_name: PlainText | None = Field(default=None, min_length=1, max_length=64)
     student_id: str | None = Field(default=None, pattern=_STUDENT_ID_PATTERN)
@@ -114,6 +114,18 @@ class UserUpdate(BaseModel):
     is_active: bool | None = None
     # 模块级权限覆盖（仅 super_admin 可写；None = 不修改）
     permission_overrides: dict[str, list[str]] | None = None
+    # 社团职务（仅 super_admin 可写；纯展示层与权限解耦）：
+    # president / vice_president / member；空字符串 = 清除职务（置 NULL）
+    club_position: str | None = None
+
+    @field_validator("club_position")
+    @classmethod
+    def _validate_club_position(cls, v: str | None) -> str | None:
+        if v is None or v == "":
+            return v
+        if v not in ("president", "vice_president", "member"):
+            raise ValueError("club_position 取值仅支持 president / vice_president / member")
+        return v
 
 
 class UserOut(BaseModel):
@@ -128,10 +140,19 @@ class UserOut(BaseModel):
     is_break_glass: bool = False
     # 系统尚未完成初始化（BG 会话前端跳转初始化向导用）
     must_setup: bool = False
-    student_id: str
+    # 学号：社会成员为 NULL（Module D）；学校成员审核通过后写入
+    student_id: str | None = None
     real_name: str
     phone: str
     avatar_url: str | None = None
+    # 社团职务（展示层）：president / vice_president / member；null = 外部注册用户
+    club_position: str | None = None
+    # ---- Module D：身份分类与学校资料（外键 ID；展示文本由前端按 /api/sys/* 映射） ----
+    identity_school_verified: bool = False
+    college_id: int | None = None
+    major_id: int | None = None
+    grade_id: int | None = None
+    class_id: int | None = None
     # 实名验证状态（Phase 6）
     realname_verified: bool = False
     realname_verified_at: UTCDatetime | None = None
@@ -190,6 +211,12 @@ class ProfileUpdate(BaseModel):
     real_name: PlainText | None = Field(default=None, min_length=1, max_length=64)
     phone: str | None = Field(default=None, pattern=_PHONE_PATTERN)
     student_id: str | None = Field(default=None, pattern=_STUDENT_ID_PATTERN)
+    # ---- Module D：学校资料（仅 identity_school_verified=true 后端放行写入） ----
+    # 四个 ID 必须成组提交，后端校验层级一致（专业归属学院、班级匹配学院/年级/专业）
+    college_id: int | None = None
+    major_id: int | None = None
+    grade_id: int | None = None
+    class_id: int | None = None
     # IANA 时区字符串；空字符串 = 恢复自动探测（存 NULL）；不传 = 不修改
     timezone: str | None = Field(default=None, max_length=64)
     # 三级行政区地址；空字符串 = 清空（存 NULL）；不传 = 不修改
@@ -257,8 +284,10 @@ class ProfileUpdate(BaseModel):
             return v
         if not isinstance(v, dict):
             raise ValueError("profile_privacy 必须是 JSON 对象")
-        # 字段可见性：bio / gender / birthday → public / private
-        visibility_keys = {"gender", "bio", "birthday"}
+        # 字段可见性：bio / gender / birthday / real_name / school_info → public / private
+        # （real_name 语义特殊：默认不公开，仅显式 public 才对访客展示；本人恒可见）
+        # （school_info 语义同 real_name：默认不公开学校信息；本人恒可见）
+        visibility_keys = {"gender", "bio", "birthday", "real_name", "school_info"}
         # 发现与搜索权限：all=全部站内用户可搜索 / members=仅社团内部 / none=不可搜索
         discoverability_values = {"all", "members", "none"}
         # 新建内容默认可见范围：public / members / private

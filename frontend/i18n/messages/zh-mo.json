@@ -3,6 +3,19 @@
     "_variant": "zh-mo inherits from zh-cn; only differing keys are stored here",
     "_fallback": "zh-cn"
   },
+  "nav": {
+    "community": "社區",
+    "submit": "提交",
+    "guestHint": "登入解鎖全部個人功能",
+    "goToSettings": "前往設定"
+  },
+  "footer": {
+    "version": "版本"
+  },
+  "submit": {
+    "title": "提交",
+    "subtitle": "社團報名與問題回饋入口"
+  },
   "admin": {
     "nav": {
       "dashboard": "概覽",

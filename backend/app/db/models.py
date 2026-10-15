@@ -53,7 +53,8 @@ class User(Base):
     # 用户端凭此跳过身份校验完成换绑，成功瞬间同事务清除（一次性，禁止复用）
     allow_manual_email_switch: Mapped[bool] = mapped_column(Boolean, default=False)
     # --- 账号身份信息（用于身份验证和密码恢复） ---
-    student_id: Mapped[str] = mapped_column(String(32), index=True)  # 学号
+    # 学号：社会成员为 NULL（V1.2 Module D 起）；学校成员由人工审核通过后写入
+    student_id: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
     real_name: Mapped[str] = mapped_column(String(64))               # 真实姓名
     phone: Mapped[str] = mapped_column(String(32))                   # 手机号（含区号）
     avatar_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
@@ -84,6 +85,24 @@ class User(Base):
     realname_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     # 展示昵称（公开注册 / 个人资料用；NULL = 回退 username）
     display_name: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # 社团职务（纯展示层，与权限彻底解耦）：president / vice_president / member；
+    # NULL = 外部公网注册用户（非在册成员）。仅由 super_admin 在后台设置，变更写审计。
+    club_position: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # ---- Module D：身份分类与学校资料（外键 ID 关联系统基础表，禁止存文本） ----
+    # 学校身份验证标记：仅管理员人工审核通过后置 True；社会成员恒 False
+    identity_school_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    college_id: Mapped[int | None] = mapped_column(
+        ForeignKey("sys_college.id"), nullable=True, index=True
+    )
+    major_id: Mapped[int | None] = mapped_column(
+        ForeignKey("sys_major.id"), nullable=True, index=True
+    )
+    grade_id: Mapped[int | None] = mapped_column(
+        ForeignKey("sys_grade.id"), nullable=True, index=True
+    )
+    class_id: Mapped[int | None] = mapped_column(
+        ForeignKey("sys_class.id"), nullable=True, index=True
+    )
     # ---- 区域格式（只存编码 / 模式字符串，不存展示文本；仅控制前端渲染层） ----
     # 主日历：gregorian / chinese / japanese / buddhist
     primary_calendar: Mapped[str] = mapped_column(String(16), default="gregorian")
@@ -628,6 +647,30 @@ class UserMessage(Base):
     link: Mapped[str | None] = mapped_column(String(512), nullable=True)
     is_read: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
+
+
+# ---------- 用户自定义徽章（user_badges） ----------
+class UserBadge(Base):
+    """管理员授予的用户自定义徽章（纯 UI 展示装饰，与权限彻底解耦）。
+
+    - 仅存自定义徽章（badge_type 固定 'custom'，预留扩展）；
+    - 系统内置徽章不入库：每次请求按 club_position / role 动态计算（app/core/badges.py）；
+    - 单用户最多 3 枚 is_active 自定义徽章（API 层强制）；
+    - name 写入前经 nh3 剥除全部 HTML（防 XSS）。
+    """
+    __tablename__ = "user_badges"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    badge_type: Mapped[str] = mapped_column(String(16), default="custom")
+    name: Mapped[str] = mapped_column(String(32))
+    emoji: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    bg_color: Mapped[str] = mapped_column(String(7), default="#6366f1")
+    text_color: Mapped[str] = mapped_column(String(7), default="#ffffff")
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
 
 
 # ---------- 富文本内容块（社团介绍等） ----------
@@ -1299,3 +1342,154 @@ class BackgroundTask(Base):
     finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     # 用户手动关闭时间；NULL = 仍在通知中心/悬浮弹窗可见
     dismissed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+
+
+# ==================== Module D：系统基础数据（学院/年级/专业/班级） ====================
+# 全部数据库存储、后台管理员维护；前端禁止硬编码任何学院/专业文本。
+# 软禁用规则：is_disabled=1 后前端下拉不再出现，历史数据保留；不提供物理删除。
+
+class SysCollege(Base):
+    """学院表（系统基础数据）。"""
+    __tablename__ = "sys_college"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    college_name: Mapped[str] = mapped_column(String(128))
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    is_disabled: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+
+
+class SysGrade(Base):
+    """年级表（入学 4 位年份，如 2024）。"""
+    __tablename__ = "sys_grade"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    grade_year: Mapped[int] = mapped_column(Integer)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    is_disabled: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+
+
+class SysMajor(Base):
+    """专业表（归属学院）。"""
+    __tablename__ = "sys_major"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    college_id: Mapped[int] = mapped_column(ForeignKey("sys_college.id"), index=True)
+    major_name: Mapped[str] = mapped_column(String(128))
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    is_disabled: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+
+
+class SysClass(Base):
+    """班级表（仅用于学校身份验证严格校验；社团报名不依赖本表，兼容未录入新生）。"""
+    __tablename__ = "sys_class"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    college_id: Mapped[int | None] = mapped_column(
+        ForeignKey("sys_college.id"), nullable=True, index=True
+    )
+    grade_id: Mapped[int | None] = mapped_column(
+        ForeignKey("sys_grade.id"), nullable=True, index=True
+    )
+    major_id: Mapped[int | None] = mapped_column(
+        ForeignKey("sys_major.id"), nullable=True, index=True
+    )
+    class_suffix: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    display_name: Mapped[str] = mapped_column(String(128))
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    is_disabled: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+
+
+# ==================== Module D：学校身份人工验证 ====================
+
+class SchoolVerifyStatus(str, Enum):
+    """学校身份验证申请状态（String 列存储小写 value，避免 SAEnum 枚举名存储差异）。"""
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
+class UserSchoolVerifyApplication(Base):
+    """学校身份验证申请表：保存全部申请历史（含驳回记录），审核通过才写 users 主表。
+
+    流转：未提交 →（用户提交）pending →（管理员）approved / rejected；
+    rejected 允许重新提交；pending 期间禁止重复提交。
+    """
+    __tablename__ = "user_school_verify_applications"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    student_id: Mapped[str] = mapped_column(String(32))
+    college_id: Mapped[int] = mapped_column(ForeignKey("sys_college.id"))
+    major_id: Mapped[int] = mapped_column(ForeignKey("sys_major.id"))
+    grade_id: Mapped[int] = mapped_column(ForeignKey("sys_grade.id"))
+    class_id: Mapped[int] = mapped_column(ForeignKey("sys_class.id"))
+    remark: Mapped[str | None] = mapped_column(Text, nullable=True)
+    attach_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    status: Mapped[str] = mapped_column(String(16), default="pending", index=True)
+    admin_remark: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reviewed_by: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+# ==================== Module D：社团报名（club_apply_record） ====================
+# 重要隔离规则：社团报名 ≠ 学校身份验证；报名不自动开通 identity_school_verified。
+
+class ClubApplyStatus(str, Enum):
+    """社团报名状态（String 列存储小写 value）。"""
+    PENDING = "pending"
+    ACCEPT = "accept"
+    REJECT = "reject"
+
+
+class ClubApplyRecord(Base):
+    """社团报名记录表（账号内报名；区别于公开表单的 Registration）。
+
+    - ID 字段（college_id/major_id）用于后端合法性校验；
+    - 同时保留文本字段（college/major/class）用于报表导出；
+    - 报名主体仅限本校在读学生（applicant_type 固定为 school）；
+      学号做 11 位数字 + 后端年份区间校验。
+    """
+    __tablename__ = "club_apply_records"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    real_name: Mapped[str] = mapped_column(String(64))
+    phone: Mapped[str] = mapped_column(String(32))
+    email: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    # 报名主体：仅限本校在读学生（school）；校外社会报名通道已移除
+    applicant_type: Mapped[str] = mapped_column(String(16), index=True)
+    student_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # —— ID 字段（校验用） ——
+    college_id: Mapped[int | None] = mapped_column(
+        ForeignKey("sys_college.id"), nullable=True, index=True
+    )
+    major_id: Mapped[int | None] = mapped_column(
+        ForeignKey("sys_major.id"), nullable=True, index=True
+    )
+    enroll_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    class_suffix: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    # —— 文本字段（报表导出用；class 由后端拼接生成，用户不可直接编辑） ——
+    college: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    major: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    class_: Mapped["str | None"] = mapped_column("class", String(128), nullable=True)
+    # 意向部门（JSON 数组）
+    departments: Mapped[list] = mapped_column(JSON, default=list)
+    intro: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(16), default="pending", index=True)
+    admin_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reviewed_by: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

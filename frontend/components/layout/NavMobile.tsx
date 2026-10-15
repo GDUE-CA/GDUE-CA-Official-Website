@@ -3,9 +3,13 @@
 /**
  * NavMobile - 移动端右侧抽屉导航
  * - 由 NavDesktop 持有 open 状态并通过 props 传入
- * - 抽屉内含导航链接、设置折叠面板（主题/语言切换）、底部报名与管理员入口
- * - 支持滑动关闭、Escape 关闭、浏览器返回键关闭
- * - 主题在打开时从 <html> 同步一次，避免与桌面端 ThemeToggle 状态分离
+ * - 顶部身份卡片（整块可点）两套状态：
+ *   · 访客：灰色匿名头像 + 「访客」+ 提示「登录解锁全部个人功能」→ 点击跳登录页
+ *   · 已登录：圆形头像 + 昵称 + @username + 身份徽章 + 个性签名 → 点击跳个人主页 /u/{username}
+ * - 主导航：首页 / 活动 / 社区（折叠父项，默认收起）/ 关于我们
+ * - 「快捷设置」折叠下拉（默认收起）：仅明暗主题切换 + 语言切换
+ * - 底部：仅登录用户显示「前往设置」→ /setting；访客隐藏
+ * - 抽屉内不放独立登录按钮、不放「提交」按钮（提交按钮固定于全局底栏）
  *
  * 配套组件：NavDesktop.tsx（桌面端 header，持有 open 状态）
  */
@@ -13,25 +17,41 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Sun, Moon, ChevronDown } from "lucide-react";
+import { X, Sun, Moon, ChevronDown, UserCircle, Settings as SettingsIcon } from "lucide-react";
 import { locales, localeDisplayName, type Locale } from "@/lib/i18n";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
-import { UserMenu } from "@/components/layout/UserMenu";
-import { NotificationBell } from "@/components/layout/NotificationBell";
 import { cn } from "@/lib/utils";
 import { navTransitionTypes } from "@/lib/navTransition";
+import { isLogged } from "@/lib/auth";
+import { fetchMe } from "@/lib/api/auth";
+import { API_BASE_URL, ApiError } from "@/lib/api/client";
+import { applyThemeMode, getResolvedTheme } from "@/lib/theme";
+import type { AdminUser } from "@/types/api";
 
-/** 导航项配置（与 NavDesktop 保持一致；不抽到第三个文件以遵守「仅 2 个导航栏 tsx」约束） */
+/** 一级导航项（「社区」为折叠父菜单，单独渲染） */
 const navItems = [
   { key: "nav.home", href: "" },
   { key: "nav.events", href: "/events" },
+] as const;
+
+/** 「社区」折叠父菜单的子项 */
+const communityItems = [
   { key: "nav.memo", href: "/memo" },
   { key: "nav.blog", href: "/blog" },
   { key: "nav.projects", href: "/projects" },
-  { key: "nav.about", href: "/about" },
-  { key: "nav.contact", href: "/contact" },
 ] as const;
+
+/** 末尾一级导航项 */
+const tailItems = [{ key: "nav.about", href: "/about" }] as const;
+
+/** 拼接头像完整 URL（与 UserMenu 规则一致） */
+function avatarFullUrl(url: string | null | undefined): string {
+  if (!url) return "";
+  if (url.startsWith("http")) return url;
+  const base = API_BASE_URL.replace(/\/+$/, "");
+  return url.startsWith("/") ? `${base}${url}` : `${base}/${url}`;
+}
 
 export function NavMobile({
   open,
@@ -43,14 +63,20 @@ export function NavMobile({
   const { locale, t } = useI18n();
   const pathname = usePathname();
   const router = useRouter();
-  /** 当前主题（打开抽屉时从 <html> 同步） */
+
+  /** 当前颜色模式（打开抽屉时从 <html> 同步） */
   const [theme, setTheme] = useState<"light" | "dark">("light");
-  /** 设置折叠面板开关 */
+  /** 「快捷设置」折叠面板开关（默认收起） */
   const [settingsOpen, setSettingsOpen] = useState(false);
+  /** 「社区」折叠父菜单开关（默认收起） */
+  const [communityOpen, setCommunityOpen] = useState(false);
+
+  /** 登录态与用户资料 */
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [profile, setProfile] = useState<AdminUser | null>(null);
+  const [imgError, setImgError] = useState(false);
 
   const skipHistoryCleanup = useRef(false);
-  /** 设置按钮 ref：展开时自动滚到可视区 */
-  const settingsBtnRef = useRef<HTMLButtonElement>(null);
 
   /** 构建带语言前缀的路径 */
   function localePath(href: string) {
@@ -66,14 +92,32 @@ export function NavMobile({
     return pathname.startsWith(fullHref);
   }
 
+  /** 任一子页面激活 → 父项「社区」高亮 */
+  const communityActive = communityItems.some((item) => isActive(item.href));
+
+  /** 拉取登录态与用户资料（抽屉首次挂载时） */
+  useEffect(() => {
+    const logged = isLogged();
+    setLoggedIn(logged);
+    if (logged) {
+      fetchMe()
+        .then((p) => setProfile(p))
+        .catch((err) => {
+          if (err instanceof ApiError && err.status === 401) {
+            setLoggedIn(false);
+            setProfile(null);
+          }
+        });
+    }
+  }, []);
+
   /** 抽屉打开时锁滚动 + 同步主题 + 重置折叠面板 */
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
     if (open) {
-      setTheme(
-        document.documentElement.classList.contains("dark") ? "dark" : "light"
-      );
+      setTheme(getResolvedTheme());
       setSettingsOpen(false);
+      setCommunityOpen(false);
     }
     return () => {
       document.body.style.overflow = "";
@@ -124,23 +168,9 @@ export function NavMobile({
     onClose();
   }
 
-  /** 设置按钮点击：切换折叠面板，并在展开时滚动保证按钮可见 */
-  function toggleSettings() {
-    setSettingsOpen((v) => {
-      const next = !v;
-      if (next) {
-        requestAnimationFrame(() => {
-          settingsBtnRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-        });
-      }
-      return next;
-    });
-  }
-
-  /** 设置主题 */
-  function applyThemeMode(mode: "light" | "dark") {
-    document.documentElement.classList.toggle("dark", mode === "dark");
-    window.localStorage.setItem("gdueca-theme", mode);
+  /** 设置主题（写入 localStorage 并同步 <html>.dark） */
+  function applyMode(mode: "light" | "dark") {
+    applyThemeMode(mode);
     setTheme(mode);
   }
 
@@ -152,6 +182,12 @@ export function NavMobile({
     segments[1] = target;
     router.push(segments.join("/"));
   }
+
+  const avatarUrl = !imgError ? avatarFullUrl(profile?.avatar_url) : "";
+  const displayName = profile?.display_name || profile?.username || "";
+  const hasIdentityBadge = Boolean(
+    profile?.identity_school_verified || profile?.club_position
+  );
 
   return (
     <AnimatePresence>
@@ -192,6 +228,7 @@ export function NavMobile({
               <Button
                 variant="ghost"
                 size="icon"
+                className="h-11 w-11"
                 onClick={onClose}
                 aria-label={t("common.close")}
               >
@@ -199,8 +236,73 @@ export function NavMobile({
               </Button>
             </div>
 
-            {/* 导航链接 + 设置（设置和面板在同一个 wrapper，从按钮下方自然向下展开） */}
+            {/* 主体（可滚动）：身份卡片 + 主导航 + 快捷设置 */}
             <nav className="flex flex-col gap-1 p-4 flex-1 overflow-y-auto">
+              {/* ===== 顶部身份卡片（整块可点） ===== */}
+              {loggedIn ? (
+                <Link
+                  href={localePath(`/u/${profile?.username ?? ""}`)}
+                  onClick={handleDrawerNavigate}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg border border-border bg-secondary/40 p-3 min-h-[56px] transition-colors hover:bg-secondary",
+                    !profile && "pointer-events-none opacity-70"
+                  )}
+                  aria-label={t("nav.personalSettings")}
+                >
+                  <span className="shrink-0">
+                    {avatarUrl ? (
+                      <img
+                        src={avatarUrl}
+                        alt={displayName}
+                        className="h-12 w-12 rounded-full object-cover bg-secondary"
+                        onError={() => setImgError(true)}
+                      />
+                    ) : (
+                      <UserCircle className="h-12 w-12 text-muted-foreground" />
+                    )}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-base font-semibold text-foreground">
+                      {displayName || t("nav.accountMenu")}
+                    </span>
+                    {profile?.username && (
+                      <span className="block truncate text-xs text-muted-foreground">
+                        @{profile.username}
+                      </span>
+                    )}
+                    {hasIdentityBadge && (
+                      <span className="mt-1 inline-flex items-center rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-secondary-foreground">
+                        {profile?.identity_school_verified
+                          ? t("profile.tagSchool")
+                          : t("profile.tagClub")}
+                      </span>
+                    )}
+                    {profile?.bio && (
+                      <span className="mt-1 block truncate text-xs text-muted-foreground">
+                        {profile.bio}
+                      </span>
+                    )}
+                  </span>
+                </Link>
+              ) : (
+                <Link
+                  href={localePath("/login")}
+                  onClick={handleDrawerNavigate}
+                  className="flex items-center gap-3 rounded-lg border border-border bg-secondary/40 p-3 min-h-[56px] transition-colors hover:bg-secondary"
+                >
+                  <UserCircle className="h-12 w-12 text-muted-foreground/60 shrink-0" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-base font-semibold text-foreground">
+                      {t("nav.guest")}
+                    </span>
+                    <span className="block text-xs text-muted-foreground">
+                      {t("nav.guestHint")}
+                    </span>
+                  </span>
+                </Link>
+              )}
+
+              {/* ===== 主导航列表 ===== */}
               {navItems.map((item) => (
                 <Link
                   key={item.key}
@@ -208,7 +310,7 @@ export function NavMobile({
                   transitionTypes={navTransitionTypes(pathname, locale, item.href)}
                   onClick={handleDrawerNavigate}
                   className={cn(
-                    "px-4 py-3 rounded-md text-sm font-medium transition-colors",
+                    "px-4 py-3 min-h-11 rounded-md text-sm font-medium transition-colors",
                     isActive(item.href)
                       ? "text-primary bg-secondary"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted"
@@ -218,32 +320,99 @@ export function NavMobile({
                 </Link>
               ))}
 
-              {/* 设置按钮 + 折叠面板 —— 同一个 wrapper，视觉上是 nav list 的最后一个 item */}
-              <div className="flex flex-col gap-1">
+              {/* 「社区」折叠父项 */}
+              <div className="flex flex-col">
                 <button
-                  ref={settingsBtnRef}
                   type="button"
-                  onClick={toggleSettings}
+                  onClick={() => setCommunityOpen((v) => !v)}
+                  aria-expanded={communityOpen}
+                  className={cn(
+                    "flex items-center justify-between px-4 py-3 min-h-11 rounded-md text-sm font-medium transition-colors",
+                    communityActive
+                      ? "text-primary bg-secondary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  )}
+                >
+                  <span>{t("nav.community")}</span>
+                  <ChevronDown
+                    className={cn(
+                      "h-4 w-4 transition-transform",
+                      communityOpen && "rotate-180"
+                    )}
+                  />
+                </button>
+                <div
+                  aria-hidden={!communityOpen}
+                  className={cn(
+                    "grid transition-[grid-template-rows] motion-reduce:transition-none",
+                    communityOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+                  )}
+                >
+                  <div className="overflow-hidden min-h-0">
+                    <div className="ml-2 pl-3 border-l-2 border-border flex flex-col gap-1 py-1">
+                      {communityItems.map((item) => (
+                        <Link
+                          key={item.key}
+                          href={localePath(item.href)}
+                          transitionTypes={navTransitionTypes(pathname, locale, item.href)}
+                          tabIndex={communityOpen ? undefined : -1}
+                          onClick={handleDrawerNavigate}
+                          className={cn(
+                            "px-3 py-2.5 min-h-11 flex items-center rounded-md text-sm transition-colors",
+                            isActive(item.href)
+                              ? "text-primary bg-secondary font-medium"
+                              : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                          )}
+                        >
+                          {t(item.key)}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {tailItems.map((item) => (
+                <Link
+                  key={item.key}
+                  href={localePath(item.href)}
+                  transitionTypes={navTransitionTypes(pathname, locale, item.href)}
+                  onClick={handleDrawerNavigate}
+                  className={cn(
+                    "px-4 py-3 min-h-11 rounded-md text-sm font-medium transition-colors",
+                    isActive(item.href)
+                      ? "text-primary bg-secondary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  )}
+                >
+                  {t(item.key)}
+                </Link>
+              ))}
+
+              {/* ===== 分隔线 + 快捷设置折叠下拉 ===== */}
+              <div className="border-t border-border my-1" />
+              <div className="flex flex-col">
+                <button
+                  type="button"
+                  onClick={() => setSettingsOpen((v) => !v)}
                   aria-expanded={settingsOpen}
                   className={cn(
-                    "flex items-center justify-between px-4 py-3 rounded-md text-sm font-medium transition-colors",
+                    "flex items-center justify-between px-4 py-3 min-h-11 rounded-md text-sm font-medium transition-colors",
                     settingsOpen
                       ? "text-primary bg-secondary"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted"
                   )}
                 >
-                  <span>{t("nav.settings")}</span>
+                  <span>{t("nav.quickSettings")}</span>
                   <ChevronDown
                     className={cn(
-                      "h-4 w-4 transition-all",
+                      "h-4 w-4 transition-transform",
                       settingsOpen && "rotate-180"
                     )}
                   />
                 </button>
 
-                {/* 折叠面板 —— 与全站伸缩菜单同速（150ms 默认贝塞尔曲线） */}
                 <div
-                  id="nav-mobile-settings-panel"
                   aria-hidden={!settingsOpen}
                   className={cn(
                     "grid transition-[grid-template-rows] motion-reduce:transition-none",
@@ -260,9 +429,9 @@ export function NavMobile({
                           <button
                             type="button"
                             tabIndex={settingsOpen ? undefined : -1}
-                            onClick={() => applyThemeMode("light")}
+                            onClick={() => applyMode("light")}
                             className={cn(
-                              "flex items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-xs font-medium transition-colors",
+                              "flex items-center justify-center gap-1.5 rounded-md border px-3 py-2.5 min-h-11 text-xs font-medium transition-colors",
                               theme === "light"
                                 ? "border-primary bg-secondary text-primary"
                                 : "border-border text-muted-foreground hover:bg-muted"
@@ -274,9 +443,9 @@ export function NavMobile({
                           <button
                             type="button"
                             tabIndex={settingsOpen ? undefined : -1}
-                            onClick={() => applyThemeMode("dark")}
+                            onClick={() => applyMode("dark")}
                             className={cn(
-                              "flex items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-xs font-medium transition-colors",
+                              "flex items-center justify-center gap-1.5 rounded-md border px-3 py-2.5 min-h-11 text-xs font-medium transition-colors",
                               theme === "dark"
                                 ? "border-primary bg-secondary text-primary"
                                 : "border-border text-muted-foreground hover:bg-muted"
@@ -300,7 +469,7 @@ export function NavMobile({
                               tabIndex={settingsOpen ? undefined : -1}
                               onClick={() => switchLocale(loc)}
                               className={cn(
-                                "rounded-md border px-3 py-2 text-xs font-medium transition-colors",
+                                "rounded-md border px-3 py-2.5 min-h-11 text-xs font-medium transition-colors",
                                 locale === loc
                                   ? "border-primary bg-secondary text-primary"
                                   : "border-border text-muted-foreground hover:bg-muted"
@@ -317,20 +486,19 @@ export function NavMobile({
               </div>
             </nav>
 
-            {/* 底部 CTA + 通知 + 用户菜单 */}
-            <div className="p-4 border-t border-border shrink-0 flex items-center gap-2">
-              <Button asChild className="flex-1">
+            {/* ===== 底部：仅登录用户显示「前往设置」 ===== */}
+            {loggedIn && (
+              <div className="p-4 border-t border-border shrink-0">
                 <Link
-                  href={localePath("/join")}
-                  transitionTypes={navTransitionTypes(pathname, locale, "/join")}
+                  href={localePath("/setting")}
                   onClick={handleDrawerNavigate}
+                  className="flex items-center gap-3 px-4 py-3 min-h-11 rounded-md text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-muted"
                 >
-                  {t("nav.join")}
+                  <SettingsIcon className="h-4 w-4" />
+                  {t("nav.goToSettings")}
                 </Link>
-              </Button>
-              <NotificationBell />
-              <UserMenu />
-            </div>
+              </div>
+            )}
           </motion.aside>
         </>
       )}

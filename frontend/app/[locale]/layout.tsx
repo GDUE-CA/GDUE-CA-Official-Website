@@ -15,6 +15,7 @@ import { SessionHeartbeat } from "@/components/shared/SessionHeartbeat";
 import { BanModal } from "@/components/shared/BanModal";
 import { NavDesktop } from "@/components/layout/NavDesktop";
 import { Footer } from "@/components/layout/Footer";
+import { GlobalBottomBar } from "@/components/layout/GlobalBottomBar";
 import { BackgroundTaskFloat } from "@/components/notifications/BackgroundTaskFloat";
 
 /** 站点根 URL（与 sitemap.ts / robots.ts 同源，用于 hreflang 绝对 URL） */
@@ -162,6 +163,9 @@ export default async function LocaleLayout({
         <NavDesktop />
         <main className="flex-1 pt-16">{children}</main>
         <Footer />
+        {/* 固定底栏占位：避免内容被 GlobalBottomBar 遮挡 */}
+        <div aria-hidden className="h-20 md:h-16" />
+        <GlobalBottomBar />
       </I18nProvider>
     </>
   );

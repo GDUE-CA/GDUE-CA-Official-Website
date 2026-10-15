@@ -53,6 +53,7 @@ import { useDirtyGuard } from "@/components/setting/SettingGuardContext";
 import { useTheme } from "@/components/theme/ThemeProvider";
 import { BrandMark } from "@/components/shared/BrandMark";
 import { getSession, isAdminRole } from "@/lib/auth";
+import { APP_VERSION } from "@/lib/version";
 import { cn } from "@/lib/utils";
 
 interface SubItem {
@@ -376,6 +377,10 @@ export function SettingShell({ children }: { children: React.ReactNode }) {
         {/* col3: 内容区（页面内容外边距固定 24px） */}
         <main className="flex-1 min-w-0 p-6 overflow-y-auto">
           <div className="max-w-2xl mx-auto">{children}</div>
+          {/* 项目版本号（页面底部，读取全局常量，禁止硬编码） */}
+          <p className="mt-10 text-center text-xs text-muted-foreground/70 font-mono">
+            {APP_VERSION}
+          </p>
         </main>
       </div>
 
@@ -400,7 +405,13 @@ export function SettingShell({ children }: { children: React.ReactNode }) {
                 </span>
               </button>
             </div>
-            <main className="flex-1 overflow-y-auto p-4">{children}</main>
+            <main className="flex-1 overflow-y-auto p-4">
+              {children}
+              {/* 项目版本号（页面底部） */}
+              <p className="mt-10 pb-4 text-center text-xs text-muted-foreground/70 font-mono">
+                {APP_VERSION}
+              </p>
+            </main>
           </div>
         )}
 

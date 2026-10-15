@@ -1,0 +1,166 @@
+"""社团报名（Module D-2）Pydantic 模型。
+
+重要隔离规则：社团报名 ≠ 学校身份验证；报名不自动开启 identity_school_verified。
+校验策略：仅校验学院、专业 ID 合法有效；不校验年级/班级是否存在于 sys_class
+（兼容尚未录入系统的新生）。学号：11 位数字 + 后端年份区间校验（普通用户提交）。
+"""
+from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict, field_validator
+
+import re
+
+STUDENT_ID_PATTERN = re.compile(r"^\d{11}$")
+CLASS_SUFFIX_PATTERN = re.compile(r"^[A-Z]$")
+ALLOWED_DEPARTMENT_LEN = 64
+MAX_DEPARTMENTS = 10
+
+
+class ClubApplySubmit(BaseModel):
+    real_name: str
+    phone: str
+    email: str | None = None
+    # 仅限本校在读学生报名（校外社会报名通道已移除）
+    applicant_type: str = "school"
+    # —— 本校在读学生必填字段 ——
+    student_id: str
+    college_id: int
+    major_id: int
+    enroll_year: int
+    class_suffix: str | None = None
+    # —— 通用 ——
+    departments: list[str]
+    intro: str | None = None
+
+    @field_validator("real_name")
+    @classmethod
+    def _real_name(cls, v: str) -> str:
+        v = v.strip()
+        if not v or len(v) > 64:
+            raise ValueError("姓名不能为空且不超过 64 字")
+        return v
+
+    @field_validator("phone")
+    @classmethod
+    def _phone(cls, v: str) -> str:
+        v = v.strip()
+        if not v or len(v) > 32:
+            raise ValueError("手机号不能为空且不超过 32 字符")
+        return v
+
+    @field_validator("email")
+    @classmethod
+    def _email(cls, v: str | None) -> str | None:
+        if v is None or not v.strip():
+            return None
+        v = v.strip()
+        if len(v) > 128 or "@" not in v:
+            raise ValueError("邮箱格式无效")
+        return v
+
+    @field_validator("applicant_type")
+    @classmethod
+    def _type(cls, v: str) -> str:
+        if v != "school":
+            raise ValueError("仅接受本校在读学生报名")
+        return v
+
+    @field_validator("student_id")
+    @classmethod
+    def _student_id(cls, v: str) -> str:
+        v = v.strip()
+        if not STUDENT_ID_PATTERN.fullmatch(v):
+            raise ValueError("学号必须是 11 位纯数字")
+        return v
+
+    @field_validator("enroll_year")
+    @classmethod
+    def _year(cls, v: int) -> int:
+        # 4 位数字年份校验（合理性区间由 API 层按业务校验：1900-2999 宽松即可）
+        if v < 1900 or v > 2999:
+            raise ValueError("入学年份必须为 4 位数字年份")
+        return v
+
+    @field_validator("class_suffix")
+    @classmethod
+    def _suffix(cls, v: str | None) -> str | None:
+        if v is None or not v.strip():
+            return None
+        v = v.strip().upper()
+        if not CLASS_SUFFIX_PATTERN.fullmatch(v):
+            raise ValueError("班号后缀必须为大写字母 A-Z")
+        return v
+
+    @field_validator("departments")
+    @classmethod
+    def _departments(cls, v: list[str]) -> list[str]:
+        cleaned = []
+        for d in v:
+            d = (d or "").strip()
+            if not d:
+                continue
+            if len(d) > ALLOWED_DEPARTMENT_LEN:
+                raise ValueError(f"意向部门「{d[:20]}…」超过 {ALLOWED_DEPARTMENT_LEN} 字")
+            if d not in cleaned:
+                cleaned.append(d)
+        if not cleaned:
+            raise ValueError("请至少选择一个意向部门")
+        if len(cleaned) > MAX_DEPARTMENTS:
+            raise ValueError(f"意向部门最多 {MAX_DEPARTMENTS} 个")
+        return cleaned
+
+    @field_validator("intro")
+    @classmethod
+    def _intro(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        v = v.strip()
+        return v[:2000] if v else None
+
+
+class ClubApplyOut(BaseModel):
+    id: int
+    user_id: int
+    real_name: str
+    phone: str
+    email: str | None
+    applicant_type: str
+    student_id: str | None
+    college_id: int | None
+    major_id: int | None
+    enroll_year: int | None
+    class_suffix: str | None
+    college: str | None
+    major: str | None
+    class_name: str | None
+    departments: list
+    intro: str | None
+    status: str
+    admin_note: str | None
+    created_at: datetime
+    reviewed_at: datetime | None
+    # 联表补充（API 层填充）
+    username: str | None = None
+    display_name: str | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ClubApplyReviewRequest(BaseModel):
+    action: str  # accept / reject
+    admin_note: str | None = None
+
+    @field_validator("action")
+    @classmethod
+    def _action(cls, v: str) -> str:
+        if v not in ("accept", "reject"):
+            raise ValueError("action 仅支持 accept / reject")
+        return v
+
+    @field_validator("admin_note")
+    @classmethod
+    def _note(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        v = v.strip()
+        return v[:1000] if v else None

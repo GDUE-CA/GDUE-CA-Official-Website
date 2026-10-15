@@ -52,6 +52,8 @@ import {
   ClipboardList,
   MailPlus,
   Palette,
+  GraduationCap,
+  Database,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useI18n } from "@/i18n/provider";
@@ -135,6 +137,7 @@ const firstLevelItems: FirstLevel[] = [
       { key: "admin.nav.users.realname", href: "/admin/realname-review", icon: BadgeCheck, modules: ["realname"] }, // ↩实名审核
       { key: "admin.nav.users.review", href: "/admin/review", icon: ClipboardList, modules: ["review.registrations", "review.bugs", "review.resets"] }, // ↩审核中心
       { key: "admin.nav.users.emailChange", href: "/admin/email-change-requests", icon: MailPlus, modules: ["review.emails"] }, // ↩人工账号申请：更改绑定邮箱申请列表
+      { key: "admin.nav.users.schoolVerify", href: "/admin/school-verify", icon: GraduationCap, modules: ["review.school"] }, // Module D：学校身份人工验证审核
     ],
   },
   // 3. 内容管理
@@ -169,6 +172,7 @@ const firstLevelItems: FirstLevel[] = [
       { key: "admin.nav.activities.list", href: "/admin/activities", icon: CalendarDays, modules: ["activities"] },
       { key: "admin.nav.activities.registrations", icon: ClipboardList, placeholder: true }, // ⏳跨活动报名汇总未实现
       { key: "admin.nav.activities.recruitment", href: "/admin/recruitment", icon: UserPlus, modules: ["recruitment"] }, // ↩招新管理
+      { key: "admin.nav.activities.clubApply", href: "/admin/club-apply", icon: ClipboardList, modules: ["recruitment"] }, // Module D：社团报名审核
     ],
   },
   // 6. 系统安全（admin 角色）
@@ -191,6 +195,7 @@ const firstLevelItems: FirstLevel[] = [
     modules: ["settings"],
     children: [
       { key: "admin.nav.config.site", href: "/admin/settings", icon: Settings, modules: ["settings"] },
+      { key: "admin.nav.config.sysdata", href: "/admin/sys-data", icon: Database, modules: ["settings"] }, // Module D：学院/年级/专业/班级管理
       { key: "admin.nav.config.themes", href: "/admin/themes", icon: Palette, modules: ["themes"] }, // 界面主题 CRUD/上传
       { key: "admin.nav.config.locale", icon: Globe, placeholder: true }, // ⏳专用本地化子页未实现
       { key: "admin.nav.config.oauth", href: "/admin/oauth", icon: KeyRound, modules: ["oauth"] }, // ↩OAuth 渠道

@@ -10,6 +10,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 logger = logging.getLogger("gdueca.config")
 
+# 项目版本号（全站唯一真值源）：升级版本只改这一处，
+# 前端对应常量 app 端 lib/version.ts 的 APP_VERSION，两者必须保持一致。
+PROJECT_VERSION = "v0.5.0"
+
 # 已知的弱 / 示例 JWT 密钥：命中时自动生成随机密钥，禁止用于签名
 _WEAK_JWT_SECRETS = {
     "",

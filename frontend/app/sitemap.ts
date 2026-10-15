@@ -10,7 +10,7 @@ const BASE_URL =
   process.env.NEXT_PUBLIC_SITE_URL || "https://gdueca.example.edu.cn";
 
 // 静态页面路径（不含 [locale] 前缀）
-const staticRoutes = ["", "/about", "/projects", "/events", "/join", "/blog", "/contact"];
+const staticRoutes = ["", "/about", "/projects", "/events", "/join", "/blog", "/submit"];
 
 export default function sitemap(): MetadataRoute.Sitemap {
 

@@ -40,7 +40,18 @@
   "privacy.visibilityPublic": "",
   "privacy.visibilityPrivateOnly": "",
   "nav": {
-    "memo": "मोमेंट्स"
+    "memo": "मोमेंट्स",
+    "community": "समुदाय",
+    "submit": "जमा करें",
+    "guestHint": "सभी व्यक्तिगत सुविधाएँ अनलॉक करने के लिए लॉग इन करें",
+    "goToSettings": "सेटिंग्स पर जाएँ"
+  },
+  "footer": {
+    "version": "संस्करण"
+  },
+  "submit": {
+    "title": "जमा करें",
+    "subtitle": "क्लब पंजीकरण और समस्या प्रतिक्रिया"
   },
   "memo": {
     "pageTitle": "मोमेंट्स",

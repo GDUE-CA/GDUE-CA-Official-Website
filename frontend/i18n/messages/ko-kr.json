@@ -12,6 +12,8 @@
     "join": "Register",
     "blog": "Blog",
     "contact": "Contact",
+    "community": "커뮤니티",
+    "submit": "제출",
     "language": "Language",
     "timezone": "Timezone",
     "timezoneAuto": "Auto (detect browser timezone)",
@@ -26,6 +28,8 @@
     "backend": "Backend",
     "logout": "Log out",
     "guest": "Guest",
+    "guestHint": "로그인하면 모든 개인 기능을 사용할 수 있습니다",
+    "goToSettings": "설정으로 이동",
     "login": "Log in",
     "register": "Sign up",
     "memo": "Moments",
@@ -207,6 +211,14 @@
     "cmsFormerMembersTitle": "Former Members"
   },
   "profile": {
+    "tagSchool": "재학생",
+    "tagClub": "동아리 회원",
+    "schoolInfoTitle": "학교 정보",
+    "schoolStudentId": "학번",
+    "schoolCollege": "단과대학",
+    "schoolMajor": "전공",
+    "schoolGrade": "학년",
+    "schoolClass": "학급",
     "personalInfo": "Personal Information",
     "personalInfoHint": "Edit all your profile fields at once; click Confirm to save",
     "continentAsia": "Asia",
@@ -429,6 +441,10 @@
       "finance": "Finance Department"
     },
     "form": {
+      "enrollYear": "입학 연도",
+      "classSuffix": "반 접미사",
+      "classPreview": "전체 학급명",
+      "loginRequired": "신청하려면 먼저 로그인하세요",
       "title": "Online Application",
       "subtitle": "Please fill in the following information",
       "name": "Name",
@@ -458,6 +474,8 @@
         "studentIdRequired": "Please enter your student ID",
         "majorRequired": "Please enter your major",
         "collegeRequired": "Please enter your college",
+        "enrollYearInvalid": "입학 연도는 4자리 숫자여야 합니다",
+        "classSuffixInvalid": "반 접미사는 A-Z 대문자 한 글자여야 합니다",
         "phoneCcRequired": "Please select a country code",
         "phoneRequired": "Please enter your phone number",
         "phoneInvalid": "Phone number does not match the selected country code format",
@@ -524,6 +542,7 @@
     "connect": "Connect",
     "copyright": "© 2026 GDUE Computer Association. All rights reserved.",
     "madeWith": "Built with care by the GDUECA Computer Association",
+    "version": "버전",
     "terms": "Terms of Use",
     "privacy": "Privacy Policy",
     "disclaimer": "Disclaimer"
@@ -646,7 +665,10 @@
     "profile": {
       "title": "Basic Details",
       "phoneDialCode": "Dialling code",
-      "phonePlaceholder": "Enter your phone number"
+      "phonePlaceholder": "Enter your phone number",
+      "badgesPreview": "내 배지",
+      "badgesEmpty": "아직 배지가 없습니다",
+      "badgesPreviewHint": "배지는 표시 전용이며 관리자가 부여하며 직접 편집할 수 없습니다."
     },
     "region": {
       "title": "Region & Time Zone",
@@ -800,6 +822,55 @@
         "confirmBody": "⚠️ 수동 심사 면제 모드\n연동 이메일이 다음으로 변경됩니다: {new}\n제출 즉시 적용됩니다. 다시 한번 확인해 주세요. 계속하시겠습니까?",
         "success": "이메일이 변경되었습니다"
       }
+    },
+    "privacy": {
+      "realName": "실명",
+      "realNameHint": "활성화하면 방문자가 프로필 페이지에서 실명을 볼 수 있습니다. 비활성화하면 본인만 볼 수 있습니다.",
+      "schoolInfo": "학교 정보",
+      "schoolInfoHint": "활성화하면 방문자가 프로필 페이지에서 단과대학·학급·학번을 볼 수 있습니다. 비활성화하면 본인만 볼 수 있습니다."
+    },
+    "school": {
+      "title": "학교 신원 인증",
+      "hint": "학교 정보를 제출하면 관리자가 수동 심사합니다. 승인되면 학번·단과대학·전공 등 정보 편집이 잠금 해제됩니다. 동아리 신청은 학교 인증을 자동 통과하지 않습니다.",
+      "statusNone": "미제출",
+      "statusPending": "심사 중",
+      "statusApproved": "승인됨",
+      "statusRejected": "반려됨",
+      "status_none": "미제출",
+      "status_pending": "심사 중",
+      "status_approved": "승인됨",
+      "status_rejected": "반려됨",
+      "approvedHint": "학교 신원 인증이 승인되었습니다. '기본 정보'에서 학교 정보를 관리할 수 있습니다.",
+      "pendingHint": "신청이 심사 중입니다. 심사 완료 시 사이트 내 쪽지로 알려드립니다. 중복 제출하지 마세요.",
+      "rejectedHint": "정보를 수정한 후 다시 제출할 수 있습니다.",
+      "rejectionReason": "반려 사유",
+      "studentId": "학번",
+      "studentIdPlaceholder": "11자리 학번 입력",
+      "studentIdHint": "11자리 숫자. 입학 연도는 최근 8년 이내여야 하며, 특수한 경우 관리자에게 문의하세요.",
+      "studentIdInvalid": "학번은 11자리 숫자여야 합니다",
+      "college": "단과대학",
+      "collegePlaceholder": "단과대학 선택",
+      "grade": "학년",
+      "gradePlaceholder": "학년 선택",
+      "major": "전공",
+      "majorPlaceholder": "전공 선택",
+      "majorSelectCollegeFirst": "먼저 단과대학을 선택하세요",
+      "class": "학급",
+      "classPlaceholder": "학급 선택",
+      "incomplete": "학번·단과대학·학년·전공·학급을 모두 입력하세요",
+      "remark": "비고",
+      "remarkPlaceholder": "전달할 사항 (선택)",
+      "attach": "첨부파일 (선택)",
+      "attachPlaceholder": "첨부파일 없음",
+      "attachHint": "학생증/캠퍼스카드 사진 등, 5MB 이하",
+      "attachUpload": "이미지 선택",
+      "attachFailed": "첨부파일 업로드 실패",
+      "submit": "인증 신청 제출",
+      "submitted": "신청이 제출되었습니다. 심사를 기다려 주세요.",
+      "submitFailed": "제출 실패, 잠시 후 다시 시도하세요",
+      "history": "신청 내역",
+      "profileSection": "학교 정보",
+      "profileSectionHint": "학교 신원 인증 승인 후 '기본 정보'에서 학번과 단과대학·학년·전공·학급을 편집할 수 있습니다."
     }
   },
   "admin": {
@@ -1109,7 +1180,86 @@
       "config.sso": "SSO 신뢰 앱",
       "audit": "로그 및 감사",
       "mailpush": "이메일 및 푸시",
-      "users.emailChange": "이메일 변경 신청 목록"
+      "users.emailChange": "이메일 변경 신청 목록",
+      "users.schoolVerify": "학교 인증 심사"
+    },
+    "sysdata": {
+      "title": "단과대학·전공 데이터",
+      "subtitle": "단과대학·학년·전공·학급 기초 데이터를 관리합니다. 프런트엔드 폼의 모든 선택지는 이 데이터에서 제공됩니다",
+      "tab.college": "단과대학 관리",
+      "tab.grade": "학년 관리",
+      "tab.major": "전공 관리",
+      "tab.class": "학급 관리",
+      "create": "추가",
+      "dialogHint": "입력 후 저장. 참조 중인 데이터는 삭제할 수 없으며 비활성화만 가능합니다.",
+      "empty": "데이터가 없습니다. '추가'를 눌러 첫 항목을 만드세요",
+      "noDeleteHint": "기초 데이터는 물리 삭제를 지원하지 않습니다. 업무 데이터에서 참조 중인 경우 비활성화만 허용되며, 비활성화하면 프런트엔드 선택지에서 사라집니다.",
+      "nameRequired": "이름을 입력하세요",
+      "yearInvalid": "학년은 1900~2999 사이의 4자리 연도여야 합니다",
+      "collegeRequired": "소속 단과대학을 선택하세요",
+      "collegeName": "단과대학 이름",
+      "gradeYear": "학년 (입학 연도)",
+      "belongCollege": "소속 단과대학",
+      "belongGrade": "소속 학년",
+      "belongMajor": "소속 전공",
+      "selectCollege": "단과대학 선택",
+      "selectGrade": "학년 선택",
+      "selectMajor": "전공 선택",
+      "majorName": "전공 이름",
+      "classDisplayName": "학급 표시 이름",
+      "classSuffix": "반 접미사",
+      "disabled": "비활성화됨",
+      "enable": "활성화",
+      "disable": "비활성화",
+      "moveUp": "위로 이동",
+      "moveDown": "아래로 이동"
+    },
+    "schoolVerify": {
+      "title": "학교 인증 심사",
+      "subtitle": "사용자가 제출한 학교 신원 인증 신청을 수동 심사합니다. 승인 시 학교 정보 편집이 잠금 해제됩니다",
+      "filter.pending": "심사 대기",
+      "filter.approved": "승인됨",
+      "filter.rejected": "반려됨",
+      "filter.all": "전체",
+      "searchPlaceholder": "사용자명 / 닉네임 / 학번 검색",
+      "empty": "신청 기록이 없습니다",
+      "approve": "승인",
+      "reject": "반려",
+      "approveConfirm": "{name} 님의 학교 신원 인증 신청을 승인하시겠습니까? 승인 시 학교 정보가 저장되고 재학생 태그가 활성화됩니다.",
+      "rejectTitle": "학교 인증 신청 반려",
+      "rejectHint": "반려 사유를 입력하세요. 사이트 내 쪽지로 사용자에게 전달되며, 사용자의 계정 정보는 수정되지 않습니다.",
+      "rejectRemarkRequired": "반려 사유를 입력하세요",
+      "rejectConfirm": "반려 확인",
+      "remarkLabel": "심사 메모",
+      "total": "총 {total}건"
+    },
+    "clubApply": {
+      "title": "동아리 신청 심사",
+      "subtitle": "프런트에서 제출된 동아리 신청을 처리합니다. 승인/거절 후 사이트 내 쪽지로 신청자에게 알립니다",
+      "filter.pending": "심사 대기",
+      "filter.accept": "승인됨",
+      "filter.reject": "거절됨",
+      "filter.all": "전체",
+      "searchPlaceholder": "사용자명 / 이름 / 학번 검색",
+      "empty": "신청 기록이 없습니다",
+      "accept": "승인",
+      "reject": "거절",
+      "acceptConfirm": "{name} 님의 동아리 신청을 승인하시겠습니까?",
+      "rejectTitle": "동아리 신청 거절",
+      "rejectHint": "메모를 입력하세요. 사이트 내 쪽지로 신청자에게 전달됩니다.",
+      "rejectNoteRequired": "메모를 입력하세요",
+      "rejectConfirm": "거절 확인",
+      "statusPending": "심사 대기",
+      "statusAccept": "승인됨",
+      "statusReject": "거절됨",
+      "typeSchool": "재학생",
+      "phone": "전화번호",
+      "enrollYear": "입학 연도",
+      "className": "학급",
+      "departments": "지원 부서",
+      "intro": "자기소개",
+      "adminNote": "메모",
+      "total": "총 {total}건"
     },
     "profile": {
       "title": "Profile",
@@ -1422,7 +1572,22 @@
       "batchEnable": "Enable selected",
       "batchDisable": "Disable selected",
       "batchSelected": "{count} accounts selected",
-      "batchDisableConfirm": "Disable the selected {count} accounts? Their sessions will be revoked immediately"
+      "batchDisableConfirm": "Disable the selected {count} accounts? Their sessions will be revoked immediately",
+      "detailBtn": "상세",
+      "detail": {
+        "back": "사용자 목록으로 돌아가기",
+        "title": "사용자 상세",
+        "notFound": "사용자가 존재하지 않거나 삭제되었습니다",
+        "basicInfo": "기본 정보",
+        "clubPosition": "동아리 직책",
+        "positionNone": "직책 없음",
+        "positionSaved": "직책이 업데이트되었습니다",
+        "positions": {
+          "president": "회장",
+          "vice_president": "부회장",
+          "member": "회원"
+        }
+      }
     },
     "permissions": {
       "moduleCol": "Module",
@@ -1453,7 +1618,8 @@
         "realname": "Realname Status",
         "stats": "Statistics",
         "audit_logs": "Audit Logs",
-        "memo": "Moments"
+        "memo": "Moments",
+        "badges": "배지 관리"
       }
     },
     "security": {
@@ -1987,6 +2153,35 @@
         "approved": "승인됨",
         "rejected": "거절됨"
       }
+    },
+    "badges": {
+      "title": "사용자 배지 관리",
+      "limit": "사용자 지정 배지는 최대 {limit}개",
+      "systemTitle": "시스템 배지",
+      "systemNone": "시스템 배지 없음",
+      "systemHint": "계정 역할에 따라 자동 생성되며 수동으로 수정할 수 없습니다.",
+      "customTitle": "사용자 지정 배지",
+      "add": "배지 추가",
+      "limitReached": "한도 도달({limit}개). 먼저 삭제 후 추가하세요.",
+      "empty": "사용자 지정 배지가 없습니다",
+      "saved": "저장됨",
+      "deleteConfirm": "배지「{name}」을(를) 삭제하시겠습니까?",
+      "active": "활성",
+      "inactive": "비활성",
+      "moveUp": "위로",
+      "moveDown": "아래로",
+      "edit": "편집",
+      "deactivate": "비활성화",
+      "activate": "활성화",
+      "delete": "삭제",
+      "save": "저장",
+      "cancel": "취소",
+      "name": "배지 텍스트",
+      "namePlaceholder": "예: 기술 고수",
+      "emoji": "이모지",
+      "emojiPlaceholder": "예: 🌟",
+      "bgColor": "배경색",
+      "textColor": "글자색"
     }
   },
   "ban": {
@@ -2034,6 +2229,10 @@
       "open": "Open",
       "resolved": "Resolved"
     }
+  },
+  "submit": {
+    "title": "제출",
+    "subtitle": "동아리 가입 및 문제 신고"
   },
   "bug": {
     "title": "Bug Report",
@@ -2288,5 +2487,13 @@
     "successHint": "모든 세션이 강제 로그아웃되었습니다. 로그인 페이지로 이동합니다",
     "backToLogin": "로그인으로 돌아가기",
     "manualEntry": "이메일을 사용할 수 없나요? 수동 복구 신청 제출"
+  },
+  "badges": {
+    "system": {
+      "president": "회장",
+      "vice_president": "부회장",
+      "admin": "동아리 관리자",
+      "member": "동아리 회원"
+    }
   }
 }

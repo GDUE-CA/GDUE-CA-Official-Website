@@ -708,7 +708,29 @@ async def update_profile(
         u.real_name = req.real_name
     if req.phone is not None:
         u.phone = req.phone
+    # ---- Module D：学校资料双重拦截（前端隐藏输入框 + 后端强制校验） ----
+    # 未通过学校身份验证（identity_school_verified=false）的账号拒绝写入学校相关字段。
+    school_ids = (req.college_id, req.major_id, req.grade_id, req.class_id)
+    school_ids_provided = any(v is not None for v in school_ids)
+    if req.student_id is not None and not u.identity_school_verified:
+        raise HTTPException(status_code=403, detail="学校身份未通过验证，不能修改学号")
+    if school_ids_provided:
+        if not u.identity_school_verified:
+            raise HTTPException(status_code=403, detail="学校身份未通过验证，不能修改学校资料")
+        # 四个 ID 必须成组提交
+        if any(v is None for v in school_ids):
+            raise HTTPException(status_code=400, detail="学校资料必须完整提交学院、年级、专业、班级")
+        # 整套组合严格校验（存在 + 启用 + 层级一致；复用学校验证校验逻辑）
+        from app.api.school_verify import _validate_combo
+        await _validate_combo(db, req.college_id, req.major_id, req.grade_id, req.class_id)
+        u.college_id = req.college_id
+        u.major_id = req.major_id
+        u.grade_id = req.grade_id
+        u.class_id = req.class_id
     if req.student_id is not None:
+        # 已验证用户自行修改学号：格式由 schema 校验（11 位数字），年份区间按用户表单规则校验
+        from app.api.school_verify import validate_student_id_year
+        validate_student_id_year(req.student_id)
         u.student_id = req.student_id
     # 时区：空字符串 = 恢复自动探测（存 NULL）；否则校验 IANA 后保存
     if req.timezone is not None:
@@ -1086,8 +1108,9 @@ async def update_user(
     if not (is_self or is_super):
         raise HTTPException(status_code=403, detail="只能修改自己的信息")
     if not is_super and (req.role is not None or req.is_active is not None
-                         or req.permission_overrides is not None):
-        raise HTTPException(status_code=403, detail="无权修改角色、账号状态或权限")
+                         or req.permission_overrides is not None
+                         or req.club_position is not None):
+        raise HTTPException(status_code=403, detail="无权修改角色、账号状态、权限或职务")
 
     u = await db.get(User, user_id)
     if not u:
@@ -1132,6 +1155,14 @@ async def update_user(
             u.is_active = req.is_active
             if not req.is_active:
                 await _revoke_user_sessions(db, user_id)
+        # 社团职务（展示层，与权限解耦）：空串 = 清除（置 NULL）
+        if req.club_position is not None:
+            new_pos = req.club_position or None
+            if new_pos != u.club_position:
+                _log(db, user, "user.club_position",
+                     f"user:{user_id} {u.club_position or '-'}->{new_pos or '-'}",
+                     get_client_ip(request))
+                u.club_position = new_pos
 
     _log(db, user, "user.update", f"user:{user_id}", get_client_ip(request))
     await db.commit()

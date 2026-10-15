@@ -191,6 +191,13 @@
   border-color: hsl(var(--border));
 }
 
+/* 移动端硬性规则：任何页面禁止出现水平滚动条。
+ * 用 clip 而非 hidden——hidden 会在视口上建立滚动容器，破坏子元素 position:sticky。 */
+html,
+body {
+  overflow-x: clip;
+}
+
 body {
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));

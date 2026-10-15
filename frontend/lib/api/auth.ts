@@ -255,6 +255,11 @@ export function createUser(payload: UserCreatePayload) {
   });
 }
 
+/** 用户详情 */
+export function fetchUserDetail(id: number) {
+  return apiFetch<AdminUser>(`/api/auth/users/${id}`, { withAuth: true });
+}
+
 /** 删除管理员账号 */
 export function deleteUser(id: number) {
   return apiFetch<void>(`/api/auth/users/${id}`, {

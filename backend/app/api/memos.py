@@ -31,6 +31,7 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import ctx_uid
+from app.core.badges import badges_for_users
 from app.core.bizcode import BizCode
 from app.core.exceptions import BizException
 from app.core.middleware import get_client_ip
@@ -80,14 +81,21 @@ def _vis_filter(uid: int | None):
     return or_(*clauses)
 
 
-def _author_dict(user: User | None) -> dict | None:
+def _author_dict(user: User | None, badges_map: dict[int, list[dict]] | None = None) -> dict | None:
     if not user:
         return None
     return {
         "id": user.id,
         "username": user.username,
+        "display_name": user.display_name or user.username,
         "avatar_url": user.avatar_url,
+        "badges": (badges_map or {}).get(user.id, []),
     }
+
+
+async def _badges_map_for(db: AsyncSession, users: list[User | None]) -> dict[int, list[dict]]:
+    """批量组装作者徽章（系统徽章动态计算 + 自定义徽章）；防 N+1。"""
+    return await badges_for_users(db, [u for u in users if u])
 
 
 def _tag_dicts(memo: Memo) -> list[dict]:
@@ -97,8 +105,10 @@ def _tag_dicts(memo: Memo) -> list[dict]:
     } for tg in memo.tags]
 
 
-def _memo_brief_dict(memo: Memo, liked_ids: set[int], fav_ids: set[int],
-                     first_img: str | None, has_img: bool) -> dict:
+async def _memo_brief_dict(memo: Memo, liked_ids: set[int], fav_ids: set[int],
+                     first_img: str | None, has_img: bool,
+                     db: AsyncSession | None = None) -> dict:
+    badges_map = await _badges_map_for(db, [memo.author]) if db else {}
     return {
         "id": memo.id,
         "excerpt": excerpt_of(memo.content_md),
@@ -110,7 +120,7 @@ def _memo_brief_dict(memo: Memo, liked_ids: set[int], fav_ids: set[int],
         "share_count": memo.share_count,
         "has_image": has_img,
         "first_image_url": first_img,
-        "author": _author_dict(memo.author),
+        "author": _author_dict(memo.author, badges_map),
         "tags": _tag_dicts(memo),
         "liked_by_me": memo.id in liked_ids,
         "favorited_by_me": memo.id in fav_ids,
@@ -149,7 +159,9 @@ async def _liked_fav_ids(db: AsyncSession, uid: int, memo_ids: list[int]) -> tup
     return liked, fav
 
 
-def _memo_out_dict(memo: Memo, liked: bool, fav: bool, attachments: list[MemoAttachment]) -> dict:
+async def _memo_out_dict(memo: Memo, liked: bool, fav: bool, attachments: list[MemoAttachment],
+                   db: AsyncSession | None = None) -> dict:
+    badges_map = await _badges_map_for(db, [memo.author]) if db else {}
     return {
         "id": memo.id,
         "content_md": memo.content_md,
@@ -161,7 +173,7 @@ def _memo_out_dict(memo: Memo, liked: bool, fav: bool, attachments: list[MemoAtt
         "favorite_count": memo.favorite_count,
         "comment_count": memo.comment_count,
         "share_count": memo.share_count,
-        "author": _author_dict(memo.author),
+        "author": _author_dict(memo.author, badges_map),
         "tags": _tag_dicts(memo),
         "attachments": [MemoAttachmentOut.model_validate(a).model_dump(mode="json") for a in attachments],
         "liked_by_me": liked,
@@ -172,20 +184,23 @@ def _memo_out_dict(memo: Memo, liked: bool, fav: bool, attachments: list[MemoAtt
     }
 
 
-def _version_brief_dict(v: MemoVersion, editor: User | None) -> dict:
+async def _version_brief_dict(v: MemoVersion, editor: User | None,
+                        db: AsyncSession | None = None) -> dict:
+    badges_map = await _badges_map_for(db, [editor]) if db else {}
     return {
         "id": v.id,
         "memo_id": v.memo_id,
         "version_no": v.version_no,
         "edit_note": v.edit_note,
-        "editor": _author_dict(editor),
+        "editor": _author_dict(editor, badges_map),
         "visibility": v.visibility.value,
         "created_at": v.created_at,
     }
 
 
-def _version_out_dict(v: MemoVersion, editor: User | None) -> dict:
-    d = _version_brief_dict(v, editor)
+async def _version_out_dict(v: MemoVersion, editor: User | None,
+                      db: AsyncSession | None = None) -> dict:
+    d = await _version_brief_dict(v, editor, db)
     d["content_md"] = v.content_md
     return d
 
@@ -213,7 +228,7 @@ async def get_shared_memo(
             MemoAttachment.memo_id == m.id, MemoAttachment.deleted_at.is_(None)
         ).order_by(MemoAttachment.id.asc())
     )).scalars().all()
-    return ok(data=_memo_out_dict(m, liked=False, fav=False, attachments=attachments))
+    return ok(data=await _memo_out_dict(m, liked=False, fav=False, attachments=attachments, db=db))
 
 
 @public_router.get("/timeline")
@@ -293,7 +308,7 @@ async def public_timeline(
         has_img = first_img is not None
         if has_image is False and has_img:
             continue
-        items.append(_memo_brief_dict(m, liked_ids, fav_ids, first_img, has_img))
+        items.append(await _memo_brief_dict(m, liked_ids, fav_ids, first_img, has_img, db=db))
 
     return ok(data={"total": total, "items": items, "page": page, "page_size": page_size})
 
@@ -338,7 +353,7 @@ async def public_memos_by_date(
     for m in rows:
         atts = att_map.get(m.id, [])
         first_img = next((a.url for a in atts if a.kind == "image"), None)
-        items.append(_memo_brief_dict(m, liked_ids, fav_ids, first_img, first_img is not None))
+        items.append(await _memo_brief_dict(m, liked_ids, fav_ids, first_img, first_img is not None, db=db))
     return ok(data={"date": date, "total": len(items), "items": items})
 
 
@@ -393,7 +408,7 @@ async def public_search(
             e = min(len(text), idx + 120)
             snippet = (text[s:e] + "…") if e < len(text) else text[s:e]
         items.append({
-            "memo": _memo_brief_dict(m, liked_ids, fav_ids, first_img, first_img is not None),
+            "memo": await _memo_brief_dict(m, liked_ids, fav_ids, first_img, first_img is not None, db=db),
             "snippet": snippet,
             "matched_keywords": [q],
         })
@@ -435,7 +450,7 @@ async def my_memos(
     for m in rows:
         atts = att_map.get(m.id, [])
         first_img = next((a.url for a in atts if a.kind == "image"), None)
-        items.append(_memo_brief_dict(m, liked_ids, fav_ids, first_img, first_img is not None))
+        items.append(await _memo_brief_dict(m, liked_ids, fav_ids, first_img, first_img is not None, db=db))
     return ok(data={"total": total, "items": items, "page": page, "page_size": page_size})
 
 
@@ -470,7 +485,7 @@ async def my_liked_memos(
     for m in rows:
         atts = att_map.get(m.id, [])
         first_img = next((a.url for a in atts if a.kind == "image"), None)
-        items.append(_memo_brief_dict(m, liked_ids, fav_ids, first_img, first_img is not None))
+        items.append(await _memo_brief_dict(m, liked_ids, fav_ids, first_img, first_img is not None, db=db))
     return ok(data={"total": total, "items": items, "page": page, "page_size": page_size})
 
 
@@ -505,7 +520,7 @@ async def my_favorite_memos(
     for m in rows:
         atts = att_map.get(m.id, [])
         first_img = next((a.url for a in atts if a.kind == "image"), None)
-        items.append(_memo_brief_dict(m, liked_ids, fav_ids, first_img, first_img is not None))
+        items.append(await _memo_brief_dict(m, liked_ids, fav_ids, first_img, first_img is not None, db=db))
     return ok(data={"total": total, "items": items, "page": page, "page_size": page_size})
 
 
@@ -638,7 +653,7 @@ async def update_memo(
             MemoAttachment.memo_id == m.id, MemoAttachment.deleted_at.is_(None)
         ).order_by(MemoAttachment.id.asc())
     )).scalars().all()
-    return ok(data=_memo_out_dict(m, liked=True, fav=True, attachments=attachments))
+    return ok(data=await _memo_out_dict(m, liked=True, fav=True, attachments=attachments, db=db))
 
 
 @author_router.delete("/{memo_id}")
@@ -677,7 +692,7 @@ async def archive_memo(
             MemoAttachment.memo_id == m.id, MemoAttachment.deleted_at.is_(None)
         )
     )).scalars().all()
-    return ok(data=_memo_out_dict(m, liked=True, fav=True, attachments=attachments))
+    return ok(data=await _memo_out_dict(m, liked=True, fav=True, attachments=attachments, db=db))
 
 
 @author_router.post("/{memo_id}/unarchive")
@@ -700,7 +715,7 @@ async def unarchive_memo(
             MemoAttachment.memo_id == m.id, MemoAttachment.deleted_at.is_(None)
         )
     )).scalars().all()
-    return ok(data=_memo_out_dict(m, liked=True, fav=True, attachments=attachments))
+    return ok(data=await _memo_out_dict(m, liked=True, fav=True, attachments=attachments, db=db))
 
 
 # ---------- 互动：点赞 / 收藏 ----------
@@ -808,7 +823,7 @@ async def list_memo_versions(
     out = []
     for v in rows:
         editor = await db.get(User, v.editor_id) if v.editor_id else None
-        out.append(_version_brief_dict(v, editor))
+        out.append(await _version_brief_dict(v, editor, db=db))
     return ok(data=out)
 
 
@@ -832,7 +847,7 @@ async def get_memo_version(
     if not v:
         raise BizException(BizCode.NOT_FOUND, data={"detail": "版本不存在"})
     editor = await db.get(User, v.editor_id) if v.editor_id else None
-    return ok(data=_version_out_dict(v, editor))
+    return ok(data=await _version_out_dict(v, editor, db=db))
 
 
 @author_router.post("/{memo_id}/rollback")
@@ -878,7 +893,7 @@ async def rollback_memo(
             MemoAttachment.memo_id == m.id, MemoAttachment.deleted_at.is_(None)
         )
     )).scalars().all()
-    return ok(data=_memo_out_dict(m, liked=True, fav=True, attachments=attachments))
+    return ok(data=await _memo_out_dict(m, liked=True, fav=True, attachments=attachments, db=db))
 
 
 # ---------- 附件上传（仅图片，按 blog.py 同样规则） ----------
@@ -1026,7 +1041,7 @@ async def get_memo(
                 MemoFavorite.memo_id == m.id, MemoFavorite.user_id == uid
             )
         )).scalar_one_or_none() is not None
-    return ok(data=_memo_out_dict(m, liked=liked, fav=fav, attachments=attachments))
+    return ok(data=await _memo_out_dict(m, liked=liked, fav=fav, attachments=attachments, db=db))
 
 
 # ---------- 分享计数（无鉴权，仅累加 share_count） ----------
@@ -1101,7 +1116,7 @@ async def admin_list_memos(
             )
         )).scalars().all()
         first_img = next((a.url for a in atts if a.kind == "image"), None)
-        items.append(_memo_brief_dict(m, set(), set(), first_img, first_img is not None))
+        items.append(await _memo_brief_dict(m, set(), set(), first_img, first_img is not None, db=db))
     return ok(data={"total": total, "items": items, "page": page, "page_size": page_size})
 
 
@@ -1122,7 +1137,7 @@ async def admin_get_memo(
             MemoAttachment.memo_id == m.id, MemoAttachment.deleted_at.is_(None)
         ).order_by(MemoAttachment.id.asc())
     )).scalars().all()
-    return ok(data=_memo_out_dict(m, liked=False, fav=False, attachments=attachments))
+    return ok(data=await _memo_out_dict(m, liked=False, fav=False, attachments=attachments, db=db))
 
 
 @admin_router.post("/{memo_id}/remove")
@@ -1155,7 +1170,7 @@ async def admin_remove_memo(
             MemoAttachment.memo_id == m.id, MemoAttachment.deleted_at.is_(None)
         )
     )).scalars().all()
-    return ok(data=_memo_out_dict(m, liked=False, fav=False, attachments=attachments))
+    return ok(data=await _memo_out_dict(m, liked=False, fav=False, attachments=attachments, db=db))
 
 
 @admin_router.post("/{memo_id}/restore")
@@ -1186,7 +1201,7 @@ async def admin_restore_memo(
             MemoAttachment.memo_id == m.id, MemoAttachment.deleted_at.is_(None)
         )
     )).scalars().all()
-    return ok(data=_memo_out_dict(m, liked=False, fav=False, attachments=attachments))
+    return ok(data=await _memo_out_dict(m, liked=False, fav=False, attachments=attachments, db=db))
 
 
 # ==================== 预留接口（暂不实现 UI） ====================

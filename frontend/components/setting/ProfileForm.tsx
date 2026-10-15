@@ -24,10 +24,18 @@ import {
 } from "@/components/ui/card";
 import { SearchableSelect, type SearchableSelectOption } from "@/components/setting/SearchableSelect";
 import { AvatarUploader } from "@/components/setting/AvatarUploader";
+import {
+  EMPTY_SCHOOL_CASCADE,
+  SchoolCascadeSelects,
+  type SchoolCascadeValue,
+} from "@/components/setting/SchoolCascadeSelects";
+import { SchoolVerifyCard } from "@/components/setting/SchoolVerifyCard";
+import { BadgeList } from "@/components/user/BadgeChip";
 import { useDirtyGuard } from "@/components/setting/SettingGuardContext";
 import { fetchProfile, updateProfile } from "@/lib/api/auth";
+import { fetchPublicProfile } from "@/lib/api/profile";
 import { fetchGeoCountries } from "@/lib/api/geo";
-import type { AdminUser, GeoCountry } from "@/types/api";
+import type { AdminUser, BadgeOut, GeoCountry } from "@/types/api";
 import { CheckCircle2, Loader2, QrCode } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { cn } from "@/lib/utils";
@@ -53,6 +61,8 @@ export function ProfileForm() {
 
   const [profile, setProfile] = useState<AdminUser | null>(null);
   const [countries, setCountries] = useState<GeoCountry[]>([]);
+  /** 本人徽章预览（仅展示不可编辑；取自公开主页接口，含系统徽章+自定义徽章） */
+  const [badges, setBadges] = useState<BadgeOut[]>([]);
 
   const [displayName, setDisplayName] = useState("");
   const [realName, setRealName] = useState("");
@@ -63,9 +73,13 @@ export function ProfileForm() {
   const [gender, setGender] = useState("");
   const [birthday, setBirthday] = useState("");
   const [bio, setBio] = useState("");
+  // Module D：学校资料（学院/年级/专业/班级外键 ID 联动；仅已验证用户显示）
+  const [schoolCascade, setSchoolCascade] = useState<SchoolCascadeValue>({ ...EMPTY_SCHOOL_CASCADE });
 
   // 初始快照，用于 dirty 判断
   const initialRef = useRef<string | null>(null);
+  // 学校资料初始快照（四个外键 ID；独立对比，只有变化才成组提交）
+  const initialCascadeRef = useRef<string>("");
 
   const isZh = locale.startsWith("zh");
 
@@ -78,6 +92,22 @@ export function ProfileForm() {
         setDisplayName(p.display_name ?? "");
         setRealName(p.real_name ?? "");
         setStudentId(p.student_id ?? "");
+        // Module D：学校资料（仅已通过学校身份验证的用户可编辑）
+        const verified = p.identity_school_verified === true;
+        const cascade: SchoolCascadeValue = verified
+          ? {
+              college_id: p.college_id ?? null,
+              major_id: p.major_id ?? null,
+              grade_id: p.grade_id ?? null,
+              class_id: p.class_id ?? null,
+            }
+          : { ...EMPTY_SCHOOL_CASCADE };
+        setSchoolCascade(cascade);
+        initialCascadeRef.current = JSON.stringify(cascade);
+        // 徽章预览：走公开主页接口（本人视角，含系统徽章动态计算结果）
+        fetchPublicProfile(p.username)
+          .then((pub) => setBadges(pub.badges ?? []))
+          .catch(() => setBadges([]));
         const { dial: d, number: n } = parsePhone(p.phone ?? "");
         setPhoneBody(n);
         setDial(d || (cs.some((c) => c.dial_code === "86") ? "86" : (cs[0]?.dial_code ?? "")));
@@ -121,8 +151,9 @@ export function ProfileForm() {
 
   const dirty =
     initialRef.current !== null &&
-    JSON.stringify({ dn: displayName, rn: realName, si: studentId, dial, pb: phoneBody, g: gender, bd: birthday, bio }) !==
-      initialRef.current;
+    (JSON.stringify({ dn: displayName, rn: realName, si: studentId, dial, pb: phoneBody, g: gender, bd: birthday, bio }) !==
+      initialRef.current ||
+      JSON.stringify(schoolCascade) !== initialCascadeRef.current);
 
   // 注册 dirty 到离开守卫
   useEffect(() => {
@@ -138,16 +169,61 @@ export function ProfileForm() {
     try {
       const number = phoneBody.trim();
       const phone = !number ? "" : dial ? `+${dial} ${number}` : number;
+      const verified = profile?.identity_school_verified === true;
+
+      // Module D：学号仅已验证用户可写（未验证用户输入框隐藏，state 恒为初始值）
+      let studentIdPayload: string | undefined;
+      if (verified) {
+        const sid = studentId.trim();
+        if (!/^\d{11}$/.test(sid)) {
+          setError(t("setting.school.studentIdInvalid"));
+          setSaving(false);
+          return;
+        }
+        studentIdPayload = sid;
+      }
+
+      // 学校资料四 ID：只有变化才成组提交（后端要求成组且严格校验层级）
+      const cascadeDirty = JSON.stringify(schoolCascade) !== initialCascadeRef.current;
+      let schoolIds: { college_id: number; major_id: number; grade_id: number; class_id: number } | undefined;
+      if (verified && cascadeDirty) {
+        if (
+          schoolCascade.college_id == null || schoolCascade.major_id == null ||
+          schoolCascade.grade_id == null || schoolCascade.class_id == null
+        ) {
+          setError(t("setting.school.incomplete"));
+          setSaving(false);
+          return;
+        }
+        schoolIds = {
+          college_id: schoolCascade.college_id,
+          major_id: schoolCascade.major_id,
+          grade_id: schoolCascade.grade_id,
+          class_id: schoolCascade.class_id,
+        };
+      }
+
       const updated = await updateProfile({
         display_name: displayName.trim(),
         real_name: realName.trim(),
-        student_id: studentId.trim(),
         phone,
         gender: gender || "",
         birthday: birthday ? localInputToUtcIso(birthday) : "",
         bio: bio.trim(),
+        ...(studentIdPayload !== undefined ? { student_id: studentIdPayload } : {}),
+        ...(schoolIds ?? {}),
       });
       setProfile(updated);
+      const nextCascade: SchoolCascadeValue = verified
+        ? {
+            college_id: updated.college_id ?? schoolCascade.college_id,
+            major_id: updated.major_id ?? schoolCascade.major_id,
+            grade_id: updated.grade_id ?? schoolCascade.grade_id,
+            class_id: updated.class_id ?? schoolCascade.class_id,
+          }
+        : { ...EMPTY_SCHOOL_CASCADE };
+      setSchoolCascade(nextCascade);
+      initialCascadeRef.current = JSON.stringify(nextCascade);
       initialRef.current = JSON.stringify({
         dn: displayName.trim(),
         rn: realName.trim(),
@@ -212,15 +288,20 @@ export function ProfileForm() {
                   placeholder={t("admin.profile.realNamePlaceholder")}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="pf-studentId">{t("admin.profile.studentId")}</Label>
-                <Input
-                  id="pf-studentId"
-                  value={studentId}
-                  onChange={(e) => setStudentId(e.target.value)}
-                  placeholder={t("admin.profile.studentIdPlaceholder")}
-                />
-              </div>
+              {/* Module D：学号仅学校身份已验证用户可见（社会成员完全隐藏） */}
+              {profile?.identity_school_verified && (
+                <div className="space-y-2">
+                  <Label htmlFor="pf-studentId">{t("admin.profile.studentId")}</Label>
+                  <Input
+                    id="pf-studentId"
+                    value={studentId}
+                    onChange={(e) => setStudentId(e.target.value.replace(/\D/g, "").slice(0, 11))}
+                    inputMode="numeric"
+                    maxLength={11}
+                    placeholder={t("admin.profile.studentIdPlaceholder")}
+                  />
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="pf-phone">{t("admin.profile.phone")}</Label>
                 <div className="flex gap-2">
@@ -290,6 +371,32 @@ export function ProfileForm() {
                   maxLength={140}
                 />
               </div>
+              {/* 徽章预览：仅展示，不可编辑；维护入口在后台用户详情页 */}
+              <div className="space-y-2 sm:col-span-2">
+                <Label>{t("setting.profile.badgesPreview")}</Label>
+                <div className="flex items-center gap-1.5 flex-wrap rounded-md border border-border bg-muted/30 px-3 py-2.5 min-h-10">
+                  {badges.length > 0 ? (
+                    <BadgeList badges={badges} />
+                  ) : (
+                    <span className="text-xs text-muted-foreground">
+                      {t("setting.profile.badgesEmpty")}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {t("setting.profile.badgesPreviewHint")}
+                </p>
+              </div>
+              {/* Module D：学校资料编辑（仅已验证用户；四 ID 成组提交，后端严格校验层级） */}
+              {profile?.identity_school_verified && (
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>{t("setting.school.profileSection")}</Label>
+                  <SchoolCascadeSelects value={schoolCascade} onChange={setSchoolCascade} />
+                  <p className="text-xs text-muted-foreground">
+                    {t("setting.school.profileSectionHint")}
+                  </p>
+                </div>
+              )}
             </div>
 
             {error && (
@@ -319,6 +426,9 @@ export function ProfileForm() {
           </form>
         </CardContent>
       </Card>
+
+      {/* Module D：学校身份验证（四态流转；未验证用户提交申请入口） */}
+      <SchoolVerifyCard />
 
       {/* 个人主页二维码：扫码直达 /{locale}/u/{username} */}
       {profile?.username && (

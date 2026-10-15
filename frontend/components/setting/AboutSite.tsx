@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useI18n } from "@/i18n/provider";
 import { useLocalizedPath } from "@/lib/navigation";
+import { APP_VERSION } from "@/lib/version";
 import {
   Card,
   CardContent,
@@ -25,7 +26,6 @@ import {
 } from "@/components/ui/card";
 
 const REPO_URL = "https://github.com/liang1481624299/GDUE-CA-Official-Website";
-const APP_VERSION = "0.1.0";
 
 export function AboutSite() {
   const { t } = useI18n();
@@ -35,7 +35,7 @@ export function AboutSite() {
     {
       icon: Tag,
       label: t("setting.about.version"),
-      value: `v${APP_VERSION}`,
+      value: APP_VERSION,
     },
     {
       icon: Github,

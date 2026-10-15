@@ -13,10 +13,11 @@ import { handleVerify, riskGuard, VERIFY_PATH } from "@/lib/riskGuard";
  * 3. 内容安全策略（CSP）：每个请求生成随机 nonce，只允许带 nonce 的脚本执行，
  *    即使页面被注入 <script> / 事件处理器也无法运行（XSS 纵深防御）
  * 4. 国际化路由（i18n URL 规范）：
- *    - 无 locale 前缀的裸路径 → 按用户偏好（cookie → Accept-Language → zh-cn）307 补前缀，子路径与 query 完整保留
- *    - 非法 locale（首段形似 locale 但不在白名单，如 /fr/about、/zh/blog）→ 剥离非法段后补检测到的 locale
- *    - 混合大小写（如 /zh-CN/x）→ 301 归一到全小写规范形式
- *    - 旧 /en 前缀 → 兼容重定向到 /en-us
+ *    - 无 locale 前缀的裸路径 → 按用户偏好（登录用户 UI 语言 → cookie → Accept-Language → zh-cn）
+ *      301 永久补前缀（全站唯一允许 301 的场景），子路径 / query / hash 完整保留
+ *    - 非法 locale（首段形似 locale 但不在白名单，如 /fr/about、/zh/blog）→ 剥离非法段后补检测到的 locale（301）
+ *    - 混合大小写（如 /zh-CN/x）→ 307 归一到全小写规范形式
+ *    - 旧 /en 前缀 → 兼容重定向到 /en-us（307）
  *    admin/setting/auth 全部纳入 locale 前缀规则（经 next.config rewrites 内部映射到实际页面路由）
  * 5. 访问风控：按外部 IP 风控结果对风险访客下发人机验证或直接拒绝（见 lib/riskGuard）
  */
@@ -205,15 +206,18 @@ function detectLocale(request: NextRequest): Locale {
   return defaultLocale;
 }
 
-/** 若路径缺少合法 locale 前缀（或为非法 / 旧版前缀），返回应重定向到的 URL；否则返回 null */
-function localeRedirect(request: NextRequest): URL | null {
+/** 重定向结果：目标 URL + 状态码（locale 补全用 301；其余兼容跳转沿用 307） */
+type LocaleRedirect = { url: URL; status: number };
+
+/** 若路径缺少合法 locale 前缀（或为非法 / 旧版前缀），返回应重定向到的 URL 与状态码；否则返回 null */
+function localeRedirect(request: NextRequest): LocaleRedirect | null {
   const { pathname } = request.nextUrl;
 
   // 旧 /en 前缀兼容重定向 → 直跳 en-us
   if (pathname === "/en" || pathname.startsWith("/en/")) {
     const url = request.nextUrl.clone();
     url.pathname = `/en-us${pathname.slice(3)}`;
-    return url;
+    return { url, status: 307 };
   }
 
   const firstSeg = pathname.split("/")[1] ?? "";
@@ -224,7 +228,7 @@ function localeRedirect(request: NextRequest): URL | null {
     const rest = pathname.slice(firstSeg.length + 1); // 去掉 /{oldLocale}
     const url = request.nextUrl.clone();
     url.pathname = `/${newLocale}${rest === "" ? "" : "/" + rest}`;
-    return url;
+    return { url, status: 307 };
   }
 
   const segLocale = firstSeg ? urlLangToLocale(firstSeg) : null;
@@ -233,7 +237,7 @@ function localeRedirect(request: NextRequest): URL | null {
   if (segLocale && firstSeg !== segLocale) {
     const url = request.nextUrl.clone();
     url.pathname = `/${segLocale}${pathname.slice(firstSeg.length + 1)}`;
-    return url;
+    return { url, status: 307 };
   }
 
   // 路径已含合法 locale 前缀 → 放行（admin/setting/auth 同样在此放行，
@@ -246,20 +250,21 @@ function localeRedirect(request: NextRequest): URL | null {
   // 非法 locale 防护（spec §4）：首段形似 locale（xx 或 xx-xx）但不在白名单，
   // 例如 /fr/about、/zh/blog、/de → 剥离非法段，用检测到的 locale 重新拼前缀，
   // 保留后续全部子路径与 query。注意：/en 已被上方旧前缀兼容处理。
+  // 该场景属于「缺少合法 locale 前缀」→ 按 spec §6 用 301 补全（全站唯一允许 301 的场景）。
   if (firstSeg && !segLocale && LOCALE_LIKE_RE.test(firstSeg)) {
     const detected = detectLocale(request);
     const rest = pathname.replace(/^\/[^/]+/, ""); // 去掉非法首段："/fr/about"→"/about"，"/fr"→""
     const url = request.nextUrl.clone();
     url.pathname = `/${localeToUrlLang(detected)}${rest}`;
-    return url;
+    return { url, status: 301 };
   }
 
   // 裸路径（无 locale 前缀，首段为业务页面如 /about、/admin、/events）
-  // → 307 补上检测到的 locale 前缀，子路径与 query 完整保留
+  // → 301 补上检测到的 locale 前缀（全站唯一允许 301 的场景），子路径与 query 完整保留
   const detected = detectLocale(request);
   const url = request.nextUrl.clone();
   url.pathname = `/${localeToUrlLang(detected)}${pathname}`;
-  return url;
+  return { url, status: 301 };
 }
 
 function requestIsHttps(request: NextRequest): boolean {
@@ -285,8 +290,8 @@ export async function proxy(request: NextRequest) {
   const settingRedirect = settingGuard(request);
   if (settingRedirect) return NextResponse.redirect(settingRedirect);
 
-  const redirectUrl = localeRedirect(request);
-  if (redirectUrl) return NextResponse.redirect(redirectUrl);
+  const localeRedir = localeRedirect(request);
+  if (localeRedir) return NextResponse.redirect(localeRedir.url, localeRedir.status);
 
   const blocked = await riskGuard(request, guardCtx);
   if (blocked) return blocked;

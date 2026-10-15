@@ -16,8 +16,10 @@ export const PERMISSION_MODULES = [
   "review.bugs",
   "review.resets",
   "review.emails", // 更改绑定邮箱人工申请审核
+  "review.school", // 学校身份人工验证审核（Module D）
   "settings",
   "users",
+  "badges", // 用户徽章管理（用户详情页内）
   // ---------- CMS 扩展 ----------
   "announcements",
   "content",
@@ -54,8 +56,10 @@ export const ROLE_DEFAULTS: Record<string, Partial<Record<PermissionModule, Perm
     "review.bugs": ["view", "manage"],
     "review.resets": ["view", "manage"],
     "review.emails": ["view", "manage"],
+    "review.school": ["view", "manage"],
     settings: ["view", "manage"],
     users: ["view", "manage"],
+    badges: ["view", "manage"],
     announcements: ["view", "manage"],
     content: ["view", "manage"],
     members: ["view", "manage"],
@@ -80,8 +84,10 @@ export const ROLE_DEFAULTS: Record<string, Partial<Record<PermissionModule, Perm
     "review.bugs": ["view", "manage"],
     "review.resets": ["view", "manage"],
     "review.emails": ["view", "manage"],
+    "review.school": ["view", "manage"],
     settings: ["view", "manage"],
     users: ["view"],
+    badges: ["view", "manage"],
     // 内容类：admin 可管理
     announcements: ["view", "manage"],
     content: ["view", "manage"],

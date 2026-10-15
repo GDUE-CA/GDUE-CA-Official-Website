@@ -40,7 +40,18 @@
   "privacy.visibilityPublic": "",
   "privacy.visibilityPrivateOnly": "",
   "nav": {
-    "memo": "Momenti"
+    "memo": "Momenti",
+    "community": "Community",
+    "submit": "Invia",
+    "guestHint": "Accedi per sbloccare tutte le funzioni personali",
+    "goToSettings": "Vai alle impostazioni"
+  },
+  "footer": {
+    "version": "Versione"
+  },
+  "submit": {
+    "title": "Invia",
+    "subtitle": "Iscrizione al club e segnalazione problemi"
   },
   "memo": {
     "pageTitle": "Momenti",

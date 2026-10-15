@@ -6,19 +6,21 @@
   },
   "nav": {
     "home": "首頁",
-    "about": "社團介紹",
-    "projects": "項目展示",
+    "about": "關於我們",
+    "projects": "項目",
     "events": "活動",
     "join": "報名",
-    "blog": "技術博客",
+    "blog": "博客",
     "contact": "聯繫我們",
+    "community": "社區",
+    "submit": "提交",
     "language": "語言",
     "timezone": "時區",
     "timezoneAuto": "自動（探測瀏覽器時區）",
     "theme": "切換主題",
     "menu": "選單",
     "settings": "設定",
-    "quickSettings": "快速設定",
+    "quickSettings": "快捷設定",
     "admin": "管理員",
     "accountMenu": "使用者選單",
     "personalSettings": "個人設定",
@@ -26,6 +28,8 @@
     "backend": "後台",
     "logout": "登出",
     "guest": "訪客",
+    "guestHint": "登入解鎖全部個人功能",
+    "goToSettings": "前往設定",
     "login": "登入",
     "register": "註冊",
     "memo": "說說",
@@ -207,6 +211,14 @@
     "cmsFormerMembersTitle": "往屆成員"
   },
   "profile": {
+    "tagSchool": "本校學生",
+    "tagClub": "社團成員",
+    "schoolInfoTitle": "學校資料",
+    "schoolStudentId": "學號",
+    "schoolCollege": "學院",
+    "schoolMajor": "專業",
+    "schoolGrade": "年級",
+    "schoolClass": "班級",
     "personalInfo": "個人資訊",
     "personalInfoHint": "統一編輯所有個人資料，點擊確定一次性保存",
     "continentAsia": "亞洲",
@@ -429,6 +441,10 @@
       "finance": "財務部"
     },
     "form": {
+      "enrollYear": "入學年份",
+      "classSuffix": "班號後綴",
+      "classPreview": "完整班級",
+      "loginRequired": "報名需要先登入帳號",
       "title": "在線報名",
       "subtitle": "請如實填寫以下信息",
       "name": "姓名",
@@ -458,6 +474,8 @@
         "studentIdRequired": "請輸入學號",
         "majorRequired": "請輸入專業",
         "collegeRequired": "請輸入學院",
+        "enrollYearInvalid": "入學年份必須是 4 位數字",
+        "classSuffixInvalid": "班號後綴必須是單個大寫字母 A-Z",
         "phoneCcRequired": "請選擇國家區號",
         "phoneRequired": "請輸入手機號",
         "phoneInvalid": "請輸入符合該區號規範的手機號",
@@ -524,6 +542,7 @@
     "connect": "關注我們",
     "copyright": "© 2026 廣東第二師範學院計算機協會. 保留所有權利.",
     "madeWith": "由廣東二師計協精心打造",
+    "version": "版本",
     "terms": "使用條款",
     "privacy": "隱私政策",
     "disclaimer": "免責聲明"
@@ -646,7 +665,10 @@
     "profile": {
       "title": "基本資料",
       "phoneDialCode": "電話區號",
-      "phonePlaceholder": "請輸入手提電話號碼"
+      "phonePlaceholder": "請輸入手提電話號碼",
+      "badgesPreview": "我的徽章",
+      "badgesEmpty": "暫無徽章",
+      "badgesPreviewHint": "徽章僅用於展示，由管理員授予，無法自行編輯。"
     },
     "region": {
       "title": "地區與時區",
@@ -776,6 +798,55 @@
         "confirmBody": "⚠️人工審核豁免模式\n即將更新帳號綁定電郵為：{new}\n確認提交之後綁定電郵就會變更；請再三核對電郵無誤。確認繼續？",
         "success": "電郵更換成功"
       }
+    },
+    "privacy": {
+      "realName": "真實姓名",
+      "realNameHint": "開啟後，訪客可在你的個人主頁看到真實姓名；關閉則僅自己可見。",
+      "schoolInfo": "學校資訊",
+      "schoolInfoHint": "開啟後，訪客可在你的個人主頁看到學院、班級、學號；關閉則僅自己可見。"
+    },
+    "school": {
+      "title": "學校身份驗證",
+      "hint": "提交學校資料供管理員人工審核；驗證通過後可解鎖學號、學院、專業等資料編輯。報名社團不會自動通過學校驗證。",
+      "statusNone": "未提交",
+      "statusPending": "審核中",
+      "statusApproved": "已通過",
+      "statusRejected": "已駁回",
+      "status_none": "未提交",
+      "status_pending": "審核中",
+      "status_approved": "已通過",
+      "status_rejected": "已駁回",
+      "approvedHint": "學校身份驗證已通過，可在「個人資料」中維護學校資訊。",
+      "pendingHint": "申請正在審核中，請耐心等待，審核完成將透過站內信通知你。請勿重複提交。",
+      "rejectedHint": "你可以修改資料後重新提交申請。",
+      "rejectionReason": "駁回理由",
+      "studentId": "學號",
+      "studentIdPlaceholder": "請輸入 11 位學號",
+      "studentIdHint": "11 位純數字；入學年份需在近 8 年內，特殊年份請聯絡管理員人工錄入。",
+      "studentIdInvalid": "學號必須是 11 位純數字",
+      "college": "學院",
+      "collegePlaceholder": "請選擇學院",
+      "grade": "年級",
+      "gradePlaceholder": "請選擇年級",
+      "major": "專業",
+      "majorPlaceholder": "請選擇專業",
+      "majorSelectCollegeFirst": "請先選擇學院",
+      "class": "班級",
+      "classPlaceholder": "請選擇班級",
+      "incomplete": "請完整填寫學號、學院、年級、專業與班級",
+      "remark": "備註",
+      "remarkPlaceholder": "需要說明的情況（可選）",
+      "attach": "附件（可選）",
+      "attachPlaceholder": "未選擇附件",
+      "attachHint": "學生證 / 校園卡照片等證明材料，≤5MB",
+      "attachUpload": "選擇圖片",
+      "attachFailed": "附件上傳失敗",
+      "submit": "提交驗證申請",
+      "submitted": "申請已提交，請等待管理員審核",
+      "submitFailed": "提交失敗，請稍後重試",
+      "history": "申請歷史",
+      "profileSection": "學校資料",
+      "profileSectionHint": "學校身份驗證通過後，可在「基礎資料」中編輯學號與學院、年級、專業、班級。"
     }
   },
   "admin": {
@@ -1083,7 +1154,86 @@
       "config.sso": "SSO 受信應用",
       "audit": "日誌與稽核",
       "mailpush": "郵件與推送",
-      "users.emailChange": "更改綁定電郵申請列表"
+      "users.emailChange": "更改綁定電郵申請列表",
+      "users.schoolVerify": "學校身份審核"
+    },
+    "sysdata": {
+      "title": "學院專業數據",
+      "subtitle": "維護學院、年級、專業、班級基礎數據；前端表單下拉全部來自本數據",
+      "tab.college": "學院管理",
+      "tab.grade": "年級管理",
+      "tab.major": "專業管理",
+      "tab.class": "班級管理",
+      "create": "新增",
+      "dialogHint": "填寫後保存；被引用的數據不可刪除，僅可停用。",
+      "empty": "暫無數據，點擊「新增」建立第一條",
+      "noDeleteHint": "基礎數據不支援物理刪除；存在業務引用時僅允許停用，停用後前端下拉不再出現。",
+      "nameRequired": "請輸入名稱",
+      "yearInvalid": "年級必須是 1900-2999 之間的 4 位年份",
+      "collegeRequired": "請選擇所屬學院",
+      "collegeName": "學院名稱",
+      "gradeYear": "年級（入學年份）",
+      "belongCollege": "所屬學院",
+      "belongGrade": "所屬年級",
+      "belongMajor": "所屬專業",
+      "selectCollege": "請選擇學院",
+      "selectGrade": "請選擇年級",
+      "selectMajor": "請選擇專業",
+      "majorName": "專業名稱",
+      "classDisplayName": "班級顯示名稱",
+      "classSuffix": "班號後綴",
+      "disabled": "已停用",
+      "enable": "啟用",
+      "disable": "停用",
+      "moveUp": "上移",
+      "moveDown": "下移"
+    },
+    "schoolVerify": {
+      "title": "學校身份審核",
+      "subtitle": "人工審核用戶提交的學校身份驗證申請；通過後用戶可維護學校資料",
+      "filter.pending": "待審核",
+      "filter.approved": "已通過",
+      "filter.rejected": "已駁回",
+      "filter.all": "全部",
+      "searchPlaceholder": "搜尋用戶名 / 暱稱 / 學號",
+      "empty": "暫無申請記錄",
+      "approve": "通過",
+      "reject": "駁回",
+      "approveConfirm": "確認通過 {name} 的學校身份驗證申請？通過後將寫入其學校資料並開啟本校學生標識。",
+      "rejectTitle": "駁回學校驗證申請",
+      "rejectHint": "請填寫駁回理由，將透過站內信告知用戶；用戶的帳號資料不會被修改。",
+      "rejectRemarkRequired": "請填寫駁回理由",
+      "rejectConfirm": "確認駁回",
+      "remarkLabel": "審核備註",
+      "total": "共 {total} 條記錄"
+    },
+    "clubApply": {
+      "title": "社團報名審核",
+      "subtitle": "處理前台提交的社團報名；接納/拒絕後將透過站內信通知申請人",
+      "filter.pending": "待審核",
+      "filter.accept": "已接納",
+      "filter.reject": "已拒絕",
+      "filter.all": "全部",
+      "searchPlaceholder": "搜尋用戶名 / 姓名 / 學號",
+      "empty": "暫無報名記錄",
+      "accept": "接納",
+      "reject": "拒絕",
+      "acceptConfirm": "確認接納 {name} 的社團報名？",
+      "rejectTitle": "拒絕社團報名",
+      "rejectHint": "請填寫備註，將透過站內信告知申請人。",
+      "rejectNoteRequired": "請填寫備註",
+      "rejectConfirm": "確認拒絕",
+      "statusPending": "待審核",
+      "statusAccept": "已接納",
+      "statusReject": "已拒絕",
+      "typeSchool": "本校在讀",
+      "phone": "手機號",
+      "enrollYear": "入學年份",
+      "className": "班級",
+      "departments": "意向部門",
+      "intro": "自我介紹",
+      "adminNote": "備註",
+      "total": "共 {total} 條記錄"
     },
     "profile": {
       "title": "個人資料",
@@ -1396,7 +1546,22 @@
       "batchEnable": "批量啟用",
       "batchDisable": "批量停用",
       "batchSelected": "已選 {count} 個帳號",
-      "batchDisableConfirm": "確認停用選中的 {count} 個帳號？其登入會話將立即下線"
+      "batchDisableConfirm": "確認停用選中的 {count} 個帳號？其登入會話將立即下線",
+      "detailBtn": "詳情",
+      "detail": {
+        "back": "返回用戶列表",
+        "title": "用戶詳情",
+        "notFound": "用戶不存在或已被刪除",
+        "basicInfo": "基本資料",
+        "clubPosition": "社團職務",
+        "positionNone": "無職務",
+        "positionSaved": "職務已更新",
+        "positions": {
+          "president": "會長",
+          "vice_president": "副會長",
+          "member": "社員"
+        }
+      }
     },
     "permissions": {
       "moduleCol": "模組",
@@ -1427,7 +1592,8 @@
         "realname": "實名狀態",
         "stats": "資料統計",
         "audit_logs": "操作日誌",
-        "memo": "說說管理"
+        "memo": "說說管理",
+        "badges": "徽章管理"
       }
     },
     "security": {
@@ -1961,6 +2127,35 @@
         "approved": "已同意",
         "rejected": "已駁回"
       }
+    },
+    "badges": {
+      "title": "用戶徽章管理",
+      "limit": "自訂徽章最多 {limit} 枚",
+      "systemTitle": "系統徽章",
+      "systemNone": "無系統徽章",
+      "systemHint": "跟隨帳號角色自動生成，不可手動修改。",
+      "customTitle": "自訂徽章",
+      "add": "新增徽章",
+      "limitReached": "已達上限（{limit} 枚），請先刪除再新增。",
+      "empty": "暫無自訂徽章",
+      "saved": "已儲存",
+      "deleteConfirm": "確定刪除徽章「{name}」嗎？",
+      "active": "啟用中",
+      "inactive": "已停用",
+      "moveUp": "上移",
+      "moveDown": "下移",
+      "edit": "編輯",
+      "deactivate": "停用",
+      "activate": "啟用",
+      "delete": "刪除",
+      "save": "儲存",
+      "cancel": "取消",
+      "name": "徽章文字",
+      "namePlaceholder": "例如：技術大佬",
+      "emoji": "Emoji",
+      "emojiPlaceholder": "例如：🌟",
+      "bgColor": "背景色",
+      "textColor": "文字色"
     }
   },
   "ban": {
@@ -2008,6 +2203,10 @@
       "open": "待處理",
       "resolved": "已解決"
     }
+  },
+  "submit": {
+    "title": "提交",
+    "subtitle": "社團報名與問題回饋入口"
   },
   "bug": {
     "title": "Bug 回報",
@@ -2262,5 +2461,13 @@
     "successHint": "所有登入工作階段已經強制下線，好快會跳去登入頁",
     "backToLogin": "返去登入",
     "manualEntry": "電郵用唔到？提交人工搵返申請"
+  },
+  "badges": {
+    "system": {
+      "president": "會長",
+      "vice_president": "副會長",
+      "admin": "社團管理員",
+      "member": "社團成員"
+    }
   }
 }

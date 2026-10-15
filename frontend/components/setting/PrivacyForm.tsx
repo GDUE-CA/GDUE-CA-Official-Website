@@ -37,6 +37,10 @@ type VisibilityMap = {
   bio: boolean;
   gender: boolean;
   birthday: boolean;
+  /** 真实姓名对外展示开关（默认关闭，语义与其他字段相反：缺失=不展示） */
+  real_name: boolean;
+  /** 学校信息（学院/班级/学号）对外展示开关（默认关闭，语义同 real_name） */
+  school_info: boolean;
 };
 
 interface PrivacyState extends VisibilityMap {
@@ -48,11 +52,13 @@ const DEFAULT_STATE: PrivacyState = {
   bio: true,
   gender: true,
   birthday: true,
+  real_name: false,
+  school_info: false,
   discoverability: "all",
   default_scope: "public",
 };
 
-/** 从 profile_privacy JSON 解析；缺失项走默认值 */
+/** 从 profile_privacy JSON 解析；缺失项走默认值（real_name 默认关闭，需显式 public 才开启） */
 function parsePrivacy(p: Record<string, string> | null | undefined): PrivacyState {
   const get = (k: keyof VisibilityMap) => p?.[k] !== "private";
   const disc = p?.discoverability;
@@ -61,6 +67,8 @@ function parsePrivacy(p: Record<string, string> | null | undefined): PrivacyStat
     bio: get("bio"),
     gender: get("gender"),
     birthday: get("birthday"),
+    real_name: p?.real_name === "public",
+    school_info: p?.school_info === "public",
     discoverability:
       disc === "members" || disc === "none" ? disc : "all",
     default_scope:
@@ -117,6 +125,8 @@ export function PrivacyForm() {
         bio: state.bio ? "public" : "private",
         gender: state.gender ? "public" : "private",
         birthday: state.birthday ? "public" : "private",
+        real_name: state.real_name ? "public" : "private",
+        school_info: state.school_info ? "public" : "private",
         discoverability: state.discoverability,
         default_scope: state.default_scope,
       };
@@ -145,14 +155,19 @@ export function PrivacyForm() {
   function VisibilityRow({
     label,
     fieldKey,
+    desc,
   }: {
     label: string;
     fieldKey: keyof VisibilityMap;
+    desc?: string;
   }) {
     const isPublic = state[fieldKey];
     return (
       <div className="flex items-center justify-between gap-4 py-3 border-b border-border last:border-0">
-        <Label className="text-sm font-medium">{label}</Label>
+        <div className="space-y-0.5">
+          <Label className="text-sm font-medium">{label}</Label>
+          {desc && <p className="text-xs text-muted-foreground">{desc}</p>}
+        </div>
         <div className="flex items-center rounded-md border border-input overflow-hidden shrink-0">
           <button
             type="button"
@@ -257,6 +272,18 @@ export function PrivacyForm() {
           <VisibilityRow label={t("setting.privacy.bio")} fieldKey="bio" />
           <VisibilityRow label={t("setting.privacy.gender")} fieldKey="gender" />
           <VisibilityRow label={t("setting.privacy.birthday")} fieldKey="birthday" />
+          {/* 真实姓名对外展示开关：默认关闭；本人浏览自己主页不受开关影响 */}
+          <VisibilityRow
+            label={t("setting.privacy.realName")}
+            fieldKey="real_name"
+            desc={t("setting.privacy.realNameHint")}
+          />
+          {/* 学校信息（学院/班级/学号）对外展示开关：默认关闭；本人浏览自己主页不受开关影响 */}
+          <VisibilityRow
+            label={t("setting.privacy.schoolInfo")}
+            fieldKey="school_info"
+            desc={t("setting.privacy.schoolInfoHint")}
+          />
         </CardContent>
       </Card>
 

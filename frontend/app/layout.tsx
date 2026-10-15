@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import Script from "next/script";
 import "@/app/globals.css";
@@ -20,6 +20,12 @@ export const metadata: Metadata = {
     template: "%s | 广东第二师范学院计算机协会",
   },
   description: "广东第二师范学院（花都校区）计算机协会官方网站",
+};
+
+/* viewportFit: "cover" 让页面延伸到刘海/手势条区域，
+ * 配合 env(safe-area-inset-*) 才能读取到非零安全区（页脚底部适配手势条）。 */
+export const viewport: Viewport = {
+  viewportFit: "cover",
 };
 
 export default async function RootLayout({

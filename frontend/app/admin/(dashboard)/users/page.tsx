@@ -7,6 +7,7 @@
  * - 所有角色可见自己的信息并可编辑；super_admin 可管理所有人
  */
 import { useState, useEffect, useCallback, useRef } from "react";
+import Link from "next/link";
 import {
   Loader2,
   Trash2,
@@ -21,6 +22,7 @@ import {
   X,
   KeyRound,
   SlidersHorizontal,
+  IdCard,
 } from "lucide-react";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
@@ -120,8 +122,8 @@ export default function UsersPage() {
     setEditForm({
       username: u.username,
       real_name: u.real_name,
-      student_id: u.student_id,
-      phone: u.phone,
+      student_id: u.student_id ?? undefined,
+      phone: u.phone ?? undefined,
       role: u.role as AdminRole,
       is_active: u.is_active,
     });
@@ -436,6 +438,17 @@ export default function UsersPage() {
                           </td>
                           <td className="px-3 py-3">
                             <div className="flex justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                asChild
+                                title={t("admin.users.detailBtn")}
+                                aria-label={t("admin.users.detailBtn")}
+                              >
+                                <Link href={`/admin/users/${u.id}`}>
+                                  <IdCard className="h-4 w-4" />
+                                </Link>
+                              </Button>
                               {canEdit(u) && (
                                 <Button
                                   variant="ghost"

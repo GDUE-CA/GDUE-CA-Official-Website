@@ -12,6 +12,8 @@
     "join": "Register",
     "blog": "Blog",
     "contact": "Contact",
+    "community": "Community",
+    "submit": "Absenden",
     "language": "Language",
     "timezone": "Timezone",
     "timezoneAuto": "Auto (detect browser timezone)",
@@ -26,6 +28,8 @@
     "backend": "Backend",
     "logout": "Log out",
     "guest": "Guest",
+    "guestHint": "Melde dich an, um alle persönlichen Funktionen freizuschalten",
+    "goToSettings": "Zu den Einstellungen",
     "login": "Log in",
     "register": "Sign up",
     "memo": "Moments",
@@ -207,6 +211,14 @@
     "cmsFormerMembersTitle": "Former Members"
   },
   "profile": {
+    "tagSchool": "Student/in",
+    "tagClub": "Vereinsmitglied",
+    "schoolInfoTitle": "Studiendaten",
+    "schoolStudentId": "Matrikelnummer",
+    "schoolCollege": "Fakultät",
+    "schoolMajor": "Studiengang",
+    "schoolGrade": "Jahrgang",
+    "schoolClass": "Klasse",
     "personalInfo": "Personal Information",
     "personalInfoHint": "Edit all your profile fields at once; click Confirm to save",
     "continentAsia": "Asia",
@@ -429,6 +441,10 @@
       "finance": "Finance Department"
     },
     "form": {
+      "enrollYear": "Immatrikulationsjahr",
+      "classSuffix": "Klassen-Suffix",
+      "classPreview": "Vollständige Klasse",
+      "loginRequired": "Bitte melde dich vor der Bewerbung an",
       "title": "Online Application",
       "subtitle": "Please fill in the following information",
       "name": "Name",
@@ -458,6 +474,8 @@
         "studentIdRequired": "Please enter your student ID",
         "majorRequired": "Please enter your major",
         "collegeRequired": "Please enter your college",
+        "enrollYearInvalid": "Das Immatrikulationsjahr muss eine 4-stellige Zahl sein",
+        "classSuffixInvalid": "Das Klassen-Suffix muss ein einzelner Großbuchstabe A-Z sein",
         "phoneCcRequired": "Please select a country code",
         "phoneRequired": "Please enter your phone number",
         "phoneInvalid": "Phone number does not match the selected country code format",
@@ -524,6 +542,7 @@
     "connect": "Connect",
     "copyright": "© 2026 GDUE Computer Association. All rights reserved.",
     "madeWith": "Built with care by the GDUECA Computer Association",
+    "version": "Version",
     "terms": "Terms of Use",
     "privacy": "Privacy Policy",
     "disclaimer": "Disclaimer"
@@ -646,7 +665,10 @@
     "profile": {
       "title": "Basic Details",
       "phoneDialCode": "Dialling code",
-      "phonePlaceholder": "Enter your phone number"
+      "phonePlaceholder": "Enter your phone number",
+      "badgesPreview": "Meine Abzeichen",
+      "badgesEmpty": "Noch keine Abzeichen",
+      "badgesPreviewHint": "Abzeichen dienen nur der Anzeige, werden von Administratoren vergeben und können nicht selbst bearbeitet werden."
     },
     "region": {
       "title": "Region & Time Zone",
@@ -800,6 +822,55 @@
         "confirmBody": "⚠️ Freistellungsmodus nach manueller Prüfung\nDie gebundene E-Mail wird geändert zu: {new}\nDie Änderung wird nach dem Absenden wirksam. Bitte prüfen Sie die Angaben. Fortfahren?",
         "success": "E-Mail erfolgreich geändert"
       }
+    },
+    "privacy": {
+      "realName": "Echter Name",
+      "realNameHint": "Wenn aktiviert, können Besucher deinen echten Namen auf deiner Profilseite sehen; wenn deaktiviert, nur du selbst.",
+      "schoolInfo": "Studiendaten",
+      "schoolInfoHint": "Wenn aktiviert, können Besucher Fakultät, Klasse und Matrikelnummer auf deiner Profilseite sehen; wenn deaktiviert, nur du selbst."
+    },
+    "school": {
+      "title": "Verifizierung des Hochschulstatus",
+      "hint": "Reiche deine Hochschuldaten zur manuellen Prüfung ein. Nach der Freigabe kannst du Matrikelnummer, Fakultät und Studiengang bearbeiten. Eine Vereinsbewerbung verifiziert dich nicht automatisch.",
+      "statusNone": "Nicht eingereicht",
+      "statusPending": "In Prüfung",
+      "statusApproved": "Genehmigt",
+      "statusRejected": "Abgelehnt",
+      "status_none": "Nicht eingereicht",
+      "status_pending": "In Prüfung",
+      "status_approved": "Genehmigt",
+      "status_rejected": "Abgelehnt",
+      "approvedHint": "Verifizierung genehmigt. Deine Hochschuldaten kannst du unter „Grunddaten“ pflegen.",
+      "pendingHint": "Dein Antrag wird geprüft. Nach Abschluss erhältst du eine In-App-Nachricht. Bitte nicht erneut einreichen.",
+      "rejectedHint": "Du kannst deine Daten ändern und es erneut einreichen.",
+      "rejectionReason": "Ablehnungsgrund",
+      "studentId": "Matrikelnummer",
+      "studentIdPlaceholder": "11-stellige Matrikelnummer eingeben",
+      "studentIdHint": "11 Ziffern; das Immatrikulationsjahr muss innerhalb der letzten 8 Jahre liegen. Sonderfälle bitte mit einem Admin klären.",
+      "studentIdInvalid": "Die Matrikelnummer muss genau 11 Ziffern haben",
+      "college": "Fakultät",
+      "collegePlaceholder": "Fakultät wählen",
+      "grade": "Jahrgang",
+      "gradePlaceholder": "Jahrgang wählen",
+      "major": "Studiengang",
+      "majorPlaceholder": "Studiengang wählen",
+      "majorSelectCollegeFirst": "Bitte zuerst eine Fakultät wählen",
+      "class": "Klasse",
+      "classPlaceholder": "Klasse wählen",
+      "incomplete": "Bitte Matrikelnummer, Fakultät, Jahrgang, Studiengang und Klasse vollständig ausfüllen",
+      "remark": "Anmerkung",
+      "remarkPlaceholder": "Was die Admins wissen sollten (optional)",
+      "attach": "Anhang (optional)",
+      "attachPlaceholder": "Kein Anhang ausgewählt",
+      "attachHint": "Foto von Studierendenausweis / Campuskarte usw., ≤5MB",
+      "attachUpload": "Bild auswählen",
+      "attachFailed": "Anhang-Upload fehlgeschlagen",
+      "submit": "Verifizierung beantragen",
+      "submitted": "Antrag eingereicht. Bitte auf Prüfung warten.",
+      "submitFailed": "Einreichen fehlgeschlagen, bitte später erneut versuchen",
+      "history": "Antragsverlauf",
+      "profileSection": "Studiendaten",
+      "profileSectionHint": "Nach genehmigter Verifizierung kannst du Matrikelnummer sowie Fakultät/Jahrgang/Studiengang/Klasse unter „Grunddaten“ bearbeiten."
     }
   },
   "admin": {
@@ -1109,7 +1180,86 @@
       "config.sso": "Vertrauenswürdige SSO-Apps",
       "audit": "Protokolle & Audit",
       "mailpush": "E-Mail & Push",
-      "users.emailChange": "E-Mail-Änderungsanträge"
+      "users.emailChange": "E-Mail-Änderungsanträge",
+      "users.schoolVerify": "Verifizierungsprüfung"
+    },
+    "sysdata": {
+      "title": "Fakultäts- und Studiengangsdaten",
+      "subtitle": "Fakultäten, Jahrgänge, Studiengänge und Klassen verwalten; alle Formular-Dropdowns beziehen ihre Daten von hier",
+      "tab.college": "Fakultäten",
+      "tab.grade": "Jahrgänge",
+      "tab.major": "Studiengänge",
+      "tab.class": "Klassen",
+      "create": "Neu",
+      "dialogHint": "Ausfüllen und speichern. Referenzierte Einträge können nicht gelöscht, nur deaktiviert werden.",
+      "empty": "Keine Daten. Klicke auf „Neu“, um den ersten Eintrag zu erstellen",
+      "noDeleteHint": "Basisdaten unterstützen kein physisches Löschen. Bei Referenzen ist nur Deaktivieren erlaubt; deaktivierte Einträge verschwinden aus den Dropdowns.",
+      "nameRequired": "Bitte einen Namen eingeben",
+      "yearInvalid": "Der Jahrgang muss ein 4-stelliges Jahr zwischen 1900 und 2999 sein",
+      "collegeRequired": "Bitte eine Fakultät wählen",
+      "collegeName": "Fakultätsname",
+      "gradeYear": "Jahrgang (Immatrikulationsjahr)",
+      "belongCollege": "Fakultät",
+      "belongGrade": "Jahrgang",
+      "belongMajor": "Studiengang",
+      "selectCollege": "Fakultät wählen",
+      "selectGrade": "Jahrgang wählen",
+      "selectMajor": "Studiengang wählen",
+      "majorName": "Studiengangsname",
+      "classDisplayName": "Klassen-Anzeigename",
+      "classSuffix": "Klassen-Suffix",
+      "disabled": "Deaktiviert",
+      "enable": "Aktivieren",
+      "disable": "Deaktivieren",
+      "moveUp": "Nach oben",
+      "moveDown": "Nach unten"
+    },
+    "schoolVerify": {
+      "title": "Verifizierungsprüfung",
+      "subtitle": "Anträge auf Hochschul-Verifizierung manuell prüfen; nach Genehmigung können Nutzer ihre Studiendaten pflegen",
+      "filter.pending": "Ausstehend",
+      "filter.approved": "Genehmigt",
+      "filter.rejected": "Abgelehnt",
+      "filter.all": "Alle",
+      "searchPlaceholder": "Benutzername / Nickname / Matrikelnummer suchen",
+      "empty": "Keine Anträge",
+      "approve": "Genehmigen",
+      "reject": "Ablehnen",
+      "approveConfirm": "Den Verifizierungsantrag von {name} genehmigen? Die Studiendaten werden gespeichert und das Studenten-Tag aktiviert.",
+      "rejectTitle": "Antrag ablehnen",
+      "rejectHint": "Bitte einen Ablehnungsgrund eingeben. Er wird per In-App-Nachricht gesendet; die Kontodaten bleiben unverändert.",
+      "rejectRemarkRequired": "Bitte einen Ablehnungsgrund eingeben",
+      "rejectConfirm": "Ablehnung bestätigen",
+      "remarkLabel": "Prüfnotiz",
+      "total": "Insgesamt {total} Einträge"
+    },
+    "clubApply": {
+      "title": "Vereinsbewerbungen",
+      "subtitle": "Bewerbungen aus dem Aufnahmeformular bearbeiten; Bewerber erhalten nach Annahme/Ablehnung eine In-App-Nachricht",
+      "filter.pending": "Ausstehend",
+      "filter.accept": "Angenommen",
+      "filter.reject": "Abgelehnt",
+      "filter.all": "Alle",
+      "searchPlaceholder": "Benutzername / Name / Matrikelnummer suchen",
+      "empty": "Keine Bewerbungen",
+      "accept": "Annehmen",
+      "reject": "Ablehnen",
+      "acceptConfirm": "Die Bewerbung von {name} annehmen?",
+      "rejectTitle": "Bewerbung ablehnen",
+      "rejectHint": "Bitte eine Notiz eingeben. Sie wird per In-App-Nachricht an den Bewerber gesendet.",
+      "rejectNoteRequired": "Bitte eine Notiz eingeben",
+      "rejectConfirm": "Ablehnung bestätigen",
+      "statusPending": "Ausstehend",
+      "statusAccept": "Angenommen",
+      "statusReject": "Abgelehnt",
+      "typeSchool": "Student/in",
+      "phone": "Telefon",
+      "enrollYear": "Immatrikulationsjahr",
+      "className": "Klasse",
+      "departments": "Wunschabteilungen",
+      "intro": "Selbstvorstellung",
+      "adminNote": "Notiz",
+      "total": "Insgesamt {total} Einträge"
     },
     "profile": {
       "title": "Profile",
@@ -1422,7 +1572,22 @@
       "batchEnable": "Enable selected",
       "batchDisable": "Disable selected",
       "batchSelected": "{count} accounts selected",
-      "batchDisableConfirm": "Disable the selected {count} accounts? Their sessions will be revoked immediately"
+      "batchDisableConfirm": "Disable the selected {count} accounts? Their sessions will be revoked immediately",
+      "detailBtn": "Details",
+      "detail": {
+        "back": "Zurück zur Benutzerliste",
+        "title": "Benutzerdetails",
+        "notFound": "Benutzer existiert nicht oder wurde gelöscht",
+        "basicInfo": "Grundinformationen",
+        "clubPosition": "Club-Position",
+        "positionNone": "Keine Position",
+        "positionSaved": "Position aktualisiert",
+        "positions": {
+          "president": "Präsident",
+          "vice_president": "Vizepräsident",
+          "member": "Mitglied"
+        }
+      }
     },
     "permissions": {
       "moduleCol": "Module",
@@ -1453,7 +1618,8 @@
         "realname": "Realname Status",
         "stats": "Statistics",
         "audit_logs": "Audit Logs",
-        "memo": "Moments"
+        "memo": "Moments",
+        "badges": "Abzeichenverwaltung"
       }
     },
     "security": {
@@ -1987,6 +2153,35 @@
         "approved": "Genehmigt",
         "rejected": "Abgelehnt"
       }
+    },
+    "badges": {
+      "title": "Benutzer-Abzeichenverwaltung",
+      "limit": "Bis zu {limit} benutzerdefinierte Abzeichen",
+      "systemTitle": "System-Abzeichen",
+      "systemNone": "Kein System-Abzeichen",
+      "systemHint": "Wird automatisch aus der Kontorolle generiert; manuelle Änderung nicht möglich.",
+      "customTitle": "Benutzerdefinierte Abzeichen",
+      "add": "Abzeichen hinzufügen",
+      "limitReached": "Limit erreicht ({limit}). Bitte zuerst eines löschen.",
+      "empty": "Noch keine benutzerdefinierten Abzeichen",
+      "saved": "Gespeichert",
+      "deleteConfirm": "Abzeichen „{name}“ löschen?",
+      "active": "Aktiv",
+      "inactive": "Deaktiviert",
+      "moveUp": "Nach oben",
+      "moveDown": "Nach unten",
+      "edit": "Bearbeiten",
+      "deactivate": "Deaktivieren",
+      "activate": "Aktivieren",
+      "delete": "Löschen",
+      "save": "Speichern",
+      "cancel": "Abbrechen",
+      "name": "Abzeichen-Text",
+      "namePlaceholder": "z. B.: Technik-Guru",
+      "emoji": "Emoji",
+      "emojiPlaceholder": "z. B.: 🌟",
+      "bgColor": "Hintergrundfarbe",
+      "textColor": "Textfarbe"
     }
   },
   "ban": {
@@ -2034,6 +2229,10 @@
       "open": "Open",
       "resolved": "Resolved"
     }
+  },
+  "submit": {
+    "title": "Absenden",
+    "subtitle": "Vereinsanmeldung und Problemfeedback"
   },
   "bug": {
     "title": "Bug Report",
@@ -2288,5 +2487,13 @@
     "successHint": "Alle Sitzungen wurden zwangsweise abgemeldet. Weiterleitung zur Anmeldeseite…",
     "backToLogin": "Zurück zur Anmeldung",
     "manualEntry": "E-Mail nicht verfügbar? Manuellen Wiederherstellungsantrag senden"
+  },
+  "badges": {
+    "system": {
+      "president": "Präsident",
+      "vice_president": "Vizepräsident",
+      "admin": "Club-Administrator",
+      "member": "Club-Mitglied"
+    }
   }
 }

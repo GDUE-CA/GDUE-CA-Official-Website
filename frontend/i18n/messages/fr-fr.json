@@ -12,6 +12,8 @@
     "join": "Register",
     "blog": "Blog",
     "contact": "Contact",
+    "community": "Communauté",
+    "submit": "Envoyer",
     "language": "Language",
     "timezone": "Timezone",
     "timezoneAuto": "Auto (detect browser timezone)",
@@ -26,6 +28,8 @@
     "backend": "Backend",
     "logout": "Log out",
     "guest": "Guest",
+    "guestHint": "Connectez-vous pour débloquer toutes les fonctions personnelles",
+    "goToSettings": "Aller aux paramètres",
     "login": "Log in",
     "register": "Sign up",
     "memo": "Moments",
@@ -207,6 +211,14 @@
     "cmsFormerMembersTitle": "Former Members"
   },
   "profile": {
+    "tagSchool": "Étudiant·e",
+    "tagClub": "Membre du club",
+    "schoolInfoTitle": "Données d'études",
+    "schoolStudentId": "N° étudiant",
+    "schoolCollege": "UFR",
+    "schoolMajor": "Filière",
+    "schoolGrade": "Promotion",
+    "schoolClass": "Classe",
     "personalInfo": "Personal Information",
     "personalInfoHint": "Edit all your profile fields at once; click Confirm to save",
     "continentAsia": "Asia",
@@ -429,6 +441,10 @@
       "finance": "Finance Department"
     },
     "form": {
+      "enrollYear": "Année d'entrée",
+      "classSuffix": "Suffixe de classe",
+      "classPreview": "Classe complète",
+      "loginRequired": "Connectez-vous avant de postuler",
       "title": "Online Application",
       "subtitle": "Please fill in the following information",
       "name": "Name",
@@ -458,6 +474,8 @@
         "studentIdRequired": "Please enter your student ID",
         "majorRequired": "Please enter your major",
         "collegeRequired": "Please enter your college",
+        "enrollYearInvalid": "L'année d'entrée doit être un nombre à 4 chiffres",
+        "classSuffixInvalid": "Le suffixe de classe doit être une seule lettre majuscule A-Z",
         "phoneCcRequired": "Please select a country code",
         "phoneRequired": "Please enter your phone number",
         "phoneInvalid": "Phone number does not match the selected country code format",
@@ -524,6 +542,7 @@
     "connect": "Connect",
     "copyright": "© 2026 GDUE Computer Association. All rights reserved.",
     "madeWith": "Built with care by the GDUECA Computer Association",
+    "version": "Version",
     "terms": "Terms of Use",
     "privacy": "Privacy Policy",
     "disclaimer": "Disclaimer"
@@ -646,7 +665,10 @@
     "profile": {
       "title": "Basic Details",
       "phoneDialCode": "Dialling code",
-      "phonePlaceholder": "Enter your phone number"
+      "phonePlaceholder": "Enter your phone number",
+      "badgesPreview": "Mes badges",
+      "badgesEmpty": "Aucun badge pour le moment",
+      "badgesPreviewHint": "Les badges sont purement décoratifs, attribués par les administrateurs, et ne peuvent pas être modifiés par vous-même."
     },
     "region": {
       "title": "Region & Time Zone",
@@ -800,6 +822,55 @@
         "confirmBody": "⚠️ Mode exemption après examen manuel\nL’e-mail lié sera mis à jour vers : {new}\nLe changement prend effet dès l’envoi. Veuillez revérifier. Continuer ?",
         "success": "E-mail modifié avec succès"
       }
+    },
+    "privacy": {
+      "realName": "Nom réel",
+      "realNameHint": "Lorsque cette option est activée, les visiteurs peuvent voir votre nom réel sur votre page de profil ; sinon, vous seul pouvez le voir.",
+      "schoolInfo": "Données d'études",
+      "schoolInfoHint": "Lorsque cette option est activée, les visiteurs peuvent voir votre UFR, votre classe et votre numéro étudiant ; sinon, vous seul pouvez les voir."
+    },
+    "school": {
+      "title": "Vérification du statut étudiant",
+      "hint": "Soumettez vos données d'établissement pour vérification manuelle par un administrateur. Une fois approuvée, vous pourrez modifier votre numéro étudiant, votre UFR et votre filière. Une candidature au club ne vaut pas vérification automatique.",
+      "statusNone": "Non soumis",
+      "statusPending": "En cours d'examen",
+      "statusApproved": "Approuvée",
+      "statusRejected": "Rejetée",
+      "status_none": "Non soumis",
+      "status_pending": "En cours d'examen",
+      "status_approved": "Approuvée",
+      "status_rejected": "Rejetée",
+      "approvedHint": "Vérification approuvée. Vous pouvez gérer vos données d'établissement dans « Informations de base ».",
+      "pendingHint": "Votre demande est en cours d'examen. Vous serez notifié par message interne une fois traitée. Merci de ne pas soumettre à nouveau.",
+      "rejectedHint": "Vous pouvez modifier vos données et soumettre à nouveau.",
+      "rejectionReason": "Motif du rejet",
+      "studentId": "N° étudiant",
+      "studentIdPlaceholder": "Saisir un numéro à 11 chiffres",
+      "studentIdHint": "11 chiffres ; l'année d'entrée doit être dans les 8 dernières années. Pour les cas particuliers, contactez un administrateur.",
+      "studentIdInvalid": "Le numéro étudiant doit comporter exactement 11 chiffres",
+      "college": "UFR",
+      "collegePlaceholder": "Choisir une UFR",
+      "grade": "Promotion",
+      "gradePlaceholder": "Choisir une promotion",
+      "major": "Filière",
+      "majorPlaceholder": "Choisir une filière",
+      "majorSelectCollegeFirst": "Choisissez d'abord une UFR",
+      "class": "Classe",
+      "classPlaceholder": "Choisir une classe",
+      "incomplete": "Veuillez compléter le numéro étudiant, l'UFR, la promotion, la filière et la classe",
+      "remark": "Remarque",
+      "remarkPlaceholder": "Ce que les administrateurs doivent savoir (facultatif)",
+      "attach": "Pièce jointe (facultatif)",
+      "attachPlaceholder": "Aucune pièce jointe sélectionnée",
+      "attachHint": "Photo de carte étudiante / carte campus, etc., ≤5 Mo",
+      "attachUpload": "Choisir une image",
+      "attachFailed": "Échec du téléversement de la pièce jointe",
+      "submit": "Envoyer la demande",
+      "submitted": "Demande envoyée. Veuillez attendre la vérification.",
+      "submitFailed": "Échec de l'envoi, veuillez réessayer plus tard",
+      "history": "Historique des demandes",
+      "profileSection": "Données d'études",
+      "profileSectionHint": "Après approbation de la vérification, vous pouvez modifier le numéro étudiant et UFR/promotion/filière/classe dans « Informations de base »."
     }
   },
   "admin": {
@@ -1109,7 +1180,86 @@
       "config.sso": "Applications de confiance SSO",
       "audit": "Journaux et audit",
       "mailpush": "E-mail et push",
-      "users.emailChange": "Demandes de changement d’e-mail"
+      "users.emailChange": "Demandes de changement d’e-mail",
+      "users.schoolVerify": "Vérifications étudiantes"
+    },
+    "sysdata": {
+      "title": "Données UFR & filières",
+      "subtitle": "Gérer les UFR, promotions, filières et classes ; tous les listes déroulantes des formulaires proviennent de ces données",
+      "tab.college": "UFR",
+      "tab.grade": "Promotions",
+      "tab.major": "Filières",
+      "tab.class": "Classes",
+      "create": "Ajouter",
+      "dialogHint": "Remplissez puis enregistrez. Les entrées référencées ne peuvent pas être supprimées, seulement désactivées.",
+      "empty": "Aucune donnée. Cliquez sur « Ajouter » pour créer la première entrée",
+      "noDeleteHint": "Les données de base ne supportent pas la suppression physique. En cas de références, seule la désactivation est autorisée ; les entrées désactivées disparaissent des listes déroulantes.",
+      "nameRequired": "Veuillez saisir un nom",
+      "yearInvalid": "La promotion doit être une année à 4 chiffres entre 1900 et 2999",
+      "collegeRequired": "Veuillez choisir une UFR",
+      "collegeName": "Nom de l'UFR",
+      "gradeYear": "Promotion (année d'entrée)",
+      "belongCollege": "UFR",
+      "belongGrade": "Promotion",
+      "belongMajor": "Filière",
+      "selectCollege": "Choisir une UFR",
+      "selectGrade": "Choisir une promotion",
+      "selectMajor": "Choisir une filière",
+      "majorName": "Nom de la filière",
+      "classDisplayName": "Nom affiché de la classe",
+      "classSuffix": "Suffixe de classe",
+      "disabled": "Désactivé",
+      "enable": "Activer",
+      "disable": "Désactiver",
+      "moveUp": "Monter",
+      "moveDown": "Descendre"
+    },
+    "schoolVerify": {
+      "title": "Vérifications étudiantes",
+      "subtitle": "Examiner manuellement les demandes de vérification ; une fois approuvées, les utilisateurs pourront gérer leurs données d'études",
+      "filter.pending": "En attente",
+      "filter.approved": "Approuvées",
+      "filter.rejected": "Rejetées",
+      "filter.all": "Toutes",
+      "searchPlaceholder": "Rechercher : nom d'utilisateur / pseudo / n° étudiant",
+      "empty": "Aucune demande",
+      "approve": "Approuver",
+      "reject": "Rejeter",
+      "approveConfirm": "Approuver la demande de vérification de {name} ? Ses données d'études seront enregistrées et le badge étudiant activé.",
+      "rejectTitle": "Rejeter la demande",
+      "rejectHint": "Veuillez saisir un motif de rejet. Il sera envoyé à l'utilisateur par message interne ; les données du compte ne seront pas modifiées.",
+      "rejectRemarkRequired": "Veuillez saisir un motif de rejet",
+      "rejectConfirm": "Confirmer le rejet",
+      "remarkLabel": "Note d'examen",
+      "total": "{total} enregistrements au total"
+    },
+    "clubApply": {
+      "title": "Candidatures au club",
+      "subtitle": "Traiter les candidatures du formulaire ; les candidats sont notifiés par message interne après acceptation/refus",
+      "filter.pending": "En attente",
+      "filter.accept": "Acceptées",
+      "filter.reject": "Refusées",
+      "filter.all": "Toutes",
+      "searchPlaceholder": "Rechercher : nom d'utilisateur / nom / n° étudiant",
+      "empty": "Aucune candidature",
+      "accept": "Accepter",
+      "reject": "Refuser",
+      "acceptConfirm": "Accepter la candidature de {name} ?",
+      "rejectTitle": "Refuser la candidature",
+      "rejectHint": "Veuillez saisir une note. Elle sera envoyée au candidat par message interne.",
+      "rejectNoteRequired": "Veuillez saisir une note",
+      "rejectConfirm": "Confirmer le refus",
+      "statusPending": "En attente",
+      "statusAccept": "Acceptée",
+      "statusReject": "Refusée",
+      "typeSchool": "Étudiant·e",
+      "phone": "Téléphone",
+      "enrollYear": "Année d'entrée",
+      "className": "Classe",
+      "departments": "Départements souhaités",
+      "intro": "Présentation",
+      "adminNote": "Note",
+      "total": "{total} enregistrements au total"
     },
     "profile": {
       "title": "Profile",
@@ -1422,7 +1572,22 @@
       "batchEnable": "Enable selected",
       "batchDisable": "Disable selected",
       "batchSelected": "{count} accounts selected",
-      "batchDisableConfirm": "Disable the selected {count} accounts? Their sessions will be revoked immediately"
+      "batchDisableConfirm": "Disable the selected {count} accounts? Their sessions will be revoked immediately",
+      "detailBtn": "Détails",
+      "detail": {
+        "back": "Retour à la liste des utilisateurs",
+        "title": "Détails de l'utilisateur",
+        "notFound": "L'utilisateur n'existe pas ou a été supprimé",
+        "basicInfo": "Informations de base",
+        "clubPosition": "Poste dans le club",
+        "positionNone": "Aucun poste",
+        "positionSaved": "Poste mis à jour",
+        "positions": {
+          "president": "Président",
+          "vice_president": "Vice-président",
+          "member": "Membre"
+        }
+      }
     },
     "permissions": {
       "moduleCol": "Module",
@@ -1453,7 +1618,8 @@
         "realname": "Realname Status",
         "stats": "Statistics",
         "audit_logs": "Audit Logs",
-        "memo": "Moments"
+        "memo": "Moments",
+        "badges": "Gestion des badges"
       }
     },
     "security": {
@@ -1987,6 +2153,35 @@
         "approved": "Approuvée",
         "rejected": "Rejetée"
       }
+    },
+    "badges": {
+      "title": "Gestion des badges utilisateur",
+      "limit": "Jusqu'à {limit} badges personnalisés",
+      "systemTitle": "Badge système",
+      "systemNone": "Aucun badge système",
+      "systemHint": "Généré automatiquement selon le rôle du compte ; modification manuelle impossible.",
+      "customTitle": "Badges personnalisés",
+      "add": "Ajouter un badge",
+      "limitReached": "Limite atteinte ({limit}). Supprimez-en un avant d'en ajouter.",
+      "empty": "Aucun badge personnalisé",
+      "saved": "Enregistré",
+      "deleteConfirm": "Supprimer le badge « {name} » ?",
+      "active": "Actif",
+      "inactive": "Désactivé",
+      "moveUp": "Monter",
+      "moveDown": "Descendre",
+      "edit": "Modifier",
+      "deactivate": "Désactiver",
+      "activate": "Activer",
+      "delete": "Supprimer",
+      "save": "Enregistrer",
+      "cancel": "Annuler",
+      "name": "Texte du badge",
+      "namePlaceholder": "ex. : Gourou technique",
+      "emoji": "Emoji",
+      "emojiPlaceholder": "ex. : 🌟",
+      "bgColor": "Couleur de fond",
+      "textColor": "Couleur du texte"
     }
   },
   "ban": {
@@ -2034,6 +2229,10 @@
       "open": "Open",
       "resolved": "Resolved"
     }
+  },
+  "submit": {
+    "title": "Envoyer",
+    "subtitle": "Inscription au club et signalement de problèmes"
   },
   "bug": {
     "title": "Bug Report",
@@ -2288,5 +2487,13 @@
     "successHint": "Toutes les sessions ont été déconnectées. Redirection vers la page de connexion…",
     "backToLogin": "Retour à la connexion",
     "manualEntry": "E-mail indisponible ? Envoyez une demande de récupération manuelle"
+  },
+  "badges": {
+    "system": {
+      "president": "Président",
+      "vice_president": "Vice-président",
+      "admin": "Administrateur du club",
+      "member": "Membre du club"
+    }
   }
 }

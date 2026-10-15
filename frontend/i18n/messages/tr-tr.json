@@ -40,7 +40,18 @@
   "privacy.visibilityPublic": "",
   "privacy.visibilityPrivateOnly": "",
   "nav": {
-    "memo": "Anlar"
+    "memo": "Anlar",
+    "community": "Topluluk",
+    "submit": "Gönder",
+    "guestHint": "Tüm kişisel özelliklerin kilidini açmak için giriş yapın",
+    "goToSettings": "Ayarlara git"
+  },
+  "footer": {
+    "version": "Sürüm"
+  },
+  "submit": {
+    "title": "Gönder",
+    "subtitle": "Kulüp kaydı ve sorun geri bildirimi"
   },
   "memo": {
     "pageTitle": "Anlar",

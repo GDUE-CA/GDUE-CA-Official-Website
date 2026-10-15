@@ -8,6 +8,7 @@
 import { useState } from "react";
 import { useI18n } from "@/i18n/provider";
 import { MarkdownRenderer } from "@/components/blog/MarkdownRenderer";
+import { BadgeList } from "@/components/user/BadgeChip";
 import {
   Heart, Bookmark, MessageCircle, Lock, Users, Globe, Archive, History,
 } from "lucide-react";
@@ -50,39 +51,78 @@ export function MemoDetail({ memo, onChange, onDelete, onRollback }: MemoDetailP
 
   const localePath = (href: string) => `/${locale}${href}`;
 
+  const authorUsername = memo.author?.username ?? null;
+  const authorDisplay =
+    memo.author?.display_name || memo.author?.username || "(deleted)";
+  const authorHome = authorUsername ? localePath(`/u/${authorUsername}`) : null;
+
+  const avatarInner = (
+    <div className="h-7 w-7 rounded-full overflow-hidden bg-muted">
+      {memo.author?.avatar_url ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={memo.author.avatar_url}
+          className="h-full w-full object-cover"
+          alt={authorDisplay}
+        />
+      ) : (
+        <div className="h-full w-full flex items-center justify-center text-xs text-muted-foreground">
+          {authorDisplay.slice(0, 1).toUpperCase()}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <article className="space-y-4">
       <div className="rounded-lg border border-border bg-card p-5 space-y-3">
-        {/* 头部 */}
+        {/* 头部：头像 / 昵称均可点击跳转个人主页；主名称 display_name，@username 次要 */}
         <header className="flex items-center gap-2 flex-wrap text-xs">
-          <div className="h-7 w-7 rounded-full overflow-hidden bg-muted">
-            {memo.author?.avatar_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={memo.author.avatar_url} className="h-full w-full object-cover" alt="" />
-            ) : (
-              <div className="h-full w-full flex items-center justify-center text-xs text-muted-foreground">
-                {memo.author?.username.slice(0, 1).toUpperCase() ?? "?"}
-              </div>
-            )}
+          {authorHome ? (
+            <Link
+              href={authorHome}
+              className="shrink-0 rounded-full max-md:p-2 max-md:-m-2"
+              aria-label={authorDisplay}
+            >
+              {avatarInner}
+            </Link>
+          ) : (
+            avatarInner
+          )}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {authorHome ? (
+                <Link
+                  href={authorHome}
+                  className="font-medium text-foreground text-sm hover:underline max-md:py-1"
+                >
+                  {authorDisplay}
+                </Link>
+              ) : (
+                <span className="font-medium text-foreground text-sm">{authorDisplay}</span>
+              )}
+              <BadgeList badges={memo.author?.badges} />
+            </div>
+            <div className="flex items-center gap-1.5 flex-wrap text-xs text-muted-foreground mt-0.5">
+              {authorUsername && <span className="truncate">@{authorUsername}</span>}
+              <span>{fmt(memo.created_at)}</span>
+              <span className="inline-flex items-center gap-0.5 px-1.5 h-5 rounded-full bg-muted">
+                {visIcon(memo.visibility)}
+                {t(`memo.visibility.${memo.visibility}`)}
+              </span>
+              {memo.archived && (
+                <span className="inline-flex items-center gap-0.5 px-1.5 h-5 rounded-full bg-yellow-500/15 text-yellow-700 text-[10px]">
+                  <Archive className="h-3 w-3" />
+                  {t("memo.card.archived")}
+                </span>
+              )}
+              {memo.updated_at !== memo.created_at && (
+                <span className="inline-flex items-center px-1.5 h-5 rounded-full bg-blue-500/10 text-blue-600 text-[10px]">
+                  {t("memo.card.edited")}
+                </span>
+              )}
+            </div>
           </div>
-          <span className="font-medium">{memo.author?.username}</span>
-          <span className="inline-flex items-center gap-0.5 px-1.5 h-5 rounded-full bg-muted text-muted-foreground">
-            {visIcon(memo.visibility)}
-            {t(`memo.visibility.${memo.visibility}`)}
-          </span>
-          {memo.archived && (
-            <span className="inline-flex items-center gap-0.5 px-1.5 h-5 rounded-full bg-yellow-500/15 text-yellow-700 text-[10px]">
-              <Archive className="h-3 w-3" />
-              {t("memo.card.archived")}
-            </span>
-          )}
-          {memo.updated_at !== memo.created_at && (
-            <span className="inline-flex items-center px-1.5 h-5 rounded-full bg-blue-500/10 text-blue-600 text-[10px]">
-              {t("memo.card.edited")}
-            </span>
-          )}
-          <span className="text-muted-foreground">·</span>
-          <span className="text-muted-foreground">{fmt(memo.created_at)}</span>
         </header>
 
         {/* 正文 */}
@@ -124,7 +164,7 @@ export function MemoDetail({ memo, onChange, onDelete, onRollback }: MemoDetailP
               <Link
                 key={tg.id}
                 href={localePath(`/memo?tag=${encodeURIComponent(tg.slug)}`)}
-                className="inline-flex items-center px-1.5 h-5 rounded-full bg-primary/10 text-primary text-[10px] hover:bg-primary/20"
+                className="inline-flex items-center px-1.5 h-5 rounded-full bg-primary/10 text-primary text-[10px] hover:bg-primary/20 max-md:h-11 max-md:px-3 max-md:text-xs"
               >
                 #{tg.name}
               </Link>
@@ -132,7 +172,7 @@ export function MemoDetail({ memo, onChange, onDelete, onRollback }: MemoDetailP
           </div>
         )}
 
-        {/* 互动 */}
+        {/* 互动（移动端触摸目标 ≥44px） */}
         <footer className="flex items-center gap-1 text-xs text-muted-foreground border-t border-border pt-3">
           <button
             type="button"
@@ -143,7 +183,7 @@ export function MemoDetail({ memo, onChange, onDelete, onRollback }: MemoDetailP
                 : router.push(localePath("/login"))
             }
             className={cn(
-              "inline-flex items-center gap-1 px-2 h-8 rounded hover:bg-muted",
+              "inline-flex items-center gap-1 px-2 h-8 rounded hover:bg-muted max-md:h-11 max-md:px-3",
               memo.liked_by_me && "text-pink-500",
             )}
           >
@@ -159,14 +199,14 @@ export function MemoDetail({ memo, onChange, onDelete, onRollback }: MemoDetailP
                 : router.push(localePath("/login"))
             }
             className={cn(
-              "inline-flex items-center gap-1 px-2 h-8 rounded hover:bg-muted",
+              "inline-flex items-center gap-1 px-2 h-8 rounded hover:bg-muted max-md:h-11 max-md:px-3",
               memo.favorited_by_me && "text-yellow-500",
             )}
           >
             <Bookmark className={cn("h-4 w-4", memo.favorited_by_me && "fill-current")} />
             {memo.favorite_count}
           </button>
-          <span className="inline-flex items-center gap-1 px-2 h-8 text-muted-foreground">
+          <span className="inline-flex items-center gap-1 px-2 h-8 text-muted-foreground max-md:h-11 max-md:px-3">
             <MessageCircle className="h-4 w-4" />
             {memo.comment_count}
           </span>
@@ -181,7 +221,7 @@ export function MemoDetail({ memo, onChange, onDelete, onRollback }: MemoDetailP
                     ? unarchiveMemo(memo.id).then((m) => onChange?.(m))
                     : archiveMemo(memo.id).then((m) => onChange?.(m))
                 }
-                className="inline-flex items-center gap-1 px-2 h-8 rounded hover:bg-muted text-xs"
+                className="inline-flex items-center gap-1 px-2 h-8 rounded hover:bg-muted text-xs max-md:h-11 max-md:px-3"
               >
                 {memo.archived ? t("memo.actions.unarchive") : t("memo.actions.archive")}
               </button>
@@ -191,7 +231,7 @@ export function MemoDetail({ memo, onChange, onDelete, onRollback }: MemoDetailP
                 type="button"
                 onClick={() => setShowVersions((s) => !s)}
                 className={cn(
-                  "inline-flex items-center gap-1 px-2 h-8 rounded hover:bg-muted text-xs",
+                  "inline-flex items-center gap-1 px-2 h-8 rounded hover:bg-muted text-xs max-md:h-11 max-md:px-3",
                   showVersions && "bg-muted",
                 )}
               >
@@ -202,7 +242,7 @@ export function MemoDetail({ memo, onChange, onDelete, onRollback }: MemoDetailP
             {isAuthor && (
               <Link
                 href={localePath(`/memo/${memo.id}/edit`)}
-                className="inline-flex items-center px-2 h-8 rounded hover:bg-muted text-xs"
+                className="inline-flex items-center px-2 h-8 rounded hover:bg-muted text-xs max-md:h-11 max-md:px-3"
               >
                 {t("memo.actions.edit")}
               </Link>
@@ -215,7 +255,7 @@ export function MemoDetail({ memo, onChange, onDelete, onRollback }: MemoDetailP
                     deleteMemo(memo.id).then(() => onDelete?.());
                   }
                 }}
-                className="inline-flex items-center px-2 h-8 rounded hover:bg-destructive/10 text-destructive text-xs"
+                className="inline-flex items-center px-2 h-8 rounded hover:bg-destructive/10 text-destructive text-xs max-md:h-11 max-md:px-3"
               >
                 {t("memo.actions.delete")}
               </button>

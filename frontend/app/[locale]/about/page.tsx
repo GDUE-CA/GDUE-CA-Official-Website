@@ -5,9 +5,10 @@ import { DirectionalTransition } from "@/components/shared/DirectionalTransition
 import { SectionHeading } from "@/components/shared/SectionHeading";
 import { ClubIntroCms } from "@/components/about/ClubIntroCms";
 import { MembersSection } from "@/components/about/MembersSection";
+import { ScrollToHash } from "@/components/shared/ScrollToHash";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CalendarCheck, Briefcase, Handshake, Megaphone, Wallet, Wrench, GraduationCap, Award, MapPin, Clock } from "lucide-react";
+import { CalendarCheck, Briefcase, Handshake, Megaphone, Wallet, Wrench, GraduationCap, Mail, Github, MessageCircle, Smartphone } from "lucide-react";
 
 /**
  * 社团介绍页 - 历史时间线、组织架构、指导老师、社团荣誉、活动室位置
@@ -86,8 +87,41 @@ export default async function AboutPage({
     { "zh-cn": "义务维修与二级备考课常年服务全校多院系同学", "zh-tw": "義務維修與二級備考課常年服務全校多院系同學", "en-us": "Free repair clinics and NCRE prep courses serve students across many schools year-round", ja: "無料修理と二级試験対策講座は通年で多くの学院の学生を支援" },
   ];
 
+  /** 联系方式卡片（原 /contact 页面内容，合并至本页 #contact 章节） */
+  const contactCards = [
+    {
+      icon: Mail,
+      label: dict.contact.email,
+      value: "gdueca@feishu.millennium.dpdns.org",
+      href: "mailto:gdueca@feishu.millennium.dpdns.org",
+      color: "bg-blue-500/10 text-blue-600",
+    },
+    {
+      icon: Github,
+      label: dict.contact.github,
+      value: "github.com/GDUE-Computer-Association",
+      href: "https://github.com/GDUE-Computer-Association",
+      color: "bg-slate-500/10 text-slate-600",
+    },
+    {
+      icon: MessageCircle,
+      label: dict.contact.qq,
+      value: "招新群见公众号推文",
+      href: "#",
+      color: "bg-cyan-500/10 text-cyan-600",
+    },
+    {
+      icon: Smartphone,
+      label: dict.contact.wechat,
+      value: "广东二师花都校区计协（GDEI_CA）",
+      href: "#",
+      color: "bg-green-500/10 text-green-600",
+    },
+  ];
+
   return (
     <DirectionalTransition>
+      <ScrollToHash />
       <PageHeader title={dict.about.title} subtitle={dict.about.subtitle} />
 
       <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
@@ -155,6 +189,34 @@ export default async function AboutPage({
                   <p className="text-sm text-muted-foreground">{pick(teacher.title)}</p>
                 </div>
               </Card>
+            ))}
+          </div>
+        </section>
+
+        {/* 联系我们（原 /contact 页面内容合并至此，锚点 #contact 供 /about#contact 定位） */}
+        <section id="contact" className="mb-20 scroll-mt-20">
+          <SectionHeading title={dict.contact.title} subtitle={dict.contact.subtitle} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-4xl mx-auto">
+            {contactCards.map((card, i) => (
+              <a
+                key={i}
+                href={card.href}
+                target={card.href.startsWith("http") ? "_blank" : undefined}
+                rel={card.href.startsWith("http") ? "noopener noreferrer" : undefined}
+                className="block"
+              >
+                <Card className="hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 cursor-pointer h-full">
+                  <CardContent className="flex items-center gap-4 p-6">
+                    <div className={`inline-flex h-12 w-12 items-center justify-center rounded-lg ${card.color} shrink-0`}>
+                      <card.icon className="h-6 w-6" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm text-muted-foreground mb-0.5">{card.label}</p>
+                      <p className="font-medium truncate">{card.value}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </a>
             ))}
           </div>
         </section>

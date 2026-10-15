@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useI18n } from "@/i18n/provider";
 import { useLocalizedPath } from "@/lib/navigation";
+import { BadgeList } from "@/components/user/BadgeChip";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -131,20 +132,49 @@ export default function UserProfilePage() {
       <div className="bg-background border-b border-border">
         <div className="max-w-3xl mx-auto px-4 py-8">
           <div className="flex items-start gap-4">
-            {avatarUrl ? (
-              <img
-                src={avatarUrl}
-                alt={profile.display_name}
-                className="h-20 w-20 rounded-full object-cover bg-secondary shrink-0"
-              />
-            ) : (
-              <UserCircle className="h-20 w-20 text-muted-foreground shrink-0" />
-            )}
+            {/* 头像点击跳本人主页（与全站头像跳转规则一致） */}
+            <Link href={lp(`/u/${profile.username}`)} className="shrink-0" aria-label={profile.display_name}>
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt={profile.display_name}
+                  className="h-20 w-20 rounded-full object-cover bg-secondary shrink-0"
+                />
+              ) : (
+                <UserCircle className="h-20 w-20 text-muted-foreground shrink-0" />
+              )}
+            </Link>
             <div className="flex-1 min-w-0">
-              <h1 className="text-2xl font-bold text-foreground">
-                {profile.display_name}
-              </h1>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-2xl font-bold text-foreground">
+                  <Link href={lp(`/u/${profile.username}`)} className="hover:underline">
+                    {profile.display_name}
+                  </Link>
+                </h1>
+                <BadgeList badges={profile.badges} />
+              </div>
               <p className="text-sm text-muted-foreground">@{profile.username}</p>
+              {/* Module D：身份标签（动态渲染；仅社会成员不展示任何标签） */}
+              {(profile.identity_school_verified || profile.is_club_member) && (
+                <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+                  {profile.identity_school_verified && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-0.5 text-xs font-medium text-secondary-foreground">
+                      🏫 {t("profile.tagSchool")}
+                    </span>
+                  )}
+                  {profile.is_club_member && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-0.5 text-xs font-medium text-secondary-foreground">
+                      🤝 {t("profile.tagClub")}
+                    </span>
+                  )}
+                </div>
+              )}
+              {/* 真实姓名：后端已按访问者身份+主人隐私开关过滤，非授权访客不会下发此字段 */}
+              {profile.real_name && (
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {profile.real_name}
+                </p>
+              )}
               {profile.bio && (
                 <p className="mt-2 text-sm text-foreground/90 whitespace-pre-wrap">
                   {profile.bio}
@@ -170,6 +200,52 @@ export default function UserProfilePage() {
 
       {/* Tab 切换 */}
       <div className="max-w-3xl mx-auto px-4">
+        {/* Module D：学校资料块（后端控制输出：本人恒可见；访客需主人隐私开关开启；
+            未验证用户恒为 null → 整块不渲染，不留空白占位） */}
+        {profile.school_info && (
+          <Card className="mt-4">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-base">
+                🏫 {t("profile.schoolInfoTitle")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <dl className="grid grid-cols-1 gap-x-6 gap-y-1.5 text-sm sm:grid-cols-2">
+                {profile.school_info.student_id && (
+                  <div className="flex gap-2">
+                    <dt className="text-muted-foreground shrink-0">{t("profile.schoolStudentId")}</dt>
+                    <dd className="truncate">{profile.school_info.student_id}</dd>
+                  </div>
+                )}
+                {profile.school_info.college_name && (
+                  <div className="flex gap-2">
+                    <dt className="text-muted-foreground shrink-0">{t("profile.schoolCollege")}</dt>
+                    <dd className="truncate">{profile.school_info.college_name}</dd>
+                  </div>
+                )}
+                {profile.school_info.major_name && (
+                  <div className="flex gap-2">
+                    <dt className="text-muted-foreground shrink-0">{t("profile.schoolMajor")}</dt>
+                    <dd className="truncate">{profile.school_info.major_name}</dd>
+                  </div>
+                )}
+                {profile.school_info.grade_year != null && (
+                  <div className="flex gap-2">
+                    <dt className="text-muted-foreground shrink-0">{t("profile.schoolGrade")}</dt>
+                    <dd className="truncate">{profile.school_info.grade_year}</dd>
+                  </div>
+                )}
+                {profile.school_info.class_display_name && (
+                  <div className="flex gap-2">
+                    <dt className="text-muted-foreground shrink-0">{t("profile.schoolClass")}</dt>
+                    <dd className="truncate">{profile.school_info.class_display_name}</dd>
+                  </div>
+                )}
+              </dl>
+            </CardContent>
+          </Card>
+        )}
+
         <div className="flex gap-1 border-b border-border mt-4">
           <TabButton
             active={tab === "memos"}

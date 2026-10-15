@@ -12,6 +12,8 @@
     "join": "Register",
     "blog": "Blog",
     "contact": "Contact",
+    "community": "Сообщество",
+    "submit": "Отправить",
     "language": "Language",
     "timezone": "Timezone",
     "timezoneAuto": "Auto (detect browser timezone)",
@@ -26,6 +28,8 @@
     "backend": "Backend",
     "logout": "Log out",
     "guest": "Guest",
+    "guestHint": "Войдите, чтобы открыть все личные функции",
+    "goToSettings": "Перейти в настройки",
     "login": "Log in",
     "register": "Sign up",
     "memo": "Moments",
@@ -207,6 +211,14 @@
     "cmsFormerMembersTitle": "Former Members"
   },
   "profile": {
+    "tagSchool": "Студент",
+    "tagClub": "Участник клуба",
+    "schoolInfoTitle": "Данные об обучении",
+    "schoolStudentId": "Студ. номер",
+    "schoolCollege": "Институт",
+    "schoolMajor": "Специальность",
+    "schoolGrade": "Курс",
+    "schoolClass": "Группа",
     "personalInfo": "Personal Information",
     "personalInfoHint": "Edit all your profile fields at once; click Confirm to save",
     "continentAsia": "Asia",
@@ -429,6 +441,10 @@
       "finance": "Finance Department"
     },
     "form": {
+      "enrollYear": "Год поступления",
+      "classSuffix": "Суффикс группы",
+      "classPreview": "Полное название группы",
+      "loginRequired": "Для подачи заявки сначала войдите в аккаунт",
       "title": "Online Application",
       "subtitle": "Please fill in the following information",
       "name": "Name",
@@ -458,6 +474,8 @@
         "studentIdRequired": "Please enter your student ID",
         "majorRequired": "Please enter your major",
         "collegeRequired": "Please enter your college",
+        "enrollYearInvalid": "Год поступления должен быть 4-значным числом",
+        "classSuffixInvalid": "Суффикс группы — одна заглавная буква A-Z",
         "phoneCcRequired": "Please select a country code",
         "phoneRequired": "Please enter your phone number",
         "phoneInvalid": "Phone number does not match the selected country code format",
@@ -524,6 +542,7 @@
     "connect": "Connect",
     "copyright": "© 2026 GDUE Computer Association. All rights reserved.",
     "madeWith": "Built with care by the GDUECA Computer Association",
+    "version": "Версия",
     "terms": "Terms of Use",
     "privacy": "Privacy Policy",
     "disclaimer": "Disclaimer"
@@ -646,7 +665,10 @@
     "profile": {
       "title": "Basic Details",
       "phoneDialCode": "Dialling code",
-      "phonePlaceholder": "Enter your phone number"
+      "phonePlaceholder": "Enter your phone number",
+      "badgesPreview": "Мои значки",
+      "badgesEmpty": "Пока нет значков",
+      "badgesPreviewHint": "Значки служат только для отображения, выдаются администраторами и не могут быть изменены вами."
     },
     "region": {
       "title": "Region & Time Zone",
@@ -800,6 +822,55 @@
         "confirmBody": "⚠️ Режим освобождения после ручной проверки\nПривязанная почта будет изменена на: {new}\nИзменение вступит в силу после отправки. Проверьте данные. Продолжить?",
         "success": "Почта успешно изменена"
       }
+    },
+    "privacy": {
+      "realName": "Настоящее имя",
+      "realNameHint": "Если включено, посетители могут видеть ваше настоящее имя на странице профиля; если выключено — только вы.",
+      "schoolInfo": "Данные об обучении",
+      "schoolInfoHint": "Если включено, посетители могут видеть ваш институт, группу и студенческий номер; если выключено — только вы."
+    },
+    "school": {
+      "title": "Верификация студента",
+      "hint": "Отправьте данные вуза на ручную проверку администратору. После одобрения откроется редактирование студенческого номера, института и специальности. Заявка в клуб не даёт верификацию автоматически.",
+      "statusNone": "Не отправлено",
+      "statusPending": "На проверке",
+      "statusApproved": "Одобрено",
+      "statusRejected": "Отклонено",
+      "status_none": "Не отправлено",
+      "status_pending": "На проверке",
+      "status_approved": "Одобрено",
+      "status_rejected": "Отклонено",
+      "approvedHint": "Верификация одобрена. Данные вуза можно поддерживать в разделе «Основные данные».",
+      "pendingHint": "Заявка на проверке. По завершении вы получите уведомление в личных сообщениях сайта. Не отправляйте повторно.",
+      "rejectedHint": "Вы можете изменить данные и отправить заявку снова.",
+      "rejectionReason": "Причина отклонения",
+      "studentId": "Студ. номер",
+      "studentIdPlaceholder": "Введите 11-значный номер",
+      "studentIdHint": "11 цифр; год поступления должен быть в пределах последних 8 лет. Особые случаи — через администратора.",
+      "studentIdInvalid": "Студенческий номер должен состоять ровно из 11 цифр",
+      "college": "Институт",
+      "collegePlaceholder": "Выберите институт",
+      "grade": "Курс",
+      "gradePlaceholder": "Выберите курс",
+      "major": "Специальность",
+      "majorPlaceholder": "Выберите специальность",
+      "majorSelectCollegeFirst": "Сначала выберите институт",
+      "class": "Группа",
+      "classPlaceholder": "Выберите группу",
+      "incomplete": "Заполните студ. номер, институт, курс, специальность и группу",
+      "remark": "Примечание",
+      "remarkPlaceholder": "Что сообщить администратору (необязательно)",
+      "attach": "Вложение (необязательно)",
+      "attachPlaceholder": "Вложение не выбрано",
+      "attachHint": "Фото студенческого билета / пропуска, ≤5МБ",
+      "attachUpload": "Выбрать изображение",
+      "attachFailed": "Не удалось загрузить вложение",
+      "submit": "Отправить заявку",
+      "submitted": "Заявка отправлена. Ожидайте проверки.",
+      "submitFailed": "Не удалось отправить, попробуйте позже",
+      "history": "История заявок",
+      "profileSection": "Данные об обучении",
+      "profileSectionHint": "После одобрения верификации студ. номер и институт/курс/специальность/группу можно редактировать в «Основных данных»."
     }
   },
   "admin": {
@@ -1109,7 +1180,86 @@
       "config.sso": "Доверенные приложения SSO",
       "audit": "Журналы и аудит",
       "mailpush": "Почта и push",
-      "users.emailChange": "Заявки на смену email"
+      "users.emailChange": "Заявки на смену email",
+      "users.schoolVerify": "Верификация студентов"
+    },
+    "sysdata": {
+      "title": "Институты и специальности",
+      "subtitle": "Справочник институтов, курсов, специальностей и групп; все выпадающие списки форм берутся отсюда",
+      "tab.college": "Институты",
+      "tab.grade": "Курсы",
+      "tab.major": "Специальности",
+      "tab.class": "Группы",
+      "create": "Добавить",
+      "dialogHint": "Заполните и сохраните. Записанные в справочник данные нельзя удалить — только отключить.",
+      "empty": "Данных нет. Нажмите «Добавить», чтобы создать первую запись",
+      "noDeleteHint": "Справочные данные не удаляются физически. Если на них есть ссылки, разрешено только отключение; отключённые записи исчезают из выпадающих списков.",
+      "nameRequired": "Введите название",
+      "yearInvalid": "Курс должен быть 4-значным годом от 1900 до 2999",
+      "collegeRequired": "Выберите институт",
+      "collegeName": "Название института",
+      "gradeYear": "Курс (год поступления)",
+      "belongCollege": "Институт",
+      "belongGrade": "Курс",
+      "belongMajor": "Специальность",
+      "selectCollege": "Выберите институт",
+      "selectGrade": "Выберите курс",
+      "selectMajor": "Выберите специальность",
+      "majorName": "Название специальности",
+      "classDisplayName": "Отображаемое имя группы",
+      "classSuffix": "Суффикс группы",
+      "disabled": "Отключено",
+      "enable": "Включить",
+      "disable": "Отключить",
+      "moveUp": "Вверх",
+      "moveDown": "Вниз"
+    },
+    "schoolVerify": {
+      "title": "Проверка студентов",
+      "subtitle": "Ручная проверка заявок на верификацию; после одобрения пользователь сможет вести данные вуза",
+      "filter.pending": "На проверке",
+      "filter.approved": "Одобрено",
+      "filter.rejected": "Отклонено",
+      "filter.all": "Все",
+      "searchPlaceholder": "Поиск: имя пользователя / ник / студ. номер",
+      "empty": "Заявок нет",
+      "approve": "Одобрить",
+      "reject": "Отклонить",
+      "approveConfirm": "Одобрить заявку {name} на верификацию? Данные вуза будут сохранены, включится метка студента.",
+      "rejectTitle": "Отклонить заявку",
+      "rejectHint": "Укажите причину — она будет отправлена пользователю в сообщении; данные аккаунта не изменятся.",
+      "rejectRemarkRequired": "Укажите причину отклонения",
+      "rejectConfirm": "Подтвердить отклонение",
+      "remarkLabel": "Комментарий",
+      "total": "Всего записей: {total}"
+    },
+    "clubApply": {
+      "title": "Заявки в клуб",
+      "subtitle": "Обработка заявок с сайта; после решения заявитель получит сообщение на сайте",
+      "filter.pending": "На рассмотрении",
+      "filter.accept": "Принято",
+      "filter.reject": "Отклонено",
+      "filter.all": "Все",
+      "searchPlaceholder": "Поиск: имя пользователя / ФИО / студ. номер",
+      "empty": "Заявок нет",
+      "accept": "Принять",
+      "reject": "Отклонить",
+      "acceptConfirm": "Принять заявку {name} в клуб?",
+      "rejectTitle": "Отклонить заявку",
+      "rejectHint": "Добавьте комментарий — он будет отправлен заявителю в сообщении.",
+      "rejectNoteRequired": "Добавьте комментарий",
+      "rejectConfirm": "Подтвердить отклонение",
+      "statusPending": "На рассмотрении",
+      "statusAccept": "Принято",
+      "statusReject": "Отклонено",
+      "typeSchool": "Студент",
+      "phone": "Телефон",
+      "enrollYear": "Год поступления",
+      "className": "Группа",
+      "departments": "Желаемые отделы",
+      "intro": "О себе",
+      "adminNote": "Комментарий",
+      "total": "Всего записей: {total}"
     },
     "profile": {
       "title": "Profile",
@@ -1422,7 +1572,22 @@
       "batchEnable": "Enable selected",
       "batchDisable": "Disable selected",
       "batchSelected": "{count} accounts selected",
-      "batchDisableConfirm": "Disable the selected {count} accounts? Their sessions will be revoked immediately"
+      "batchDisableConfirm": "Disable the selected {count} accounts? Their sessions will be revoked immediately",
+      "detailBtn": "Подробнее",
+      "detail": {
+        "back": "Назад к списку пользователей",
+        "title": "Сведения о пользователе",
+        "notFound": "Пользователь не существует или был удалён",
+        "basicInfo": "Основная информация",
+        "clubPosition": "Должность в клубе",
+        "positionNone": "Без должности",
+        "positionSaved": "Должность обновлена",
+        "positions": {
+          "president": "Президент",
+          "vice_president": "Вице-президент",
+          "member": "Участник"
+        }
+      }
     },
     "permissions": {
       "moduleCol": "Module",
@@ -1453,7 +1618,8 @@
         "realname": "Realname Status",
         "stats": "Statistics",
         "audit_logs": "Audit Logs",
-        "memo": "Moments"
+        "memo": "Moments",
+        "badges": "Управление значками"
       }
     },
     "security": {
@@ -1987,6 +2153,35 @@
         "approved": "Одобрена",
         "rejected": "Отклонена"
       }
+    },
+    "badges": {
+      "title": "Управление значками пользователя",
+      "limit": "Не более {limit} пользовательских значков",
+      "systemTitle": "Системный значок",
+      "systemNone": "Нет системного значка",
+      "systemHint": "Генерируется автоматически по роли аккаунта; ручное изменение невозможно.",
+      "customTitle": "Пользовательские значки",
+      "add": "Добавить значок",
+      "limitReached": "Достигнут лимит ({limit}). Сначала удалите один.",
+      "empty": "Пользовательских значков пока нет",
+      "saved": "Сохранено",
+      "deleteConfirm": "Удалить значок «{name}»?",
+      "active": "Активен",
+      "inactive": "Отключён",
+      "moveUp": "Вверх",
+      "moveDown": "Вниз",
+      "edit": "Изменить",
+      "deactivate": "Отключить",
+      "activate": "Включить",
+      "delete": "Удалить",
+      "save": "Сохранить",
+      "cancel": "Отмена",
+      "name": "Текст значка",
+      "namePlaceholder": "напр.: Технический гуру",
+      "emoji": "Эмодзи",
+      "emojiPlaceholder": "напр.: 🌟",
+      "bgColor": "Цвет фона",
+      "textColor": "Цвет текста"
     }
   },
   "ban": {
@@ -2034,6 +2229,10 @@
       "open": "Open",
       "resolved": "Resolved"
     }
+  },
+  "submit": {
+    "title": "Отправить",
+    "subtitle": "Запись в клуб и отзыв о проблеме"
   },
   "bug": {
     "title": "Bug Report",
@@ -2288,5 +2487,13 @@
     "successHint": "Все сеансы принудительно завершены. Переход на страницу входа…",
     "backToLogin": "Вернуться к входу",
     "manualEntry": "Почта недоступна? Отправьте заявку на восстановление вручную"
+  },
+  "badges": {
+    "system": {
+      "president": "Президент",
+      "vice_president": "Вице-президент",
+      "admin": "Администратор клуба",
+      "member": "Член клуба"
+    }
   }
 }

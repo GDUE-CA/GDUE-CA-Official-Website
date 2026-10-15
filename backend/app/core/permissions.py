@@ -32,6 +32,7 @@ PERMISSION_MODULES = (
     "review.bugs",
     "review.resets",
     "review.emails",   # 更改绑定邮箱人工申请审核
+    "review.school",   # 学校身份人工验证审核（Module D）
     "settings",
     "users",
     # ---------- CMS 扩展 ----------
@@ -53,6 +54,8 @@ PERMISSION_MODULES = (
     "audit_logs",      # 操作日志
     # ---------- Phase 8 Memo 碎片笔记 ----------
     "memo",            # Memo 后台管理（浏览全部 / 下架 / 恢复）；普通成员 view 仅自己可见范围
+    # ---------- 用户徽章管理（纯展示装饰，与鉴权解耦） ----------
+    "badges",          # 用户自定义徽章的增删改与排序
 )
 
 # 角色默认矩阵：module -> role -> 允许的动作集合（member 无后台权限，不列出）
@@ -84,6 +87,11 @@ ROLE_DEFAULTS: dict[str, dict[Role, set[str]]] = {
     },
     # 更改绑定邮箱人工申请审核（super_admin/admin view+manage；editor 不参与）
     "review.emails": {
+        Role.SUPER_ADMIN: {"view", "manage"},
+        Role.ADMIN: {"view", "manage"},
+    },
+    # 学校身份人工验证审核（super_admin/admin view+manage；editor 不参与）
+    "review.school": {
         Role.SUPER_ADMIN: {"view", "manage"},
         Role.ADMIN: {"view", "manage"},
     },
@@ -185,6 +193,11 @@ ROLE_DEFAULTS: dict[str, dict[Role, set[str]]] = {
         Role.SUPER_ADMIN: {"view", "manage"},
         Role.ADMIN: {"view", "manage"},
         Role.EDITOR: {"view", "manage"},
+    },
+    # ---------- 用户徽章：admin 可管理（装饰性内容，非高危鉴权数据） ----------
+    "badges": {
+        Role.SUPER_ADMIN: {"view", "manage"},
+        Role.ADMIN: {"view", "manage"},
     },
 }
 

@@ -76,10 +76,18 @@ export interface AdminUser {
   role: string;
   is_active: boolean;
   must_change_password: boolean;
-  student_id: string;
+  /** 学号：社会成员为 null（Module D）；学校成员审核通过后写入 */
+  student_id: string | null;
   real_name: string;
   phone: string;
   avatar_url: string | null;
+  /** ---- Module D：身份分类与学校资料 ---- */
+  /** 学校身份人工验证是否通过（false = 社会成员；学校资料字段隐藏 + 后端拦截） */
+  identity_school_verified: boolean;
+  college_id: number | null;
+  major_id: number | null;
+  grade_id: number | null;
+  class_id: number | null;
   /** IANA 时区；null = 自动探测浏览器时区 */
   timezone: string | null;
   /** 模块级权限覆盖：模块名 → 允许动作列表；null = 全部使用角色默认（仅 super_admin 可写） */
@@ -100,6 +108,8 @@ export interface AdminUser {
   locality_text: string | null;
   /** 显示昵称；null = 未设置（旧数据回退展示 username） */
   display_name?: string | null;
+  /** 社团职务（纯展示，与权限解耦）：president / vice_president / member；null = 外部注册用户 */
+  club_position?: string | null;
   /** 实名验证：未实名账号禁止进后台，仅可浏览前台 */
   realname_verified: boolean;
   realname_verified_at: string | null;
@@ -146,7 +156,14 @@ export interface ProfileUpdate {
   username?: string;
   real_name?: string;
   phone?: string;
+  /** 学号：未通过学校验证时后端 403 拦截；null = 不修改（不能传空串清空） */
   student_id?: string;
+  /** ---- Module D：学校资料（仅 identity_school_verified=true 后端放行写入） ----
+   * 四个 ID 必须成组提交；全部不传 = 不修改 */
+  college_id?: number | null;
+  major_id?: number | null;
+  grade_id?: number | null;
+  class_id?: number | null;
   /** IANA 时区；空字符串 = 恢复自动探测 */
   timezone?: string;
   /** 国家；空字符串 = 清空 */
@@ -194,6 +211,19 @@ export interface AvatarUploadOut {
   avatar_url: string;
 }
 
+/** 学校信息块（GET /api/users/{username}/profile 的 school_info；后端联表组装） */
+export interface SchoolInfoBlock {
+  student_id: string | null;
+  college_id: number | null;
+  major_id: number | null;
+  grade_id: number | null;
+  class_id: number | null;
+  college_name: string | null;
+  major_name: string | null;
+  grade_year: number | null;
+  class_display_name: string | null;
+}
+
 /** 用户公开个人主页信息（GET /api/users/{username}/profile）：隐私过滤后 */
 export interface UserProfile {
   id: number;
@@ -206,6 +236,15 @@ export interface UserProfile {
   gender: string | null;
   /** 生日；privacy=private 时为 null */
   birthday: string | null;
+  /** 真实姓名；仅本人恒可见，访客需主人开启「对外展示真实姓名」开关，否则为 null */
+  real_name: string | null;
+  /** ---- Module D：身份标签（公开；社会成员两值恒 false/无标签） ---- */
+  identity_school_verified: boolean;
+  is_club_member: boolean;
+  /** 学校信息块：本人恒可见；访客需主人开启开关（后端控制输出，未验证恒 null） */
+  school_info: SchoolInfoBlock | null;
+  /** 徽章：系统徽章（动态计算）+ 自定义徽章，固定顺序 */
+  badges: BadgeOut[];
   // ---- 地区字段（永久公开，硬性约束） ----
   country: string | null;
   region: string | null;
@@ -424,7 +463,7 @@ export interface UserCreatePayload {
 /** 账号角色：super_admin / admin / editor 可进入后台；member 为普通成员（无后台权限） */
 export type AdminRole = "super_admin" | "admin" | "editor" | "member";
 
-/** 更新账号信息：自己可改基础资料，super_admin 额外可改 role/is_active */
+/** 更新账号信息：自己可改基础资料，super_admin 额外可改 role/is_active/club_position */
 export interface UserUpdatePayload {
   username?: string;
   real_name?: string;
@@ -432,6 +471,8 @@ export interface UserUpdatePayload {
   phone?: string;
   role?: AdminRole;
   is_active?: boolean;
+  /** 社团职务（仅 super_admin 可写；空串/null = 清除） */
+  club_position?: string | null;
   /** 模块级权限覆盖（仅 super_admin 可写；空对象 = 清除覆盖恢复默认） */
   permission_overrides?: Record<string, string[]> | null;
 }
@@ -1250,11 +1291,62 @@ export interface MemoTagWithCount extends MemoTagOut {
   memo_count: number;
 }
 
+/** 用户徽章（纯 UI 展示装饰，与权限彻底解耦；鉴权永远读 role） */
+export interface BadgeOut {
+  /** system=系统内置（跟随角色动态计算）；custom=管理员授予的自定义徽章 */
+  type: "system" | "custom";
+  /** 系统徽章标识：president / vice_president / admin / member（前端映射 i18n 文案与样式） */
+  key?: string | null;
+  /** 自定义徽章 id（仅 type=custom） */
+  id?: number | null;
+  /** 显示文字（自定义徽章） */
+  name?: string | null;
+  emoji?: string | null;
+  bg_color?: string | null;
+  text_color?: string | null;
+}
+
+/** 后台徽章管理：单条自定义徽章完整记录（GET /api/admin/users/{id}/badges） */
+export interface AdminCustomBadge {
+  id: number;
+  type: "custom";
+  name: string;
+  emoji: string | null;
+  bg_color: string;
+  text_color: string;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+/** 后台徽章管理列表响应 */
+export interface AdminBadgeListOut {
+  /** 系统徽章 key（只读，跟随 club_position/role 动态计算）；null = 无系统徽章 */
+  system_key: string | null;
+  /** 自定义徽章 active 上限（3） */
+  custom_limit: number;
+  custom: AdminCustomBadge[];
+}
+
+/** 新增/修改自定义徽章载荷（name 仅允许普通文字+emoji，后端剥除全部 HTML） */
+export interface CustomBadgePayload {
+  name: string;
+  emoji?: string | null;
+  /** #RRGGBB */
+  bg_color?: string;
+  /** #RRGGBB */
+  text_color?: string;
+}
+
 /** Memo 作者摘要 */
 export interface MemoAuthorBrief {
   id: number;
   username: string;
+  /** 对外展示昵称（主显示名）；为空时前端回落 username */
+  display_name: string | null;
   avatar_url: string | null;
+  badges: BadgeOut[];
 }
 
 /** Memo 附件 */
@@ -1688,4 +1780,222 @@ export interface OAuthGrant {
   id: number;
   provider: OAuthProvider;
   created_at: string;
+}
+
+/* ===================== Module D：系统基础数据（学院/年级/专业/班级） ===================== */
+/** 对齐后端 app/schemas/sys_data.py；全部数据库存储、后台维护、仅软禁用无物理删除 */
+
+export interface SysCollege {
+  id: number;
+  college_name: string;
+  sort_order: number;
+}
+
+export interface SysGrade {
+  id: number;
+  grade_year: number;
+  sort_order: number;
+}
+
+export interface SysMajor {
+  id: number;
+  college_id: number;
+  major_name: string;
+  sort_order: number;
+}
+
+export interface SysClass {
+  id: number;
+  college_id: number | null;
+  grade_id: number | null;
+  major_id: number | null;
+  class_suffix: string | null;
+  display_name: string;
+  sort_order: number;
+}
+
+/* 后台管理输出：含禁用状态与时间戳 */
+export interface SysCollegeAdmin extends SysCollege {
+  is_disabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+export interface SysGradeAdmin extends SysGrade {
+  is_disabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+export interface SysMajorAdmin extends SysMajor {
+  is_disabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+export interface SysClassAdmin extends SysClass {
+  is_disabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+/* 创建 / 更新 payload */
+export interface SysCollegeCreate {
+  college_name: string;
+  sort_order?: number;
+}
+export interface SysCollegeUpdate {
+  college_name?: string;
+  sort_order?: number;
+}
+export interface SysGradeCreate {
+  grade_year: number;
+  sort_order?: number;
+}
+export interface SysGradeUpdate {
+  grade_year?: number;
+  sort_order?: number;
+}
+export interface SysMajorCreate {
+  college_id: number;
+  major_name: string;
+  sort_order?: number;
+}
+export interface SysMajorUpdate {
+  college_id?: number;
+  major_name?: string;
+  sort_order?: number;
+}
+export interface SysClassCreate {
+  college_id?: number | null;
+  grade_id?: number | null;
+  major_id?: number | null;
+  class_suffix?: string | null;
+  display_name: string;
+  sort_order?: number;
+}
+export interface SysClassUpdate {
+  college_id?: number | null;
+  grade_id?: number | null;
+  major_id?: number | null;
+  class_suffix?: string | null;
+  display_name?: string;
+  sort_order?: number;
+}
+
+/** 拖拽排序：按新顺序传 id 列表 */
+export interface SysSortRequest {
+  ids: number[];
+}
+
+/** 启用/禁用 */
+export interface SysEnabledRequest {
+  is_disabled: boolean;
+}
+
+/* ===================== Module D：学校身份人工验证 ===================== */
+/** 对齐后端 app/schemas/school_verify.py */
+
+/** 用户可见四态：未提交 / 审核中 / 已通过 / 已驳回 */
+export type SchoolVerifyState = "none" | "pending" | "approved" | "rejected";
+
+export interface SchoolVerifyApplication {
+  id: number;
+  user_id: number;
+  student_id: string;
+  college_id: number;
+  major_id: number;
+  grade_id: number;
+  class_id: number;
+  remark: string | null;
+  attach_url: string | null;
+  status: "pending" | "approved" | "rejected";
+  admin_remark: string | null;
+  created_at: string;
+  reviewed_at: string | null;
+  /* 联表展示文本（后端填充） */
+  username?: string | null;
+  display_name?: string | null;
+  college_name?: string | null;
+  major_name?: string | null;
+  grade_year?: number | null;
+  class_display_name?: string | null;
+}
+
+/** 用户端学校验证状态（个人设置页） */
+export interface SchoolVerifyStatusOut {
+  identity_school_verified: boolean;
+  /** none / pending / approved / rejected（以最近一次申请为准） */
+  status: SchoolVerifyState;
+  latest: SchoolVerifyApplication | null;
+  history: SchoolVerifyApplication[];
+}
+
+/** 提交学校验证申请 */
+export interface SchoolVerifySubmit {
+  student_id: string;
+  college_id: number;
+  major_id: number;
+  grade_id: number;
+  class_id: number;
+  remark?: string | null;
+  attach_url?: string | null;
+}
+
+/** 后台审核请求：通过 / 驳回（驳回备注必填） */
+export interface SchoolVerifyReviewRequest {
+  action: "approved" | "rejected";
+  admin_remark?: string | null;
+}
+
+/* ===================== Module D：社团报名 ===================== */
+/** 对齐后端 app/schemas/club_apply.py；与学校验证流程完全隔离 */
+
+export type ClubApplyStatus = "pending" | "accept" | "reject";
+/** 报名主体仅限本校在读学生（校外社会报名通道已移除） */
+export type ClubApplicantType = "school";
+
+export interface ClubApplyRecord {
+  id: number;
+  user_id: number;
+  real_name: string;
+  phone: string;
+  email: string | null;
+  applicant_type: ClubApplicantType;
+  student_id: string;
+  college_id: number;
+  major_id: number;
+  enroll_year: number;
+  class_suffix: string | null;
+  /* 报表冗余文本字段 */
+  college: string;
+  major: string;
+  /** 后端拼接的完整班级字符串：{入学年份后两位}{专业}{班号后缀} */
+  class_name: string;
+  departments: string[];
+  intro: string | null;
+  status: ClubApplyStatus;
+  admin_note: string | null;
+  created_at: string;
+  reviewed_at: string | null;
+  username?: string | null;
+  display_name?: string | null;
+}
+
+/** 提交社团报名（仅限本校在读学生；学院/专业/入学年份/学号必填） */
+export interface ClubApplySubmit {
+  real_name: string;
+  phone: string;
+  email?: string | null;
+  applicant_type?: "school";
+  student_id: string;
+  college_id: number;
+  major_id: number;
+  enroll_year: number;
+  class_suffix?: string | null;
+  departments: string[];
+  intro?: string | null;
+}
+
+/** 后台审核请求：接纳 / 拒绝（拒绝备注必填） */
+export interface ClubApplyReviewRequest {
+  action: "accept" | "reject";
+  admin_note?: string | null;
 }
