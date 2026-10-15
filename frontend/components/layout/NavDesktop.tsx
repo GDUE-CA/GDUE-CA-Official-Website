@@ -14,8 +14,6 @@ import { useEffect, useRef, useState, type PointerEvent } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
-import { Menu, ChevronDown } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import Menu from "@/assets/icons/navigation/menu.svg";
 import ChevronDown from "@/assets/icons/navigation/chevron-down.svg";
 import { useI18n } from "@/i18n/provider";
