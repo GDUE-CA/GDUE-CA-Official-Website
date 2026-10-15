@@ -226,6 +226,14 @@ export interface BlogMetricOut {
 }
 
 /** 单个 IP 的访问来源聚合（后台概览） */
+/** 纯真库（qqwry）属地，均为中文原文，可能为空串 */
+export interface QqwryInfo {
+  country: string;
+  province: string;
+  city: string;
+  area: string;
+}
+
 export interface IpSourceStat {
   ip: string;
   /** loopback=本机 / internal=内网 / public=公网(地区未知) / invalid=无法解析 */
@@ -244,6 +252,8 @@ export interface IpSourceStat {
   /** 自治系统号（如 AS24547）与运营商名，查不到为 null */
   asn: string | null;
   org: string | null;
+  /** 纯真库属地；存在时优先展示，点击国名查看详情 */
+  qqwry: QqwryInfo | null;
 }
 
 /** 访问来源统计（后台概览） */

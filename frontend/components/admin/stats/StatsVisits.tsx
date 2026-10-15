@@ -25,7 +25,7 @@ const REGION_BADGE: Record<string, string> = {
 };
 
 export function StatsVisits() {
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
   const [stats, setStats] = useState<AccessStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -117,12 +117,8 @@ export function StatsVisits() {
                     <tr key={row.ip} className="border-b last:border-0">
                       <td className="py-2 pr-3 font-mono text-xs">{row.ip}</td>
                       <td className="py-2 pr-3">
-                        {row.country_code ? (
-                          <CountryFlag
-                            code={row.country_code}
-                            locale={locale}
-                            title={[row.asn, row.org].filter(Boolean).join(" · ") || undefined}
-                          />
+                        {row.country_code || row.qqwry ? (
+                          <CountryFlag code={row.country_code} qqwry={row.qqwry} asn={row.asn} org={row.org} />
                         ) : (
                           regionBadge(row.region)
                         )}
