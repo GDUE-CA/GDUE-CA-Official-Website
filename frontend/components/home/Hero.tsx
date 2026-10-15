@@ -2,14 +2,15 @@
 
 /**
  * Hero - 首页横幅区（克制科技风）
- * 左：状态胶囊 + 大标题 + 口号 + 简介 + 行动按钮；右：2×2 数据格（细线分隔）
- * 小屏上下堆叠；入场使用轻量 Framer Motion 淡入
+ * 左：眉题（学校 · 校区）+ 大标题 + 口号 + 简介 + 行动按钮；右：2×2 数据格（细线分隔）
+ * 小屏上下堆叠；入场使用轻量 Framer Motion 淡入；数据格数字滚动计数（成立年份从 2026 倒数回 2008）
  */
 import Link from "next/link";
 import { motion } from "framer-motion";
 import ArrowRight from "@/assets/icons/navigation/arrow-right.svg";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
+import { CountUp } from "@/components/shared/CountUp";
 
 const fadeUp = (delay: number) => ({
   initial: { opacity: 0, y: 12 },
@@ -21,24 +22,24 @@ export function Hero() {
   const { locale, t } = useI18n();
 
   const stats = [
-    { label: t("home.hero.stat1"), value: "36" },
-    { label: t("home.hero.stat2"), value: "7" },
-    { label: t("home.hero.stat3"), value: "14" },
-    { label: t("home.hero.stat4"), value: "2008" },
+    { label: t("home.hero.stat1"), value: 36 },
+    { label: t("home.hero.stat2"), value: 7 },
+    { label: t("home.hero.stat3"), value: 14 },
+    { label: t("home.hero.stat4"), value: 2008, from: 2026 },
   ];
 
   return (
     <section className="border-b border-border">
       <div className="container mx-auto max-w-7xl px-5 sm:px-6 lg:px-8 py-12 md:py-24 grid gap-10 lg:grid-cols-12 lg:gap-20 lg:items-center">
         <div className="lg:col-span-7 flex flex-col items-start">
-          {/* 状态胶囊 */}
-          <motion.div
+          {/* 眉题：学校 · 校区（成立年份已在右侧数据格展示，不再重复） */}
+          <motion.p
             {...fadeUp(0)}
-            className="inline-flex h-7 items-center gap-2 rounded-full border border-border bg-card px-3 font-mono text-[11px] sm:text-xs text-muted-foreground"
+            className="flex items-center gap-3 text-[13px] md:text-sm text-muted-foreground"
           >
-            <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-signal" />
-            {t("home.hero.badge")}
-          </motion.div>
+            <span aria-hidden="true" className="h-px w-6 shrink-0 bg-foreground/30" />
+            {t("home.hero.eyebrow")}
+          </motion.p>
 
           <motion.h1
             {...fadeUp(0.05)}
@@ -93,9 +94,12 @@ export function Hero() {
                 /0{i + 1}
               </span>
               <div className="mt-auto flex flex-col gap-1">
-                <span className="text-[34px] md:text-[52px] leading-none font-semibold tracking-[-0.03em]">
-                  {stat.value}
-                </span>
+                <CountUp
+                  to={stat.value}
+                  from={stat.from}
+                  delay={0.3}
+                  className="text-[34px] md:text-[52px] leading-none font-semibold tracking-[-0.03em]"
+                />
                 <span className="text-[13px] md:text-sm text-muted-foreground">{stat.label}</span>
               </div>
             </div>

@@ -143,7 +143,10 @@ function buildCsp(nonce: string, isHttps: boolean): string {
   return [
     "default-src 'self'",
     // strict-dynamic：由带 nonce 的脚本动态加载的脚本同样可信，其余一律拒绝
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""}`,
+    // 'unsafe-inline' https: http: 仅为旧浏览器兜底（Lighthouse 建议的 strict CSP 写法）：
+    //   支持 nonce 的浏览器忽略 'unsafe-inline'，支持 strict-dynamic 的浏览器忽略 'self' 与 https:/http:，
+    //   因此对现代浏览器无任何放宽。注意：风控挑战页的 gateCsp 没有 strict-dynamic，不能照搬 https:
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'unsafe-inline' https: http:${isDev ? " 'unsafe-eval'" : ""}`,
     // 组件库（Radix / framer-motion）通过 style 属性写动画样式，需允许内联样式
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https:",

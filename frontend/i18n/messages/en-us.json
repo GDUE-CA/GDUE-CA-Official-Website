@@ -118,7 +118,7 @@
   },
   "home": {
     "hero": {
-      "badge": "EST. 2008.GDUE.Huadu Campus",
+      "eyebrow": "Guangdong University of Education · Huadu Campus",
       "title": "Computer Association",
       "subtitle": "Serving students, promoting campus computer culture",
       "description": "Founded on May 31, 2008, GDUECA Computer Association is an academic and technology club on the Huadu Campus. We are known for weekly hands-on sessions, free repair clinics, anti-fraud cybersecurity competitions, and esports events.",
@@ -418,6 +418,7 @@
     "typeColumn": "Type",
     "chartTitle": "Event Participation Stats",
     "chartSubtitle": "Participants per event over the years",
+    "empty": "No data yet",
     "statusColumn": "Status",
     "enrolledColumn": "Enrolled",
     "actionColumn": "Actions",

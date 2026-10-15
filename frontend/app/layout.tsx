@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import Script from "next/script";
 import "@/app/globals.css";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
+import { defaultLocale } from "@/lib/i18n";
 
 /**
  * 根 layout：所有路由（含 / 和 /admin）共享
@@ -33,10 +34,14 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const nonce = (await headers()).get("x-nonce") ?? undefined;
+  const h = await headers();
+  const nonce = h.get("x-nonce") ?? undefined;
+  // <html lang>：proxy.ts 按 URL 首段注入 x-locale（非 locale 路由如 /admin 回退默认 zh-cn）；
+  // 客户端导航切换语言时由 [locale] layout 的 HtmlLangSync 同步
+  const lang = h.get("x-locale") ?? defaultLocale;
   return (
     <html
-      lang="zh-cn"
+      lang={lang}
       className="h-full antialiased"
       suppressHydrationWarning
     >

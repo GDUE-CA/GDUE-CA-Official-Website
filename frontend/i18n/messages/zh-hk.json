@@ -93,7 +93,7 @@
   },
   "home": {
     "hero": {
-      "badge": "EST. 2008 · 廣東第二師範學院 · 花都校區",
+      "eyebrow": "廣東第二師範學院 · 花都校區",
       "title": "計算機協會",
       "subtitle": "服務廣大同學，推廣校園計算機文化",
       "description": "廣東二師計協成立於2008年5月31日，是花都校區學術科技類社團。我們以每週常規授課、義務維修、網絡安全競賽和電子競技為特色，提高會員計算機應用水平。",
@@ -386,6 +386,7 @@
     "typeColumn": "類型",
     "chartTitle": "活動參與人數統計",
     "chartSubtitle": "歷年各場活動的參與人數",
+    "empty": "暫無數據",
     "statusColumn": "狀態",
     "enrolledColumn": "報名人數",
     "actionColumn": "操作",

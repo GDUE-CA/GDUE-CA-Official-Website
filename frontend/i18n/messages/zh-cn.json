@@ -118,7 +118,7 @@
   },
   "home": {
     "hero": {
-      "badge": "EST. 2008 · 广东第二师范学院 · 花都校区",
+      "eyebrow": "广东第二师范学院 · 花都校区",
       "title": "计算机协会",
       "subtitle": "服务广大同学，推广校园计算机文化",
       "description": "广东二师计协成立于2008年5月31日，是花都校区学术科技类社团。我们以每周常规授课、义务维修、网络安全竞赛和电子竞技为特色，提高会员计算机应用水平。",
@@ -435,6 +435,7 @@
     "typeColumn": "类型",
     "chartTitle": "活动参与人数统计",
     "chartSubtitle": "历年各场活动的参与人数",
+    "empty": "暂无数据",
     "statusColumn": "状态",
     "enrolledColumn": "报名人数",
     "actionColumn": "操作",

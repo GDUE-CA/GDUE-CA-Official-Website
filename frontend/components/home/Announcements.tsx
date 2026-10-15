@@ -50,6 +50,9 @@ function AnnouncementLink({
 /** 鼠标离开后延迟关闭，避免跨条目移动时弹层闪烁 */
 const CLOSE_DELAY_MS = 150;
 
+/** 完整内容弹出卡片的 id（供条目按钮 aria-controls 关联） */
+const POPOVER_ID = "home-announcement-popover";
+
 export function Announcements() {
   const { t, locale } = useI18n();
   const [cmsItems, setCmsItems] = useState<Announcement[] | null>(null);
@@ -159,34 +162,34 @@ export function Announcements() {
           {list.map((item, i) => (
             <li
               key={item.key}
-              role="button"
-              tabIndex={0}
-              aria-expanded={open && active === i}
-              className="flex min-w-0 flex-col gap-1 py-4 first:pt-0 md:py-0 md:flex-1 md:pl-6 border-b last:border-b-0 md:border-b-0 md:border-l border-border cursor-pointer outline-none focus-visible:opacity-70"
+              className="flex min-w-0 py-4 first:pt-0 md:py-0 md:flex-1 md:pl-6 border-b last:border-b-0 md:border-b-0 md:border-l border-border"
               onMouseEnter={() => {
                 cancelClose();
                 setHovered(i);
               }}
-              onClick={() => setPinned((p) => (p === i ? null : i))}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  setPinned((p) => (p === i ? null : i));
-                }
-              }}
             >
-              <time dateTime={item.date} className="font-mono text-xs text-muted-foreground">
-                {item.date}
-              </time>
-              <span className="text-[15px] md:text-sm leading-normal md:truncate block min-w-0">
-                {item.title}
-              </span>
+              {/* 原生 button：自带聚焦与 Enter / 空格触发；li 保持 listitem 语义（列表内只能是 li） */}
+              <button
+                type="button"
+                aria-expanded={open && active === i}
+                aria-controls={POPOVER_ID}
+                onClick={() => setPinned((p) => (p === i ? null : i))}
+                className="flex w-full min-w-0 flex-col gap-1 text-left cursor-pointer rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+              >
+                <time dateTime={item.date} className="font-mono text-xs text-muted-foreground">
+                  {item.date}
+                </time>
+                <span className="text-[15px] md:text-sm leading-normal md:truncate block w-full min-w-0">
+                  {item.title}
+                </span>
+              </button>
             </li>
           ))}
         </ul>
 
         {/* 完整内容弹出卡片：始终渲染，透明度/位移过渡（面板挂在栏底，覆盖后续区块） */}
         <div
+          id={POPOVER_ID}
           aria-hidden={!open}
           className={`absolute left-5 right-5 sm:left-6 sm:right-6 lg:left-8 lg:right-8 top-full z-50 transition-[opacity,transform] duration-200 ease-out ${
             open ? "opacity-100 translate-y-1" : "pointer-events-none opacity-0 -translate-y-1"
