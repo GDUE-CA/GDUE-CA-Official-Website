@@ -166,12 +166,8 @@ export function StatsVisits() {
                       <span className="text-xs text-muted-foreground">
                         {t("admin.dashboard.accessColRegion")}
                       </span>
-                      {row.country_code ? (
-                        <CountryFlag
-                          code={row.country_code}
-                          locale={locale}
-                          title={[row.asn, row.org].filter(Boolean).join(" · ") || undefined}
-                        />
+                      {row.country_code || row.qqwry ? (
+                        <CountryFlag code={row.country_code} qqwry={row.qqwry} asn={row.asn} org={row.org} />
                       ) : (
                         regionBadge(row.region)
                       )}
