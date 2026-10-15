@@ -14,8 +14,8 @@ import { listRegistrations } from "@/lib/api/register";
 import { listBugReports } from "@/lib/api/bugReport";
 import { fetchAccessStats, fetchOverview } from "@/lib/api/adminStats";
 import { FormattedUserActionTime } from "@/components/shared/FormattedUserActionTime";
-import { CountryFlag } from "@/components/admin/stats/CountryFlag";
-import type { Registration, BugReport, AccessStats, AdminOverview } from "@/types/api";
+import { CountryFlag, qqwryPlace } from "@/components/admin/stats/CountryFlag";
+import type { Registration, BugReport, AccessStats, AdminOverview, IpSourceStat } from "@/types/api";
 
 export default function AdminDashboardPage() {
   const { t, locale } = useI18n();
@@ -73,8 +73,12 @@ export default function AdminDashboardPage() {
     }
   }
 
-  /** 可读属地：zh 系语言用 location_zh，其余用 location_en；特殊枚举走 i18n（同评论属地） */
-  function locationLabel(s: { location_zh: string | null; location_en: string | null }): string {
+  /**
+   * 可读属地：zh 系语言优先纯真库省市，其次 location_zh；其余用 location_en；
+   * 特殊枚举走 i18n（同评论属地）
+   */
+  function locationLabel(s: IpSourceStat): string {
+    if (locale.startsWith("zh") && s.qqwry) return qqwryPlace(s.qqwry);
     const raw = locale.startsWith("zh") ? s.location_zh : s.location_en;
     if (!raw) return t("admin.dashboard.accessRegionInvalid");
     if (raw === "local") return t("comments.locLocal");
@@ -215,12 +219,8 @@ export default function AdminDashboardPage() {
                       <td className="py-2 pr-4 font-mono text-xs">{s.ip}</td>
                       <td className="py-2 pr-4">
                         <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-                          {s.country_code ? (
-                            <CountryFlag
-                              code={s.country_code}
-                              locale={locale}
-                              title={[s.asn, s.org].filter(Boolean).join(" · ") || undefined}
-                            />
+                          {s.country_code || s.qqwry ? (
+                            <CountryFlag code={s.country_code} qqwry={s.qqwry} asn={s.asn} org={s.org} />
                           ) : (
                             <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${regionBadgeClass(s.region)}`}>
                               {regionLabel(s.region)}

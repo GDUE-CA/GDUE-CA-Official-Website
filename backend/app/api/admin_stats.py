@@ -53,6 +53,14 @@ def _region(ip: str | None) -> str:
     return "public"
 
 
+class QqwryInfo(BaseModel):
+    """纯真库属地（中文原文）。"""
+    country: str = ""
+    province: str = ""
+    city: str = ""
+    area: str = ""
+
+
 class IpSourceStat(BaseModel):
     """单个 IP 的访问来源聚合。"""
     ip: str
@@ -69,6 +77,8 @@ class IpSourceStat(BaseModel):
     country_code: str | None = None
     asn: str | None = None
     org: str | None = None
+    # 纯真库属地，存在时前端优先展示，点击国名查看国家 / 省 / 市 / area
+    qqwry: QqwryInfo | None = None
 
 
 class AccessStatsOut(BaseModel):
@@ -180,6 +190,7 @@ async def get_access_stats(
                 country_code=intel[ip].country_code,
                 asn=intel[ip].asn,
                 org=intel[ip].org,
+                qqwry=intel[ip].qqwry,
             )
             for ip, e in top
         ],

@@ -1,7 +1,8 @@
 """IP 情报：国家代码 + ASN / 运营商（后台访问统计用）。
 
-数据源：风控服务 GET {IP_INFO_API_URL}/{ip}（ipinfo / iplocate / maxmind 多源），
-国家代码取值优先级 ipinfo.country → maxmind.country.iso_code → iplocate.country_code。
+数据源：风控服务 GET {IP_INFO_API_URL}/{ip}（ipinfo / iplocate / maxmind / qqwry 多源），
+国家代码取值优先级 ipinfo.country → maxmind.country.iso_code → iplocate.country_code；
+纯真库（qqwry）的中文国家 / 省 / 市 / area 原样透出，前端优先展示（只有 qqwry 时「中国」→ CN）。
 
 限流约束：风控源站按 IP 限速（limit_req burst=10 nodelay），超限后 CDN WAF 还会临时封禁本机出口，
 因此：
@@ -25,7 +26,8 @@ from app.core.kv import get_kv
 
 logger = logging.getLogger("gdueca.ip_intel")
 
-_CACHE_PREFIX = "ipintel:"
+# 结构变化时递增版本号，使旧缓存失效
+_CACHE_PREFIX = "ipintel:v2:"
 _BREAKER_KEY = "ipintel:breaker"
 _CACHE_TTL_OK = 7 * 86400
 _CACHE_TTL_FAIL = 600
@@ -41,6 +43,8 @@ class IpIntel:
     country_code: str | None = None
     asn: str | None = None
     org: str | None = None
+    # 纯真库：{"country", "province", "city", "area"}，均为中文原文，可能为空串
+    qqwry: dict[str, str] | None = None
     source: str = "local"
 
 
@@ -56,12 +60,31 @@ def _local(ip: str) -> IpIntel:
     return IpIntel(country_code=resolve_country_code(ip), source="local")
 
 
+def _parse_qqwry(raw: object) -> dict[str, str] | None:
+    """纯真库结果 → {country, province, city, area}；全空时返回 None。"""
+    if not isinstance(raw, dict):
+        return None
+    data = raw.get("data") if isinstance(raw.get("data"), dict) else {}
+
+    def text(v: object) -> str:
+        return v.strip() if isinstance(v, str) else ""
+
+    out = {
+        "country": text(data.get("country")),
+        "province": text(data.get("province")),
+        "city": text(data.get("city")),
+        "area": text(raw.get("area")),
+    }
+    return out if any(out.values()) else None
+
+
 def _parse(body: dict) -> IpIntel | None:
-    """风控接口响应 → IpIntel；没有任何国家代码时返回 None。"""
+    """风控接口响应 → IpIntel；既无国家代码也无纯真库结果时返回 None。"""
     results = body.get("results") or {}
     ipinfo = results.get("ipinfo") or {}
     iplocate = results.get("iplocate") or {}
     maxmind = results.get("maxmind") or {}
+    qqwry = _parse_qqwry(results.get("qqwry"))
 
     country = (
         ipinfo.get("country")
@@ -69,6 +92,8 @@ def _parse(body: dict) -> IpIntel | None:
         or iplocate.get("country_code")
     )
     if not isinstance(country, str) or len(country) != 2 or not country.isalpha():
+        country = "CN" if qqwry and qqwry["country"] == "中国" else None
+    if not country and not qqwry:
         return None
 
     asn = ipinfo.get("asn") or iplocate.get("asn") or maxmind.get("autonomous_system_number")
@@ -82,9 +107,10 @@ def _parse(body: dict) -> IpIntel | None:
         or maxmind.get("autonomous_system_organization")
     )
     return IpIntel(
-        country_code=country.upper(),
+        country_code=country.upper() if country else None,
         asn=asn,
         org=org if isinstance(org, str) else None,
+        qqwry=qqwry,
         source="remote",
     )
 
