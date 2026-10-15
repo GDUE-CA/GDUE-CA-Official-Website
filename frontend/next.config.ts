@@ -198,9 +198,25 @@ const nextConfig: NextConfig = {
     // 图标矢量化（规范 §3 / icon-vectorization-exec.md 2.5 方案 A）：
     // 全部 .svg 经 @svgr/webpack 编译为内联 React 组件（支持 currentColor 主题继承）。
     // 禁止改用 webpack() 写法——Next.js 16 dev/build 默认 Turbopack，webpack() 不生效。
+    // 必须保留 viewBox：SVGO preset-default 默认 removeViewBox，
+    // 删掉后 className 改尺寸（如 h-4 w-4）只会裁切图形而不缩放。
     rules: {
       "*.svg": {
-        loaders: ["@svgr/webpack"],
+        loaders: [
+          {
+            loader: "@svgr/webpack",
+            options: {
+              svgoConfig: {
+                plugins: [
+                  {
+                    name: "preset-default",
+                    params: { overrides: { removeViewBox: false } },
+                  },
+                ],
+              },
+            },
+          },
+        ],
         as: "*.js",
       },
     },
