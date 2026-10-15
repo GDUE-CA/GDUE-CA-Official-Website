@@ -3,7 +3,9 @@
 /**
  * EventsList - 活动列表（含类型筛选）
  * 通栏筛选条（胶囊按钮，aria-pressed）+ 表格式列表：
- * 桌面六列（日期 / 类型 / 活动 / 状态 / 报名人数 / 操作），手机堆叠
+ * 桌面六列（日期 / 类型 / 活动 / 状态 / 报名人数 / 操作）；
+ * 手机堆叠为卡片：日期·类型 / 标题·简介 / 状态·报名人数（带标签）/ 等宽双按钮（40px 触控高度）
+ * - 无数据（含筛选后为空）：隐藏表头，显示灰色「暂无数据」
  * - 每行展示后端实时业务状态标签（RuntimeStatusBadge）
  * - 操作列：详情链接 + 一键报名按钮（EnrolButton 挂载时实时拉取登录态）
  * - archived 模式（归档专区）：顶部提示条 + 隐藏报名按钮，仅保留详情查阅
@@ -71,10 +73,10 @@ export function EventsList({ events, archived = false }: EventsListProps) {
         </div>
       )}
 
-      {/* 通栏筛选条 */}
+      {/* 通栏筛选条（手机横向滚动，右缘渐隐提示可滑动） */}
       <div className="border-b border-border">
         <div className="container mx-auto max-w-7xl px-5 sm:px-6 lg:px-8 py-4 md:h-[72px] md:py-0 flex items-center justify-between gap-4">
-          <div role="group" aria-label={t("events.filterAll")} className="flex gap-2 overflow-x-auto -mx-1 px-1">
+          <div role="group" aria-label={t("events.filterAll")} className="flex gap-2 overflow-x-auto -mx-1 px-1 max-md:pr-6 max-md:[mask-image:linear-gradient(to_right,#000_calc(100%-24px),transparent)]">
             {filters.map((f) => {
               const active = filter === f.key;
               return (
@@ -108,7 +110,7 @@ export function EventsList({ events, archived = false }: EventsListProps) {
             role="row"
             className={cn(
               "hidden h-10 border-b border-border font-mono text-xs text-muted-foreground",
-              rowGrid
+              filtered.length > 0 && rowGrid
             )}
           >
             <span role="columnheader" className="flex items-center">{t("events.dateColumn")}</span>
@@ -118,6 +120,14 @@ export function EventsList({ events, archived = false }: EventsListProps) {
             <span role="columnheader" className="flex items-center justify-end text-right">{t("events.enrolledColumn")}</span>
             <span role="columnheader" className="flex items-center justify-end text-right">{t("events.actionColumn")}</span>
           </div>
+          {filtered.length === 0 && (
+            <div
+              role="row"
+              className="flex h-40 items-center justify-center rounded-2xl border border-border bg-card text-sm text-muted-foreground"
+            >
+              <span role="cell">{t("events.empty")}</span>
+            </div>
+          )}
           {filtered.map((event) => (
             <div
               key={event.slug}
@@ -152,13 +162,21 @@ export function EventsList({ events, archived = false }: EventsListProps) {
                   {localizedEventField(t, event.slug, "description", event.description)}
                 </span>
               </div>
-              <div role="cell" className="flex items-center gap-2 md:justify-start">
-                <RuntimeStatusBadge status={event.runtime_status} />
+              {/* 手机：状态与报名人数同一行；桌面：拆回两列 */}
+              <div className="flex items-center justify-between gap-3 md:contents">
+                <div role="cell" className="flex items-center gap-2 md:justify-start">
+                  <RuntimeStatusBadge status={event.runtime_status} />
+                </div>
+                <span role="cell" className="font-mono text-xs md:text-sm md:text-right tabular-nums text-muted-foreground md:text-foreground md:flex md:items-center md:justify-end">
+                  <span className="md:hidden">{t("events.enrolledColumn")} </span>
+                  {(event.enrolled_count ?? 0).toLocaleString("en-us")}
+                </span>
               </div>
-              <span role="cell" className="font-mono text-xs md:text-sm md:text-right tabular-nums text-muted-foreground md:text-foreground md:flex md:items-center md:justify-end">
-                {(event.enrolled_count ?? 0).toLocaleString("en-us")}
-              </span>
-              <div role="cell" className="flex items-center gap-2 md:justify-end">
+              {/* 手机：按钮等宽铺满、40px 触控高度；桌面：右对齐紧凑按钮 */}
+              <div
+                role="cell"
+                className="grid auto-cols-fr grid-flow-col gap-2 [&>*]:h-10 [&>*]:w-full [&>*]:justify-center md:flex md:items-center md:justify-end md:[&>*]:h-8 md:[&>*]:w-auto"
+              >
                 {archived ? (
                   <Link
                     href={`/${locale}/events/${event.id}`}

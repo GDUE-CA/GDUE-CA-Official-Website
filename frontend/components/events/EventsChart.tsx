@@ -8,6 +8,7 @@
  * - 单系列无图例（标题即说明）；数据色 --chart-1 经校验脚本在浅 / 深面板底色上均通过
  * - 条宽 <= 20px，数据端 4px 圆角、基线端直角；网格为 1px 实线且只保留数值方向
  * - 悬停显示逐条数值；下方活动列表即表格视图
+ * - 无活动数据时显示灰色「暂无数据」空状态（后端不可用降级为空列表时同样适用）
  */
 import { useSyncExternalStore } from "react";
 import {
@@ -91,6 +92,14 @@ export function EventsChart({ events }: EventsChartProps) {
   const { t } = useI18n();
   const narrow = useIsNarrow();
   const axisWidth = narrow ? 128 : 220;
+
+  if (events.length === 0) {
+    return (
+      <div className="flex h-40 w-full items-center justify-center text-sm text-muted-foreground">
+        {t("events.empty")}
+      </div>
+    );
+  }
 
   const data = events.map((e) => {
     const key = `home.events.items.${e.slug}.title`;

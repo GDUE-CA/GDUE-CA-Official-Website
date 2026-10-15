@@ -12,10 +12,10 @@ import {
 import { getDictionaryByLocale } from "@/i18n/dictionary";
 import { I18nProvider } from "@/i18n/provider";
 import { SessionHeartbeat } from "@/components/shared/SessionHeartbeat";
+import { HtmlLangSync } from "@/components/shared/HtmlLangSync";
 import { BanModal } from "@/components/shared/BanModal";
 import { NavDesktop } from "@/components/layout/NavDesktop";
 import { Footer } from "@/components/layout/Footer";
-import { GlobalBottomBar } from "@/components/layout/GlobalBottomBar";
 import { BackgroundTaskFloat } from "@/components/notifications/BackgroundTaskFloat";
 
 /** 站点根 URL（与 sitemap.ts / robots.ts 同源，用于 hreflang 绝对 URL） */
@@ -114,21 +114,14 @@ export default async function LocaleLayout({
   const locale: Locale = localeStr;
   const messages = await getDictionaryByLocale(locale);
   const nonce = (await headers()).get("x-nonce") ?? undefined;
-  const htmlLang = locale;
 
   return (
     <>
       {/*
-        设置 <html lang>：在 hydration 前执行，覆盖根 layout 默认 zh-cn。
-        使用 next/script（而非原生 <script>）避免 Next 16 的 React component 警告。
+        <html lang> 由根 layout 按 x-locale 在服务端输出；这里只负责客户端切换语言后的同步。
+        （原 beforeInteractive 脚本放在嵌套 layout 中无效，且触发 React「script tag」报错）
       */}
-      <Script
-        id="gdueca-html-lang"
-        strategy="beforeInteractive"
-        nonce={nonce}
-      >
-        {`document.documentElement.lang=${JSON.stringify(htmlLang)};`}
-      </Script>
+      <HtmlLangSync locale={locale} />
 
       {/*
         schema.org EducationalOrganization JSON-LD。
@@ -163,9 +156,6 @@ export default async function LocaleLayout({
         <NavDesktop />
         <main className="flex-1 pt-16">{children}</main>
         <Footer />
-        {/* 固定底栏占位：避免内容被 GlobalBottomBar 遮挡 */}
-        <div aria-hidden className="h-20 md:h-16" />
-        <GlobalBottomBar />
       </I18nProvider>
     </>
   );
