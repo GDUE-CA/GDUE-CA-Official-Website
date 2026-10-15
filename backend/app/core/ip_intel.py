@@ -3,7 +3,7 @@
 数据源：风控服务 GET {IP_INFO_API_URL}/{ip}（ipinfo / iplocate / maxmind 多源），
 国家代码取值优先级 ipinfo.country → maxmind.country.iso_code → iplocate.country_code。
 
-限流约束：风控源站按 IP 限速（burst 很小），超限后 CDN WAF 还会临时封禁本机出口，
+限流约束：风控源站按 IP 限速（limit_req burst=10 nodelay），超限后 CDN WAF 还会临时封禁本机出口，
 因此：
 - 结果写入 KV 缓存（成功 7 天，失败 10 分钟），同一 IP 不重复请求；
 - 单次批量最多新查 _MAX_FETCH_PER_BATCH 个 IP，且串行请求；未查到的本次先用本地 GeoLite2，
@@ -30,7 +30,7 @@ _BREAKER_KEY = "ipintel:breaker"
 _CACHE_TTL_OK = 7 * 86400
 _CACHE_TTL_FAIL = 600
 _BREAKER_TTL = 600
-_MAX_FETCH_PER_BATCH = 5
+_MAX_FETCH_PER_BATCH = 8  # 低于源站 burst=10，留余量
 _TIMEOUT_SECONDS = 4
 
 
