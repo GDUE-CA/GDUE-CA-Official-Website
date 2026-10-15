@@ -6,10 +6,10 @@
 - bug_reports.submit_ip：Bug 反馈提交 IP
 - password_reset_requests 无 submit_ip 字段，不参与统计
 
-地区分类（完整 GeoIP 属地解析待接入，当前仅做基础分类）：
+地区分类（region）：
 - loopback：本机回环
 - internal：内网（私有地址段）
-- public：公网（地区未知，待 GeoIP 接入）
+- public：公网（国家 / ASN 见 country_code / asn / org，来自 app.core.ip_intel）
 - invalid：无法解析
 """
 from ipaddress import ip_address
@@ -21,6 +21,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.permissions import require_permission
+from app.core.ip_intel import lookup_many
 from app.core.ip_location import resolve_location
 from app.db.models import (
     Activity,
@@ -38,7 +39,7 @@ router = APIRouter(prefix="/api/admin-stats", tags=["admin-stats"])
 
 
 def _region(ip: str | None) -> str:
-    """IP 地区基础分类（GeoIP 完整属地待接入）。"""
+    """IP 地区基础分类。"""
     if not ip:
         return "invalid"
     try:
@@ -64,6 +65,10 @@ class IpSourceStat(BaseModel):
     # GeoIP 可读属地（离线库缺失/查不到时为 None，前端显示「地区未知」）
     location_zh: str | None = None
     location_en: str | None = None
+    # ISO-3166-1 alpha-2 国家代码（大写，前端渲染国旗 + 本地化国名）；非公网 / 查不到为 None
+    country_code: str | None = None
+    asn: str | None = None
+    org: str | None = None
 
 
 class AccessStatsOut(BaseModel):
@@ -157,6 +162,7 @@ async def get_access_stats(
         _bump(ip.strip(), cnt, last, "bugs")
 
     top = sorted(merged.items(), key=lambda kv: kv[1]["total"], reverse=True)[:20]
+    intel = await lookup_many([ip for ip, _ in top])
     return AccessStatsOut(
         total_events=sum(e["total"] for e in merged.values()),
         unique_ips=len(merged),
@@ -171,6 +177,9 @@ async def get_access_stats(
                 last_seen=e["last_seen"],
                 location_zh=_geo(ip)[0],
                 location_en=_geo(ip)[1],
+                country_code=intel[ip].country_code,
+                asn=intel[ip].asn,
+                org=intel[ip].org,
             )
             for ip, e in top
         ],

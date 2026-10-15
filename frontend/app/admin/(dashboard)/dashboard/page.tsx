@@ -14,6 +14,7 @@ import { listRegistrations } from "@/lib/api/register";
 import { listBugReports } from "@/lib/api/bugReport";
 import { fetchAccessStats, fetchOverview } from "@/lib/api/adminStats";
 import { FormattedUserActionTime } from "@/components/shared/FormattedUserActionTime";
+import { CountryFlag } from "@/components/admin/stats/CountryFlag";
 import type { Registration, BugReport, AccessStats, AdminOverview } from "@/types/api";
 
 export default function AdminDashboardPage() {
@@ -213,10 +214,20 @@ export default function AdminDashboardPage() {
                     <tr key={s.ip} className="border-b border-border/60 last:border-0">
                       <td className="py-2 pr-4 font-mono text-xs">{s.ip}</td>
                       <td className="py-2 pr-4">
-                        <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${regionBadgeClass(s.region)}`}>
-                          {regionLabel(s.region)}
-                        </span>
-                        <span className="ml-1.5 text-xs text-muted-foreground">{locationLabel(s)}</span>
+                        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                          {s.country_code ? (
+                            <CountryFlag
+                              code={s.country_code}
+                              locale={locale}
+                              title={[s.asn, s.org].filter(Boolean).join(" · ") || undefined}
+                            />
+                          ) : (
+                            <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${regionBadgeClass(s.region)}`}>
+                              {regionLabel(s.region)}
+                            </span>
+                          )}
+                          <span className="text-xs text-muted-foreground">{locationLabel(s)}</span>
+                        </div>
                       </td>
                       <td className="py-2 pr-4">
                         <div className="flex flex-wrap gap-1.5 text-xs text-muted-foreground">

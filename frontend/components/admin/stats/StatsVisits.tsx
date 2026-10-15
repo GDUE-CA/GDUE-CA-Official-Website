@@ -3,7 +3,7 @@
 /**
  * 访问统计（/admin/stats/visits）
  * 复用概览页同一数据源 /api/admin-stats/access：独立 IP 数、总事件数
- * + 来源明细表（IP、地区徽章、来源构成、次数、最近访问）。
+ * + 来源明细表（IP、国旗 / 地区徽章、来源构成、次数、最近访问）。
  */
 import { useEffect, useState } from "react";
 import { Loader2, RefreshCw } from "lucide-react";
@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { fetchAccessStats } from "@/lib/api/adminStats";
 import { FormattedUserActionTime } from "@/components/shared/FormattedUserActionTime";
+import { CountryFlag } from "./CountryFlag";
 import type { AccessStats, IpSourceStat } from "@/types/api";
 
 /** 地区徽章配色 */
@@ -24,7 +25,7 @@ const REGION_BADGE: Record<string, string> = {
 };
 
 export function StatsVisits() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [stats, setStats] = useState<AccessStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -115,7 +116,17 @@ export function StatsVisits() {
                   {stats.top_ips.map((row: IpSourceStat) => (
                     <tr key={row.ip} className="border-b last:border-0">
                       <td className="py-2 pr-3 font-mono text-xs">{row.ip}</td>
-                      <td className="py-2 pr-3">{regionBadge(row.region)}</td>
+                      <td className="py-2 pr-3">
+                        {row.country_code ? (
+                          <CountryFlag
+                            code={row.country_code}
+                            locale={locale}
+                            title={[row.asn, row.org].filter(Boolean).join(" · ") || undefined}
+                          />
+                        ) : (
+                          regionBadge(row.region)
+                        )}
+                      </td>
                       <td className="py-2 pr-3 text-xs text-muted-foreground">
                         {[
                           row.admin_actions > 0 && `${t("admin.dashboard.accessSourceAdmin")}×${row.admin_actions}`,
