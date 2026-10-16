@@ -770,6 +770,22 @@ export interface Paginated<T> {
 /* ---------- 公告（Phase 3） ---------- */
 export type AnnouncementCategory = "homepage" | "home";
 
+/**
+ * 公告附件预览类型（与后端 AnnouncementAttachmentKind 枚举一一对应）：
+ * video/audio/pdf 走在线预览，office（Word/Excel/PPT）浏览器无原生渲染能力，仅下载。
+ */
+export type AnnouncementAttachmentKind = "video" | "audio" | "pdf" | "office" | "other";
+
+/** 公告附件（多媒体 / 办公文档）：文件经同源 /uploads 提供，支持 HTTP Range */
+export interface AnnouncementAttachment {
+  id: number;
+  kind: AnnouncementAttachmentKind;
+  url: string;
+  original_name: string | null;
+  mime: string;
+  size: number;
+}
+
 export interface Announcement {
   id: number;
   title: string;
@@ -782,6 +798,22 @@ export interface Announcement {
   category: AnnouncementCategory;
   created_by: number | null;
   created_at: string;
+  attachments: AnnouncementAttachment[];
+}
+
+/** 公开接口返回的公告（仅生效中 + 已发布，不含 created_by 等管理字段） */
+export interface PublicAnnouncement {
+  id: number;
+  category: AnnouncementCategory;
+  title: string;
+  content: string;
+  link: string | null;
+  start_at: string | null;
+  end_at: string | null;
+  priority: number;
+  /** 发布时间兜底：start_at 为空时作为发布时间展示 */
+  created_at: string;
+  attachments: AnnouncementAttachment[];
 }
 
 export interface AnnouncementCreate {

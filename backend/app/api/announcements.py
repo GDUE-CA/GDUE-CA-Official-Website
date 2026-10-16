@@ -1,21 +1,33 @@
 """公告 CMS 接口。
 
 公开接口：自动过滤【时间生效中 + 已启用】，按 priority 降序返回；过期自动隐藏。
-管理接口：完整 CRUD，权限模块 announcements。
+管理接口：完整 CRUD + 多媒体/办公文档附件上传，权限模块 announcements。
 """
+import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import ctx_uid, log_action
 from app.core.middleware import get_client_ip
 from app.core.permissions import require_permission
-from app.db.models import Announcement, AnnouncementCategory, AuditLog, UserNotifyRead
+from app.db.models import (
+    Announcement,
+    AnnouncementAttachment,
+    AnnouncementAttachmentKind,
+    AnnouncementCategory,
+    AuditLog,
+    MediaCategory,
+    MediaFile,
+    UserNotifyRead,
+)
 from app.db.session import get_db
 from app.schemas.announcement import (
+    AnnouncementAttachmentOut,
     AnnouncementCreate,
     AnnouncementOut,
     AnnouncementPublicOut,
@@ -76,6 +88,27 @@ async def list_public_announcements(
     if lang:
         await translate_obj_fields(db, outs, ("title", "content"), lang)
     return outs
+
+
+# ---------- 公开：单条详情（仅生效中 + 已启用，否则 404） ----------
+@public_router.get("/{aid}", response_model=AnnouncementPublicOut)
+async def get_public_announcement(
+    aid: int,
+    lang: str | None = Query(default=None, max_length=16, description="显示语言；传入时标题/内容自动翻译（缓存加速，失败回退原文）"),
+    db: AsyncSession = Depends(get_db),
+):
+    """前端公告详情页：仅返回【时间生效中 + 已启用】的公告；过期/草稿一律 404。"""
+    a = await db.get(Announcement, aid)
+    if not a or not a.enabled:
+        raise HTTPException(status_code=404, detail="公告不存在或已失效")
+    now_naive = datetime.now(timezone.utc).replace(tzinfo=None)
+    if not _is_in_effect(a, now_naive):
+        raise HTTPException(status_code=404, detail="公告不存在或已失效")
+    out = AnnouncementPublicOut.model_validate(a)
+    if lang:
+        # 翻译 Out 副本而非 ORM 实体，避免译文随 get_db 统一 commit 污染源数据
+        await translate_obj_fields(db, [out], ("title", "content"), lang)
+    return out
 
 
 # ---------- 管理：分页列表 ----------
@@ -181,7 +214,207 @@ async def admin_delete_announcement(
         raise HTTPException(status_code=404, detail="公告不存在")
     # 同步清理该通知的所有已读记录（SQLite 未开 FK pragma，需显式删除）
     await db.execute(delete(UserNotifyRead).where(UserNotifyRead.announcement_id == aid))
+    # 附件行 + 落盘文件一并清理（同上，FK 未开 pragma 需显式删除）
+    for att in (
+        await db.execute(
+            select(AnnouncementAttachment).where(AnnouncementAttachment.announcement_id == aid)
+        )
+    ).scalars().all():
+        _unlink_attachment_file(att.url)
+        await db.delete(att)
     await db.delete(a)
     _log(db, user, "announcement.delete", f"announcement:{aid}",
+         get_client_ip(request))
+    await db.commit()
+
+
+# ---------- 管理：附件上传 / 删除 ----------
+# 上传上限：50MB（覆盖常见短视频与办公文档；超限直接拒绝，不做服务端转码）
+ATTACHMENT_MAX_BYTES = 50 * 1024 * 1024
+ATTACHMENT_DIR = Path("uploads/announcements")
+
+# 规范扩展名 → (规范 MIME, 预览类型)。仅此表内类型可上传。
+_ATTACHMENT_TYPES: dict[str, tuple[str, AnnouncementAttachmentKind]] = {
+    # 视频：浏览器原生 <video> 播放（含 iOS Safari 的 AirPlay 投屏）
+    "mp4": ("video/mp4", AnnouncementAttachmentKind.VIDEO),
+    "webm": ("video/webm", AnnouncementAttachmentKind.VIDEO),
+    "ogv": ("video/ogg", AnnouncementAttachmentKind.VIDEO),
+    "mov": ("video/quicktime", AnnouncementAttachmentKind.VIDEO),
+    # 音频：浏览器原生 <audio> 播放
+    "mp3": ("audio/mpeg", AnnouncementAttachmentKind.AUDIO),
+    "m4a": ("audio/mp4", AnnouncementAttachmentKind.AUDIO),
+    "aac": ("audio/aac", AnnouncementAttachmentKind.AUDIO),
+    "wav": ("audio/wav", AnnouncementAttachmentKind.AUDIO),
+    "ogg": ("audio/ogg", AnnouncementAttachmentKind.AUDIO),
+    "weba": ("audio/webm", AnnouncementAttachmentKind.AUDIO),
+    # PDF：前端 pdf.js 渲染（/uploads 响应带 X-Frame-Options: DENY，iframe 方案不可用）
+    "pdf": ("application/pdf", AnnouncementAttachmentKind.PDF),
+    # Office：浏览器无原生渲染能力，仅下载兜底
+    "doc": ("application/msword", AnnouncementAttachmentKind.OFFICE),
+    "docx": (
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        AnnouncementAttachmentKind.OFFICE,
+    ),
+    "xls": ("application/vnd.ms-excel", AnnouncementAttachmentKind.OFFICE),
+    "xlsx": (
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        AnnouncementAttachmentKind.OFFICE,
+    ),
+    "ppt": ("application/vnd.ms-powerpoint", AnnouncementAttachmentKind.OFFICE),
+    "pptx": (
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        AnnouncementAttachmentKind.OFFICE,
+    ),
+}
+
+# 浏览器 MIME 别名 → 规范扩展名（同一容器的不同声明）
+_ATTACHMENT_MIME_ALIASES: dict[str, str] = {
+    "audio/x-wav": "wav",
+    "audio/wave": "wav",
+    "audio/vnd.wave": "wav",
+    "audio/x-m4a": "m4a",
+    "audio/mp4a-latm": "m4a",
+    "audio/ogg": "ogg",
+    "video/x-m4v": "mp4",
+    "video/quicktime": "mov",
+    "application/x-pdf": "pdf",
+    "application/acrobat": "pdf",
+}
+
+_MIME_TO_EXT: dict[str, str] = {m: e for e, (m, _k) in _ATTACHMENT_TYPES.items()}
+
+
+def _magic_ok(ext: str, data: bytes) -> bool:
+    """文件头魔数校验：防止改扩展名绕过白名单（P0 安全默认拒绝）。
+
+    未知/无法校验的类型一律拒绝，不做「默认放行」。
+    """
+    head = data[:16]
+    if ext == "pdf":
+        return data[:5] == b"%PDF-"
+    if ext in ("mp4", "m4a", "mov"):
+        return head[4:8] == b"ftyp"
+    if ext in ("webm", "weba"):
+        return head[:4] == b"\x1aE\xdf\xa3"
+    if ext in ("ogg", "ogv"):
+        return head[:4] == b"OggS"
+    if ext == "wav":
+        return head[:4] == b"RIFF" and data[8:12] == b"WAVE"
+    if ext == "mp3":
+        # ID3v2 标签头，或 MPEG 音频帧同步字（11 位全 1）
+        return head[:3] == b"ID3" or (len(head) >= 2 and head[0] == 0xFF and (head[1] & 0xE0) == 0xE0)
+    if ext == "aac":
+        return len(head) >= 2 and head[0] == 0xFF and (head[1] & 0xF6) == 0xF0
+    if ext in ("docx", "xlsx", "pptx"):
+        # OOXML 本质是 ZIP 容器（PK\x03\x04 普通包 / PK\x05\x06 空包）
+        return head[:2] == b"PK"
+    if ext in ("doc", "xls", "ppt"):
+        # 旧版 OLE 复合文档魔数
+        return head[:8] == b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"
+    return False
+
+
+def _unlink_attachment_file(url: str) -> None:
+    """删除落盘附件文件；越界 URL 直接忽略，文件不存在不报错（不阻断主流程）。"""
+    prefix = "/uploads/announcements/"
+    if not url.startswith(prefix):
+        return
+    try:
+        (ATTACHMENT_DIR / url[len(prefix):]).unlink(missing_ok=True)
+    except OSError:
+        pass
+
+
+@admin_router.post(
+    "/{aid}/attachments",
+    response_model=AnnouncementAttachmentOut,
+    status_code=status.HTTP_201_CREATED,
+)
+async def admin_upload_announcement_attachment(
+    aid: int,
+    request: Request,
+    file: UploadFile = File(...),
+    user: dict = Depends(require_permission("announcements", "manage")),
+    db: AsyncSession = Depends(get_db),
+):
+    """公告附件上传：视频/音频/PDF/Office 文档，≤50MB，扩展名+魔数双重白名单校验。"""
+    a = await db.get(Announcement, aid)
+    if not a:
+        raise HTTPException(status_code=404, detail="公告不存在")
+
+    ext = Path(file.filename or "").suffix.lower().lstrip(".")
+    spec = _ATTACHMENT_TYPES.get(ext)
+    if not spec:
+        raise HTTPException(
+            status_code=400,
+            detail=f"不支持的文件类型；仅支持：{', '.join(sorted(_ATTACHMENT_TYPES))}",
+        )
+
+    data = await file.read(ATTACHMENT_MAX_BYTES + 1)
+    if len(data) > ATTACHMENT_MAX_BYTES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"文件大小不能超过 {ATTACHMENT_MAX_BYTES // (1024 * 1024)}MB",
+        )
+    if not data:
+        raise HTTPException(status_code=400, detail="文件内容为空")
+
+    # 声明类型与扩展名不一致才拒绝；octet-stream / 未收录声明（如 docx 被识别为 zip）
+    # 一律以「扩展名 + 魔数」为准，避免误伤正常上传。
+    declared = (file.content_type or "").lower()
+    mapped_ext = _ATTACHMENT_MIME_ALIASES.get(declared) or _MIME_TO_EXT.get(declared)
+    if mapped_ext and mapped_ext != ext:
+        raise HTTPException(status_code=400, detail="文件内容与扩展名不匹配")
+    if not _magic_ok(ext, data):
+        raise HTTPException(status_code=400, detail="文件已损坏或内容与扩展名不符")
+
+    mime, kind = spec
+    ATTACHMENT_DIR.mkdir(parents=True, exist_ok=True)
+    filename = f"ann_{uuid.uuid4().hex}.{ext}"
+    (ATTACHMENT_DIR / filename).write_bytes(data)
+
+    att = AnnouncementAttachment(
+        announcement_id=a.id,
+        url=f"/uploads/announcements/{filename}",
+        original_name=(file.filename or "")[:256] or None,
+        mime=mime,
+        size=len(data),
+        kind=kind,
+    )
+    db.add(att)
+    # 同步登记统一媒体库（与 blog/memo 上传共用同一张表做后台统一管理）
+    db.add(MediaFile(
+        filename=filename,
+        original_name=(file.filename or filename)[:256],
+        mime=mime,
+        size=len(data),
+        storage_path=f"uploads/announcements/{filename}",
+        uploader_id=ctx_uid(user),
+        category=MediaCategory.MISC,
+    ))
+    _log(db, user, "announcement.attachment.upload", f"announcement:{aid}",
+         get_client_ip(request))
+    await db.commit()
+    await db.refresh(att)
+    return att
+
+
+@admin_router.delete(
+    "/{aid}/attachments/{att_id}", status_code=status.HTTP_204_NO_CONTENT
+)
+async def admin_delete_announcement_attachment(
+    aid: int,
+    att_id: int,
+    request: Request,
+    user: dict = Depends(require_permission("announcements", "manage")),
+    db: AsyncSession = Depends(get_db),
+):
+    """删除公告附件：同时移除落盘文件。"""
+    att = await db.get(AnnouncementAttachment, att_id)
+    if not att or att.announcement_id != aid:
+        raise HTTPException(status_code=404, detail="附件不存在")
+    _unlink_attachment_file(att.url)
+    await db.delete(att)
+    _log(db, user, "announcement.attachment.delete", f"announcement:{aid}",
          get_client_ip(request))
     await db.commit()

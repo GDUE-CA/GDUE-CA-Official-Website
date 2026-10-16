@@ -29,6 +29,18 @@ class AnnouncementUpdate(BaseModel):
     priority: int | None = Field(default=None, ge=-1000, le=1000)
 
 
+class AnnouncementAttachmentOut(BaseModel):
+    """公告附件输出：kind 决定前端渲染器（video/audio/pdf 在线预览，office 下载）。"""
+    id: int
+    kind: str
+    url: str
+    original_name: str | None
+    mime: str
+    size: int
+
+    model_config = {"from_attributes": True}
+
+
 class AnnouncementOut(BaseModel):
     id: int
     category: str
@@ -41,6 +53,7 @@ class AnnouncementOut(BaseModel):
     priority: int
     created_by: int | None
     created_at: UTCDatetime
+    attachments: list[AnnouncementAttachmentOut] = Field(default_factory=list)
 
     model_config = {"from_attributes": True}
 
@@ -55,5 +68,9 @@ class AnnouncementPublicOut(BaseModel):
     start_at: UTCDatetime | None
     end_at: UTCDatetime | None
     priority: int
+    # 发布时间兜底：start_at 为空（立即生效）时前端用 created_at 作为发布时间展示
+    created_at: UTCDatetime
+    # 多媒体/办公文档附件（详情页在线预览）
+    attachments: list[AnnouncementAttachmentOut] = Field(default_factory=list)
 
     model_config = {"from_attributes": True}

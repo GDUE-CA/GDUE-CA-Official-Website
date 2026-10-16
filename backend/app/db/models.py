@@ -636,6 +636,47 @@ class Announcement(Base):
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
 
+    # 多媒体/办公文档附件（详情页在线预览）；随公告删除级联清理
+    attachments: Mapped[list["AnnouncementAttachment"]] = relationship(
+        cascade="all, delete-orphan", lazy="selectin"
+    )
+
+
+class AnnouncementAttachmentKind(str, Enum):
+    """附件预览类型：由后端按扩展名/MIME 派生，前端据此选择渲染器。
+
+    OFFICE（Word/Excel/PPT）浏览器无原生渲染能力，按既定决策仅提供下载兜底。
+    """
+    VIDEO = "video"      # 浏览器原生 <video> 播放
+    AUDIO = "audio"      # 浏览器原生 <audio> 播放
+    PDF = "pdf"          # 前端 pdf.js 渲染
+    OFFICE = "office"    # Word / Excel / PPT：仅下载
+    OTHER = "other"
+
+
+class AnnouncementAttachment(Base):
+    """公告附件（announcement_attachments）：视频 / 音频 / PDF / Office 文档。
+
+    文件落在 uploads/announcements/，经静态目录 /uploads 提供（已确认支持
+    HTTP Range 206，视频可拖动进度条）。kind 由后端派生，前端不复制白名单。
+    """
+    __tablename__ = "announcement_attachments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    announcement_id: Mapped[int] = mapped_column(
+        ForeignKey("announcements.id", ondelete="CASCADE"), index=True
+    )
+    # 文件 URL（/uploads/announcements/{filename}）
+    url: Mapped[str] = mapped_column(String(512))
+    # 用户上传时的原始文件名（展示名 + 溯源）
+    original_name: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    mime: Mapped[str] = mapped_column(String(128))
+    size: Mapped[int] = mapped_column(Integer)
+    kind: Mapped[AnnouncementAttachmentKind] = mapped_column(
+        SAEnum(AnnouncementAttachmentKind), default=AnnouncementAttachmentKind.OTHER, index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
+
 
 class UserNotifyRead(Base):
     """用户通知已读记录（user_notify_read）：记录哪个用户已读哪条通知。

@@ -6,6 +6,7 @@
   },
   "nav": {
     "home": "首頁",
+    "announcements": "公告",
     "about": "關於我們",
     "projects": "項目",
     "events": "活動",
@@ -90,6 +91,32 @@
     "copy": "複製",
     "prevPage": "上一頁",
     "nextPage": "下一頁"
+  },
+  "announcements": {
+    "title": "最新公告",
+    "subtitle": "了解社團最新動態與重要通知",
+    "countUnit": "篇公告",
+    "empty": "暫無公告",
+    "relatedLink": "相關連結",
+    "preview": {
+      "title": "附件預覽",
+      "download": "下載檔案",
+      "officeHint": "此格式暫不支援跨端線上渲染，請下載後使用本機辦公軟件開啟。",
+      "kind": {
+        "video": "影片",
+        "audio": "音訊",
+        "pdf": "PDF 文件",
+        "office": "Office 文件",
+        "other": "其他檔案"
+      },
+      "pdfPage": "第 {page} / {total} 頁",
+      "pdfPrev": "上一頁",
+      "pdfNext": "下一頁",
+      "pdfZoomIn": "放大",
+      "pdfZoomOut": "縮小",
+      "pdfLoading": "正在載入文件…",
+      "pdfError": "文件載入失敗，請下載後查看"
+    }
   },
   "home": {
     "hero": {
@@ -1172,6 +1199,7 @@
       "content.recycle": "內容回收站",
       "notifications": "通知管理",
       "notifications.announcements": "全域公告",
+      "notifications.homeAnnouncements": "主頁公告",
       "notifications.messages": "用戶私信管控",
       "activities": "活動管理",
       "activities.list": "活動列表",
@@ -1690,7 +1718,7 @@
       "colLink": "跳轉連結",
       "colStartAt": "生效開始",
       "colEndAt": "失效結束",
-      "colEnabled": "啟用",
+      "colEnabled": "狀態",
       "colPriority": "優先級",
       "colCreatedAt": "建立時間",
       "colCategory": "類型",
@@ -1701,15 +1729,19 @@
       "searchPlaceholder": "搜尋標題 / 內容",
       "empty": "暫無公告",
       "filterAll": "全部",
-      "filterEnabled": "已啟用",
-      "filterDisabled": "已停用",
+      "filterEnabled": "已發佈",
+      "filterDisabled": "草稿",
       "filterHomepage": "首頁",
       "filterClub": "社團",
-      "enabledYes": "已啟用",
-      "enabledNo": "已停用",
+      "enabledYes": "已發佈",
+      "enabledNo": "草稿",
       "priorityHint": "數字越大越優先展示",
       "linkPlaceholder": "https:// 或 / 開頭的站內路徑",
-      "contentPlaceholder": "彈窗簡短內容",
+      "contentPlaceholder": "支援 Markdown：如 # 標題、**粗體**、- 列表",
+      "contentHint": "正文支援 Markdown 富文本（標題、粗體、列表、連結、程式碼區塊等），詳情頁按富文本渲染",
+      "previewBtn": "預覽",
+      "previewEmpty": "暫無可預覽內容",
+      "statusHint": "已發佈：前台可見；草稿：僅後台儲存，不對外展示",
       "timeWindowHint": "留空表示立即生效/永不失效；時間以 UTC 儲存",
       "saveBtn": "儲存",
       "cancelBtn": "取消",
@@ -1717,7 +1749,14 @@
       "errContentRequired": "請填寫公告內容",
       "errTimeRange": "生效開始時間必須早於失效結束時間",
       "saved": "公告已儲存",
-      "deleted": "公告已刪除"
+      "deleted": "公告已刪除",
+      "attachments": "附件預覽",
+      "attachmentHint": "支援影片、音訊、PDF、Office 文件，單個檔案不超過 50MB",
+      "attachmentUpload": "上載附件",
+      "attachmentNone": "暫無附件",
+      "attachmentNeedSave": "儲存公告後可上載附件",
+      "attachmentDeleteConfirm": "確認刪除此附件？",
+      "attachmentUploading": "上載中…"
     },
     "projects": {
       "title": "專案展示管理",

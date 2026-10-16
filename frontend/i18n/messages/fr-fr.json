@@ -6,6 +6,7 @@
   },
   "nav": {
     "home": "Home",
+    "announcements": "Annonces",
     "about": "About",
     "projects": "Projects",
     "events": "Events",
@@ -90,6 +91,32 @@
     "copy": "Copy",
     "prevPage": "Previous",
     "nextPage": "Next"
+  },
+  "announcements": {
+    "title": "Dernières annonces",
+    "subtitle": "Dernières actualités du club et avis importants",
+    "countUnit": "annonces",
+    "empty": "Aucune annonce pour le moment",
+    "relatedLink": "Lien associé",
+    "preview": {
+      "title": "Aperçu de la pièce jointe",
+      "download": "Télécharger le fichier",
+      "officeHint": "Ce format ne peut pas être affiché en ligne sur tous les appareils. Veuillez le télécharger puis l'ouvrir avec un logiciel bureautique local.",
+      "kind": {
+        "video": "Vidéo",
+        "audio": "Audio",
+        "pdf": "Document PDF",
+        "office": "Document Office",
+        "other": "Autre fichier"
+      },
+      "pdfPage": "Page {page} / {total}",
+      "pdfPrev": "Page précédente",
+      "pdfNext": "Page suivante",
+      "pdfZoomIn": "Agrandir",
+      "pdfZoomOut": "Réduire",
+      "pdfLoading": "Chargement du document…",
+      "pdfError": "Échec du chargement du document. Veuillez le télécharger pour le consulter"
+    }
   },
   "home": {
     "hero": {
@@ -1165,6 +1192,7 @@
       "content.recycle": "Corbeille du contenu",
       "notifications": "Gestion des notifications",
       "notifications.announcements": "Annonces globales",
+      "notifications.homeAnnouncements": "Annonces de la page d'accueil",
       "notifications.messages": "Messages des utilisateurs",
       "activities": "Gestion des activités",
       "activities.list": "Liste des activités",
@@ -1683,7 +1711,7 @@
       "colLink": "Redirect Link",
       "colStartAt": "Effective From",
       "colEndAt": "Expires At",
-      "colEnabled": "Enabled",
+      "colEnabled": "Statut",
       "colPriority": "Priority",
       "colCreatedAt": "Created At",
       "colCategory": "Category",
@@ -1694,15 +1722,19 @@
       "searchPlaceholder": "Search title / content",
       "empty": "No announcements",
       "filterAll": "All",
-      "filterEnabled": "Enabled",
-      "filterDisabled": "Disabled",
+      "filterEnabled": "Publié",
+      "filterDisabled": "Brouillon",
       "filterHomepage": "Homepage",
       "filterClub": "Club",
-      "enabledYes": "Enabled",
-      "enabledNo": "Disabled",
+      "enabledYes": "Publié",
+      "enabledNo": "Brouillon",
       "priorityHint": "Higher numbers are shown first",
       "linkPlaceholder": "URL starting with https:// or in-site path starting with /",
-      "contentPlaceholder": "Brief popup content",
+      "contentPlaceholder": "Prend en charge Markdown : ex. # Titre, **gras**, - liste",
+      "contentHint": "Le corps prend en charge le texte enrichi Markdown (titres, gras, listes, liens, blocs de code) ; rendu en texte enrichi sur la page de détail.",
+      "previewBtn": "Aperçu",
+      "previewEmpty": "Rien à prévisualiser pour le moment",
+      "statusHint": "Publié : visible sur le site ; Brouillon : enregistré uniquement dans l'admin, non affiché publiquement.",
       "timeWindowHint": "Leave blank for immediate effect / never expire; time stored in UTC",
       "saveBtn": "Save",
       "cancelBtn": "Cancel",
@@ -1710,7 +1742,14 @@
       "errContentRequired": "Please enter the announcement content",
       "errTimeRange": "Effective start time must be earlier than expiry end time",
       "saved": "Announcement saved",
-      "deleted": "Announcement deleted"
+      "deleted": "Announcement deleted",
+      "attachments": "Aperçu des pièces jointes",
+      "attachmentHint": "Prend en charge les vidéos, l'audio, les PDF et les documents Office, jusqu'à 50MB par fichier",
+      "attachmentUpload": "Téléverser une pièce jointe",
+      "attachmentNone": "Aucune pièce jointe",
+      "attachmentNeedSave": "Enregistrez l'annonce pour pouvoir téléverser des pièces jointes",
+      "attachmentDeleteConfirm": "Supprimer cette pièce jointe ?",
+      "attachmentUploading": "Téléversement…"
     },
     "projects": {
       "title": "Project Showcase Management",

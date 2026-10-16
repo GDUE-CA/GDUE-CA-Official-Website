@@ -28,6 +28,7 @@
   },
   "nav": {
     "home": "Home",
+    "announcements": "Announcements",
     "about": "About Us",
     "projects": "Projects",
     "events": "Events",
@@ -115,6 +116,32 @@
     "saving": "Saving...",
     "loadFailed": "Loading failed. Please try again later",
     "saveFailed": "Failed to save. Please try again later"
+  },
+  "announcements": {
+    "title": "Announcements",
+    "subtitle": "Latest club news and important notices",
+    "countUnit": "announcements",
+    "empty": "No announcements yet",
+    "relatedLink": "Related link",
+    "preview": {
+      "title": "Attachment preview",
+      "download": "Download file",
+      "officeHint": "This format isn't supported for cross-platform in-browser rendering. Please download it and open it with a local office application.",
+      "kind": {
+        "video": "Video",
+        "audio": "Audio",
+        "pdf": "PDF document",
+        "office": "Office document",
+        "other": "Other file"
+      },
+      "pdfPage": "Page {page} of {total}",
+      "pdfPrev": "Previous page",
+      "pdfNext": "Next page",
+      "pdfZoomIn": "Zoom in",
+      "pdfZoomOut": "Zoom out",
+      "pdfLoading": "Loading document…",
+      "pdfError": "Failed to load the document. Please download it to view"
+    }
   },
   "home": {
     "hero": {
@@ -1405,6 +1432,7 @@
       "content.recycle": "Content Recycle Bin",
       "notifications": "Notification Management",
       "notifications.announcements": "Global Announcements",
+      "notifications.homeAnnouncements": "Homepage announcements",
       "notifications.messages": "User Messages",
       "activities": "Activity Management",
       "activities.list": "Activity List",
@@ -1927,7 +1955,7 @@
       "colLink": "Redirect Link",
       "colStartAt": "Effective From",
       "colEndAt": "Expires At",
-      "colEnabled": "Enabled",
+      "colEnabled": "Status",
       "colPriority": "Priority",
       "colCreatedAt": "Created At",
       "colCategory": "Category",
@@ -1938,15 +1966,19 @@
       "searchPlaceholder": "Search title / content",
       "empty": "No announcements",
       "filterAll": "All",
-      "filterEnabled": "Enabled",
-      "filterDisabled": "Disabled",
+      "filterEnabled": "Published",
+      "filterDisabled": "Draft",
       "filterHomepage": "Homepage",
       "filterClub": "Club",
-      "enabledYes": "Enabled",
-      "enabledNo": "Disabled",
+      "enabledYes": "Published",
+      "enabledNo": "Draft",
       "priorityHint": "Higher numbers are shown first",
       "linkPlaceholder": "URL starting with https:// or in-site path starting with /",
-      "contentPlaceholder": "Brief popup content",
+      "contentPlaceholder": "Supports Markdown: e.g. # Heading, **bold**, - list",
+      "contentHint": "Body supports Markdown rich text (headings, bold, lists, links, code blocks); rendered as rich text on the detail page.",
+      "previewBtn": "Preview",
+      "previewEmpty": "Nothing to preview yet",
+      "statusHint": "Published: visible on the site; Draft: saved in admin only, not shown publicly.",
       "timeWindowHint": "Leave blank for immediate effect / never expire; time stored in UTC",
       "saveBtn": "Save",
       "cancelBtn": "Cancel",
@@ -1954,7 +1986,14 @@
       "errContentRequired": "Please enter the announcement content",
       "errTimeRange": "Effective start time must be earlier than expiry end time",
       "saved": "Announcement saved",
-      "deleted": "Announcement deleted"
+      "deleted": "Announcement deleted",
+      "attachments": "Attachment preview",
+      "attachmentHint": "Supports video, audio, PDF, and Office documents, up to 50MB per file",
+      "attachmentUpload": "Upload attachment",
+      "attachmentNone": "No attachments yet",
+      "attachmentNeedSave": "Save the announcement to upload attachments",
+      "attachmentDeleteConfirm": "Delete this attachment?",
+      "attachmentUploading": "Uploading…"
     },
     "projects": {
       "title": "Project Showcase Management",

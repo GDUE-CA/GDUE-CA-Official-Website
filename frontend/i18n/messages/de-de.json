@@ -6,6 +6,7 @@
   },
   "nav": {
     "home": "Home",
+    "announcements": "Ankündigungen",
     "about": "About",
     "projects": "Projects",
     "events": "Events",
@@ -90,6 +91,32 @@
     "copy": "Copy",
     "prevPage": "Previous",
     "nextPage": "Next"
+  },
+  "announcements": {
+    "title": "Aktuelle Ankündigungen",
+    "subtitle": "Neueste Neuigkeiten und wichtige Mitteilungen des Vereins",
+    "countUnit": "Ankündigungen",
+    "empty": "Noch keine Ankündigungen",
+    "relatedLink": "Verwandter Link",
+    "preview": {
+      "title": "Anhangvorschau",
+      "download": "Datei herunterladen",
+      "officeHint": "Dieses Format kann plattformübergreifend nicht online dargestellt werden. Bitte herunterladen und mit einem lokalen Office-Programm öffnen.",
+      "kind": {
+        "video": "Video",
+        "audio": "Audio",
+        "pdf": "PDF-Dokument",
+        "office": "Office-Dokument",
+        "other": "Sonstige Datei"
+      },
+      "pdfPage": "Seite {page} / {total}",
+      "pdfPrev": "Vorherige Seite",
+      "pdfNext": "Nächste Seite",
+      "pdfZoomIn": "Vergrößern",
+      "pdfZoomOut": "Verkleinern",
+      "pdfLoading": "Dokument wird geladen…",
+      "pdfError": "Dokument konnte nicht geladen werden. Bitte herunterladen, um es anzusehen"
+    }
   },
   "home": {
     "hero": {
@@ -1165,6 +1192,7 @@
       "content.recycle": "Papierkorb für Inhalte",
       "notifications": "Benachrichtigungsverwaltung",
       "notifications.announcements": "Globale Ankündigungen",
+      "notifications.homeAnnouncements": "Startseiten-Ankündigungen",
       "notifications.messages": "Benutzernachrichten",
       "activities": "Aktivitätenverwaltung",
       "activities.list": "Aktivitätenliste",
@@ -1683,7 +1711,7 @@
       "colLink": "Redirect Link",
       "colStartAt": "Effective From",
       "colEndAt": "Expires At",
-      "colEnabled": "Enabled",
+      "colEnabled": "Status",
       "colPriority": "Priority",
       "colCreatedAt": "Created At",
       "colCategory": "Category",
@@ -1694,15 +1722,19 @@
       "searchPlaceholder": "Search title / content",
       "empty": "No announcements",
       "filterAll": "All",
-      "filterEnabled": "Enabled",
-      "filterDisabled": "Disabled",
+      "filterEnabled": "Veröffentlicht",
+      "filterDisabled": "Entwurf",
       "filterHomepage": "Homepage",
       "filterClub": "Club",
-      "enabledYes": "Enabled",
-      "enabledNo": "Disabled",
+      "enabledYes": "Veröffentlicht",
+      "enabledNo": "Entwurf",
       "priorityHint": "Higher numbers are shown first",
       "linkPlaceholder": "URL starting with https:// or in-site path starting with /",
-      "contentPlaceholder": "Brief popup content",
+      "contentPlaceholder": "Unterstützt Markdown: z. B. # Überschrift, **fett**, - Liste",
+      "contentHint": "Der Text unterstützt Markdown-Rich-Text (Überschriften, Fett, Listen, Links, Codeblöcke); auf der Detailseite wird er als Rich Text dargestellt.",
+      "previewBtn": "Vorschau",
+      "previewEmpty": "Noch nichts zur Vorschau vorhanden",
+      "statusHint": "Veröffentlicht: auf der Website sichtbar; Entwurf: nur im Admin gespeichert, nicht öffentlich sichtbar.",
       "timeWindowHint": "Leave blank for immediate effect / never expire; time stored in UTC",
       "saveBtn": "Save",
       "cancelBtn": "Cancel",
@@ -1710,7 +1742,14 @@
       "errContentRequired": "Please enter the announcement content",
       "errTimeRange": "Effective start time must be earlier than expiry end time",
       "saved": "Announcement saved",
-      "deleted": "Announcement deleted"
+      "deleted": "Announcement deleted",
+      "attachments": "Anhangvorschau",
+      "attachmentHint": "Unterstützt Video, Audio, PDF und Office-Dokumente, max. 50MB pro Datei",
+      "attachmentUpload": "Anhang hochladen",
+      "attachmentNone": "Keine Anhänge vorhanden",
+      "attachmentNeedSave": "Anhänge können nach dem Speichern der Ankündigung hochgeladen werden",
+      "attachmentDeleteConfirm": "Diesen Anhang wirklich löschen?",
+      "attachmentUploading": "Wird hochgeladen…"
     },
     "projects": {
       "title": "Project Showcase Management",

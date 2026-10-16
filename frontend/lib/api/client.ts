@@ -225,8 +225,13 @@ export async function apiFetch<T>(
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { withAuth: _withAuth, headers, ...rest } = options;
 
+  // FormData 的 Content-Type 必须由浏览器自行生成（含 multipart 边界），
+  // 显式写死 application/json 会让后端 multipart 解析失败。
+  const isFormData =
+    typeof FormData !== "undefined" && rest.body instanceof FormData;
+
   const finalHeaders: Record<string, string> = {
-    "Content-Type": "application/json",
+    ...(isFormData ? {} : { "Content-Type": "application/json" }),
     ...(headers as Record<string, string>),
   };
 

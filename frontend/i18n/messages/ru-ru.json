@@ -6,6 +6,7 @@
   },
   "nav": {
     "home": "Home",
+    "announcements": "Объявления",
     "about": "About",
     "projects": "Projects",
     "events": "Events",
@@ -90,6 +91,32 @@
     "copy": "Copy",
     "prevPage": "Previous",
     "nextPage": "Next"
+  },
+  "announcements": {
+    "title": "Последние объявления",
+    "subtitle": "Последние новости клуба и важные уведомления",
+    "countUnit": "объявлений",
+    "empty": "Пока нет объявлений",
+    "relatedLink": "Связанная ссылка",
+    "preview": {
+      "title": "Предпросмотр вложения",
+      "download": "Скачать файл",
+      "officeHint": "Этот формат не поддерживает онлайн-отображение на всех устройствах. Скачайте файл и откройте его в офисной программе на компьютере.",
+      "kind": {
+        "video": "Видео",
+        "audio": "Аудио",
+        "pdf": "Документ PDF",
+        "office": "Документ Office",
+        "other": "Другой файл"
+      },
+      "pdfPage": "Страница {page} / {total}",
+      "pdfPrev": "Предыдущая страница",
+      "pdfNext": "Следующая страница",
+      "pdfZoomIn": "Увеличить",
+      "pdfZoomOut": "Уменьшить",
+      "pdfLoading": "Документ загружается…",
+      "pdfError": "Не удалось загрузить документ. Скачайте его для просмотра"
+    }
   },
   "home": {
     "hero": {
@@ -1165,6 +1192,7 @@
       "content.recycle": "Корзина контента",
       "notifications": "Управление уведомлениями",
       "notifications.announcements": "Глобальные объявления",
+      "notifications.homeAnnouncements": "Объявления на главной",
       "notifications.messages": "Сообщения пользователей",
       "activities": "Управление мероприятиями",
       "activities.list": "Список мероприятий",
@@ -1683,7 +1711,7 @@
       "colLink": "Redirect Link",
       "colStartAt": "Effective From",
       "colEndAt": "Expires At",
-      "colEnabled": "Enabled",
+      "colEnabled": "Статус",
       "colPriority": "Priority",
       "colCreatedAt": "Created At",
       "colCategory": "Category",
@@ -1694,15 +1722,19 @@
       "searchPlaceholder": "Search title / content",
       "empty": "No announcements",
       "filterAll": "All",
-      "filterEnabled": "Enabled",
-      "filterDisabled": "Disabled",
+      "filterEnabled": "Опубликовано",
+      "filterDisabled": "Черновик",
       "filterHomepage": "Homepage",
       "filterClub": "Club",
-      "enabledYes": "Enabled",
-      "enabledNo": "Disabled",
+      "enabledYes": "Опубликовано",
+      "enabledNo": "Черновик",
       "priorityHint": "Higher numbers are shown first",
       "linkPlaceholder": "URL starting with https:// or in-site path starting with /",
-      "contentPlaceholder": "Brief popup content",
+      "contentPlaceholder": "Поддерживается Markdown: напр. # Заголовок, **жирный**, - список",
+      "contentHint": "Текст поддерживает форматирование Markdown (заголовки, жирный шрифт, списки, ссылки, блоки кода); на странице объявления отображается как форматированный текст.",
+      "previewBtn": "Предпросмотр",
+      "previewEmpty": "Пока нечего предпросмотреть",
+      "statusHint": "Опубликовано: видно на сайте; Черновик: сохранён только в админке, публично не отображается.",
       "timeWindowHint": "Leave blank for immediate effect / never expire; time stored in UTC",
       "saveBtn": "Save",
       "cancelBtn": "Cancel",
@@ -1710,7 +1742,14 @@
       "errContentRequired": "Please enter the announcement content",
       "errTimeRange": "Effective start time must be earlier than expiry end time",
       "saved": "Announcement saved",
-      "deleted": "Announcement deleted"
+      "deleted": "Announcement deleted",
+      "attachments": "Предпросмотр вложений",
+      "attachmentHint": "Поддерживаются видео, аудио, PDF и документы Office, до 50MB на файл",
+      "attachmentUpload": "Загрузить вложение",
+      "attachmentNone": "Нет вложений",
+      "attachmentNeedSave": "Загрузить вложения можно после сохранения объявления",
+      "attachmentDeleteConfirm": "Удалить это вложение?",
+      "attachmentUploading": "Загрузка…"
     },
     "projects": {
       "title": "Project Showcase Management",

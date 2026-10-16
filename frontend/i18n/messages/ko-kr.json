@@ -6,6 +6,7 @@
   },
   "nav": {
     "home": "Home",
+    "announcements": "공지사항",
     "about": "About",
     "projects": "Projects",
     "events": "Events",
@@ -90,6 +91,32 @@
     "copy": "Copy",
     "prevPage": "Previous",
     "nextPage": "Next"
+  },
+  "announcements": {
+    "title": "최신 공지사항",
+    "subtitle": "동아리 최신 소식과 중요 공지사항",
+    "countUnit": "건의 공지",
+    "empty": "공지사항이 없습니다",
+    "relatedLink": "관련 링크",
+    "preview": {
+      "title": "첨부파일 미리보기",
+      "download": "파일 다운로드",
+      "officeHint": "이 형식은 환경에 관계없이 온라인으로 표시할 수 없습니다. 다운로드한 뒤 로컬 오피스 프로그램으로 열어 주세요.",
+      "kind": {
+        "video": "동영상",
+        "audio": "오디오",
+        "pdf": "PDF 문서",
+        "office": "Office 문서",
+        "other": "기타 파일"
+      },
+      "pdfPage": "{page} / {total} 페이지",
+      "pdfPrev": "이전 페이지",
+      "pdfNext": "다음 페이지",
+      "pdfZoomIn": "확대",
+      "pdfZoomOut": "축소",
+      "pdfLoading": "문서를 불러오는 중…",
+      "pdfError": "문서를 불러오지 못했습니다. 다운로드 후 확인해 주세요"
+    }
   },
   "home": {
     "hero": {
@@ -1165,6 +1192,7 @@
       "content.recycle": "콘텐츠 휴지통",
       "notifications": "알림 관리",
       "notifications.announcements": "전체 공지",
+      "notifications.homeAnnouncements": "홈 공지사항",
       "notifications.messages": "사용자 메시지 관리",
       "activities": "활동 관리",
       "activities.list": "활동 목록",
@@ -1683,7 +1711,7 @@
       "colLink": "Redirect Link",
       "colStartAt": "Effective From",
       "colEndAt": "Expires At",
-      "colEnabled": "Enabled",
+      "colEnabled": "상태",
       "colPriority": "Priority",
       "colCreatedAt": "Created At",
       "colCategory": "Category",
@@ -1694,15 +1722,19 @@
       "searchPlaceholder": "Search title / content",
       "empty": "No announcements",
       "filterAll": "All",
-      "filterEnabled": "Enabled",
-      "filterDisabled": "Disabled",
+      "filterEnabled": "게시됨",
+      "filterDisabled": "임시 저장",
       "filterHomepage": "Homepage",
       "filterClub": "Club",
-      "enabledYes": "Enabled",
-      "enabledNo": "Disabled",
+      "enabledYes": "게시됨",
+      "enabledNo": "임시 저장",
       "priorityHint": "Higher numbers are shown first",
       "linkPlaceholder": "URL starting with https:// or in-site path starting with /",
-      "contentPlaceholder": "Brief popup content",
+      "contentPlaceholder": "Markdown 지원: 예) # 제목, **굵게**, - 목록",
+      "contentHint": "본문은 Markdown 리치 텍스트(제목, 굵게, 목록, 링크, 코드 블록 등)를 지원하며 상세 페이지에서 리치 텍스트로 렌더링됩니다",
+      "previewBtn": "미리보기",
+      "previewEmpty": "미리볼 내용이 없습니다",
+      "statusHint": "게시됨: 사이트에 표시됩니다. 임시 저장: 관리자에만 저장되며 공개되지 않습니다",
       "timeWindowHint": "Leave blank for immediate effect / never expire; time stored in UTC",
       "saveBtn": "Save",
       "cancelBtn": "Cancel",
@@ -1710,7 +1742,14 @@
       "errContentRequired": "Please enter the announcement content",
       "errTimeRange": "Effective start time must be earlier than expiry end time",
       "saved": "Announcement saved",
-      "deleted": "Announcement deleted"
+      "deleted": "Announcement deleted",
+      "attachments": "첨부파일 미리보기",
+      "attachmentHint": "동영상, 오디오, PDF, Office 문서 지원, 파일당 최대 50MB",
+      "attachmentUpload": "첨부파일 업로드",
+      "attachmentNone": "첨부파일 없음",
+      "attachmentNeedSave": "공지를 저장한 뒤 첨부파일을 업로드할 수 있습니다",
+      "attachmentDeleteConfirm": "이 첨부파일을 삭제할까요?",
+      "attachmentUploading": "업로드 중…"
     },
     "projects": {
       "title": "Project Showcase Management",

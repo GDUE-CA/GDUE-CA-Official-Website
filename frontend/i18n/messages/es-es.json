@@ -6,6 +6,7 @@
   },
   "nav": {
     "home": "Home",
+    "announcements": "Anuncios",
     "about": "About",
     "projects": "Projects",
     "events": "Events",
@@ -90,6 +91,32 @@
     "copy": "Copy",
     "prevPage": "Previous",
     "nextPage": "Next"
+  },
+  "announcements": {
+    "title": "Últimos anuncios",
+    "subtitle": "Últimas novedades del club y avisos importantes",
+    "countUnit": "anuncios",
+    "empty": "Aún no hay anuncios",
+    "relatedLink": "Enlace relacionado",
+    "preview": {
+      "title": "Vista previa del adjunto",
+      "download": "Descargar archivo",
+      "officeHint": "Este formato no admite la visualización en línea en todos los dispositivos. Descárgalo y ábrelo con una aplicación ofimática local.",
+      "kind": {
+        "video": "Vídeo",
+        "audio": "Audio",
+        "pdf": "Documento PDF",
+        "office": "Documento de Office",
+        "other": "Otro archivo"
+      },
+      "pdfPage": "Página {page} / {total}",
+      "pdfPrev": "Página anterior",
+      "pdfNext": "Página siguiente",
+      "pdfZoomIn": "Acercar",
+      "pdfZoomOut": "Alejar",
+      "pdfLoading": "Cargando documento…",
+      "pdfError": "No se pudo cargar el documento. Descárgalo para verlo"
+    }
   },
   "home": {
     "hero": {
@@ -1165,6 +1192,7 @@
       "content.recycle": "Papelera de contenido",
       "notifications": "Gestión de notificaciones",
       "notifications.announcements": "Anuncios globales",
+      "notifications.homeAnnouncements": "Anuncios de la página principal",
       "notifications.messages": "Mensajes de usuarios",
       "activities": "Gestión de actividades",
       "activities.list": "Lista de actividades",
@@ -1683,7 +1711,7 @@
       "colLink": "Redirect Link",
       "colStartAt": "Effective From",
       "colEndAt": "Expires At",
-      "colEnabled": "Enabled",
+      "colEnabled": "Estado",
       "colPriority": "Priority",
       "colCreatedAt": "Created At",
       "colCategory": "Category",
@@ -1694,15 +1722,19 @@
       "searchPlaceholder": "Search title / content",
       "empty": "No announcements",
       "filterAll": "All",
-      "filterEnabled": "Enabled",
-      "filterDisabled": "Disabled",
+      "filterEnabled": "Publicado",
+      "filterDisabled": "Borrador",
       "filterHomepage": "Homepage",
       "filterClub": "Club",
-      "enabledYes": "Enabled",
-      "enabledNo": "Disabled",
+      "enabledYes": "Publicado",
+      "enabledNo": "Borrador",
       "priorityHint": "Higher numbers are shown first",
       "linkPlaceholder": "URL starting with https:// or in-site path starting with /",
-      "contentPlaceholder": "Brief popup content",
+      "contentPlaceholder": "Admite Markdown: p. ej. # Título, **negrita**, - lista",
+      "contentHint": "El cuerpo admite texto enriquecido Markdown (títulos, negrita, listas, enlaces, bloques de código); se muestra como texto enriquecido en la página de detalle.",
+      "previewBtn": "Vista previa",
+      "previewEmpty": "Nada que previsualizar todavía",
+      "statusHint": "Publicado: visible en el sitio; Borrador: guardado solo en el panel, no se muestra públicamente.",
       "timeWindowHint": "Leave blank for immediate effect / never expire; time stored in UTC",
       "saveBtn": "Save",
       "cancelBtn": "Cancel",
@@ -1710,7 +1742,14 @@
       "errContentRequired": "Please enter the announcement content",
       "errTimeRange": "Effective start time must be earlier than expiry end time",
       "saved": "Announcement saved",
-      "deleted": "Announcement deleted"
+      "deleted": "Announcement deleted",
+      "attachments": "Vista previa de adjuntos",
+      "attachmentHint": "Compatible con vídeo, audio, PDF y documentos de Office, hasta 50MB por archivo",
+      "attachmentUpload": "Subir adjunto",
+      "attachmentNone": "Sin adjuntos",
+      "attachmentNeedSave": "Guarda el anuncio para poder subir adjuntos",
+      "attachmentDeleteConfirm": "¿Eliminar este adjunto?",
+      "attachmentUploading": "Subiendo…"
     },
     "projects": {
       "title": "Project Showcase Management",

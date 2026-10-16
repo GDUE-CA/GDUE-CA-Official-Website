@@ -6,6 +6,7 @@
   },
   "nav": {
     "home": "ホーム",
+    "announcements": "お知らせ",
     "about": "サークル紹介",
     "projects": "プロジェクト",
     "events": "活動",
@@ -90,6 +91,32 @@
     "copy": "コピー",
     "prevPage": "前へ",
     "nextPage": "次へ"
+  },
+  "announcements": {
+    "title": "最新のお知らせ",
+    "subtitle": "サークルの最新情報と重要なお知らせ",
+    "countUnit": "件のお知らせ",
+    "empty": "お知らせはありません",
+    "relatedLink": "関連リンク",
+    "preview": {
+      "title": "添付ファイルのプレビュー",
+      "download": "ファイルをダウンロード",
+      "officeHint": "この形式は各環境でのオンライン表示に対応していません。ダウンロードして、お使いのオフィスソフトで開いてください。",
+      "kind": {
+        "video": "動画",
+        "audio": "音声",
+        "pdf": "PDF 文書",
+        "office": "Office 文書",
+        "other": "その他のファイル"
+      },
+      "pdfPage": "{page} / {total} ページ",
+      "pdfPrev": "前のページ",
+      "pdfNext": "次のページ",
+      "pdfZoomIn": "拡大",
+      "pdfZoomOut": "縮小",
+      "pdfLoading": "文書を読み込み中…",
+      "pdfError": "文書の読み込みに失敗しました。ダウンロードしてご覧ください"
+    }
   },
   "home": {
     "hero": {
@@ -1146,6 +1173,7 @@
       "content.recycle": "コンテンツゴミ箱",
       "notifications": "通知管理",
       "notifications.announcements": "全体お知らせ",
+      "notifications.homeAnnouncements": "ホームページお知らせ",
       "notifications.messages": "ユーザーメッセージ管理",
       "activities": "イベント管理",
       "activities.list": "イベント一覧",
@@ -1664,7 +1692,7 @@
       "colLink": "リンク先",
       "colStartAt": "開始日時",
       "colEndAt": "終了日時",
-      "colEnabled": "有効",
+      "colEnabled": "状態",
       "colPriority": "優先度",
       "colCreatedAt": "作成日時",
       "colCategory": "種別",
@@ -1675,15 +1703,19 @@
       "searchPlaceholder": "タイトル / 内容を検索",
       "empty": "お知らせはありません",
       "filterAll": "すべて",
-      "filterEnabled": "有効",
-      "filterDisabled": "無効",
+      "filterEnabled": "公開済み",
+      "filterDisabled": "下書き",
       "filterHomepage": "ホームページ",
       "filterClub": "サークル",
-      "enabledYes": "有効",
-      "enabledNo": "無効",
+      "enabledYes": "公開済み",
+      "enabledNo": "下書き",
       "priorityHint": "数値が大きいほど優先表示",
       "linkPlaceholder": "https:// または / で始まるサイト内パス",
-      "contentPlaceholder": "ポップアップの短い内容",
+      "contentPlaceholder": "Markdown 対応：例 # 見出し、**太字**、- リスト",
+      "contentHint": "本文は Markdown のリッチテキスト（見出し、太字、リスト、リンク、コードブロックなど）に対応し、詳細ページではリッチテキストとして表示されます",
+      "previewBtn": "プレビュー",
+      "previewEmpty": "プレビューできる内容はまだありません",
+      "statusHint": "公開済み：サイトに表示されます。下書き：管理画面にのみ保存され、公開されません",
       "timeWindowHint": "空欄は即時有効 / 無期限を意味します。時刻は UTC で保存されます",
       "saveBtn": "保存",
       "cancelBtn": "キャンセル",
@@ -1691,7 +1723,14 @@
       "errContentRequired": "お知らせの内容を入力してください",
       "errTimeRange": "開始日時は終了日時より前でなければなりません",
       "saved": "お知らせを保存しました",
-      "deleted": "お知らせを削除しました"
+      "deleted": "お知らせを削除しました",
+      "attachments": "添付ファイルのプレビュー",
+      "attachmentHint": "動画・音声・PDF・Office 文書に対応、1 ファイル 50MB まで",
+      "attachmentUpload": "添付ファイルをアップロード",
+      "attachmentNone": "添付ファイルはありません",
+      "attachmentNeedSave": "お知らせを保存すると添付ファイルをアップロードできます",
+      "attachmentDeleteConfirm": "この添付ファイルを削除しますか？",
+      "attachmentUploading": "アップロード中…"
     },
     "projects": {
       "title": "プロジェクト展示管理",

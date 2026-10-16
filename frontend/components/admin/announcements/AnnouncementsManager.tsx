@@ -12,7 +12,9 @@ import Loader2 from "@/assets/icons/status/loader-2.svg";
 import Plus from "@/assets/icons/action/plus.svg";
 import Pencil from "@/assets/icons/action/pencil.svg";
 import Trash2 from "@/assets/icons/action/trash-2.svg";
+import Upload from "@/assets/icons/action/upload.svg";
 import Megaphone from "@/assets/icons/status/megaphone.svg";
+import FileText from "@/assets/icons/status/file-text.svg";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,15 +29,28 @@ import {
 } from "@/components/ui/dialog";
 import { StatusBadge } from "@/components/admin/review/StatusBadge";
 import { FormattedUserActionTime } from "@/components/shared/FormattedUserActionTime";
+import { MarkdownRenderer } from "@/components/blog/MarkdownRenderer";
+import { formatBytes } from "@/lib/utils";
 import {
   adminListAnnouncements,
+  adminGetAnnouncement,
   adminCreateAnnouncement,
   adminUpdateAnnouncement,
   adminDeleteAnnouncement,
+  adminUploadAnnouncementAttachment,
+  adminDeleteAnnouncementAttachment,
 } from "@/lib/api/announcements";
 import type { Announcement, AnnouncementCategory } from "@/types/api";
 
 const PAGE_SIZE = 20;
+
+/** 附件可选扩展名（与后端 app/api/announcements.py 白名单一致；最终以服务端魔数校验为准） */
+const ATTACHMENT_EXTS = [
+  "mp4", "webm", "ogv", "mov",
+  "mp3", "m4a", "aac", "wav", "ogg", "weba",
+  "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx",
+] as const;
+const ATTACHMENT_ACCEPT = ATTACHMENT_EXTS.map((ext) => `.${ext}`).join(",");
 
 export function AnnouncementsManager({ category }: { category: AnnouncementCategory }) {
   const { t } = useI18n();
@@ -59,6 +74,8 @@ export function AnnouncementsManager({ category }: { category: AnnouncementCateg
   const [editing, setEditing] = useState<Announcement | null>(null);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  /** 正文编辑模式：edit=Markdown 源编辑，preview=富文本预览 */
+  const [contentMode, setContentMode] = useState<"edit" | "preview">("edit");
   const [link, setLink] = useState("");
   const [startAt, setStartAt] = useState(""); // datetime-local 字符串
   const [endAt, setEndAt] = useState("");
@@ -66,6 +83,11 @@ export function AnnouncementsManager({ category }: { category: AnnouncementCateg
   const [enabled, setEnabled] = useState(true);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  // 附件（详情页在线预览）：仅对已保存公告可用
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -107,12 +129,14 @@ export function AnnouncementsManager({ category }: { category: AnnouncementCateg
     setEditing(null);
     setTitle("");
     setContent("");
+    setContentMode("edit");
     setLink("");
     setStartAt("");
     setEndAt("");
     setPriority("0");
     setEnabled(true);
     setFormError(null);
+    setAttachmentError(null);
     setOpen(true);
   }
 
@@ -120,6 +144,7 @@ export function AnnouncementsManager({ category }: { category: AnnouncementCateg
     setEditing(a);
     setTitle(a.title);
     setContent(a.content);
+    setContentMode("edit");
     setLink(a.link ?? "");
     // datetime-local 需要 YYYY-MM-DDTHH:mm 格式
     setStartAt(a.start_at ? a.start_at.slice(0, 16) : "");
@@ -127,7 +152,41 @@ export function AnnouncementsManager({ category }: { category: AnnouncementCateg
     setPriority(String(a.priority));
     setEnabled(a.enabled);
     setFormError(null);
+    setAttachmentError(null);
     setOpen(true);
+  }
+
+  /** 上传附件：成功后刷新当前编辑对象的附件列表 */
+  async function handleAttachmentUpload(file: File) {
+    if (!editing) return;
+    setAttachmentError(null);
+    setUploading(true);
+    try {
+      await adminUploadAnnouncementAttachment(editing.id, file);
+      setEditing(await adminGetAnnouncement(editing.id));
+      setNotice(t("admin.announcements.saved"));
+      await load();
+    } catch (e) {
+      setAttachmentError(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  /** 删除附件（后端同时移除落盘文件） */
+  async function handleAttachmentDelete(attachmentId: number) {
+    if (!editing) return;
+    if (!confirm(t("admin.announcements.attachmentDeleteConfirm"))) return;
+    setAttachmentError(null);
+    try {
+      await adminDeleteAnnouncementAttachment(editing.id, attachmentId);
+      setEditing(await adminGetAnnouncement(editing.id));
+      setNotice(t("admin.announcements.deleted"));
+      await load();
+    } catch (e) {
+      setAttachmentError(e instanceof Error ? e.message : "Delete failed");
+    }
   }
 
   async function handleSave() {
@@ -346,14 +405,49 @@ export function AnnouncementsManager({ category }: { category: AnnouncementCateg
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="ann-content">{t("admin.announcements.colContent")}</Label>
-              <Textarea
-                id="ann-content"
-                rows={4}
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder={t("admin.announcements.contentPlaceholder")}
-              />
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="ann-content">{t("admin.announcements.colContent")}</Label>
+                <div className="flex gap-1">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={contentMode === "edit" ? "secondary" : "ghost"}
+                    onClick={() => setContentMode("edit")}
+                  >
+                    {t("admin.announcements.editBtn")}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={contentMode === "preview" ? "secondary" : "ghost"}
+                    onClick={() => setContentMode("preview")}
+                  >
+                    {t("admin.announcements.previewBtn")}
+                  </Button>
+                </div>
+              </div>
+              {contentMode === "edit" ? (
+                <Textarea
+                  id="ann-content"
+                  rows={8}
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  placeholder={t("admin.announcements.contentPlaceholder")}
+                />
+              ) : (
+                <div className="min-h-[8rem] rounded-md border border-border bg-muted/30 px-3 py-2">
+                  {content.trim() ? (
+                    <MarkdownRenderer content={content} />
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      {t("admin.announcements.previewEmpty")}
+                    </p>
+                  )}
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                {t("admin.announcements.contentHint")}
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="ann-link">{t("admin.announcements.colLink")}</Label>
@@ -400,15 +494,103 @@ export function AnnouncementsManager({ category }: { category: AnnouncementCateg
                 {t("admin.announcements.priorityHint")}
               </p>
             </div>
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <input
-                type="checkbox"
-                checked={enabled}
-                onChange={(e) => setEnabled(e.target.checked)}
-                className="h-4 w-4 accent-primary cursor-pointer"
-              />
-              {t("admin.announcements.colEnabled")}
-            </label>
+            <div className="space-y-2">
+              <Label htmlFor="ann-status">{t("admin.announcements.colEnabled")}</Label>
+              <select
+                id="ann-status"
+                value={enabled ? "published" : "draft"}
+                onChange={(e) => setEnabled(e.target.value === "published")}
+                className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+              >
+                <option value="published">{t("admin.announcements.enabledYes")}</option>
+                <option value="draft">{t("admin.announcements.enabledNo")}</option>
+              </select>
+              <p className="text-xs text-muted-foreground">
+                {t("admin.announcements.statusHint")}
+              </p>
+            </div>
+
+            {/* 附件管理（详情页在线预览；仅已保存公告可上传） */}
+            <div className="space-y-2">
+              <Label>{t("admin.announcements.attachments")}</Label>
+              {!editing ? (
+                <p className="text-xs text-muted-foreground">
+                  {t("admin.announcements.attachmentNeedSave")}
+                </p>
+              ) : (
+                <>
+                  {editing.attachments.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">
+                      {t("admin.announcements.attachmentNone")}
+                    </p>
+                  ) : (
+                    <ul className="space-y-1">
+                      {editing.attachments.map((att) => (
+                        <li
+                          key={att.id}
+                          className="flex items-center justify-between gap-2 rounded-md border border-border px-2 py-1.5"
+                        >
+                          <span className="flex min-w-0 items-center gap-1.5 text-xs">
+                            <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                            <span className="truncate">{att.original_name ?? att.url}</span>
+                            <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
+                              {formatBytes(att.size)}
+                            </span>
+                          </span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 shrink-0"
+                            aria-label={t("admin.announcements.deleteBtn")}
+                            onClick={() => handleAttachmentDelete(att.id)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                          </Button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept={ATTACHMENT_ACCEPT}
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleAttachmentUpload(file);
+                    }}
+                  />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={uploading}
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      {uploading ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                      ) : (
+                        <Upload className="h-4 w-4 mr-1" />
+                      )}
+                      {uploading
+                        ? t("admin.announcements.attachmentUploading")
+                        : t("admin.announcements.attachmentUpload")}
+                    </Button>
+                    <span className="text-xs text-muted-foreground">
+                      {t("admin.announcements.attachmentHint")}
+                    </span>
+                  </div>
+                  {attachmentError && (
+                    <p className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md">
+                      {attachmentError}
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+
             {formError && (
               <p className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md">
                 {formError}

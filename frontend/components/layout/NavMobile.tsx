@@ -37,6 +37,7 @@ import type { AdminUser } from "@/types/api";
 /** 一级导航项（「社区」为折叠父菜单，单独渲染） */
 const navItems = [
   { key: "nav.home", href: "" },
+  { key: "nav.announcements", href: "/announcements" },
   { key: "nav.events", href: "/events" },
 ] as const;
 

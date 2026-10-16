@@ -3,8 +3,8 @@
 /**
  * Announcements - 首页公告栏
  * 桌面：标签 + 三栏公告（细线分隔，单行截断省略）；手机：纵向列表
- * 悬浮或点击公告弹出完整内容卡片（含标题/发布时间/全部正文/可选链接），
- * 点击外部区域或 ESC 关闭；弹层为原生 div + 受控 open + CSS 过渡（见 SettingsDropdown 同类实现）
+ * 悬浮公告条目弹出预览卡片（标题 / 摘要 / 发布时间），点击条目跳转公告详情页；
+ * 弹层为原生 div + 受控 open + CSS 过渡（见 SettingsDropdown 同类实现）
  * 数据源：CMS 主页公告（category=home）前 3 条；加载中/失败/为空时回退到 i18n 内置公告
  */
 import { useEffect, useRef, useState } from "react";
@@ -12,56 +12,31 @@ import Link from "next/link";
 import ArrowUpRight from "@/assets/icons/navigation/arrow-up-right.svg";
 import { useI18n } from "@/i18n/provider";
 import { listPublicAnnouncements } from "@/lib/api/announcements";
-import type { Announcement } from "@/types/api";
+import { markdownExcerpt } from "@/lib/utils";
+import type { PublicAnnouncement } from "@/types/api";
 
-/** 公告条目统一形状（CMS 公告与 i18n 回退项归一，供弹出卡片渲染） */
+/** 公告条目统一形状（CMS 公告与 i18n 回退项归一，供列表与预览卡片渲染） */
 interface NoticeItem {
   key: string;
   title: string;
   date: string; // 纯日期 YYYY-MM-DD（与现有展示样式一致）
-  content: string; // 完整正文
-  link: string | null;
-}
-
-/** 外链新窗口打开，站内链接走 next/link */
-function AnnouncementLink({
-  href,
-  className,
-  children,
-}: {
-  href: string;
-  className?: string;
-  children: React.ReactNode;
-}) {
-  if (href.startsWith("/")) {
-    return (
-      <Link href={href} className={className}>
-        {children}
-      </Link>
-    );
-  }
-  return (
-    <a href={href} target="_blank" rel="noopener noreferrer" className={className}>
-      {children}
-    </a>
-  );
+  excerpt: string; // 摘要（由正文 Markdown 纯文本化截断）
+  href: string; // 详情目标（站内相对路径，不含 locale 前缀）
 }
 
 /** 鼠标离开后延迟关闭，避免跨条目移动时弹层闪烁 */
 const CLOSE_DELAY_MS = 150;
 
-/** 完整内容弹出卡片的 id（供条目按钮 aria-controls 关联） */
+/** 预览卡片的 id（供条目 aria-controls 关联） */
 const POPOVER_ID = "home-announcement-popover";
 
 export function Announcements() {
   const { t, locale } = useI18n();
-  const [cmsItems, setCmsItems] = useState<Announcement[] | null>(null);
-  const [hovered, setHovered] = useState<number | null>(null); // 悬浮条目（临时）
-  const [pinned, setPinned] = useState<number | null>(null); // 单击条目（固定，移出不关闭）
+  const [cmsItems, setCmsItems] = useState<PublicAnnouncement[] | null>(null);
+  const [active, setActive] = useState<number | null>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
 
-  const active = pinned ?? hovered;
   const open = active !== null;
 
   useEffect(() => {
@@ -79,25 +54,15 @@ export function Announcements() {
     };
   }, [locale]);
 
-  // 弹层打开期间：ESC / 点击外部区域关闭
+  // 弹层打开期间：点击外部区域关闭
   useEffect(() => {
     if (!open) return;
-    const closeAll = () => {
-      setPinned(null);
-      setHovered(null);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") closeAll();
-    };
+    const closeAll = () => setActive(null);
     const onDown = (e: MouseEvent) => {
       if (rootRef.current && !rootRef.current.contains(e.target as Node)) closeAll();
     };
-    window.addEventListener("keydown", onKey);
     document.addEventListener("mousedown", onDown);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      document.removeEventListener("mousedown", onDown);
-    };
+    return () => document.removeEventListener("mousedown", onDown);
   }, [open]);
 
   // 卸载时清理延迟关闭定时器
@@ -112,7 +77,7 @@ export function Announcements() {
 
   function scheduleClose() {
     cancelClose();
-    closeTimer.current = setTimeout(() => setHovered(null), CLOSE_DELAY_MS);
+    closeTimer.current = setTimeout(() => setActive(null), CLOSE_DELAY_MS);
   }
 
   const fallbackItems: NoticeItem[] = [1, 2, 3]
@@ -120,8 +85,8 @@ export function Announcements() {
       key: `fallback-${n}`,
       title: t(`home.announcements.item${n}Title`),
       date: t(`home.announcements.item${n}Date`),
-      content: "",
-      link: null,
+      excerpt: "",
+      href: "/announcements",
     }))
     .sort((a, b) => b.date.localeCompare(a.date));
 
@@ -131,8 +96,8 @@ export function Announcements() {
           key: `cms-${a.id}`,
           title: a.title,
           date: (a.start_at ?? a.created_at).slice(0, 10),
-          content: a.content,
-          link: a.link,
+          excerpt: markdownExcerpt(a.content),
+          href: `/announcements/${a.id}`,
         }))
       : fallbackItems;
 
@@ -165,16 +130,14 @@ export function Announcements() {
               className="flex min-w-0 py-4 first:pt-0 md:py-0 md:flex-1 md:pl-6 border-b last:border-b-0 md:border-b-0 md:border-l border-border"
               onMouseEnter={() => {
                 cancelClose();
-                setHovered(i);
+                setActive(i);
               }}
             >
-              {/* 原生 button：自带聚焦与 Enter / 空格触发；li 保持 listitem 语义（列表内只能是 li） */}
-              <button
-                type="button"
-                aria-expanded={open && active === i}
+              {/* 整行可点：点击跳转公告详情（桌面悬浮显示预览卡片） */}
+              <Link
+                href={`/${locale}${item.href}`}
                 aria-controls={POPOVER_ID}
-                onClick={() => setPinned((p) => (p === i ? null : i))}
-                className="flex w-full min-w-0 flex-col gap-1 text-left cursor-pointer rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+                className="flex w-full min-w-0 flex-col gap-1 text-left rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
               >
                 <time dateTime={item.date} className="font-mono text-xs text-muted-foreground">
                   {item.date}
@@ -182,12 +145,12 @@ export function Announcements() {
                 <span className="text-[15px] md:text-sm leading-normal md:truncate block w-full min-w-0">
                   {item.title}
                 </span>
-              </button>
+              </Link>
             </li>
           ))}
         </ul>
 
-        {/* 完整内容弹出卡片：始终渲染，透明度/位移过渡（面板挂在栏底，覆盖后续区块） */}
+        {/* 预览卡片：始终渲染，透明度/位移过渡（面板挂在栏底，覆盖后续区块） */}
         <div
           id={POPOVER_ID}
           aria-hidden={!open}
@@ -199,7 +162,10 @@ export function Announcements() {
         >
           <div className="rounded-md border border-border bg-popover text-popover-foreground shadow-md max-h-[60vh] overflow-y-auto">
             {activeItem && (
-              <div className="p-5">
+              <Link
+                href={`/${locale}${activeItem.href}`}
+                className="block p-5 rounded-md transition-colors hover:bg-secondary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
                 <time
                   dateTime={activeItem.date}
                   className="font-mono text-xs text-muted-foreground"
@@ -209,21 +175,16 @@ export function Announcements() {
                 <h3 className="mt-1.5 text-[15px] md:text-base font-semibold leading-snug break-words">
                   {activeItem.title}
                 </h3>
-                {activeItem.content && (
-                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap break-words">
-                    {activeItem.content}
+                {activeItem.excerpt && (
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground line-clamp-3 break-words">
+                    {activeItem.excerpt}
                   </p>
                 )}
-                {activeItem.link && (
-                  <AnnouncementLink
-                    href={activeItem.link}
-                    className="mt-4 inline-flex items-center gap-1 text-sm font-medium underline-offset-4 hover:underline"
-                  >
-                    {t("home.announcements.viewDetail")}
-                    <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
-                  </AnnouncementLink>
-                )}
-              </div>
+                <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium underline-offset-4 hover:underline">
+                  {t("home.announcements.viewDetail")}
+                  <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
+                </span>
+              </Link>
             )}
           </div>
         </div>

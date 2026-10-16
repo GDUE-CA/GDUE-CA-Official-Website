@@ -173,6 +173,7 @@ const firstLevelItems: FirstLevel[] = [
     modules: ["announcements"],
     children: [
       { key: "admin.nav.notifications.announcements", href: "/admin/announcements", icon: Megaphone, modules: ["announcements"] },
+      { key: "admin.nav.notifications.homeAnnouncements", href: "/admin/announcements/home", icon: Megaphone, modules: ["announcements"] },
       { key: "admin.nav.notifications.messages", icon: MessageSquare, placeholder: true }, // ⏳私信系统未实现
     ],
   },

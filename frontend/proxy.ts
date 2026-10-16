@@ -154,6 +154,10 @@ function buildCsp(nonce: string, isHttps: boolean): string {
     // nominatim：个人资料页「自动定位」的逆地理编码（用户主动点击触发）
     `connect-src 'self' https://nominatim.openstreetmap.org${extra ? ` ${extra}` : ""}${isDev ? " ws: wss:" : ""}`,
     "object-src 'none'",
+    // pdf.js 预览 Worker：同源 Worker 脚本（/pdf/pdf.worker.min.mjs）。
+    // script-src 含 strict-dynamic，modern 浏览器会忽略其中的 'self'，
+    // Worker 请求会因此被拦截 → 必须单独声明 worker-src；blob: 供 pdf.js 内部包装兜底。
+    "worker-src 'self' blob:",
     "base-uri 'self'",
     "form-action 'self'",
     "frame-ancestors 'none'",
@@ -320,10 +324,12 @@ export async function proxy(request: NextRequest) {
 export const config = {
   // 匹配所有页面路径，排除后端反代（api / uploads）、静态资源、
   // 图片优化、特殊文件与预取请求
+  // 注意：pdf/ 为第三方静态资源目录（pdf.js Worker，由 public/pdf/ 提供），
+  // 不带 locale 前缀，必须在此豁免，否则会被 locale 重定向成 301。
   matcher: [
     {
       source:
-        "/((?!api|uploads|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|.*\\.png$|.*\\.svg$|.*\\.ico$).*)",
+        "/((?!api|uploads|pdf/|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|.*\\.png$|.*\\.svg$|.*\\.ico$).*)",
       missing: [
         { type: "header", key: "next-router-prefetch" },
         { type: "header", key: "purpose", value: "prefetch" },
