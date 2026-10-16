@@ -19,7 +19,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Response, UploadFile, status
 from pydantic import BaseModel
-from sqlalchemy import func, or_, select, update
+from sqlalchemy import delete as sa_delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import ctx_uid, log_action
@@ -45,7 +45,7 @@ from app.core.middleware import get_client_ip
 from app.core.password_policy import check_password_strength
 from app.core.permissions import PERMISSION_MODULES, require_permission
 from app.core.rate_limit import rate_limit
-from app.core.responses import fail
+from app.core.responses import fail, ok
 from app.core.security import (
     REMEMBER_DEVICE_DAYS,
     Role,
@@ -64,9 +64,9 @@ from app.db.models import (
     LoginSession,
     PasswordResetRequest,
     PasswordResetStatus,
-    SecurityQuestion,
     SystemSetting,
     User,
+    UserSecurityQuestion,
     UserRole,
 )
 from app.db.session import get_db
@@ -86,11 +86,12 @@ from app.schemas.auth import (
     PasswordResetHandleRequest,
     PasswordResetOut,
     ProfileUpdate,
+    RecoverRequest,
     RegisterOut,
     RegisterRequest,
-    SecurityAnswerRequest,
-    SecurityQuestionOut,
-    SecurityQuestionUpdate,
+    SecurityQuestionOutItem,
+    SecurityQuestionsOut,
+    SecurityQuestionsSetupRequest,
     UserCreate,
     UserOut,
     UserUpdate,
@@ -253,9 +254,20 @@ async def register(
         student_id="",
         phone=req.phone or "",
         must_change_password=False,
+        # 注册时已设 3 个安全问题，清零补设标记
+        must_set_security_questions=False,
     )
     db.add(u)
     await db.flush()
+    # 写入 3 个安全问题（规范化 + bcrypt 哈希）
+    for item in req.security_questions:
+        db.add(UserSecurityQuestion(
+            user_id=u.id,
+            question=item.question,
+            answer_hash=hash_password(security_answer_digest(item.answer)),
+            position=item.position,
+            is_custom=item.is_custom,
+        ))
     _log(db, u.id, "user.register", f"user:{u.id}", get_client_ip(request))
     await db.commit()
     return RegisterOut(id=u.id, username=u.username, display_name=u.display_name, role=Role.MEMBER)
@@ -473,6 +485,7 @@ async def login(
         username=user.username,
         must_change_password=user.must_change_password,
         realname_verified=user.realname_verified,
+        must_set_security_questions=user.must_set_security_questions,
     )
 
 
@@ -1568,90 +1581,167 @@ async def batch_handle_password_resets(
     return {"updated": len(rows)}
 
 
-# ---------- 安全问题（紧急恢复，仅内网可用） ----------
+# ---------- 安全问题（per-user 3 个，答对 2/3 可恢复账号） ----------
 def security_answer_digest(answer: str) -> str:
     """答案规范化（去首尾空格 + 小写）后取 SHA-256，再交给 bcrypt（规避 72 字节上限）。"""
     return hashlib.sha256(answer.strip().lower().encode("utf-8")).hexdigest()
 
 
-# 安全问题紧急恢复始终仅限内网（与管理员登录白名单 ADMIN_TRUSTED_IPS 相互独立）
-_INTRANET_NETWORKS = "127.0.0.0/8,::1/128,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fc00::/7"
+# 防账号枚举：账号不存在 / 未设安全问题时返回的固定假预设问题（3 个）
+_FAKE_SECURITY_QUESTIONS = [
+    SecurityQuestionOutItem(position=1, question="sq.first_pet", is_custom=False),
+    SecurityQuestionOutItem(position=2, question="sq.birth_city", is_custom=False),
+    SecurityQuestionOutItem(position=3, question="sq.first_school", is_custom=False),
+]
 
 
-def _require_intranet(request: Request) -> None:
-    from app.core.middleware import ip_in_networks
+@router.get("/security-questions/presets")
+async def list_preset_security_questions():
+    """返回预设问题 key 列表（公开，前端下拉用；key 对应 i18n 文案）。"""
+    from app.core.security_questions import PRESET_SECURITY_QUESTIONS
+    return ok({"presets": [item["key"] for item in PRESET_SECURITY_QUESTIONS]})
 
-    if not ip_in_networks(get_client_ip(request), _INTRANET_NETWORKS):
-        raise HTTPException(status_code=403, detail="该功能仅允许通过内网访问")
 
+@router.get(
+    "/security-questions",
+    dependencies=[Depends(rate_limit("security_questions", limit=10, window_seconds=60))],
+)
+async def get_security_questions(
+    username: str = Query(..., max_length=128),
+    db: AsyncSession = Depends(get_db),
+):
+    """返回指定用户 3 个安全问题（不含答案）。
 
-@router.get("/security-question", response_model=SecurityQuestionOut)
-async def get_security_question(request: Request, db: AsyncSession = Depends(get_db)):
-    """返回当前安全问题（不含答案），用于紧急恢复页面；仅内网可访问。"""
-    _require_intranet(request)
-    q = await db.get(SecurityQuestion, 1)
-    if not q:
-        raise HTTPException(status_code=404, detail="未配置安全问题，请联系超级管理员线下处理")
-    return SecurityQuestionOut(question=q.question)
+    防账号枚举：账号不存在 / 已软删 / 未设安全问题时，均返回 3 个固定假预设问题，
+    与真实用户响应结构完全一致，不暴露账号是否存在。
+    """
+    user = (await db.execute(
+        select(User).where(User.username == username)
+    )).scalar_one_or_none()
+    if not user or user.is_deleted:
+        return ok({"questions": [q.model_dump() for q in _FAKE_SECURITY_QUESTIONS]})
+    rows = (await db.execute(
+        select(UserSecurityQuestion)
+        .where(UserSecurityQuestion.user_id == user.id)
+        .order_by(UserSecurityQuestion.position)
+    )).scalars().all()
+    if len(rows) < 3:
+        # 账号存在但未设 3 个问题（存量未补设）：同样返回假问题
+        return ok({"questions": [q.model_dump() for q in _FAKE_SECURITY_QUESTIONS]})
+    return ok({"questions": [
+        {"position": r.position, "question": r.question, "is_custom": r.is_custom}
+        for r in rows
+    ]})
 
 
 @router.post(
     "/recover",
     dependencies=[Depends(rate_limit("recover", limit=5, window_seconds=900))],
 )
-async def recover_via_security_question(
-    req: SecurityAnswerRequest,
+async def recover_via_security_questions(
+    req: RecoverRequest,
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    """所有管理员失能时的紧急恢复：答对安全问题 → 重置超管密码并重新启用（仅内网）。"""
-    _require_intranet(request)
+    """安全问题恢复账号：答对 3 个中 2 个即重置密码 + 撤会话 + must_change_password=True。
+
+    防信息泄露：答错 < 2 时返回与账号不存在相同的模糊 403（不暴露答对几个 / 账号是否存在）。
+    所有失败 / 账号不存在均写审计，对外文案统一。
+    """
+    from app.core.security_questions import RECOVER_MIN_CORRECT
     client_ip = get_client_ip(request)
-    # 系统初始化门禁：未完成初始化时该接口无意义（尚无业务管理员可恢复）
+    # 系统初始化门禁：未完成初始化时该接口无意义（尚无业务账号可恢复）
     ss = await db.get(SystemSetting, 1)
     if ss and not ss.system_initialized:
         return fail(BizCode.SYSTEM_NOT_INITIALIZED, params=_INIT_REQUIRED)
-    q = await db.get(SecurityQuestion, 1)
-    if not q:
-        raise HTTPException(status_code=404, detail="未配置安全问题，请联系超级管理员线下处理")
-    if not verify_password(security_answer_digest(req.answer), q.answer):
-        _log(db, None, "account.recover_fail", None, client_ip)
+    # 定位账号（username 或 email）
+    stmt = select(User)
+    if req.username:
+        stmt = stmt.where(User.username == req.username)
+    else:
+        stmt = stmt.where(User.email == str(req.email))
+    user = (await db.execute(stmt)).scalar_one_or_none()
+    account_hint = (req.username or str(req.email))[:64]
+    if not user or user.is_deleted:
+        _log(db, None, "account.recover_fail", f"account:{account_hint}", client_ip)
         await db.commit()
-        raise HTTPException(status_code=403, detail="安全问题答案错误")
-    # 找到 super_admin 账号，重置密码并重新启用
-    result = await db.execute(
-        select(User).where(User.role == UserRole.SUPER_ADMIN).order_by(User.id)
-    )
-    super_admin = result.scalars().first()
-    if not super_admin:
-        raise HTTPException(status_code=404, detail="未找到超级管理员账号")
-    _require_strong_password(req.new_password, super_admin.username, super_admin.email)
-    super_admin.password_hash = hash_password(req.new_password)
-    super_admin.is_active = True
-    super_admin.must_change_password = True
-    super_admin.password_changed_at = _now()
-    await _revoke_user_sessions(db, super_admin.id)
-    _log(db, super_admin.id, "account.recover", None, client_ip)
+        raise HTTPException(status_code=403, detail="安全问题答案错误或不足")
+    # 取该用户的 3 个安全问题
+    rows = (await db.execute(
+        select(UserSecurityQuestion)
+        .where(UserSecurityQuestion.user_id == user.id)
+        .order_by(UserSecurityQuestion.position)
+    )).scalars().all()
+    if len(rows) < 3:
+        _log(db, user.id, "account.recover_fail", "no_questions", client_ip)
+        await db.commit()
+        raise HTTPException(status_code=403, detail="安全问题答案错误或不足")
+    # 比对答案：逐个 position 匹配，verify_password(digest(input), stored_hash)
+    correct = 0
+    for ans in req.answers:
+        row = next((r for r in rows if r.position == ans.position), None)
+        if row and verify_password(security_answer_digest(ans.answer), row.answer_hash):
+            correct += 1
+    if correct < RECOVER_MIN_CORRECT:
+        _log(db, user.id, "account.recover_fail", f"correct:{correct}/{len(rows)}", client_ip)
+        await db.commit()
+        raise HTTPException(status_code=403, detail="安全问题答案错误或不足")
+    # 答对 ≥ 2/3：重置密码 + 撤会话 + must_change_password
+    _require_strong_password(req.new_password, user.username, user.email)
+    user.password_hash = hash_password(req.new_password)
+    user.is_active = True
+    user.must_change_password = True
+    user.password_changed_at = _now()
+    await _revoke_user_sessions(db, user.id)
+    _log(db, user.id, "account.recover", f"correct:{correct}/{len(rows)}", client_ip)
     await db.commit()
-    return {"ok": True, "username": super_admin.username}
+    return {"ok": True, "username": user.username}
 
 
-# ---------- 安全问题管理（仅 super_admin） ----------
-@router.put("/security-question", response_model=SecurityQuestionOut)
-async def update_security_question(
-    req: SecurityQuestionUpdate,
+@router.post("/security-questions")
+async def setup_security_questions(
+    req: SecurityQuestionsSetupRequest,
     request: Request,
-    user: dict = Depends(require_role(Role.SUPER_ADMIN)),
+    user: dict = Depends(require_role(Role.MEMBER)),
     db: AsyncSession = Depends(get_db),
 ):
-    answer_hash = hash_password(security_answer_digest(req.answer))
-    q = await db.get(SecurityQuestion, 1)
-    if not q:
-        q = SecurityQuestion(id=1, question=req.question, answer=answer_hash)
-        db.add(q)
-    else:
-        q.question = req.question
-        q.answer = answer_hash
-    _log(db, user, "security_question.update", None, get_client_ip(request))
+    """设置 / 补设自己的 3 个安全问题（登录态，需当前密码确认）。
+
+    存量用户登录被拦截补设、主动修改共用此接口；写完清零 must_set_security_questions。
+    """
+    client_ip = get_client_ip(request)
+    u = await db.get(User, int(user["user_id"]))
+    if not u:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    # 当前密码确认（防会话劫持后篡改安全问题）
+    if not verify_password(req.current_password, u.password_hash):
+        _log(db, u.id, "security_questions.setup_fail", "bad_password", client_ip)
+        await db.commit()
+        raise HTTPException(status_code=400, detail="当前密码错误")
+    # 删除旧问题（如有），写新 3 行
+    await db.execute(
+        sa_delete(UserSecurityQuestion).where(UserSecurityQuestion.user_id == u.id)
+    )
+    for item in req.questions:
+        db.add(UserSecurityQuestion(
+            user_id=u.id,
+            question=item.question,
+            answer_hash=hash_password(security_answer_digest(item.answer)),
+            position=item.position,
+            is_custom=item.is_custom,
+        ))
+    u.must_set_security_questions = False
+    _log(db, u.id, "security_questions.setup", f"count:{len(req.questions)}", client_ip)
     await db.commit()
-    return SecurityQuestionOut(question=q.question)
+    return {"ok": True}
+
+
+@router.put("/security-questions")
+async def update_security_questions(
+    req: SecurityQuestionsSetupRequest,
+    request: Request,
+    user: dict = Depends(require_role(Role.MEMBER)),
+    db: AsyncSession = Depends(get_db),
+):
+    """修改自己的 3 个安全问题（需当前密码确认，等价 setup，走 PUT 语义）。"""
+    return await setup_security_questions(req, request, user, db)

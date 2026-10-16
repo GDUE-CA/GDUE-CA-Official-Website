@@ -32,6 +32,53 @@ export interface LoginResponse {
   is_break_glass: boolean;
   /** 系统尚未完成初始化（前端跳转 /admin/setup 初始化向导） */
   must_setup: boolean;
+  /** 安全问题补设标记：true 时强制跳 /auth/setup-security-questions 补设 3 个问题 */
+  must_set_security_questions: boolean;
+}
+
+/** 单个安全问题项（注册 / 补设 / 修改共用） */
+export interface SecurityQuestionItem {
+  /** 位置序号 1/2/3 */
+  position: number;
+  /** 预设问题存 i18n key（如 sq.first_pet）；自定义问题存原文 */
+  question: string;
+  /** 答案明文（后端规范化 + bcrypt 哈希存储） */
+  answer: string;
+  /** 是否自定义问题 */
+  is_custom: boolean;
+}
+
+/** 恢复时单个问题答案项 */
+export interface SecurityAnswerItem {
+  position: number;
+  answer: string;
+}
+
+/** 安全问题回显项（不含答案） */
+export interface SecurityQuestionOutItem {
+  position: number;
+  question: string;
+  is_custom: boolean;
+}
+
+/** 用户安全问题列表回显（恢复页取 3 个问题） */
+export interface SecurityQuestionsOut {
+  questions: SecurityQuestionOutItem[];
+}
+
+/** 设置 / 补设 / 修改自己的 3 个安全问题 */
+export interface SecurityQuestionsSetupRequest {
+  current_password: string;
+  questions: SecurityQuestionItem[];
+}
+
+/** 安全问题恢复账号请求 */
+export interface RecoverRequest {
+  username?: string;
+  email?: string;
+  answers: SecurityAnswerItem[];
+  new_password: string;
+  confirm_password: string;
 }
 
 /** 公开注册（P0：强制 member，无角色字段） */
@@ -42,6 +89,8 @@ export interface RegisterRequest {
   confirm_password: string;
   email?: string;
   phone?: string;
+  /** 安全问题（per-user 3 个）：注册时强制设 3 个 */
+  security_questions: SecurityQuestionItem[];
 }
 
 export interface RegisterResponse {
@@ -466,20 +515,6 @@ export interface EmailChangeOpResult {
   ok: boolean;
   message: string;
   new_email?: string;
-}
-
-export interface SecurityQuestionOut {
-  question: string;
-}
-
-export interface SecurityAnswerRequest {
-  answer: string;
-  new_password: string;
-}
-
-export interface SecurityQuestionUpdate {
-  question: string;
-  answer: string;
 }
 
 /** 创建管理员账号（仅 super_admin） */
@@ -1755,6 +1790,8 @@ export interface FirstAdminPayload {
   display_name: string;
   email: string;
   password: string;
+  /** 安全问题（per-user 3 个）：初始化向导强制设 3 个 */
+  security_questions: SecurityQuestionItem[];
 }
 
 /** 系统初始化提交请求（POST /api/system-init/initialize） */

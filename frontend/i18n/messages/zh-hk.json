@@ -1028,20 +1028,6 @@
       "error": "提交失敗，請稍後重試",
       "backToLogin": "返回登入"
     },
-    "recover": {
-      "title": "帳號恢復",
-      "subtitle": "所有管理員失能時的緊急恢復",
-      "securityQuestion": "安全問題",
-      "securityAnswer": "答案",
-      "securityAnswerPlaceholder": "請輸入安全問題的答案",
-      "newPassword": "新密碼",
-      "newPasswordPlaceholder": "至少 10 位，包含大寫字母、小寫字母、數字、特殊字元中的至少 3 類，且不能是常見弱密碼",
-      "submit": "恢復帳號",
-      "submitting": "恢復中...",
-      "success": "帳號已恢復，請用新密碼登入",
-      "error": "恢復失敗，答案可能錯誤",
-      "backToLogin": "返回登入"
-    },
     "passwordResets": {
       "title": "重置密碼",
       "filterPending": "待處理",
@@ -2542,5 +2528,61 @@
       "admin": "社團管理員",
       "member": "社團成員"
     }
+  },
+  "auth": {
+    "securityQuestions": {
+      "title": "安全問題",
+      "description": "設定 3 個安全問題，用於帳號恢復（答對 2 個即可重設密碼）",
+      "question": "安全問題",
+      "preset": "預設問題",
+      "custom": "自訂",
+      "selectPreset": "請選擇預設問題",
+      "customPlaceholder": "輸入自訂問題",
+      "answerPlaceholder": "輸入答案",
+      "questionRequired": "請選擇或輸入問題",
+      "answerRequired": "請輸入答案"
+    },
+    "recover": {
+      "title": "帳號恢復",
+      "subtitle": "透過安全問題恢復帳號",
+      "username": "使用者名稱",
+      "usernamePlaceholder": "輸入要恢復的使用者名稱",
+      "usernameRequired": "請輸入使用者名稱",
+      "getQuestions": "取得安全問題",
+      "loading": "載入中...",
+      "account": "帳號",
+      "answerPlaceholder": "輸入答案",
+      "newPassword": "新密碼",
+      "confirmPassword": "確認新密碼",
+      "passwordRequired": "請輸入新密碼",
+      "passwordMismatch": "兩次輸入的密碼不一致",
+      "answerAll": "請回答所有問題",
+      "submit": "恢復帳號",
+      "submitting": "恢復中...",
+      "fail": "恢復失敗，答案可能錯誤或不足",
+      "error": "取得安全問題失敗",
+      "fallback": "改用電子郵件驗證碼重設"
+    },
+    "setupSecurityQuestions": {
+      "title": "設定安全問題",
+      "subtitle": "請設定 3 個安全問題，用於後續帳號恢復",
+      "currentPassword": "目前密碼",
+      "passwordRequired": "請輸入目前密碼",
+      "submit": "儲存安全問題",
+      "submitting": "儲存中...",
+      "error": "儲存失敗"
+    }
+  },
+  "sq": {
+    "sq.first_pet": "你第一隻寵物的名字？",
+    "sq.childhood_hero": "你童年時的英雄是誰？",
+    "sq.favorite_teacher": "你最喜歡的小學老師姓名？",
+    "sq.birth_city": "你出生的城市？",
+    "sq.first_school": "你就讀的第一所學校名稱？",
+    "sq.mother_maiden": "你母親的娘家姓？",
+    "sq.first_car": "你的第一輛車是什麼型號？",
+    "sq.childhood_friend": "你童年最好朋友的名字？",
+    "sq.first_job": "你的第一份工作是什麼？",
+    "sq.favorite_book": "你最喜歡的一本書？"
   }
 }

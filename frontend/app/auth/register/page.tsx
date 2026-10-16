@@ -34,6 +34,8 @@ import {
 } from "@/components/ui/card";
 import { register } from "@/lib/api/auth";
 import { getSession } from "@/lib/auth";
+import { SecurityQuestionsForm } from "@/components/auth/SecurityQuestionsForm";
+import type { SecurityQuestionItem } from "@/types/api";
 
 /** 表单校验 schema（与后端规则一致：用户名 2-64，密码强度由后端细化校验） */
 const registerSchema = z
@@ -100,6 +102,12 @@ export default function AuthRegisterPage() {
   const pathname = usePathname();
   const { setLocale } = useAdminLocale();
   const [serverError, setServerError] = useState<string | null>(null);
+  const [sqErrors, setSqErrors] = useState<string[]>([]);
+  const [securityQuestions, setSecurityQuestions] = useState<SecurityQuestionItem[]>([
+    { position: 1, question: "", answer: "", is_custom: false },
+    { position: 2, question: "", answer: "", is_custom: false },
+    { position: 3, question: "", answer: "", is_custom: false },
+  ]);
 
   const {
     register: registerField,
@@ -133,6 +141,23 @@ export default function AuthRegisterPage() {
 
   async function onSubmit(values: RegisterFormValues) {
     setServerError(null);
+    // 校验 3 个安全问题：每个 question 和 answer 非空
+    const sqErrs: string[] = [];
+    let sqValid = true;
+    securityQuestions.forEach((item) => {
+      const errs: string[] = [];
+      if (!item.question.trim()) {
+        errs.push(t("auth.securityQuestions.questionRequired"));
+        sqValid = false;
+      }
+      if (!item.answer.trim()) {
+        errs.push(t("auth.securityQuestions.answerRequired"));
+        sqValid = false;
+      }
+      sqErrs[item.position - 1] = errs.join("；");
+    });
+    setSqErrors(sqErrs);
+    if (!sqValid) return;
     try {
       await register({
         username: values.username,
@@ -141,6 +166,7 @@ export default function AuthRegisterPage() {
         confirm_password: values.confirm_password,
         email: values.email || undefined,
         phone: values.phone || undefined,
+        security_questions: securityQuestions,
       });
       // P0：注册成功跳转登录页
       router.replace(lp("/login"));
@@ -261,8 +287,22 @@ export default function AuthRegisterPage() {
                   {...registerField("phone")}
                 />
                 {errors.phone && (
-                  <p className="text-xs text-destructive">{errors.phone.message}</p>
-                )}
+                <p className="text-xs text-destructive">{errors.phone.message}</p>
+              )}
+              </div>
+
+              <div className="space-y-3">
+                <Label className="text-sm font-semibold">
+                  {t("auth.securityQuestions.title")}
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  {t("auth.securityQuestions.description")}
+                </p>
+                <SecurityQuestionsForm
+                  value={securityQuestions}
+                  onChange={setSecurityQuestions}
+                  errors={sqErrors}
+                />
               </div>
 
               {serverError && (

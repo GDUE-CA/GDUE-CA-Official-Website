@@ -147,6 +147,45 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # 安全问题（per-user 3 个）：注册/初始化时强制设 3 个，写完置 False；
+    # 存量用户默认 True（下次登录强制补设）
+    must_set_security_questions: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    # 安全问题关联：ORM 级联删除（SQLite 未开 FK pragma，靠 relationship cascade）
+    security_questions: Mapped[list["UserSecurityQuestion"]] = relationship(
+        cascade="all, delete-orphan", lazy="selectin",
+        back_populates="user",
+    )
+
+
+# ---------- 用户安全问题（per-user 3 个，答对 2/3 可恢复账号） ----------
+class UserSecurityQuestion(Base):
+    """用户安全问题：注册 / 初始化向导 / 登录后补设 3 个。
+
+    预设问题存 i18n key（如 "sq.first_pet"），自输入问题存原文。
+    答案规范化（去空格 + 小写 + SHA-256）后 bcrypt 哈希，不存明文。
+    """
+    __tablename__ = "user_security_questions"
+    __table_args__ = (
+        UniqueConstraint("user_id", "position", name="uq_usq_user_position"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    # 问题文本：预设问题存 i18n key（如 "sq.first_pet"），自输入存原文
+    question: Mapped[str] = mapped_column(String(256))
+    # 答案的 bcrypt 哈希（规范化：去空格 + 小写 + SHA-256 + bcrypt）
+    answer_hash: Mapped[str] = mapped_column(String(256))
+    # 位置序号（1/2/3）：恢复时按 position 回显对应问题，校验对应答案
+    position: Mapped[int] = mapped_column(Integer)
+    # 是否自定义问题：True=用户输入原文，False=预设 key
+    is_custom: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+
+    user: Mapped["User"] = relationship(back_populates="security_questions")
 
 
 # ---------- 社交关注（V0.5.5 §9.2）：单向关注；双向互关自动视为好友 ----------

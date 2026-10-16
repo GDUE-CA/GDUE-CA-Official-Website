@@ -40,7 +40,8 @@ import {
   initializeSystem,
 } from "@/lib/api/auth";
 import { clearLocalSession } from "@/lib/auth";
-import type { BGPasswordHashResult } from "@/types/api";
+import { SecurityQuestionsForm } from "@/components/auth/SecurityQuestionsForm";
+import type { BGPasswordHashResult, SecurityQuestionItem } from "@/types/api";
 
 /** 步骤元数据：编号 + 标题 i18n key + 描述 i18n key */
 const STEPS = [
@@ -106,6 +107,12 @@ export default function SetupWizardPage() {
   const [adminEmail, setAdminEmail] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
   const [adminPasswordConfirm, setAdminPasswordConfirm] = useState("");
+  const [adminSqErrors, setAdminSqErrors] = useState<string[]>([]);
+  const [adminSecurityQuestions, setAdminSecurityQuestions] = useState<SecurityQuestionItem[]>([
+    { position: 1, question: "", answer: "", is_custom: false },
+    { position: 2, question: "", answer: "", is_custom: false },
+    { position: 3, question: "", answer: "", is_custom: false },
+  ]);
 
   // 挂载时检查系统初始化状态：已初始化则跳转登录页
   useEffect(() => {
@@ -219,6 +226,26 @@ export default function SetupWizardPage() {
   async function handleSubmit() {
     setSubmitting(true);
     setError(null);
+    // 校验 3 个安全问题
+    const sqErrs: string[] = [];
+    let sqValid = true;
+    adminSecurityQuestions.forEach((item) => {
+      const errs: string[] = [];
+      if (!item.question.trim()) {
+        errs.push(t("auth.securityQuestions.questionRequired"));
+        sqValid = false;
+      }
+      if (!item.answer.trim()) {
+        errs.push(t("auth.securityQuestions.answerRequired"));
+        sqValid = false;
+      }
+      sqErrs[item.position - 1] = errs.join("；");
+    });
+    setAdminSqErrors(sqErrs);
+    if (!sqValid) {
+      setSubmitting(false);
+      return;
+    }
     try {
       await initializeSystem({
         default_locale: defaultLocale,
@@ -230,6 +257,7 @@ export default function SetupWizardPage() {
           display_name: adminDisplayName.trim(),
           email: adminEmail.trim(),
           password: adminPassword,
+          security_questions: adminSecurityQuestions,
         },
       });
       setSuccess(true);
@@ -509,6 +537,19 @@ export default function SetupWizardPage() {
                       {t("admin.changePassword.mismatch")}
                     </p>
                   )}
+                <div className="space-y-3">
+                  <Label className="text-sm font-semibold">
+                    {t("auth.securityQuestions.title")}
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    {t("auth.securityQuestions.description")}
+                  </p>
+                  <SecurityQuestionsForm
+                    value={adminSecurityQuestions}
+                    onChange={setAdminSecurityQuestions}
+                    errors={adminSqErrors}
+                  />
+                </div>
               </div>
             )}
 

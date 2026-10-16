@@ -1002,20 +1002,6 @@
       "error": "送信に失敗しました。後でもう一度お試しください",
       "backToLogin": "ログインに戻る"
     },
-    "recover": {
-      "title": "アカウント復元",
-      "subtitle": "全管理者が無効化された時の緊急復元",
-      "securityQuestion": "セキュリティの質問",
-      "securityAnswer": "答え",
-      "securityAnswerPlaceholder": "セキュリティの質問の答えを入力",
-      "newPassword": "新しいパスワード",
-      "newPasswordPlaceholder": "10文字以上で、英大文字・英小文字・数字・記号のうち3種類以上を含み、よく使われるパスワードは不可",
-      "submit": "アカウント復元",
-      "submitting": "復元中...",
-      "success": "アカウントが復元されました。新パスワードでログインしてください",
-      "error": "復元に失敗しました。答えが間違っている可能性があります",
-      "backToLogin": "ログインに戻る"
-    },
     "passwordResets": {
       "title": "パスワードリセット",
       "filterPending": "保留中",
@@ -2516,5 +2502,61 @@
       "admin": "クラブ管理者",
       "member": "クラブメンバー"
     }
+  },
+  "auth": {
+    "securityQuestions": {
+      "title": "セキュリティの質問",
+      "description": "アカウント回復用に3つのセキュリティの質問を設定してください（2つ正解でパスワードリセット可能）",
+      "question": "セキュリティの質問",
+      "preset": "プリセット",
+      "custom": "カスタム",
+      "selectPreset": "プリセットの質問を選択",
+      "customPlaceholder": "カスタムの質問を入力",
+      "answerPlaceholder": "答えを入力",
+      "questionRequired": "質問を選択または入力してください",
+      "answerRequired": "答えを入力してください"
+    },
+    "recover": {
+      "title": "アカウント回復",
+      "subtitle": "セキュリティの質問でアカウントを回復",
+      "username": "ユーザー名",
+      "usernamePlaceholder": "回復するユーザー名を入力",
+      "usernameRequired": "ユーザー名を入力してください",
+      "getQuestions": "セキュリティの質問を取得",
+      "loading": "読み込み中...",
+      "account": "アカウント",
+      "answerPlaceholder": "答えを入力",
+      "newPassword": "新しいパスワード",
+      "confirmPassword": "新しいパスワード（確認）",
+      "passwordRequired": "新しいパスワードを入力してください",
+      "passwordMismatch": "パスワードが一致しません",
+      "answerAll": "すべての質問に答えてください",
+      "submit": "アカウントを回復",
+      "submitting": "回復中...",
+      "fail": "回復に失敗しました。答えが正しくない可能性があります",
+      "error": "セキュリティの質問の取得に失敗しました",
+      "fallback": "メール認証コードでリセット"
+    },
+    "setupSecurityQuestions": {
+      "title": "セキュリティの質問の設定",
+      "subtitle": "今後のアカウント回復用に3つのセキュリティの質問を設定してください",
+      "currentPassword": "現在のパスワード",
+      "passwordRequired": "現在のパスワードを入力してください",
+      "submit": "セキュリティの質問を保存",
+      "submitting": "保存中...",
+      "error": "保存に失敗しました"
+    }
+  },
+  "sq": {
+    "sq.first_pet": "最初のペットの名前は？",
+    "sq.childhood_hero": "子どもの頃のヒーローは誰ですか？",
+    "sq.favorite_teacher": "一番好きな小学校の先生の名前は？",
+    "sq.birth_city": "生まれた都市はどこですか？",
+    "sq.first_school": "最初に通った学校の名前は？",
+    "sq.mother_maiden": "母親の旧姓は？",
+    "sq.first_car": "最初の車のモデルは何でしたか？",
+    "sq.childhood_friend": "子どもの頃の親友の名前は？",
+    "sq.first_job": "最初の仕事は何でしたか？",
+    "sq.favorite_book": "一番好きな本は？"
   }
 }

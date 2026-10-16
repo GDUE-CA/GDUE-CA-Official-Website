@@ -14,7 +14,6 @@ from sqlalchemy import delete as sa_delete
 from sqlalchemy import func, select
 
 from app.api import account, activities, admin_stats, announcements, audit, auth, background_tasks, badges, blog, bug_report, club_apply, comments, content, db_maintenance, email_change, geo, i18n_public, health, memos, media, members, notifications, oauth, projects, query, realname, recruitment, recycle, register, roles, school_verify, security, sso, stats, sys_data, system, system_init, tags, themes, translations, users, version
-from app.api.auth import security_answer_digest
 from app.core.config import get_settings
 from app.core.csrf import CSRF_HEADER, csrf_middleware
 from app.core.exceptions import register_exception_handlers
@@ -24,7 +23,7 @@ from app.core.middleware import (
     rate_limit_middleware,
     security_headers_middleware,
 )
-from app.core.security import Role, hash_password, is_bcrypt_hash
+from app.core.security import Role
 from app.core.trace import REQUEST_ID_HEADER, SERVER_TIME_HEADER, TRACE_HEADER, trace_middleware
 from app.api.recycle import RETENTION_DAYS, _purge_user
 from app.core.admin_gate import admin_gate_middleware
@@ -35,7 +34,6 @@ from app.db.models import (
     Base,
     IpRule,
     IpRuleType,
-    SecurityQuestion,
     SystemSetting,
     Theme,
     ThemeLayout,
@@ -48,10 +46,6 @@ settings = get_settings()
 # 以 `uvicorn app.main:app` / gunicorn 启动时 uvicorn 会先套用自己的日志配置，这里再覆盖一次
 setup_logging(settings.LOG_LEVEL, settings.LOG_FORMAT)
 logger = logging.getLogger("gdueca")
-
-# 旧版本预置的弱安全问题（答案可被轻易猜中），启动时自动清除
-_LEGACY_SECURITY_QUESTION = ("计算机协会成立于哪一年？", "2008")
-
 
 # ---------- 启动时：建表 + 轻量列迁移 + 初始化超级管理员 ----------
 async def _rebuild_users_student_id_nullable(conn):
@@ -167,6 +161,9 @@ async def _migrate_columns(conn):
             # ---- V0.5.5 §9.3：个人主页外观 ----
             ("profile_banner", "VARCHAR(256) NULL"),
             ("profile_banner_color", "VARCHAR(16) NULL"),
+            # 安全问题（per-user 3 个）：存量用户默认 True（下次登录强制补设）；
+            # 新注册 / 初始化向导完成时写 False
+            ("must_set_security_questions", "BOOLEAN DEFAULT 1"),
         ],
         "activities": [
             ("checkin_open", "BOOLEAN DEFAULT 0"),
@@ -321,14 +318,6 @@ async def _init_db():
         if not rec:
             rec = SystemSetting(id=1)
             s.add(rec)
-
-        # 安全问题：不再预置默认问题；旧版明文答案迁移为哈希，弱默认问题直接清除
-        sec_q = await s.get(SecurityQuestion, 1)
-        if sec_q and (sec_q.question, sec_q.answer) == _LEGACY_SECURITY_QUESTION:
-            await s.delete(sec_q)
-            logger.warning("已清除旧版默认安全问题，请超级管理员在后台重新设置")
-        elif sec_q and not is_bcrypt_hash(sec_q.answer):
-            sec_q.answer = hash_password(security_answer_digest(sec_q.answer))
 
         # 系统初始化状态判定（Break-Glass 体系）：
         # - 存量库（users 表已有任意账号，含软删回收站中的账号）→ 视为已完成初始化；

@@ -40,6 +40,8 @@ class LoginResponse(BaseModel):
     is_break_glass: bool = False
     # 系统尚未完成初始化（前端跳转 /admin/setup 初始化向导）
     must_setup: bool = False
+    # 安全问题补设标记（存量用户默认 True，下次登录强制补设 3 个安全问题）
+    must_set_security_questions: bool = False
 
 
 # ---------- 登录会话（设备管理） ----------
@@ -64,6 +66,105 @@ class LoginSessionOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# ---------- 用户安全问题（per-user 3 个，答对 2/3 可恢复账号） ----------
+class SecurityQuestionItem(BaseModel):
+    """单个安全问题项。
+
+    预设问题：``question`` 存 i18n key（如 ``sq.first_pet``），``is_custom=False``；
+    自定义问题：``question`` 存用户输入原文，``is_custom=True``。
+    答案明文传输，后端规范化（去空格 + 小写 + SHA-256）后 bcrypt 哈希存储。
+    """
+    # 位置序号 1/2/3，恢复时按 position 回显问题并校验对应答案
+    position: int = Field(ge=1, le=3)
+    question: PlainText = Field(min_length=2, max_length=256)
+    answer: str = Field(min_length=2, max_length=256)
+    is_custom: bool = False
+
+    @model_validator(mode="after")
+    def _validate(self) -> "SecurityQuestionItem":
+        # 延迟导入避免 schema ↔ core 循环依赖
+        from app.core.security_questions import (
+            CUSTOM_MIN_ANSWER_LEN,
+            PRESET_MIN_ANSWER_LEN,
+            is_preset_question_key,
+        )
+        if self.is_custom:
+            # 自定义问题：答案需更强（≥ 6 字符），避免短答案被枚举猜中
+            if len(self.answer.strip()) < CUSTOM_MIN_ANSWER_LEN:
+                raise ValueError(f"自定义问题答案长度不足（最少 {CUSTOM_MIN_ANSWER_LEN} 字符）")
+        else:
+            # 预设问题：question 必须是合法预设 key
+            if not is_preset_question_key(self.question):
+                raise ValueError("预设问题 key 不合法")
+            if len(self.answer.strip()) < PRESET_MIN_ANSWER_LEN:
+                raise ValueError(f"答案长度不足（最少 {PRESET_MIN_ANSWER_LEN} 字符）")
+        return self
+
+
+class SecurityAnswerItem(BaseModel):
+    """恢复时单个问题答案项。"""
+    position: int = Field(ge=1, le=3)
+    answer: str = Field(min_length=1, max_length=256)
+
+
+class SecurityQuestionOutItem(BaseModel):
+    """安全问题回显项（不含答案，防泄露）。"""
+    position: int
+    question: str
+    is_custom: bool = False
+
+
+class SecurityQuestionsOut(BaseModel):
+    """用户安全问题列表回显（恢复页取 3 个问题）。"""
+    questions: list[SecurityQuestionOutItem]
+
+
+class SecurityQuestionsSetupRequest(BaseModel):
+    """设置 / 补设 / 修改自己 3 个安全问题。
+
+    需 ``current_password`` 确认操作者身份；写完清零 ``must_set_security_questions``
+    并写审计。修改时同样需要当前密码确认。
+    """
+    current_password: str = Field(min_length=1, max_length=PASSWORD_MAX_LENGTH)
+    questions: list[SecurityQuestionItem]
+
+    @model_validator(mode="after")
+    def _validate(self) -> "SecurityQuestionsSetupRequest":
+        from app.core.security_questions import SECURITY_QUESTIONS_COUNT
+        if len(self.questions) != SECURITY_QUESTIONS_COUNT:
+            raise ValueError(f"必须设置 {SECURITY_QUESTIONS_COUNT} 个安全问题")
+        positions = [q.position for q in self.questions]
+        if len(set(positions)) != len(positions):
+            raise ValueError("安全问题 position 不可重复")
+        return self
+
+
+class RecoverRequest(BaseModel):
+    """安全问题恢复账号：username 或 email + 3 个答案 + 新密码。
+
+    答对 3 个中 2 个即重置密码并撤会话；不足 2 个模糊拒绝（防枚举）。
+    """
+    username: str | None = Field(default=None, max_length=128)
+    email: LooseEmail | None = None
+    answers: list[SecurityAnswerItem]
+    new_password: str = Field(min_length=1, max_length=PASSWORD_MAX_LENGTH)
+    confirm_password: str = Field(min_length=1, max_length=PASSWORD_MAX_LENGTH)
+
+    @model_validator(mode="after")
+    def _validate(self) -> "RecoverRequest":
+        from app.core.security_questions import SECURITY_QUESTIONS_COUNT
+        if not self.username and not self.email:
+            raise ValueError("必须提供 username 或 email")
+        if self.new_password != self.confirm_password:
+            raise ValueError("两次输入的新密码不一致")
+        if len(self.answers) != SECURITY_QUESTIONS_COUNT:
+            raise ValueError(f"必须回答 {SECURITY_QUESTIONS_COUNT} 个安全问题")
+        positions = [a.position for a in self.answers]
+        if len(set(positions)) != len(positions):
+            raise ValueError("安全问题 position 不可重复")
+        return self
+
+
 # ---------- 公开注册（P0） ----------
 class RegisterRequest(BaseModel):
     """公开注册入参：强制 member 角色，不提供任何角色字段。"""
@@ -73,12 +174,20 @@ class RegisterRequest(BaseModel):
     confirm_password: str = Field(min_length=1, max_length=PASSWORD_MAX_LENGTH)
     email: LooseEmail | None = None
     phone: str | None = Field(default=None, pattern=_PHONE_PATTERN)
+    # 安全问题（per-user 3 个）：注册时强制设 3 个，注册完成写 must_set_security_questions=False
+    security_questions: list[SecurityQuestionItem]
 
     @model_validator(mode="after")
     def _validate(self) -> "RegisterRequest":
+        from app.core.security_questions import SECURITY_QUESTIONS_COUNT
         if self.password != self.confirm_password:
             raise ValueError("两次输入的密码不一致")
         validate_password_strength(self.password, self.username, self.email)
+        if len(self.security_questions) != SECURITY_QUESTIONS_COUNT:
+            raise ValueError(f"必须设置 {SECURITY_QUESTIONS_COUNT} 个安全问题")
+        positions = [q.position for q in self.security_questions]
+        if len(set(positions)) != len(positions):
+            raise ValueError("安全问题 position 不可重复")
         return self
 
 
@@ -384,25 +493,6 @@ class PasswordResetOut(BaseModel):
 class PasswordResetHandleRequest(BaseModel):
     status: str = Field(pattern="^(handled|rejected)$")
     admin_note: MultilineText | None = Field(default=None, max_length=1000)
-
-
-# ---------- 安全问题恢复 ----------
-class SecurityQuestionOut(BaseModel):
-    """公开接口只返回问题，不返回答案。"""
-    question: str
-
-
-class SecurityAnswerRequest(BaseModel):
-    answer: str = Field(min_length=1, max_length=256)
-    # 恢复后设置的新密码（强度在接口层结合超管用户名校验）
-    new_password: str = Field(min_length=1, max_length=PASSWORD_MAX_LENGTH)
-
-
-# ---------- 安全问题管理（仅 super_admin） ----------
-class SecurityQuestionUpdate(BaseModel):
-    question: PlainText = Field(min_length=2, max_length=256)
-    # 答案需有一定强度，防止被枚举猜中
-    answer: str = Field(min_length=6, max_length=256)
 
 
 # ---------- 更换绑定邮箱（路径A 自助 / 路径B 自助核验 / 路径C 人工申请 / 豁免确认） ----------

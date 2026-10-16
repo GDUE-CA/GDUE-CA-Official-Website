@@ -24,6 +24,48 @@
       "submitting": "注册中...",
       "toLogin": "已有账号？去登录",
       "error": "注册失败，请稍后重试"
+    },
+    "securityQuestions": {
+      "title": "安全问题",
+      "description": "设置 3 个安全问题，用于账号恢复（答对 2 个即可重置密码）",
+      "question": "安全问题",
+      "preset": "预设问题",
+      "custom": "自定义",
+      "selectPreset": "请选择预设问题",
+      "customPlaceholder": "输入自定义问题",
+      "answerPlaceholder": "输入答案",
+      "questionRequired": "请选择或输入问题",
+      "answerRequired": "请输入答案"
+    },
+    "recover": {
+      "title": "账号恢复",
+      "subtitle": "通过安全问题恢复账号",
+      "username": "用户名",
+      "usernamePlaceholder": "输入要恢复的用户名",
+      "usernameRequired": "请输入用户名",
+      "getQuestions": "获取安全问题",
+      "loading": "加载中...",
+      "account": "账号",
+      "answerPlaceholder": "输入答案",
+      "newPassword": "新密码",
+      "confirmPassword": "确认新密码",
+      "passwordRequired": "请输入新密码",
+      "passwordMismatch": "两次输入的密码不一致",
+      "answerAll": "请回答所有问题",
+      "submit": "恢复账号",
+      "submitting": "恢复中...",
+      "fail": "恢复失败，答案可能错误或不足",
+      "error": "获取安全问题失败",
+      "fallback": "改用邮箱验证码重置"
+    },
+    "setupSecurityQuestions": {
+      "title": "设置安全问题",
+      "subtitle": "请设置 3 个安全问题，用于后续账号恢复",
+      "currentPassword": "当前密码",
+      "passwordRequired": "请输入当前密码",
+      "submit": "保存安全问题",
+      "submitting": "保存中...",
+      "error": "保存失败"
     }
   },
   "nav": {
@@ -1289,20 +1331,6 @@
       "submitting": "提交中...",
       "success": "申请已提交，管理员会尽快处理",
       "error": "提交失败，请稍后重试",
-      "backToLogin": "返回登录"
-    },
-    "recover": {
-      "title": "账号恢复",
-      "subtitle": "所有管理员失能时的紧急恢复",
-      "securityQuestion": "安全问题",
-      "securityAnswer": "答案",
-      "securityAnswerPlaceholder": "请输入安全问题的答案",
-      "newPassword": "新密码",
-      "newPasswordPlaceholder": "至少 10 位，包含大写字母、小写字母、数字、特殊字符中的至少 3 类，且不能是常见弱口令",
-      "submit": "恢复账号",
-      "submitting": "恢复中...",
-      "success": "账号已恢复，请用新密码登录",
-      "error": "恢复失败，答案可能错误",
       "backToLogin": "返回登录"
     },
     "passwordResets": {
@@ -2892,5 +2920,17 @@
       "admin": "社团管理员",
       "member": "社团成员"
     }
+  },
+  "sq": {
+    "sq.first_pet": "你第一只宠物的名字？",
+    "sq.childhood_hero": "你童年时的英雄是谁？",
+    "sq.favorite_teacher": "你最喜欢的小学老师姓名？",
+    "sq.birth_city": "你出生的城市？",
+    "sq.first_school": "你就读的第一所学校名称？",
+    "sq.mother_maiden": "你母亲的娘家姓？",
+    "sq.first_car": "你的第一辆车是什么型号？",
+    "sq.childhood_friend": "你童年最好朋友的名字？",
+    "sq.first_job": "你的第一份工作是什么？",
+    "sq.favorite_book": "你最喜欢的一本书？"
   }
 }

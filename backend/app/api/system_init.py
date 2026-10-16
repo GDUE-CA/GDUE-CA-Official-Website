@@ -9,11 +9,11 @@
 向导完成后 system_initialized=true，入口永久隐藏（后台不提供重置开关）。
 """
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.auth import require_break_glass
+from app.api.auth import require_break_glass, security_answer_digest
 from app.core.audit import log_action
 from app.core.config import get_settings
 from app.core.csrf import SESSION_COOKIE
@@ -25,8 +25,9 @@ from app.core.password_policy import (
 )
 from app.core.responses import ok
 from app.core.security import bg_session_revoke, hash_password
-from app.db.models import SystemSetting, User, UserRole
+from app.db.models import SystemSetting, User, UserRole, UserSecurityQuestion
 from app.db.session import get_db
+from app.schemas.auth import SecurityQuestionItem
 from app.schemas.common import LooseEmail, PlainText
 
 router = APIRouter(prefix="/api/system-init", tags=["system-init"])
@@ -55,6 +56,18 @@ class FirstAdminCreate(BaseModel):
     display_name: PlainText = Field(min_length=1, max_length=64)
     email: LooseEmail
     password: str = Field(min_length=1, max_length=PASSWORD_MAX_LENGTH)
+    # 安全问题（per-user 3 个）：初始化向导强制设 3 个
+    security_questions: list[SecurityQuestionItem]
+
+    @model_validator(mode="after")
+    def _validate_security_questions(self) -> "FirstAdminCreate":
+        from app.core.security_questions import SECURITY_QUESTIONS_COUNT
+        if len(self.security_questions) != SECURITY_QUESTIONS_COUNT:
+            raise ValueError(f"必须设置 {SECURITY_QUESTIONS_COUNT} 个安全问题")
+        positions = [q.position for q in self.security_questions]
+        if len(set(positions)) != len(positions):
+            raise ValueError("安全问题 position 不可重复")
+        return self
 
 
 class SystemInitRequest(BaseModel):
@@ -180,8 +193,20 @@ async def initialize_system(
         phone="",
         must_change_password=False,
         realname_verified=True,
+        # 初始化向导已设 3 个安全问题，清零补设标记
+        must_set_security_questions=False,
     )
     db.add(admin)
+    await db.flush()
+    # 写入首位超管的 3 个安全问题（规范化 + bcrypt 哈希）
+    for item in req.admin.security_questions:
+        db.add(UserSecurityQuestion(
+            user_id=admin.id,
+            question=item.question,
+            answer_hash=hash_password(security_answer_digest(item.answer)),
+            position=item.position,
+            is_custom=item.is_custom,
+        ))
 
     # 3) 标记初始化完成
     ss.system_initialized = True

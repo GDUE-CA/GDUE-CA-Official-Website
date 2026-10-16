@@ -191,6 +191,11 @@ export default function LoginPage() {
         router.replace(lp("/admin/change-password"));
         return;
       }
+      // 存量用户未设安全问题 → 强制补设 3 个安全问题
+      if (res.must_set_security_questions) {
+        router.replace(lp("/auth/setup-security-questions"));
+        return;
+      }
       // 有回跳目标 → 优先回跳（/admin/** 或 /setting/** 守卫携带的 next/returnUrl）
       if (returnTarget) {
         router.replace(returnTarget);
@@ -405,10 +410,10 @@ export default function LoginPage() {
             </div>
             <div className="mt-2 text-center">
               <Link
-                href={lp("/admin/recover")}
+                href={lp("/auth/recover")}
                 className="text-xs text-muted-foreground hover:text-primary transition-colors"
               >
-                {t("admin.recover.title")}
+                {t("auth.recover.title")}
               </Link>
             </div>
 

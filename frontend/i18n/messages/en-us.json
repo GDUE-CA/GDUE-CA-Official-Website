@@ -24,6 +24,48 @@
       "submitting": "Signing up...",
       "toLogin": "Already have an account? Log in",
       "error": "Registration failed, please try again later"
+    },
+    "securityQuestions": {
+      "title": "Security Questions",
+      "description": "Set 3 security questions for account recovery (answer 2 correctly to reset password)",
+      "question": "Security Question",
+      "preset": "Preset",
+      "custom": "Custom",
+      "selectPreset": "Select a preset question",
+      "customPlaceholder": "Enter custom question",
+      "answerPlaceholder": "Enter answer",
+      "questionRequired": "Please select or enter a question",
+      "answerRequired": "Please enter an answer"
+    },
+    "recover": {
+      "title": "Account Recovery",
+      "subtitle": "Recover account via security questions",
+      "username": "Username",
+      "usernamePlaceholder": "Enter username to recover",
+      "usernameRequired": "Please enter username",
+      "getQuestions": "Get Security Questions",
+      "loading": "Loading...",
+      "account": "Account",
+      "answerPlaceholder": "Enter answer",
+      "newPassword": "New Password",
+      "confirmPassword": "Confirm New Password",
+      "passwordRequired": "Please enter new password",
+      "passwordMismatch": "Passwords do not match",
+      "answerAll": "Please answer all questions",
+      "submit": "Recover Account",
+      "submitting": "Recovering...",
+      "fail": "Recovery failed, answers may be incorrect",
+      "error": "Failed to get security questions",
+      "fallback": "Use email verification instead"
+    },
+    "setupSecurityQuestions": {
+      "title": "Set Security Questions",
+      "subtitle": "Please set 3 security questions for future account recovery",
+      "currentPassword": "Current Password",
+      "passwordRequired": "Please enter current password",
+      "submit": "Save Security Questions",
+      "submitting": "Saving...",
+      "error": "Save failed"
     }
   },
   "nav": {
@@ -1258,20 +1300,6 @@
       "submitting": "Submitting...",
       "success": "Request submitted, admin will process it soon",
       "error": "Submission failed, please try again later",
-      "backToLogin": "Back to Login"
-    },
-    "recover": {
-      "title": "Account Recovery",
-      "subtitle": "Emergency recovery when all admins are disabled",
-      "securityQuestion": "Security Question",
-      "securityAnswer": "Answer",
-      "securityAnswerPlaceholder": "Enter the answer to the security question",
-      "newPassword": "New Password",
-      "newPasswordPlaceholder": "At least 10 characters with 3 of: uppercase, lowercase, digits, symbols; no common passwords",
-      "submit": "Recover Account",
-      "submitting": "Recovering...",
-      "success": "Account recovered, please log in with new password",
-      "error": "Recovery failed, answer may be incorrect",
       "backToLogin": "Back to Login"
     },
     "passwordResets": {
@@ -2824,5 +2852,17 @@
       "admin": "Club Admin",
       "member": "Club Member"
     }
+  },
+  "sq": {
+    "sq.first_pet": "What was the name of your first pet?",
+    "sq.childhood_hero": "Who was your childhood hero?",
+    "sq.favorite_teacher": "What was the name of your favorite primary school teacher?",
+    "sq.birth_city": "In which city were you born?",
+    "sq.first_school": "What was the name of your first school?",
+    "sq.mother_maiden": "What is your mother's maiden name?",
+    "sq.first_car": "What was the model of your first car?",
+    "sq.childhood_friend": "What was the name of your childhood best friend?",
+    "sq.first_job": "What was your first job?",
+    "sq.favorite_book": "What is your favorite book?"
   }
 }

@@ -22,9 +22,9 @@ import type {
   PasswordResetItem,
   RegisterRequest,
   RegisterResponse,
-  SecurityQuestionOut,
-  SecurityAnswerRequest,
-  SecurityQuestionUpdate,
+  RecoverRequest,
+  SecurityQuestionsOut,
+  SecurityQuestionsSetupRequest,
   UserCreatePayload,
   UserUpdatePayload,
   SystemInitStatus,
@@ -234,24 +234,39 @@ export function batchHandlePasswordResets(ids: number[], status: "handled" | "re
   });
 }
 
-/* ---------- 安全问题 ---------- */
+/* ---------- 安全问题（per-user 3 个，答对 2/3 可恢复账号） ---------- */
 
-/** 公开获取安全问题（不含答案） */
-export function fetchSecurityQuestion() {
-  return apiFetch<SecurityQuestionOut>("/api/auth/security-question");
+/** 获取预设问题 key 列表（公开，前端下拉用） */
+export function fetchPresetSecurityQuestions() {
+  return apiFetch<{ presets: string[] }>("/api/auth/security-questions/presets");
 }
 
-/** 紧急恢复：答对安全问题 → 重置超管密码 */
-export function recoverViaSecurityQuestion(payload: SecurityAnswerRequest) {
+/** 公开获取指定用户 3 个安全问题（不含答案）；账号不存在返回固定假问题（防枚举） */
+export function fetchSecurityQuestions(username: string) {
+  const q = encodeURIComponent(username);
+  return apiFetch<SecurityQuestionsOut>(`/api/auth/security-questions?username=${q}`);
+}
+
+/** 安全问题恢复账号：答对 3 个中 2 个即重置密码（公开 + 限流 + CSRF） */
+export function recoverViaSecurityQuestions(payload: RecoverRequest) {
   return apiFetch<{ ok: boolean; username: string }>("/api/auth/recover", {
     method: "POST",
     body: JSON.stringify(payload),
   });
 }
 
-/** 管理员更新安全问题（仅 super_admin） */
-export function updateSecurityQuestion(payload: SecurityQuestionUpdate) {
-  return apiFetch<SecurityQuestionOut>("/api/auth/security-question", {
+/** 设置 / 补设自己的 3 个安全问题（登录态，需当前密码确认） */
+export function setupSecurityQuestions(payload: SecurityQuestionsSetupRequest) {
+  return apiFetch<{ ok: boolean }>("/api/auth/security-questions", {
+    method: "POST",
+    withAuth: true,
+    body: JSON.stringify(payload),
+  });
+}
+
+/** 修改自己的 3 个安全问题（等价 setup，走 PUT 语义） */
+export function updateSecurityQuestions(payload: SecurityQuestionsSetupRequest) {
+  return apiFetch<{ ok: boolean }>("/api/auth/security-questions", {
     method: "PUT",
     withAuth: true,
     body: JSON.stringify(payload),
