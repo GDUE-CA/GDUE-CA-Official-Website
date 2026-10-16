@@ -1,5 +1,7 @@
 # Contributing to GDUE-CA Official Website
 
+**[中文版本](./CONTRIBUTING-ZH.md)**
+
 Thank you for your interest in contributing! This project is **Source-Available** — the source code is publicly viewable for learning and research. Before contributing, please read and accept the [LICENSE](./LICENSE).
 
 > Chinese reference version: [CONTRIBUTING-ZH.md](./CONTRIBUTING-ZH.md) — for reading convenience only; this English version prevails.

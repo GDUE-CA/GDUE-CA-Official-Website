@@ -1,3 +1,5 @@
+**[English version](./README.en.md)**
+
 <div align="center">
 
 # 广东第二师范学院计算机协会 · 官方网站
@@ -16,7 +18,7 @@
 
 [![Status](https://img.shields.io/badge/status-active-success)]()
 [![Maintenance](https://img.shields.io/badge/503_static-maintenance-blueviolet)](#503-静态维护兜底机制)
-[![License](https://img.shields.io/badge/license-Source--Available-lightgrey)](#源码可见许可证)
+[![License](https://img.shields.io/badge/license-Source--Available-lightgrey)](./LICENSE-ZH.md)
 
 **🌐 在线访问：[https://gdue-ca.paperee.guru](https://gdue-ca.paperee.guru)**
 
@@ -442,55 +444,23 @@ docker compose logs -f              # Nginx / 前端 / 后端统一日志格式�
 
 ---
 
-## 源码可见许可证
+## 许可与版权
 
-本项目采用自定义 **Source-Available（源码可见）** 许可发布——源代码公开可查看，便于学习与研究；未获得 OSI 认证，**不属于开源软件，严禁标注为开源**。
+本项目采用自定义 **Source-Available（源码可见）** 许可发布——源代码公开可查看，便于学习与研究；未获得 OSI 认证，**不属于开源软件，严禁标注为开源**。软件按「现状」提供，无任何担保。
 
-- ✅ 允许：本地阅读学习研究、本机 / 内网二次开发、课堂与内部演示、公开视频 / 博客介绍（可引用代码片段）、提交 Issue / PR；
-- ❌ 未经协会正式书面许可：禁止公网部署衍生版本、禁止公网分发、禁止任何商用、禁止损害协会名誉 / 冒充官方 / 制造分裂 / 恶意恶搞；
-- 违反许可将**自动终止授权**并须删除全部副本；软件按「现状」提供，无任何担保。
-
-详见根目录 [LICENSE](./LICENSE)（唯一法律效力文本，英文）、[NOTICE-ZH.md](./NOTICE-ZH.md)（中文说明，仅供参考）、[CONTRIBUTING.md](./CONTRIBUTING.md)（贡献规则）。
+- 📄 [LICENSE](./LICENSE) —— 唯一法律效力文本（英文）
+- 📄 [LICENSE-ZH.md](./LICENSE-ZH.md) —— 中文参考版（仅供阅读参考，法律权责以英文 LICENSE 为准）
+- 📄 [COPYRIGHT.md](./COPYRIGHT.md) —— 版权与联系信息（[English](./COPYRIGHT.en.md)）
+- 📄 [CONTRIBUTING.md](./CONTRIBUTING.md) —— 贡献规则（[中文参考版](./CONTRIBUTING-ZH.md)）
 
 ---
-
-## 社团版权与联系信息
 
 <div align="center">
 
-**广东第二师范学院（花都校区）计算机协会**
-
-© Guangdong University of Education — Computer Association. All rights reserved.
+**广东第二师范学院（花都校区）计算机协会** · © Guangdong University of Education — Computer Association. All rights reserved.
 
 🌐 官网：[https://gdue-ca.paperee.guru](https://gdue-ca.paperee.guru)　·　💬 反馈：[GitHub Issues](https://github.com/paperee/GDUE-CA-Official-Website-main/issues)
 
+完整版权与联系信息见 [COPYRIGHT.md](./COPYRIGHT.md)（[English](./COPYRIGHT.en.md)）
+
 </div>
-
----
-
-## License
-
-This project is **Source-Available** — the source code is publicly viewable for learning and research, but it is **not** open-source software and is not distributed under any OSI-approved license.
-
-Copyright © 2026 Guangdong University of Education Computer Association (GDUE-CA). All rights reserved.
-
-**You may:**
-
-- View and download the source code; read, study and analyze it locally;
-- Modify it for local / private-intranet use only (never exposed to the public internet);
-- Use it for classroom, internal-teaching and local demo purposes;
-- Publish videos or blog posts about this project and quote short code snippets for explanation;
-- Submit Issues, bug reports, feature suggestions and Pull Requests (the Association holds the sole and final authority over all PR merges / rejections).
-
-**You may NOT (without prior written permission from the Association):**
-
-- Deploy the Software or any derivative version to the public internet as a publicly accessible website;
-- Redistribute the original or modified version publicly for download;
-- Use the Software for any commercial purpose;
-- Publish content that damages the Association's reputation, impersonates the Association, creates community division, or maliciously parodies it.
-
-These restrictions apply only to public-facing acts (public deployment / distribution / dissemination); private local modification is not restricted. Any violation terminates this license automatically and requires deletion of all copies. By submitting a Pull Request, you grant the Association a perpetual, non-exclusive, irrevocable right to use, modify, refactor and distribute your contribution.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
-
-Full legal terms: [LICENSE](./LICENSE) · Chinese notice: [NOTICE-ZH.md](./NOTICE-ZH.md) (for reference only; the English LICENSE prevails) · Contributing: [CONTRIBUTING.md](./CONTRIBUTING.md)

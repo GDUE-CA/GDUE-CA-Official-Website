@@ -1,4 +1,6 @@
-# NOTICE · 许可说明（中文）
+# LICENSE · 许可说明（中文参考版）
+
+**[English version](./LICENSE)**
 
 > ⚠️ **中文版本仅供阅读参考，所有法律权责以根目录 [LICENSE](./LICENSE) 的英文文本为准。**
 >

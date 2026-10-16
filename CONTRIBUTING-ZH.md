@@ -1,5 +1,7 @@
 # 贡献指南（中文参考版）
 
+**[English version](./CONTRIBUTING.md)**
+
 感谢你关注并参与本项目贡献！本项目为 **Source-Available（源码可见）** 模式——源代码公开可查看，用于学习与研究。参与贡献前，请先阅读并接受 [LICENSE](./LICENSE)。
 
 > ⚠️ **中文版本仅供阅读参考，所有法律权责以根目录 LICENSE 的英文文本为准；贡献规则细节以 [CONTRIBUTING.md](./CONTRIBUTING.md)（英文版）为准。**
