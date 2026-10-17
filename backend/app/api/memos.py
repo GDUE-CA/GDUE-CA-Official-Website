@@ -222,7 +222,7 @@ async def get_shared_memo(
         )
     )).scalar_one_or_none()
     if not m:
-        raise BizException(BizCode.NOT_FOUND, data={"detail": "分享链接不存在或已失效"})
+        raise BizException(BizCode.NOT_FOUND, reason="分享链接不存在或已失效")
     attachments = (await db.execute(
         select(MemoAttachment).where(
             MemoAttachment.memo_id == m.id, MemoAttachment.deleted_at.is_(None)
@@ -326,7 +326,7 @@ async def public_memos_by_date(
     try:
         d = datetime.strptime(date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
     except ValueError:
-        raise BizException(BizCode.VALIDATION_FAILED, data={"detail": "日期格式必须为 YYYY-MM-DD"})
+        raise BizException(BizCode.VALIDATION_FAILED, reason="日期格式必须为 YYYY-MM-DD")
     start_naive = d.replace(tzinfo=None)
     from datetime import timedelta
     end_naive = start_naive + timedelta(days=1)
@@ -594,9 +594,9 @@ async def _load_memo_or_404(
         stmt = stmt.where(Memo.deleted_at.is_(None))
     m = (await db.execute(stmt)).scalar_one_or_none()
     if not m:
-        raise BizException(BizCode.NOT_FOUND, data={"detail": "Memo 不存在"})
+        raise BizException(BizCode.NOT_FOUND, reason="Memo 不存在")
     if require_owner is not None and m.author_id != require_owner:
-        raise BizException(BizCode.FORBIDDEN, data={"detail": "仅作者本人可操作此 Memo"})
+        raise BizException(BizCode.FORBIDDEN, reason="仅作者本人可操作此 Memo")
     return m
 
 
@@ -730,7 +730,7 @@ async def toggle_like(
     uid = _uid(user)
     m = await _load_memo_or_404(db, memo_id)
     if m.visibility == "private" and m.author_id != uid:
-        raise BizException(BizCode.FORBIDDEN, data={"detail": "无权点赞此 Memo"})
+        raise BizException(BizCode.FORBIDDEN, reason="无权点赞此 Memo")
 
     existing = (await db.execute(
         select(MemoLike).where(
@@ -773,7 +773,7 @@ async def toggle_favorite(
     uid = _uid(user)
     m = await _load_memo_or_404(db, memo_id)
     if m.visibility == "private" and m.author_id != uid:
-        raise BizException(BizCode.FORBIDDEN, data={"detail": "无权收藏此 Memo"})
+        raise BizException(BizCode.FORBIDDEN, reason="无权收藏此 Memo")
 
     existing = (await db.execute(
         select(MemoFavorite).where(
@@ -845,7 +845,7 @@ async def get_memo_version(
         )
     )).scalar_one_or_none()
     if not v:
-        raise BizException(BizCode.NOT_FOUND, data={"detail": "版本不存在"})
+        raise BizException(BizCode.NOT_FOUND, reason="版本不存在")
     editor = await db.get(User, v.editor_id) if v.editor_id else None
     return ok(data=await _version_out_dict(v, editor, db=db))
 
@@ -869,7 +869,7 @@ async def rollback_memo(
         )
     )).scalar_one_or_none()
     if not v:
-        raise BizException(BizCode.NOT_FOUND, data={"detail": "目标版本不存在"})
+        raise BizException(BizCode.NOT_FOUND, reason="目标版本不存在")
 
     new_no = await next_version_no(db, m.id)
     db.add(MemoVersion(
@@ -919,12 +919,12 @@ async def upload_memo_attachment(
         )
     fmt = sniff_image(data)
     if not fmt:
-        raise BizException(BizCode.VALIDATION_FAILED, data={"detail": "仅支持 JPG/PNG/WEBP 格式"})
+        raise BizException(BizCode.VALIDATION_FAILED, reason="仅支持 JPG/PNG/WEBP 格式")
 
     try:
         compressed, ext, mime = compress_lossless_80(data, fmt)
     except Exception:
-        raise BizException(BizCode.VALIDATION_FAILED, data={"detail": "图片文件已损坏或无法解析"})
+        raise BizException(BizCode.VALIDATION_FAILED, reason="图片文件已损坏或无法解析")
     if len(compressed) >= len(data) or len(compressed) > int(len(data) * 0.8):
         compressed = data
 
@@ -960,7 +960,7 @@ async def create_share_link(
     uid = _uid(user)
     m = await _load_memo_or_404(db, memo_id, require_owner=uid)
     if m.visibility != "public":
-        raise BizException(BizCode.VALIDATION_FAILED, data={"detail": "仅公开 Memo 可生成分享链接"})
+        raise BizException(BizCode.VALIDATION_FAILED, reason="仅公开 Memo 可生成分享链接")
 
     if not m.share_slug:
         for _ in range(5):
@@ -972,7 +972,7 @@ async def create_share_link(
                 m.share_slug = candidate
                 break
         if not m.share_slug:
-            raise BizException(BizCode.INTERNAL_ERROR, data={"detail": "生成分享链接失败，请重试"})
+            raise BizException(BizCode.INTERNAL_ERROR, reason="生成分享链接失败，请重试")
 
     m.updated_at = naive_utc_now()
     log_memo(db, uid, "memo.share.create", f"memo:{m.id}", get_client_ip(request))
@@ -996,7 +996,7 @@ async def revoke_share_link(
     uid = _uid(user)
     m = await _load_memo_or_404(db, memo_id, require_owner=uid)
     if not m.share_slug:
-        raise BizException(BizCode.NOT_FOUND, data={"detail": "暂无分享链接"})
+        raise BizException(BizCode.NOT_FOUND, reason="暂无分享链接")
     m.share_slug = None
     log_memo(db, uid, "memo.share.revoke", f"memo:{m.id}", get_client_ip(request))
     await db.commit()
@@ -1017,12 +1017,12 @@ async def get_memo(
         pass
     elif m.visibility == "member_only":
         if uid is None:
-            raise BizException(BizCode.NOT_FOUND, data={"detail": "Memo 不存在"})
+            raise BizException(BizCode.NOT_FOUND, reason="Memo 不存在")
     else:  # private
         if uid is None or m.author_id != uid:
-            raise BizException(BizCode.NOT_FOUND, data={"detail": "Memo 不存在"})
+            raise BizException(BizCode.NOT_FOUND, reason="Memo 不存在")
     if m.admin_removed and (uid is None or uid != m.author_id):
-        raise BizException(BizCode.NOT_FOUND, data={"detail": "Memo 不存在"})
+        raise BizException(BizCode.NOT_FOUND, reason="Memo 不存在")
 
     attachments = (await db.execute(
         select(MemoAttachment).where(
@@ -1058,9 +1058,9 @@ async def share_memo(
     """
     m = await _load_memo_or_404(db, memo_id)
     if m.visibility == "private":
-        raise BizException(BizCode.NOT_FOUND, data={"detail": "Memo 不存在"})
+        raise BizException(BizCode.NOT_FOUND, reason="Memo 不存在")
     if m.admin_removed:
-        raise BizException(BizCode.NOT_FOUND, data={"detail": "Memo 不存在"})
+        raise BizException(BizCode.NOT_FOUND, reason="Memo 不存在")
     m.share_count = (m.share_count or 0) + 1
     await db.commit()
     await db.refresh(m)
@@ -1131,7 +1131,7 @@ async def admin_get_memo(
         select(Memo).where(Memo.id == memo_id)
     )).scalar_one_or_none()
     if not m:
-        raise BizException(BizCode.NOT_FOUND, data={"detail": "Memo 不存在"})
+        raise BizException(BizCode.NOT_FOUND, reason="Memo 不存在")
     attachments = (await db.execute(
         select(MemoAttachment).where(
             MemoAttachment.memo_id == m.id, MemoAttachment.deleted_at.is_(None)
@@ -1155,9 +1155,9 @@ async def admin_remove_memo(
         select(Memo).where(Memo.id == memo_id)
     )).scalar_one_or_none()
     if not m:
-        raise BizException(BizCode.NOT_FOUND, data={"detail": "Memo 不存在"})
+        raise BizException(BizCode.NOT_FOUND, reason="Memo 不存在")
     if m.admin_removed:
-        raise BizException(BizCode.CONFLICT, data={"detail": "该 Memo 已是下架状态"})
+        raise BizException(BizCode.CONFLICT, reason="该 Memo 已是下架状态")
     m.admin_removed = True
     m.admin_removed_at = naive_utc_now()
     m.admin_removed_by = ctx_uid(user)
@@ -1185,9 +1185,9 @@ async def admin_restore_memo(
         select(Memo).where(Memo.id == memo_id)
     )).scalar_one_or_none()
     if not m:
-        raise BizException(BizCode.NOT_FOUND, data={"detail": "Memo 不存在"})
+        raise BizException(BizCode.NOT_FOUND, reason="Memo 不存在")
     if not m.admin_removed:
-        raise BizException(BizCode.CONFLICT, data={"detail": "该 Memo 不在下架状态"})
+        raise BizException(BizCode.CONFLICT, reason="该 Memo 不在下架状态")
     m.admin_removed = False
     m.admin_removed_at = None
     m.admin_removed_by = None
@@ -1211,16 +1211,16 @@ async def admin_restore_memo(
 @public_router.get("/feed.xml", include_in_schema=False)
 async def rss_skeleton():
     """RSS 输出接口骨架（保留路径，预留内容协商）。"""
-    raise BizException(BizCode.MAINTENANCE, data={"detail": "RSS 暂未实装，后续迭代上线"})
+    raise BizException(BizCode.MAINTENANCE, reason="RSS 暂未实装，后续迭代上线")
 
 
 @public_router.get("/webdav/", include_in_schema=False)
 async def webdav_skeleton():
     """WebDAV 同步接口骨架。"""
-    raise BizException(BizCode.MAINTENANCE, data={"detail": "WebDAV 暂未实装，后续迭代上线"})
+    raise BizException(BizCode.MAINTENANCE, reason="WebDAV 暂未实装，后续迭代上线")
 
 
 @author_router.post("/import", include_in_schema=False)
 async def memos_import_skeleton():
     """Memos 备份导入接口骨架。"""
-    raise BizException(BizCode.MAINTENANCE, data={"detail": "Memos 备份导入暂未实装，后续迭代上线"})
+    raise BizException(BizCode.MAINTENANCE, reason="Memos 备份导入暂未实装，后续迭代上线")

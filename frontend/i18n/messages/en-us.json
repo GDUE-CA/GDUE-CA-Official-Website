@@ -2879,6 +2879,35 @@
       "rssMaintenance": "RSS is not yet implemented",
       "webdavMaintenance": "WebDAV is not yet implemented",
       "importMaintenance": "Moments backup import is not yet implemented"
+    },
+    "validation": {
+      "generic": "A field {reason}",
+      "withField": "{field} {reason}",
+      "network": "Network error: unable to reach the server",
+      "fallback": "Request failed, please try again later",
+      "requestId": " (Error ID: {id})",
+      "reason": {
+        "required": "is required",
+        "too_short": "must be at least {min} characters",
+        "too_long": "must be at most {max} characters",
+        "invalid_format": "has an invalid format",
+        "invalid_type": "has an invalid type",
+        "out_of_range": "is out of range",
+        "invalid_choice": "is not an allowed value",
+        "malformed_body": "malformed request, please refresh and try again",
+        "invalid": "is invalid"
+      },
+      "field": {
+        "receipt_code": "Receipt code",
+        "username": "Username",
+        "password": "Password",
+        "email": "Email",
+        "phone": "Phone number",
+        "name": "Name",
+        "student_id": "Student ID",
+        "title": "Title",
+        "content": "Content"
+      }
     }
   },
   "memoPage": {

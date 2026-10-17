@@ -61,7 +61,8 @@ def test_unknown_route_new_shell(app):
     body = r.json()
     assert body["code"] == 1004
     assert body["message"]["key"] == "error.not_found"
-    assert body["message"]["params"]["detail"] == "Not Found"
+    # Starlette 默认英文短语不外泄，前端按 message.key 翻译
+    assert "params" not in body["message"]
     assert body["request_id"]
 
 
@@ -86,7 +87,12 @@ def test_validation_error_new_shell(app):
     body = r.json()
     assert body["code"] == 1001
     assert body["message"]["key"] == "error.validation_failed"
-    assert isinstance(body["data"]["errors"], list)
+    errors = body["data"]["errors"]
+    assert errors and all(e["reason"] == "required" for e in errors)
+    # 白名单投影：不得出现 pydantic 原始字段
+    for e in errors:
+        assert set(e) <= {"field", "reason", "params", "message"}
+        assert not e["field"].startswith("body")
 
 
 def test_permission_403_new_shell(app):

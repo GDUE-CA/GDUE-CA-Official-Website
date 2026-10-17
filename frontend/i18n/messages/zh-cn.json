@@ -2947,6 +2947,35 @@
       "rssMaintenance": "RSS 暂未实装，后续迭代上线",
       "webdavMaintenance": "WebDAV 暂未实装，后续迭代上线",
       "importMaintenance": "说说备份导入暂未实装，后续迭代上线"
+    },
+    "validation": {
+      "generic": "提交的内容有误：{reason}",
+      "withField": "{field}{reason}",
+      "network": "网络错误，无法连接到服务器",
+      "fallback": "请求失败，请稍后重试",
+      "requestId": "（错误编号：{id}）",
+      "reason": {
+        "required": "不能为空",
+        "too_short": "长度不能少于 {min}",
+        "too_long": "长度不能超过 {max}",
+        "invalid_format": "格式不正确",
+        "invalid_type": "类型不正确",
+        "out_of_range": "超出允许范围",
+        "invalid_choice": "不是可选的值",
+        "malformed_body": "请求格式错误，请刷新页面后重试",
+        "invalid": "取值无效"
+      },
+      "field": {
+        "receipt_code": "回执码",
+        "username": "用户名",
+        "password": "密码",
+        "email": "邮箱",
+        "phone": "手机号",
+        "name": "姓名",
+        "student_id": "学号",
+        "title": "标题",
+        "content": "内容"
+      }
     }
   },
   "memoPage": {
