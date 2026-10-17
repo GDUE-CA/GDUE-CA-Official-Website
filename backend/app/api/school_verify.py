@@ -29,6 +29,7 @@ from app.db.models import (
 from app.db.session import get_db
 from app.schemas.school_verify import (
     SchoolVerifyAdminOut,
+    MySchoolVerifyOut,
     SchoolVerifyApplicationOut,
     SchoolVerifyReviewRequest,
     SchoolVerifyStatusOut,
@@ -146,9 +147,6 @@ async def get_my_school_verify(
         .where(UserSchoolVerifyApplication.user_id == u.id)
         .order_by(UserSchoolVerifyApplication.created_at.desc(), UserSchoolVerifyApplication.id.desc())
     )).scalars().all()
-    for r in rows:
-        r.username = u.username
-        r.display_name = u.display_name or u.username
     await _fill_names(db, rows)
     latest = rows[0] if rows else None
     if u.identity_school_verified:
@@ -165,7 +163,7 @@ async def get_my_school_verify(
     )
 
 
-@router.post("", response_model=SchoolVerifyApplicationOut, status_code=201)
+@router.post("", response_model=MySchoolVerifyOut, status_code=201)
 async def submit_school_verify(
     req: SchoolVerifySubmit,
     request: Request,
@@ -208,8 +206,6 @@ async def submit_school_verify(
     )
     db.add(app_row)
     await db.flush()
-    app_row.username = u.username
-    app_row.display_name = u.display_name or u.username
     app_row.college_name = college.college_name
     app_row.major_name = major.major_name
     app_row.grade_year = grade.grade_year

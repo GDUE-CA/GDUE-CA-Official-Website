@@ -202,12 +202,14 @@ def test_xss_payloads_rejected_in_plain_fields(app):
         "major": "软件工程", "phone_cc": "+86", "phone_number": "13800000003",
         "position": "技术部", "introduction": "你好",
     }
-    r = client.post("/api/registrations/club", json=base, headers=csrf(client))
+    # 请求体校验先于业务逻辑执行，活动是否存在不影响 422
+    url = "/api/registrations/for/999999"
+    r = client.post(url, json=base, headers=csrf(client))
     assert r.status_code == 422
-    r = client.post("/api/registrations/club", headers=csrf(client),
+    r = client.post(url, headers=csrf(client),
                     json={**base, "name": "张三", "college": '<img src=x onerror=alert(1)>'})
     assert r.status_code == 422
-    r = client.post("/api/registrations/club", headers=csrf(client),
+    r = client.post(url, headers=csrf(client),
                     json={**base, "name": "张三", "student_id": "2025\"><svg>"})
     assert r.status_code == 422
 
@@ -263,15 +265,10 @@ def test_export_neutralizes_formulas():
 
 
 # ---------- 个人信息最小化：公开提交接口只返回回执 ----------
+# （社团报名见 test_zclub_apply_submit.py；旧公开社团报名接口已移除）
 def test_public_submit_returns_receipt_only(app):
     client = make_client(app)
-    r = client.post("/api/registrations/club", headers=csrf(client), json={
-        "name": "张三", "student_id": "20250009", "college": "计算机学院", "major": "软件工程",
-        "phone_cc": "+86", "phone_number": "13800000009", "email": "z@qq.com",
-        "position": "技术部", "introduction": "你好",
-    })
-    assert r.status_code == 201, r.text
-    assert set(r.json()) == {"receipt_code", "submitted_at"}
+    assert client.post("/api/registrations/club", headers=csrf(client), json={}).status_code in (404, 405)
     r = client.post("/api/bugs", headers=csrf(client),
                     json={"contact_email": "a@b.com", "description": "页面报错"})
     assert r.status_code == 201, r.text

@@ -332,7 +332,7 @@ export function SchoolVerifyCard() {
             <Label>{t("setting.school.history")}</Label>
             <div className="divide-y divide-border rounded-md border border-border">
               {data!.history.map((h) => (
-                <div key={h.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                <div key={h.created_at} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
                   <div className="min-w-0">
                     <p className="truncate">
                       {h.student_id}

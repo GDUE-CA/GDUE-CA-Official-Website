@@ -1427,7 +1427,7 @@
       "title": "审核中心",
       "noAccess": "没有可访问的审核模块，请联系管理员开通权限",
       "tabs": {
-        "registrations": "报名审核",
+        "registrations": "活动报名审核",
         "bugs": "Bug 反馈",
         "resets": "重置密码"
       },
@@ -1781,7 +1781,7 @@
       "filterType": "按类型筛选",
       "filterStatus": "按状态筛选",
       "typeActivity": "活动报名",
-      "typeClub": "社团报名",
+      "typeClub": "社团报名（旧版）",
       "colType": "类型",
       "export": "导出",
       "exportCsv": "导出 CSV",
@@ -2976,6 +2976,17 @@
         "title": "标题",
         "content": "内容"
       }
+    },
+    "page": {
+      "title": "出错了",
+      "unexpected": "页面出现了意外错误，请稍后重试",
+      "hint": "如需反馈问题，请附上以下编号，便于我们定位",
+      "requestId": "请求编号",
+      "digest": "错误摘要",
+      "copy": "复制",
+      "copied": "已复制",
+      "retry": "重试",
+      "home": "返回首页"
     }
   },
   "memoPage": {

@@ -50,7 +50,10 @@ class MemberUpdate(BaseModel):
 
 
 class MemberOut(BaseModel):
-    """公开接口：仅含可公开展示字段（不含电话/微信/政治面貌/留学生标识）。"""
+    """公开接口：仅含前台成员墙展示字段（姓名 / 职务 / 届别 / 简介 / 头像）。
+
+    性别 / 年级 / 部门 / 专业班级等花名册字段及排序、归档等管理字段只在管理端输出。
+    """
 
     id: int
     name: str
@@ -58,6 +61,13 @@ class MemberOut(BaseModel):
     term: str
     bio: str | None
     avatar_url: str | None
+
+    model_config = {"from_attributes": True}
+
+
+class MemberAdminOut(MemberOut):
+    """管理端接口：在公开字段基础上追加管理字段与花名册字段（含敏感字段）。"""
+
     display_order: int
     archived: bool
     created_at: UTCDatetime
@@ -65,13 +75,6 @@ class MemberOut(BaseModel):
     grade: str | None = None
     department: str | None = None
     major_class: str | None = None
-
-    model_config = {"from_attributes": True}
-
-
-class MemberAdminOut(MemberOut):
-    """管理端接口：在公开字段基础上追加敏感花名册字段。"""
-
     phone: str | None = None
     wechat: str | None = None
     political_status: str | None = None

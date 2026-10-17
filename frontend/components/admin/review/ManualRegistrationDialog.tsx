@@ -19,30 +19,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { createManualRegistration } from "@/lib/api/register";
 import { COUNTRY_OPTIONS, PHONE_RULES } from "@/components/join/phoneRules";
-import type { Activity, Registration, RegistrationStatus, RegistrationType } from "@/types/api";
+import type { Activity, Registration, RegistrationStatus } from "@/types/api";
 import { useServerFieldErrors } from "@/lib/hooks/useServerFieldErrors";
 import { FieldError } from "@/components/ui/field-error";
 
-/** 意向部门取值与公开社团报名表单一致（存英文键值） */
-const DEPARTMENTS = [
-  { value: "activity", labelKey: "join.positions.activity" },
-  { value: "office", labelKey: "join.positions.office" },
-  { value: "liaison", labelKey: "join.positions.liaison" },
-  { value: "publicity", labelKey: "join.positions.publicity" },
-  { value: "finance", labelKey: "join.positions.finance" },
-];
-
 const EMPTY = {
-  registrationType: "activity" as RegistrationType,
   activityId: "",
   status: "approved" as RegistrationStatus,
   name: "",
@@ -52,7 +35,6 @@ const EMPTY = {
   phoneCc: "+86",
   phoneNumber: "",
   email: "",
-  position: "",
   introduction: "",
   remark: "",
 };
@@ -61,7 +43,7 @@ const EMPTY = {
 type ManualField =
   | "registration_type" | "activity_id" | "status" | "name"
   | "student_id" | "college" | "major" | "phone_cc"
-  | "phone_number" | "email" | "position" | "introduction"
+  | "phone_number" | "email" | "introduction"
   | "remark";
 
 export function ManualRegistrationDialog({
@@ -121,11 +103,8 @@ export function ManualRegistrationDialog({
     if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
       next.email = t("join.form.errors.emailInvalid");
     }
-    if (form.registrationType === "activity" && !form.activityId) {
+    if (!form.activityId) {
       next.activity_id = t("join.form.errors.activityRequired");
-    }
-    if (form.registrationType === "club" && !form.position) {
-      next.position = t("join.form.errors.positionRequired");
     }
     return !fieldErrors.set(next);
   }
@@ -136,8 +115,8 @@ export function ManualRegistrationDialog({
     setSubmitting(true);
     try {
       const reg = await createManualRegistration({
-        registration_type: form.registrationType,
-        activity_id: form.registrationType === "activity" ? Number(form.activityId) : undefined,
+        registration_type: "activity",
+        activity_id: Number(form.activityId),
         status: form.status,
         name: form.name.trim(),
         student_id: form.studentId.trim(),
@@ -146,7 +125,6 @@ export function ManualRegistrationDialog({
         phone_cc: form.phoneCc,
         phone_number: form.phoneNumber.replace(/\s/g, ""),
         email: form.email || undefined,
-        position: form.registrationType === "club" ? form.position : undefined,
         introduction: form.introduction || undefined,
         remark: form.remark || undefined,
       });
@@ -183,50 +161,21 @@ export function ManualRegistrationDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="space-y-1.5">
-              <Label>{t("admin.review.manual.type")}</Label>
-              <select
-                className={selectCls}
-                value={form.registrationType}
-                onChange={(e) => set("registrationType", e.target.value as RegistrationType)}
-              >
-                <option value="activity">{t("admin.registrations.typeActivity")}</option>
-                <option value="club">{t("admin.registrations.typeClub")}</option>
-              </select>
-            </div>
-            {form.registrationType === "activity" ? (
-              <div className="space-y-1.5 sm:col-span-2" data-field="activity_id">
-                <Label>{t("admin.review.manual.activity")}</Label>
-                <select
-                  className={selectCls}
-                  value={form.activityId}
-                  onChange={(e) => set("activityId", e.target.value)}
-                  aria-invalid={!!errors.activity_id}
-                >
-                  <option value="">{t("admin.registrations.filterActivity")}</option>
-                  {activities.map((a) => (
-                    <option key={a.id} value={a.id}>{a.title}</option>
-                  ))}
-                </select>
-                <FieldError>{errors.activity_id}</FieldError>
-              </div>
-            ) : (
-              <div className="space-y-1.5 sm:col-span-2" data-field="position">
-                <Label>{t("join.form.position")}</Label>
-                <Select value={form.position} onValueChange={(val) => set("position", val)}>
-                  <SelectTrigger aria-invalid={!!errors.position}>
-                    <SelectValue placeholder={t("join.form.positionPlaceholder")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DEPARTMENTS.map((d) => (
-                      <SelectItem key={d.value} value={d.value}>{t(d.labelKey)}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FieldError>{errors.position}</FieldError>
-              </div>
-            )}
+          {/* 仅补录活动报名；社团报名统一走「社团报名审核」（账号内报名，含回执码） */}
+          <div className="space-y-1.5" data-field="activity_id">
+            <Label>{t("admin.review.manual.activity")}</Label>
+            <select
+              className={selectCls}
+              value={form.activityId}
+              onChange={(e) => set("activityId", e.target.value)}
+              aria-invalid={!!errors.activity_id}
+            >
+              <option value="">{t("admin.registrations.filterActivity")}</option>
+              {activities.map((a) => (
+                <option key={a.id} value={a.id}>{a.title}</option>
+              ))}
+            </select>
+            <FieldError>{errors.activity_id}</FieldError>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

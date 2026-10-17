@@ -26,7 +26,14 @@ from app.core.security import require_role, Role
 from app.core.user_message import push_user_message
 from app.db.models import ClubApplyRecord, SysCollege, SysMajor, User
 from app.db.session import get_db
-from app.schemas.club_apply import ClubApplyOut, ClubApplyReviewRequest, ClubApplySubmit
+from app.schemas.club_apply import (
+    ClubApplyOut,
+    ClubApplyReviewRequest,
+    ClubApplySubmit,
+    MyClubApplyOut,
+)
+from app.schemas.common import SubmitReceiptOut
+from app.utils.receipt import unique_receipt_code
 from app.api.school_verify import validate_student_id_year
 
 router = APIRouter(prefix="/api/club-apply", tags=["club-apply"])
@@ -83,7 +90,7 @@ async def _fill_users(db: AsyncSession, rows: list[ClubApplyRecord]) -> None:
 # ============================================================
 # 用户端
 # ============================================================
-@router.get("/mine", response_model=list[ClubApplyOut])
+@router.get("/mine", response_model=list[MyClubApplyOut])
 async def list_my_applications(
     user: dict = Depends(require_role(Role.MEMBER)),
     db: AsyncSession = Depends(get_db),
@@ -95,10 +102,23 @@ async def list_my_applications(
         .where(ClubApplyRecord.user_id == int(user["user_id"]))
         .order_by(ClubApplyRecord.created_at.desc(), ClubApplyRecord.id.desc())
     )).scalars().all()
-    return [ClubApplyOut.model_validate(_apply_dict(r)) for r in rows]
+    return [
+        MyClubApplyOut(
+            receipt_code=r.receipt_code,
+            status=r.status,
+            departments=r.departments or [],
+            college=r.college,
+            major=r.major,
+            class_name=r.class_,
+            reject_reason=r.admin_note if r.status == "reject" else None,
+            created_at=r.created_at,
+            reviewed_at=r.reviewed_at,
+        )
+        for r in rows
+    ]
 
 
-@router.post("", response_model=ClubApplyOut, status_code=status.HTTP_201_CREATED,
+@router.post("", response_model=SubmitReceiptOut, status_code=status.HTTP_201_CREATED,
              dependencies=[Depends(_apply_limit)])
 async def submit_club_apply(
     req: ClubApplySubmit,
@@ -106,7 +126,11 @@ async def submit_club_apply(
     user: dict = Depends(require_role(Role.MEMBER)),
     db: AsyncSession = Depends(get_db),
 ):
-    """提交社团报名（pending；审核中禁止重复提交）。"""
+    """提交社团报名（pending；审核中禁止重复提交）。
+
+    成功仅返回回执码与提交时间（与活动报名 / Bug 反馈一致）：内部主键 / user_id /
+    审核字段 / 回显个人信息一律不外泄；凭回执码可在 /api/query/{code} 查进度。
+    """
     _reject_break_glass(user)
     uid = int(user["user_id"])
     u = await db.get(User, uid)
@@ -123,6 +147,7 @@ async def submit_club_apply(
         raise HTTPException(status_code=409, detail="已有报名正在审核中，请等待审核结果后再提交")
 
     row = ClubApplyRecord(
+        receipt_code=await unique_receipt_code(db),
         user_id=uid,
         real_name=req.real_name,
         phone=req.phone,
@@ -156,14 +181,12 @@ async def submit_club_apply(
 
     db.add(row)
     await db.flush()
-    row.username = u.username
-    row.display_name = u.display_name or u.username
     log_action(db, user, "club_apply.submit",
                detail=f"application:{row.id} type:{req.applicant_type}",
                ip=get_client_ip(request),
                target=f"user:{uid}")
     await db.commit()
-    return ClubApplyOut.model_validate(_apply_dict(row))
+    return SubmitReceiptOut(receipt_code=row.receipt_code, submitted_at=row.created_at)
 
 
 # ============================================================

@@ -1365,7 +1365,7 @@
       "title": "Review Centre",
       "noAccess": "No review modules available. Contact an administrator for access.",
       "tabs": {
-        "registrations": "Registrations",
+        "registrations": "Event registrations",
         "bugs": "Bug Reports",
         "resets": "Password Resets"
       },
@@ -1709,7 +1709,7 @@
       "filterType": "Filter by Type",
       "filterStatus": "Filter by Status",
       "typeActivity": "Activity",
-      "typeClub": "Club",
+      "typeClub": "Club (legacy)",
       "colType": "Type",
       "export": "Export",
       "exportCsv": "Export CSV",
@@ -2908,6 +2908,17 @@
         "title": "Title",
         "content": "Content"
       }
+    },
+    "page": {
+      "title": "Something went wrong",
+      "unexpected": "An unexpected error occurred. Please try again later.",
+      "hint": "If you report this issue, please include the ID below so we can trace it.",
+      "requestId": "Request ID",
+      "digest": "Error digest",
+      "copy": "Copy",
+      "copied": "Copied",
+      "retry": "Try again",
+      "home": "Back to home"
     }
   },
   "memoPage": {

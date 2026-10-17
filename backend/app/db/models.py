@@ -1571,6 +1571,11 @@ class ClubApplyRecord(Base):
     __tablename__ = "club_apply_records"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    # 回执码（与 Registration 共用 GDUECA-XXXXXXXX 空间，公开查询进度用）；
+    # 存量记录由启动迁移回填，故列定义可空
+    receipt_code: Mapped[str | None] = mapped_column(
+        String(20), unique=True, index=True, nullable=True
+    )
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     real_name: Mapped[str] = mapped_column(String(64))
     phone: Mapped[str] = mapped_column(String(32))

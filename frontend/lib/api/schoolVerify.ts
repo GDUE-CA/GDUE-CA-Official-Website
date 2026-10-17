@@ -11,6 +11,7 @@ import type {
   SchoolVerifyReviewRequest,
   SchoolVerifyStatusOut,
   SchoolVerifySubmit,
+  MySchoolVerify,
 } from "@/types/api";
 
 /* ---------- 用户接口 ---------- */
@@ -22,7 +23,7 @@ export function getSchoolVerifyStatus() {
 
 /** 提交学校验证申请（审核中重复提交后端 409；驳回后可重新提交） */
 export function submitSchoolVerify(payload: SchoolVerifySubmit) {
-  return apiFetch<SchoolVerifyApplication>("/api/setting/school-verify", {
+  return apiFetch<MySchoolVerify>("/api/setting/school-verify", {
     method: "POST",
     body: JSON.stringify(payload),
   });

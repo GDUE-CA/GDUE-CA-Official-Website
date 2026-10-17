@@ -11,11 +11,12 @@ import type {
   RecruitmentInfoUpdate,
   Registration,
   RegistrationStatus,
+  RecruitmentPublic,
 } from "@/types/api";
 
 /** 公开：当前生效中的招新信息 */
 export function listPublicRecruitment() {
-  return apiFetch<RecruitmentInfo[]>(`/api/recruitment`);
+  return apiFetch<RecruitmentPublic[]>(`/api/recruitment`);
 }
 
 /** 管理：招新信息分页列表 */
