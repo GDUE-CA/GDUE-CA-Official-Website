@@ -2,41 +2,37 @@
  * 后端权威系统计时器（服务端时间偏移量单例）
  *
  * 规范（docs/SPEC.md §9）：
- * - 后端所有 API 固定返回 X-Server-Utc-Time Header
+ * - 以 API 响应的标准 HTTP `Date` 头为服务器基准时间（/api/* 均为 no-store，Date 恒为实时）
  * - 前端维护「服务端时间偏移量」：前端时钟 = 服务器基准时间 + 本地流逝时间
  * - 永远不使用本地 new Date() 做业务时间（UI 展示也优先走 serverNow）
- * - 自动同步时机：每次 API 请求 / 页面重新可见（visibilitychange）/ 每 30 秒自动校准
+ * - 同步时机：每次 API 响应（不再额外轮询校准接口）
  *
- * 本模块不依赖任何网络层：由 lib/api/client.ts 在每次响应后调用 syncServerTime，
- * 并通过 registerCalibrator 注册轻量校准请求（GET /health），避免循环依赖。
+ * 本模块不依赖任何网络层：由 lib/api/client.ts 在每次响应后调用 syncServerTime。
  */
 
-/** 自动校准间隔（规范：每 30 秒；仅页面可见时发起） */
-export const SERVER_TIME_CALIBRATION_INTERVAL_MS = 30_000;
+/** `Date` 头只精确到秒且向下取整：补半秒取区间中点，期望误差 ±0.5s */
+const DATE_HEADER_ROUNDING_MS = 500;
 
-/** 服务端时间 - 本地时钟 的偏移量（毫秒）；0 = 未校准（视为一致） */
+/** 秒级精度下每次响应算出的偏移会抖动；变化小于该阈值不更新，避免倒计时来回跳 */
+const OFFSET_JITTER_TOLERANCE_MS = 1000;
+
+/** 服务端时间 - 本地时钟 的偏移量（毫秒）；未校准前为 0（视为一致） */
 let offsetMs = 0;
+let calibrated = false;
 
 type Listener = () => void;
 const listeners = new Set<Listener>();
 
-type Calibrator = () => Promise<unknown>;
-let calibrator: Calibrator | null = null;
-let autoCalibrationStarted = false;
-
-/** 注册轻量校准请求（由网络层注入，避免循环依赖） */
-export function registerCalibrator(fn: Calibrator) {
-  calibrator = fn;
-}
-
-/** 解析 X-Server-Utc-Time 响应头并更新偏移量；无效输入静默忽略 */
+/** 解析响应 `Date` 头（RFC 7231 IMF-fixdate）并更新偏移量；无效输入静默忽略 */
 export function syncServerTime(headerValue: string | null | undefined) {
   if (!headerValue) return;
   const serverMs = Date.parse(headerValue);
   if (Number.isNaN(serverMs)) return;
-  offsetMs = serverMs - Date.now();
+  const next = serverMs + DATE_HEADER_ROUNDING_MS - Date.now();
+  if (calibrated && Math.abs(next - offsetMs) < OFFSET_JITTER_TOLERANCE_MS) return;
+  offsetMs = next;
+  calibrated = true;
   for (const fn of listeners) fn();
-  ensureAutoCalibration();
 }
 
 /** 服务器基准下的当前时间（毫秒时间戳） */
@@ -55,21 +51,4 @@ export function subscribeServerTime(fn: Listener): () => void {
   return () => {
     listeners.delete(fn);
   };
-}
-
-/** 启动自动校准：30 秒间隔（仅页面可见时）+ visibilitychange 回到前台时 */
-function ensureAutoCalibration() {
-  if (autoCalibrationStarted || typeof window === "undefined") return;
-  autoCalibrationStarted = true;
-  const calibrate = () => {
-    calibrator?.().catch(() => {
-      /* 网络失败静默：下一次 API 请求 / 校准周期会再试 */
-    });
-  };
-  window.setInterval(() => {
-    if (document.visibilityState === "visible") calibrate();
-  }, SERVER_TIME_CALIBRATION_INTERVAL_MS);
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") calibrate();
-  });
 }

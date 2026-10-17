@@ -42,6 +42,8 @@ import {
 } from "@/lib/api/themes";
 import { THEME_KEY_RE } from "@/lib/theme";
 import type { Theme, ThemeLayout } from "@/types/api";
+import { useServerFieldErrors } from "@/lib/hooks/useServerFieldErrors";
+import { FieldError } from "@/components/ui/field-error";
 
 /** 内置主题 key：禁删、禁停（与后端一致） */
 const BUILTIN_KEYS = new Set(["default", "apple"]);
@@ -80,6 +82,11 @@ function parseVars(text: string, fallback: Record<string, string> | null) {
   return parsed as Record<string, string>;
 }
 
+/** 后端请求体字段名（data-field 对位，与 1001 data.errors[].field 一致） */
+type ThemeField =
+  | "key" | "name" | "sort_order" | "css_vars"
+  | "dark_vars";
+
 export function ThemesManager() {
   const { t } = useI18n();
 
@@ -92,6 +99,8 @@ export function ThemesManager() {
   const [dialog, setDialog] = useState<DialogState>(null);
   const [form, setForm] = useState<ThemeFormState>(EMPTY_FORM);
   const [formError, setFormError] = useState<string | null>(null);
+  const fieldErrors = useServerFieldErrors<ThemeField>({ fallback: t("common.saveFailed") });
+  const fe = fieldErrors.errors;
   const [saving, setSaving] = useState(false);
 
   // 导入 JSON 文件输入
@@ -116,6 +125,7 @@ export function ThemesManager() {
   function openCreate() {
     setForm(EMPTY_FORM);
     setFormError(null);
+    fieldErrors.clear();
     setDialog({ mode: "create" });
   }
 
@@ -133,6 +143,7 @@ export function ThemesManager() {
       sortOrder: String(theme.sort_order),
     });
     setFormError(null);
+    fieldErrors.clear();
     setDialog({ mode: "edit", theme });
   }
 
@@ -171,6 +182,7 @@ export function ThemesManager() {
             typeof parsed.sort_order === "number" ? String(parsed.sort_order) : "0",
         });
         setFormError(null);
+        fieldErrors.clear();
         setDialog({ mode: "create" });
       } catch {
         alert(t("admin.themes.errImportInvalid"));
@@ -203,6 +215,7 @@ export function ThemesManager() {
 
     setSaving(true);
     setFormError(null);
+    fieldErrors.clear();
     try {
       if (dialog.mode === "create") {
         await adminCreateTheme({
@@ -228,7 +241,7 @@ export function ThemesManager() {
       setNotice(t("admin.themes.saved"));
       await load();
     } catch (e) {
-      setFormError(e instanceof Error ? e.message : "Save failed");
+      setFormError(fieldErrors.capture(e));
     } finally {
       setSaving(false);
     }
@@ -392,7 +405,7 @@ export function ThemesManager() {
 
       {/* 新建/编辑 Dialog */}
       <Dialog open={!!dialog} onOpenChange={(open) => !open && setDialog(null)}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent {...fieldErrors.rootProps} className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {dialog?.mode === "edit"
@@ -402,23 +415,27 @@ export function ThemesManager() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
+              <div className="space-y-1.5" data-field="key">
                 <Label htmlFor="theme-key">{t("admin.themes.fieldKey")}</Label>
                 <Input
                   id="theme-key"
+                  aria-invalid={!!fe.key}
                   value={form.key}
                   disabled={dialog?.mode === "edit"}
                   placeholder={t("admin.themes.keyPlaceholder")}
                   onChange={(e) => setForm((f) => ({ ...f, key: e.target.value }))}
                 />
+                <FieldError>{fe.key}</FieldError>
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-1.5" data-field="name">
                 <Label htmlFor="theme-name">{t("admin.themes.fieldName")}</Label>
                 <Input
                   id="theme-name"
+                  aria-invalid={!!fe.name}
                   value={form.name}
                   onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                 />
+                <FieldError>{fe.name}</FieldError>
               </div>
             </div>
 
@@ -442,32 +459,37 @@ export function ThemesManager() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-1.5" data-field="sort_order">
                 <Label htmlFor="theme-sort">{t("admin.themes.fieldSort")}</Label>
                 <Input
                   id="theme-sort"
+                  aria-invalid={!!fe.sort_order}
                   type="number"
                   value={form.sortOrder}
                   onChange={(e) => setForm((f) => ({ ...f, sortOrder: e.target.value }))}
                 />
+                <FieldError>{fe.sort_order}</FieldError>
               </div>
             </div>
 
-            <div className="space-y-1.5">
+            <div className="space-y-1.5" data-field="css_vars">
               <Label htmlFor="theme-css-vars">{t("admin.themes.fieldCssVars")}</Label>
               <Textarea
                 id="theme-css-vars"
+                aria-invalid={!!fe.css_vars}
                 rows={5}
                 className="font-mono text-xs"
                 placeholder='{"--radius": "1rem"}'
                 value={form.cssVarsText}
                 onChange={(e) => setForm((f) => ({ ...f, cssVarsText: e.target.value }))}
               />
+              <FieldError>{fe.css_vars}</FieldError>
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-1.5" data-field="dark_vars">
               <Label htmlFor="theme-dark-vars">{t("admin.themes.fieldDarkVars")}</Label>
               <Textarea
                 id="theme-dark-vars"
+                aria-invalid={!!fe.dark_vars}
                 rows={5}
                 className="font-mono text-xs"
                 placeholder='{"--background": "240 6% 5%"}'
@@ -477,6 +499,7 @@ export function ThemesManager() {
               <p className="text-xs text-muted-foreground">
                 {t("admin.themes.cssVarsHint")}
               </p>
+              <FieldError>{fe.dark_vars}</FieldError>
             </div>
 
             <label className="flex items-center gap-2 text-sm cursor-pointer select-none">

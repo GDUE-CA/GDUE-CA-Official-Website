@@ -32,6 +32,12 @@ import {
   adminDeleteBlogTag,
 } from "@/lib/api/blog";
 import type { BlogTag } from "@/types/api";
+import { useServerFieldErrors } from "@/lib/hooks/useServerFieldErrors";
+import { FieldError } from "@/components/ui/field-error";
+
+/** 后端请求体字段名（data-field 对位，与 1001 data.errors[].field 一致） */
+type BlogTagField =
+  | "name" | "slug";
 
 export function BlogTagsManager() {
   const { t } = useI18n();
@@ -48,6 +54,8 @@ export function BlogTagsManager() {
   const [slug, setSlug] = useState("");
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const fieldErrors = useServerFieldErrors<BlogTagField>({ fallback: t("common.saveFailed") });
+  const fe = fieldErrors.errors;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -70,6 +78,7 @@ export function BlogTagsManager() {
     setName("");
     setSlug("");
     setFormError(null);
+    fieldErrors.clear();
     setOpen(true);
   }
 
@@ -78,15 +87,14 @@ export function BlogTagsManager() {
     setName(tg.name);
     setSlug(tg.slug);
     setFormError(null);
+    fieldErrors.clear();
     setOpen(true);
   }
 
   async function handleSave() {
     setFormError(null);
-    if (!name.trim()) {
-      setFormError(t("admin.blog.errTagNameRequired"));
-      return;
-    }
+    fieldErrors.clear();
+    if (fieldErrors.set({ name: name.trim() ? undefined : t("admin.blog.errTagNameRequired") })) return;
     setSaving(true);
     try {
       const payload = { name: name.trim(), slug: slug.trim() || undefined };
@@ -99,7 +107,7 @@ export function BlogTagsManager() {
       setNotice(t("admin.blog.saved"));
       await load();
     } catch (e) {
-      setFormError(e instanceof Error ? e.message : "Save failed");
+      setFormError(fieldErrors.capture(e));
     } finally {
       setSaving(false);
     }
@@ -204,30 +212,34 @@ export function BlogTagsManager() {
 
       {/* 创建 / 编辑弹窗 */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent {...fieldErrors.rootProps} className="max-w-md">
           <DialogHeader>
             <DialogTitle>
               {editing ? t("admin.blog.tagEditTitle") : t("admin.blog.tagAddBtn")}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2">
+            <div className="space-y-2" data-field="name">
               <Label htmlFor="blog-tag-name">{t("admin.blog.colTagName")}</Label>
               <Input
                 id="blog-tag-name"
+                aria-invalid={!!fe.name}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
+              <FieldError>{fe.name}</FieldError>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2" data-field="slug">
               <Label htmlFor="blog-tag-slug">{t("admin.blog.colTagSlug")}</Label>
               <Input
                 id="blog-tag-slug"
+                aria-invalid={!!fe.slug}
                 value={slug}
                 onChange={(e) => setSlug(e.target.value)}
                 placeholder={t("admin.blog.tagSlugPlaceholder")}
               />
               <p className="text-xs text-muted-foreground">{t("admin.blog.tagSlugHint")}</p>
+              <FieldError>{fe.slug}</FieldError>
             </div>
             {formError && (
               <p className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md">

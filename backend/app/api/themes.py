@@ -40,7 +40,7 @@ def _out(t: Theme) -> dict:
 async def _get_or_404(db: AsyncSession, theme_id: int) -> Theme:
     t = await db.get(Theme, theme_id)
     if not t or t.is_deleted:
-        raise BizException(BizCode.NOT_FOUND, data={"detail": "主题不存在"})
+        raise BizException(BizCode.NOT_FOUND, reason="主题不存在")
     return t
 
 
@@ -85,7 +85,7 @@ async def admin_create_theme(
         select(Theme).where(Theme.key == req.key)
     )).scalar_one_or_none()
     if exists:
-        raise BizException(BizCode.CONFLICT, data={"detail": "主题 key 已存在（含已删除主题）"})
+        raise BizException(BizCode.CONFLICT, reason="主题 key 已存在（含已删除主题）")
     t = Theme(
         key=req.key,
         name=req.name,
@@ -115,7 +115,7 @@ async def admin_update_theme(
     data = req.model_dump(exclude_unset=True)
     # 内置主题禁止停用（前端防 FOUC 兜底依赖）
     if t.key in _BUILTIN_KEYS and data.get("enabled") is False:
-        raise BizException(BizCode.BAD_REQUEST, data={"detail": "内置主题禁止停用"})
+        raise BizException(BizCode.BAD_REQUEST, reason="内置主题禁止停用")
     if "layout" in data and data["layout"] is not None:
         t.layout = ThemeLayout(data.pop("layout"))
     for k in ("name", "css_vars", "dark_vars", "enabled", "sort_order"):
@@ -136,7 +136,7 @@ async def admin_delete_theme(
 ):
     t = await _get_or_404(db, theme_id)
     if t.key in _BUILTIN_KEYS:
-        raise BizException(BizCode.BAD_REQUEST, data={"detail": "内置主题禁止删除"})
+        raise BizException(BizCode.BAD_REQUEST, reason="内置主题禁止删除")
     log_action(db, user, "theme.delete", f"theme:{t.id}", ip=get_client_ip(request))
     t.is_deleted = True
     t.deleted_at = _utcnow_naive()

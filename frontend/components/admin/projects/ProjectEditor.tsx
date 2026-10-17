@@ -34,6 +34,8 @@ import {
 import { adminUploadMedia } from "@/lib/api/media";
 import type { Project, ProjectStatus } from "@/types/api";
 import "@uiw/react-md-editor/markdown-editor.css";
+import { useServerFieldErrors } from "@/lib/hooks/useServerFieldErrors";
+import { FieldError } from "@/components/ui/field-error";
 
 const MDEditor = dynamic(() => import("@uiw/react-md-editor"), {
   ssr: false,
@@ -46,6 +48,12 @@ const MDEditor = dynamic(() => import("@uiw/react-md-editor"), {
 
 const STATUSES: ProjectStatus[] = ["draft", "published", "archived"];
 
+/** 后端请求体字段名（data-field 对位，与 1001 data.errors[].field 一致） */
+type ProjectField =
+  | "title" | "slug" | "description" | "year"
+  | "leader" | "tech_stack" | "github_url" | "demo_url"
+  | "status";
+
 export function ProjectEditor({ projectId }: { projectId?: number }) {
   const { t } = useI18n();
   const lp = useLocalizedPath();
@@ -55,6 +63,8 @@ export function ProjectEditor({ projectId }: { projectId?: number }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const fieldErrors = useServerFieldErrors<ProjectField>({ fallback: t("common.saveFailed") });
+  const fe = fieldErrors.errors;
   const [existing, setExisting] = useState<Project | null>(null);
 
   // 表单字段
@@ -136,6 +146,7 @@ export function ProjectEditor({ projectId }: { projectId?: number }) {
 
   async function handleSave() {
     setFormError(null);
+    fieldErrors.clear();
     const yearNum = Number(year);
     if (!title.trim()) {
       setFormError(t("admin.projects.errTitleRequired"));
@@ -176,7 +187,7 @@ export function ProjectEditor({ projectId }: { projectId?: number }) {
       }
       router.push(lp("/admin/projects"));
     } catch (e) {
-      setFormError(e instanceof Error ? e.message : "Save failed");
+      setFormError(fieldErrors.capture(e));
     } finally {
       setSaving(false);
     }
@@ -200,7 +211,7 @@ export function ProjectEditor({ projectId }: { projectId?: number }) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" {...fieldErrors.rootProps}>
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <Button variant="ghost" onClick={() => router.push(lp("/admin/projects"))}>
           <ArrowLeft className="h-4 w-4 mr-1.5" />
@@ -245,38 +256,45 @@ export function ProjectEditor({ projectId }: { projectId?: number }) {
               <CardTitle className="text-base">{t("admin.projects.metaTitle")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
+              <div className="space-y-2" data-field="title">
                 <Label htmlFor="project-title">{t("admin.projects.colTitle")}</Label>
                 <Input
                   id="project-title"
+                  aria-invalid={!!fe.title}
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                 />
+                <FieldError>{fe.title}</FieldError>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2" data-field="slug">
                 <Label htmlFor="project-slug">{t("admin.projects.colSlug")}</Label>
                 <Input
                   id="project-slug"
+                  aria-invalid={!!fe.slug}
                   value={slug}
                   onChange={(e) => setSlug(e.target.value)}
                   placeholder={t("admin.projects.slugPlaceholder")}
                 />
+                <FieldError>{fe.slug}</FieldError>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2" data-field="description">
                 <Label htmlFor="project-desc">{t("admin.projects.colDesc")}</Label>
                 <Textarea
                   id="project-desc"
+                  aria-invalid={!!fe.description}
                   rows={3}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder={t("admin.projects.descPlaceholder")}
                 />
+                <FieldError>{fe.description}</FieldError>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
+                <div className="space-y-2" data-field="year">
                   <Label htmlFor="project-year">{t("admin.projects.colYear")}</Label>
                   <Input
                     id="project-year"
+                    aria-invalid={!!fe.year}
                     type="number"
                     min={1900}
                     max={3000}
@@ -284,21 +302,25 @@ export function ProjectEditor({ projectId }: { projectId?: number }) {
                     value={year}
                     onChange={(e) => setYear(e.target.value)}
                   />
+                  <FieldError>{fe.year}</FieldError>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2" data-field="leader">
                   <Label htmlFor="project-leader">{t("admin.projects.colLeader")}</Label>
                   <Input
                     id="project-leader"
+                    aria-invalid={!!fe.leader}
                     value={leader}
                     onChange={(e) => setLeader(e.target.value)}
                   />
+                  <FieldError>{fe.leader}</FieldError>
                 </div>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2" data-field="tech_stack">
                 <Label htmlFor="project-tech">{t("admin.projects.colTech")}</Label>
                 <div className="flex gap-1.5">
                   <Input
                     id="project-tech"
+                    aria-invalid={!!fe.tech_stack}
                     value={techInput}
                     onChange={(e) => setTechInput(e.target.value)}
                     onKeyDown={(e) => {
@@ -339,26 +361,31 @@ export function ProjectEditor({ projectId }: { projectId?: number }) {
                     ))}
                   </div>
                 )}
+                <FieldError>{fe.tech_stack}</FieldError>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2" data-field="github_url">
                 <Label htmlFor="project-github">GitHub</Label>
                 <Input
                   id="project-github"
+                  aria-invalid={!!fe.github_url}
                   type="url"
                   value={githubUrl}
                   onChange={(e) => setGithubUrl(e.target.value)}
                   placeholder="https://github.com/…"
                 />
+                <FieldError>{fe.github_url}</FieldError>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2" data-field="demo_url">
                 <Label htmlFor="project-demo">{t("admin.projects.colDemo")}</Label>
                 <Input
                   id="project-demo"
+                  aria-invalid={!!fe.demo_url}
                   type="url"
                   value={demoUrl}
                   onChange={(e) => setDemoUrl(e.target.value)}
                   placeholder="https://…"
                 />
+                <FieldError>{fe.demo_url}</FieldError>
               </div>
             </CardContent>
           </Card>
@@ -368,10 +395,11 @@ export function ProjectEditor({ projectId }: { projectId?: number }) {
               <CardTitle className="text-base">{t("admin.projects.publishTitle")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
+              <div className="space-y-2" data-field="status">
                 <Label htmlFor="project-status">{t("admin.projects.colStatus")}</Label>
                 <select
                   id="project-status"
+                  aria-invalid={!!fe.status}
                   value={status}
                   onChange={(e) => setStatus(e.target.value as ProjectStatus)}
                   className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
@@ -388,6 +416,7 @@ export function ProjectEditor({ projectId }: { projectId?: number }) {
                     </option>
                   ))}
                 </select>
+                <FieldError>{fe.status}</FieldError>
               </div>
               <div className="space-y-2">
                 <Label>{t("admin.projects.colScreenshots")}</Label>

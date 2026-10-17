@@ -39,11 +39,17 @@ import {
 } from "@/components/ui/card";
 import { sendForgotPasswordCode, resetPasswordWithCode } from "@/lib/api/auth";
 import { meetsPasswordPolicy } from "@/lib/passwordPolicy";
+import { useServerFieldErrors } from "@/lib/hooks/useServerFieldErrors";
+import { FieldError } from "@/components/ui/field-error";
 
 /** 验证码发送按钮冷却（秒）：与后端同邮箱重发间隔对齐 */
 const RESEND_COOLDOWN_SECONDS = 60;
 
 /** 语言切换：只替换 URL 顶层 locale 段（与登录页一致） */
+/** 后端请求体字段名（data-field 对位，与 1001 data.errors[].field 一致） */
+type ForgotPasswordField =
+  | "email" | "code" | "new_password" | "confirm_password";
+
 function LocaleSwitcher() {
   const { locale } = useAdminLocale();
   const switchLocale = useSwitchLocale();
@@ -78,6 +84,8 @@ export default function ForgotPasswordPage() {
   const [sending, setSending] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const fieldErrors = useServerFieldErrors<ForgotPasswordField>({ fallback: t("common.error") });
+  const fe = fieldErrors.errors;
   const [tip, setTip] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
@@ -112,7 +120,7 @@ export default function ForgotPasswordPage() {
       setTip(res.message ?? t("forgotPassword.codeSentTip"));
       setCooldown(RESEND_COOLDOWN_SECONDS);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("common.error"));
+      setError(fieldErrors.capture(err));
     } finally {
       setSending(false);
     }
@@ -150,7 +158,7 @@ export default function ForgotPasswordPage() {
       // 全部会话已强制下线 → 跳转登录页
       setTimeout(() => router.replace(lp("/login")), 2000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("common.error"));
+      setError(fieldErrors.capture(err));
     } finally {
       setSubmitting(false);
     }
@@ -188,13 +196,14 @@ export default function ForgotPasswordPage() {
                 <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+              <form {...fieldErrors.rootProps} onSubmit={handleSubmit} className="space-y-4" noValidate>
                 {/* 邮箱 + 发送验证码 */}
-                <div className="space-y-2">
+                <div className="space-y-2" data-field="email">
                   <Label htmlFor="fp-email">{t("forgotPassword.email")}</Label>
                   <div className="flex gap-2">
                     <Input
                       id="fp-email"
+                      aria-invalid={!!fe.email}
                       type="email"
                       autoComplete="email"
                       placeholder={t("forgotPassword.emailPlaceholder")}
@@ -221,13 +230,15 @@ export default function ForgotPasswordPage() {
                       )}
                     </Button>
                   </div>
+                  <FieldError>{fe.email}</FieldError>
                 </div>
 
                 {/* 验证码 */}
-                <div className="space-y-2">
+                <div className="space-y-2" data-field="code">
                   <Label htmlFor="fp-code">{t("forgotPassword.code")}</Label>
                   <Input
                     id="fp-code"
+                    aria-invalid={!!fe.code}
                     inputMode="numeric"
                     maxLength={6}
                     autoComplete="one-time-code"
@@ -239,13 +250,15 @@ export default function ForgotPasswordPage() {
                     }}
                     required
                   />
+                  <FieldError>{fe.code}</FieldError>
                 </div>
 
                 {/* 新密码 / 确认新密码（统一 PasswordInput，互不联动） */}
-                <div className="space-y-2">
+                <div className="space-y-2" data-field="new_password">
                   <Label htmlFor="fp-newPassword">{t("account.newPassword")}</Label>
                   <PasswordInput
                     id="fp-newPassword"
+                    aria-invalid={!!fe.new_password}
                     autoComplete="new-password"
                     placeholder={t("account.newPasswordPlaceholder")}
                     value={newPwd}
@@ -255,11 +268,13 @@ export default function ForgotPasswordPage() {
                     }}
                     required
                   />
+                  <FieldError>{fe.new_password}</FieldError>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2" data-field="confirm_password">
                   <Label htmlFor="fp-confirmPassword">{t("account.confirmPassword")}</Label>
                   <PasswordInput
                     id="fp-confirmPassword"
+                    aria-invalid={!!fe.confirm_password}
                     autoComplete="new-password"
                     placeholder={t("account.confirmPasswordPlaceholder")}
                     value={confirmPwd}
@@ -269,6 +284,7 @@ export default function ForgotPasswordPage() {
                     }}
                     required
                   />
+                  <FieldError>{fe.confirm_password}</FieldError>
                 </div>
 
                 <p className="text-xs text-muted-foreground">{t("common.passwordPolicy")}</p>

@@ -73,21 +73,29 @@ class BizException(Exception):
 
     使用方式：
         raise BizException(BizCode.NOT_FOUND)
+        raise BizException(BizCode.NOT_FOUND, reason="Memo 不存在")
         raise BizException(BizCode.FORBIDDEN, params={"role": "editor"})
         raise BizException(BizCode.CONFLICT, data={"conflicting_id": 42})
+
+    `reason`：面向用户的具体原因（已写好的可读文案），落在 `message.params.detail`，
+    前端优先展示它；不传时前端按 `message.key` 翻译通用文案。**禁止**把异常对象、
+    堆栈、SQL、第三方库原始报错塞进 reason。
     """
 
     def __init__(
         self,
         code: int,
         *,
+        reason: str | None = None,
         params: dict[str, Any] | None = None,
         data: Any = None,
         http_status: int | None = None,
     ):
         super().__init__(f"BizException(code={code})")
         self.code = code
-        self.params = params or {}
+        self.params = dict(params or {})
+        if reason:
+            self.params["detail"] = reason
         self.data = data
         self.http_status = http_status or http_status_for(code)
 
@@ -137,6 +145,7 @@ def ok(data: Any = None, message: str = "", code: int = 0) -> EnvelopeJSONRespon
 def fail(
     code: int,
     *,
+    reason: str | None = None,
     params: dict[str, Any] | None = None,
     data: Any = None,
     http_status: int | None = None,
@@ -145,7 +154,10 @@ def fail(
 
     适用于中间件 / 装饰器等不能 raise 的场景。业务代码里**优先** `raise BizException(...)`。
     """
-    message = to_i18n_msg(code, **(params or {}))
+    merged = dict(params or {})
+    if reason:
+        merged["detail"] = reason
+    message = to_i18n_msg(code, **merged)
     body = _envelope(code, message, data)
     return EnvelopeJSONResponse(
         content=body, status_code=http_status if http_status is not None else http_status_for(code)

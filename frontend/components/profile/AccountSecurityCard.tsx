@@ -28,6 +28,8 @@ import Loader2 from "@/assets/icons/status/loader-2.svg";
 import KeyRound from "@/assets/icons/status/key-round.svg";
 import UserCog from "@/assets/icons/user/user-cog.svg";
 import { cn } from "@/lib/utils";
+import { useServerFieldErrors } from "@/lib/hooks/useServerFieldErrors";
+import { FieldError } from "@/components/ui/field-error";
 
 /** 用户名格式：≥4 字符，字母/数字/下划线 */
 const USERNAME_RE = /^[A-Za-z0-9_]{4,}$/;
@@ -42,6 +44,14 @@ interface Props {
   onUsernameUpdated?: (newName: string) => void;
 }
 
+/** 后端请求体字段名（data-field 对位，与 1001 data.errors[].field 一致） */
+type UsernameField =
+  | "username";
+
+/** 后端请求体字段名（data-field 对位，与 1001 data.errors[].field 一致） */
+type PasswordField =
+  | "old_password" | "new_password" | "confirm_password";
+
 export function AccountSecurityCard({ currentUsername, onUsernameUpdated }: Props) {
   const { t } = useI18n();
 
@@ -50,6 +60,8 @@ export function AccountSecurityCard({ currentUsername, onUsernameUpdated }: Prop
   const [usernameEditing, setUsernameEditing] = useState(false);
   const [usernameSaving, setUsernameSaving] = useState(false);
   const [usernameError, setUsernameError] = useState<string | null>(null);
+  const usernameFields = useServerFieldErrors<UsernameField>({ fallback: t("account.usernameSaveError") });
+  const ufe = usernameFields.errors;
   const [usernameSuccess, setUsernameSuccess] = useState(false);
 
   // ---- 密码修改 ----
@@ -59,6 +71,8 @@ export function AccountSecurityCard({ currentUsername, onUsernameUpdated }: Prop
   const [passwordEditing, setPasswordEditing] = useState(false);
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+  const passwordFields = useServerFieldErrors<PasswordField>({ fallback: t("account.passwordSaveError") });
+  const pfe = passwordFields.errors;
   const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [keepCurrentDevice, setKeepCurrentDevice] = useState(true);
 
@@ -70,18 +84,23 @@ export function AccountSecurityCard({ currentUsername, onUsernameUpdated }: Prop
     return null;
   }
 
-  function validatePassword(oldp: string, newp: string, confirm: string): string | null {
-    if (!oldp) return t("account.oldPasswordRequired");
-    if (!meetsPasswordPolicy(newp)) return t("account.passwordTooShort");
-    if (newp === oldp) return t("account.passwordSame");
-    if (newp !== confirm) return t("account.passwordMismatch");
-    return null;
+  /** 前端预校验：按字段返回错误（与后端字段名一致，行内展示） */
+  function validatePassword(
+    oldp: string,
+    newp: string,
+    confirm: string,
+  ): Partial<Record<PasswordField, string>> {
+    const errs: Partial<Record<PasswordField, string>> = {};
+    if (!oldp) errs.old_password = t("account.oldPasswordRequired");
+    if (!meetsPasswordPolicy(newp)) errs.new_password = t("account.passwordTooShort");
+    else if (newp === oldp) errs.new_password = t("account.passwordSame");
+    if (newp !== confirm) errs.confirm_password = t("account.passwordMismatch");
+    return errs;
   }
 
   async function handleUsernameSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const err = validateUsername(newUsername);
-    if (err) { setUsernameError(err); return; }
+    if (usernameFields.set({ username: validateUsername(newUsername) ?? undefined })) return;
     setUsernameSaving(true);
     setUsernameError(null);
     setUsernameSuccess(false);
@@ -96,7 +115,7 @@ export function AccountSecurityCard({ currentUsername, onUsernameUpdated }: Prop
       setNewUsername("");
       setTimeout(() => setUsernameSuccess(false), 3000);
     } catch (err) {
-      setUsernameError(err instanceof Error ? err.message : t("account.usernameSaveError"));
+      setUsernameError(usernameFields.capture(err));
     } finally {
       setUsernameSaving(false);
     }
@@ -104,8 +123,7 @@ export function AccountSecurityCard({ currentUsername, onUsernameUpdated }: Prop
 
   async function handlePasswordSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const err = validatePassword(oldPassword, newPassword, confirmPassword);
-    if (err) { setPasswordError(err); return; }
+    if (passwordFields.set(validatePassword(oldPassword, newPassword, confirmPassword))) return;
     setPasswordSaving(true);
     setPasswordError(null);
     setPasswordSuccess(false);
@@ -129,7 +147,7 @@ export function AccountSecurityCard({ currentUsername, onUsernameUpdated }: Prop
       }
       setTimeout(() => setPasswordSuccess(false), 3000);
     } catch (err) {
-      setPasswordError(err instanceof Error ? err.message : t("account.passwordSaveError"));
+      setPasswordError(passwordFields.capture(err));
     } finally {
       setPasswordSaving(false);
     }
@@ -139,6 +157,7 @@ export function AccountSecurityCard({ currentUsername, onUsernameUpdated }: Prop
     setUsernameEditing(false);
     setNewUsername("");
     setUsernameError(null);
+    usernameFields.clear();
   }
 
   function resetPassword() {
@@ -147,6 +166,7 @@ export function AccountSecurityCard({ currentUsername, onUsernameUpdated }: Prop
     setNewPassword("");
     setConfirmPassword("");
     setPasswordError(null);
+    passwordFields.clear();
   }
 
   const strength = newPassword ? passwordStrength(newPassword) : null;
@@ -178,19 +198,21 @@ export function AccountSecurityCard({ currentUsername, onUsernameUpdated }: Prop
               <span className="font-mono font-medium">{currentUsername}</span>
             </div>
           ) : (
-            <form onSubmit={handleUsernameSubmit} className="space-y-3" noValidate>
-              <div className="space-y-2">
+            <form {...usernameFields.rootProps} onSubmit={handleUsernameSubmit} className="space-y-3" noValidate>
+              <div className="space-y-2" data-field="username">
                 <Label htmlFor="newUsername" className="text-xs text-muted-foreground">
                   {t("account.newUsername")}
                 </Label>
                 <Input
                   id="newUsername"
+                  aria-invalid={!!ufe.username}
                   value={newUsername}
                   onChange={(e) => { setNewUsername(e.target.value); setUsernameError(null); }}
                   placeholder={t("account.usernamePlaceholder")}
                   autoComplete="off"
                 />
                 <p className="text-xs text-muted-foreground">{t("account.usernameHint")}</p>
+                <FieldError>{ufe.username}</FieldError>
               </div>
               {usernameError && (
                 <p className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md">
@@ -231,25 +253,28 @@ export function AccountSecurityCard({ currentUsername, onUsernameUpdated }: Prop
           {!passwordEditing ? (
             <p className="text-sm text-muted-foreground">{t("account.passwordHint")}</p>
           ) : (
-            <form onSubmit={handlePasswordSubmit} className="space-y-3" noValidate>
-              <div className="space-y-2">
+            <form {...passwordFields.rootProps} onSubmit={handlePasswordSubmit} className="space-y-3" noValidate>
+              <div className="space-y-2" data-field="old_password">
                 <Label htmlFor="oldPassword" className="text-xs text-muted-foreground">
                   {t("account.oldPassword")}
                 </Label>
                 <PasswordInput
                   id="oldPassword"
+                  aria-invalid={!!pfe.old_password}
                   value={oldPassword}
                   onChange={(e) => { setOldPassword(e.target.value); setPasswordError(null); }}
                   placeholder={t("account.oldPasswordPlaceholder")}
                   autoComplete="current-password"
                 />
+                <FieldError>{pfe.old_password}</FieldError>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2" data-field="new_password">
                 <Label htmlFor="newPassword" className="text-xs text-muted-foreground">
                   {t("account.newPassword")}
                 </Label>
                 <PasswordInput
                   id="newPassword"
+                  aria-invalid={!!pfe.new_password}
                   value={newPassword}
                   onChange={(e) => { setNewPassword(e.target.value); setPasswordError(null); }}
                   placeholder={t("account.newPasswordPlaceholder")}
@@ -282,18 +307,21 @@ export function AccountSecurityCard({ currentUsername, onUsernameUpdated }: Prop
                   </div>
                 )}
                 <p className="text-xs text-muted-foreground">{t("account.passwordRule")}</p>
+                <FieldError>{pfe.new_password}</FieldError>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2" data-field="confirm_password">
                 <Label htmlFor="confirmPassword" className="text-xs text-muted-foreground">
                   {t("account.confirmPassword")}
                 </Label>
                 <PasswordInput
                   id="confirmPassword"
+                  aria-invalid={!!pfe.confirm_password}
                   value={confirmPassword}
                   onChange={(e) => { setConfirmPassword(e.target.value); setPasswordError(null); }}
                   placeholder={t("account.confirmPasswordPlaceholder")}
                   autoComplete="new-password"
                 />
+                <FieldError>{pfe.confirm_password}</FieldError>
               </div>
               {/* 保留当前设备登录（默认勾选；取消=全部设备含本机下线） */}
               <label className="flex items-start gap-2 text-sm cursor-pointer select-none">

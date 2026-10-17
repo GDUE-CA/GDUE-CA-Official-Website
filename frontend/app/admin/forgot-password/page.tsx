@@ -25,6 +25,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { submitForgotPassword } from "@/lib/api/auth";
+import { useServerFieldErrors } from "@/lib/hooks/useServerFieldErrors";
+import { FieldError } from "@/components/ui/field-error";
+
+/** 后端请求体字段名（data-field 对位，与 1001 data.errors[].field 一致） */
+type ForgotRequestField =
+  | "contact_email" | "username_hint" | "reason";
 
 export default function ForgotPasswordPage() {
   const { t } = useI18n();
@@ -34,6 +40,8 @@ export default function ForgotPasswordPage() {
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const fieldErrors = useServerFieldErrors<ForgotRequestField>({ fallback: t("admin.forgotPassword.error") });
+  const fe = fieldErrors.errors;
   const [success, setSuccess] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -49,8 +57,7 @@ export default function ForgotPasswordPage() {
       });
       setSuccess(true);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : t("admin.forgotPassword.error");
-      setError(msg);
+      setError(fieldErrors.capture(err));
     } finally {
       setLoading(false);
     }
@@ -79,37 +86,43 @@ export default function ForgotPasswordPage() {
                 <p className="text-center text-lg font-medium">{t("admin.forgotPassword.success")}</p>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-                <div className="space-y-2">
+              <form {...fieldErrors.rootProps} onSubmit={handleSubmit} className="space-y-4" noValidate>
+                <div className="space-y-2" data-field="contact_email">
                   <Label htmlFor="email">{t("admin.forgotPassword.contactEmail")}</Label>
                   <Input
                     id="email"
+                    aria-invalid={!!fe.contact_email}
                     type="email"
                     placeholder={t("admin.forgotPassword.contactEmailPlaceholder")}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
                   />
+                  <FieldError>{fe.contact_email}</FieldError>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2" data-field="username_hint">
                   <Label htmlFor="hint">{t("admin.forgotPassword.usernameHint")}</Label>
                   <Input
                     id="hint"
+                    aria-invalid={!!fe.username_hint}
                     placeholder={t("admin.forgotPassword.usernameHintPlaceholder")}
                     value={usernameHint}
                     onChange={(e) => setUsernameHint(e.target.value)}
                   />
+                  <FieldError>{fe.username_hint}</FieldError>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2" data-field="reason">
                   <Label htmlFor="reason">{t("admin.forgotPassword.reason")}</Label>
                   <Textarea
                     id="reason"
+                    aria-invalid={!!fe.reason}
                     placeholder={t("admin.forgotPassword.reasonPlaceholder")}
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
                     rows={4}
                     required
                   />
+                  <FieldError>{fe.reason}</FieldError>
                 </div>
 
                 {error && (

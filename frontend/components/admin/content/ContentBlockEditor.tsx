@@ -17,6 +17,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FormattedUserActionTime } from "@/components/shared/FormattedUserActionTime";
 import { getContentBlock, upsertContentBlock } from "@/lib/api/content";
+import { useServerFieldErrors } from "@/lib/hooks/useServerFieldErrors";
+import { FieldError } from "@/components/ui/field-error";
+
+/** 后端请求体字段名（data-field 对位，与 1001 data.errors[].field 一致） */
+type ContentBlockField =
+  | "title" | "body_md";
 
 export function ContentBlockEditor({ ck }: { ck: string }) {
   const { t } = useI18n();
@@ -29,6 +35,8 @@ export function ContentBlockEditor({ ck }: { ck: string }) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const fieldErrors = useServerFieldErrors<ContentBlockField>({ fallback: t("common.saveFailed") });
+  const fe = fieldErrors.errors;
 
   useEffect(() => {
     let cancelled = false;
@@ -66,7 +74,7 @@ export function ContentBlockEditor({ ck }: { ck: string }) {
       setIsEmpty(!block.body_md);
       setSaved(true);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Save failed");
+      setError(fieldErrors.capture(e));
     } finally {
       setSaving(false);
     }
@@ -88,7 +96,7 @@ export function ContentBlockEditor({ ck }: { ck: string }) {
           )}
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent {...fieldErrors.rootProps} className="space-y-4">
         {loading ? (
           <div className="flex items-center gap-2 text-muted-foreground py-8 justify-center">
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -101,23 +109,27 @@ export function ContentBlockEditor({ ck }: { ck: string }) {
                 {t("admin.content.empty")}
               </p>
             )}
-            <div className="space-y-2">
+            <div className="space-y-2" data-field="title">
               <Label htmlFor="cb-title">{t("admin.content.titleLabel")}</Label>
               <Input
                 id="cb-title"
+                aria-invalid={!!fe.title}
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
               />
+              <FieldError>{fe.title}</FieldError>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2" data-field="body_md">
               <Label htmlFor="cb-body">{t("admin.content.bodyLabel")}</Label>
               <Textarea
                 id="cb-body"
+                aria-invalid={!!fe.body_md}
                 rows={16}
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
                 className="font-mono text-sm"
               />
+              <FieldError>{fe.body_md}</FieldError>
             </div>
             {saved && (
               <p className="text-sm text-emerald-600 bg-emerald-500/10 px-3 py-2 rounded-md">

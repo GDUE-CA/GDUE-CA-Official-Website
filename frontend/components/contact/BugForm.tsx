@@ -26,6 +26,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { submitBugReport } from "@/lib/api/bugReport";
+import { applyServerErrors } from "@/lib/api/formErrors";
 import { ReceiptPanel } from "@/components/shared/ReceiptPanel";
 
 export function BugForm() {
@@ -57,6 +58,8 @@ export function BugForm() {
     register,
     handleSubmit,
     reset,
+    setError,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -85,8 +88,13 @@ export function BugForm() {
       setReceiptCode(resp.receipt_code);
       setSubmitted(true);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : t("bug.form.errors.submitError");
-      setSubmitError(msg);
+      // 后端字段与表单字段不一一对应：contact 拆成了 email/phone，url 存进 extra
+      setSubmitError(
+        applyServerErrors(err, { setError, getValues }, {
+          fieldMap: { contact_email: "contact", contact_phone: "contact", extra: "url" },
+          fallback: t("bug.form.errors.submitError"),
+        }),
+      );
     }
   }
 

@@ -36,6 +36,8 @@ import {
 } from "@/lib/api/blog";
 import type { BlogPost, BlogPostStatus, BlogTag } from "@/types/api";
 import "@uiw/react-md-editor/markdown-editor.css";
+import { useServerFieldErrors } from "@/lib/hooks/useServerFieldErrors";
+import { FieldError } from "@/components/ui/field-error";
 
 const MDEditor = dynamic(() => import("@uiw/react-md-editor"), {
   ssr: false,
@@ -46,6 +48,11 @@ const MDEditor = dynamic(() => import("@uiw/react-md-editor"), {
   ),
 });
 
+/** 后端请求体字段名（data-field 对位，与 1001 data.errors[].field 一致） */
+type BlogField =
+  | "title" | "slug" | "excerpt" | "status"
+  | "scheduled_at";
+
 export function BlogEditor({ postId }: { postId?: number }) {
   const { t } = useI18n();
   const lp = useLocalizedPath();
@@ -55,6 +62,8 @@ export function BlogEditor({ postId }: { postId?: number }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const fieldErrors = useServerFieldErrors<BlogField>({ fallback: t("common.saveFailed") });
+  const fe = fieldErrors.errors;
   const [existing, setExisting] = useState<BlogPost | null>(null);
 
   // 表单字段
@@ -151,6 +160,7 @@ export function BlogEditor({ postId }: { postId?: number }) {
 
   async function handleSave() {
     setFormError(null);
+    fieldErrors.clear();
     if (!title.trim()) {
       setFormError(t("admin.blog.errTitleRequired"));
       return;
@@ -187,7 +197,7 @@ export function BlogEditor({ postId }: { postId?: number }) {
       }
       router.push(lp("/admin/blog"));
     } catch (e) {
-      setFormError(e instanceof Error ? e.message : "Save failed");
+      setFormError(fieldErrors.capture(e));
     } finally {
       setSaving(false);
     }
@@ -211,7 +221,7 @@ export function BlogEditor({ postId }: { postId?: number }) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" {...fieldErrors.rootProps}>
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <Button variant="ghost" onClick={() => router.push(lp("/admin/blog"))}>
           <ArrowLeft className="h-4 w-4 mr-1.5" />
@@ -280,31 +290,37 @@ export function BlogEditor({ postId }: { postId?: number }) {
               <CardTitle className="text-base">{t("admin.blog.metaTitle")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
+              <div className="space-y-2" data-field="title">
                 <Label htmlFor="blog-title">{t("admin.blog.colTitle")}</Label>
                 <Input
                   id="blog-title"
+                  aria-invalid={!!fe.title}
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                 />
+                <FieldError>{fe.title}</FieldError>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2" data-field="slug">
                 <Label htmlFor="blog-slug">{t("admin.blog.colSlug")}</Label>
                 <Input
                   id="blog-slug"
+                  aria-invalid={!!fe.slug}
                   value={slug}
                   onChange={(e) => setSlug(e.target.value)}
                   placeholder={t("admin.blog.slugPlaceholder")}
                 />
+                <FieldError>{fe.slug}</FieldError>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2" data-field="excerpt">
                 <Label htmlFor="blog-excerpt">{t("admin.blog.colExcerpt")}</Label>
                 <Textarea
                   id="blog-excerpt"
+                  aria-invalid={!!fe.excerpt}
                   rows={3}
                   value={excerpt}
                   onChange={(e) => setExcerpt(e.target.value)}
                 />
+                <FieldError>{fe.excerpt}</FieldError>
               </div>
               <div className="space-y-2">
                 <Label>{t("admin.blog.colCover")}</Label>
@@ -359,10 +375,11 @@ export function BlogEditor({ postId }: { postId?: number }) {
               <CardTitle className="text-base">{t("admin.blog.publishTitle")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
+              <div className="space-y-2" data-field="status">
                 <Label htmlFor="blog-status">{t("admin.blog.colStatus")}</Label>
                 <select
                   id="blog-status"
+                  aria-invalid={!!fe.status}
                   value={status}
                   onChange={(e) => setStatus(e.target.value as BlogPostStatus)}
                   className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
@@ -372,12 +389,14 @@ export function BlogEditor({ postId }: { postId?: number }) {
                   <option value="scheduled">{t("admin.blog.statusScheduled")}</option>
                   <option value="archived">{t("admin.blog.statusArchived")}</option>
                 </select>
+                <FieldError>{fe.status}</FieldError>
               </div>
               {status === "scheduled" && (
-                <div className="space-y-2">
+                <div className="space-y-2" data-field="scheduled_at">
                   <Label htmlFor="blog-scheduled">{t("admin.blog.colScheduledAt")}</Label>
                   <Input
                     id="blog-scheduled"
+                    aria-invalid={!!fe.scheduled_at}
                     type="datetime-local"
                     value={scheduledAt}
                     onChange={(e) => setScheduledAt(e.target.value)}
@@ -385,6 +404,7 @@ export function BlogEditor({ postId }: { postId?: number }) {
                   <p className="text-xs text-muted-foreground">
                     {t("admin.blog.scheduledHint")}
                   </p>
+                  <FieldError>{fe.scheduled_at}</FieldError>
                 </div>
               )}
               <div className="space-y-2">

@@ -16,6 +16,7 @@ import type { Locale } from "@/lib/i18n";
 import type { Messages } from "@/i18n/dictionary";
 import type { I18nMsg } from "@/types/response";
 import { useEffectiveTimezone } from "@/lib/hooks/useEffectiveTimezone";
+import { setErrorMessages } from "@/lib/api/errorMessages";
 
 interface I18nContextValue {
   locale: Locale;
@@ -117,6 +118,9 @@ export function I18nProvider({
   messages: Messages;
   children: ReactNode;
 }) {
+  // apiFetch 的 ApiError.message 在 React 之外生成，需要拿到当前语言字典。
+  // 仅浏览器端写入：服务端模块状态跨请求共享，写入会串语言。
+  if (typeof window !== "undefined") setErrorMessages(messages);
   const value = useMemo<I18nContextValue>(
     () => ({
       locale,

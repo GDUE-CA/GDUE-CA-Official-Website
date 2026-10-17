@@ -29,6 +29,8 @@ import { completeOAuthProfile, getPendingOAuthProfile } from "@/lib/api/oauth";
 import { saveSession } from "@/lib/auth";
 import { COUNTRY_OPTIONS, PHONE_RULES } from "@/components/join/phoneRules";
 import type { OAuthProvider, PendingOAuthProfile } from "@/types/api";
+import { useServerFieldErrors } from "@/lib/hooks/useServerFieldErrors";
+import { FieldError } from "@/components/ui/field-error";
 
 const PROVIDER_LABEL: Record<OAuthProvider, string> = {
   github: "GitHub",
@@ -36,6 +38,10 @@ const PROVIDER_LABEL: Record<OAuthProvider, string> = {
   apple: "Apple",
   google: "Google",
 };
+
+/** 后端请求体字段名（data-field 对位，与 1001 data.errors[].field 一致） */
+type CompleteProfileField =
+  | "username" | "student_id" | "real_name" | "phone_number";
 
 export default function CompleteProfilePage() {
   const { t } = useI18n();
@@ -45,6 +51,8 @@ export default function CompleteProfilePage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const fieldErrors = useServerFieldErrors<CompleteProfileField>({ fallback: t("completeProfile.error") });
+  const fe = fieldErrors.errors;
 
   // 表单字段（用户名 / 学号 / 姓名 / 手机号全部手动填写）
   const [username, setUsername] = useState("");
@@ -99,7 +107,7 @@ export default function CompleteProfilePage() {
       );
       router.replace(lp("/setting/profile"));
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("completeProfile.error"));
+      setError(fieldErrors.capture(err));
     } finally {
       setSubmitting(false);
     }
@@ -150,11 +158,12 @@ export default function CompleteProfilePage() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-              <div className="space-y-2">
+            <form {...fieldErrors.rootProps} onSubmit={handleSubmit} className="space-y-4" noValidate>
+              <div className="space-y-2" data-field="username">
                 <Label htmlFor="username">{t("completeProfile.username")}</Label>
                 <Input
                   id="username"
+                  aria-invalid={!!fe.username}
                   autoComplete="username"
                   placeholder={t("completeProfile.usernamePlaceholder")}
                   value={username}
@@ -164,34 +173,39 @@ export default function CompleteProfilePage() {
                   maxLength={64}
                 />
                 <p className="text-xs text-muted-foreground">{t("completeProfile.usernameHint")}</p>
+                <FieldError>{fe.username}</FieldError>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
+                <div className="space-y-2" data-field="student_id">
                   <Label htmlFor="studentId">{t("completeProfile.studentId")}</Label>
                   <Input
                     id="studentId"
+                    aria-invalid={!!fe.student_id}
                     placeholder={t("completeProfile.studentIdPlaceholder")}
                     value={studentId}
                     onChange={(e) => setStudentId(e.target.value)}
                     required
                     maxLength={32}
                   />
+                  <FieldError>{fe.student_id}</FieldError>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2" data-field="real_name">
                   <Label htmlFor="realName">{t("completeProfile.realName")}</Label>
                   <Input
                     id="realName"
+                    aria-invalid={!!fe.real_name}
                     placeholder={t("completeProfile.realNamePlaceholder")}
                     value={realName}
                     onChange={(e) => setRealName(e.target.value)}
                     required
                     maxLength={64}
                   />
+                  <FieldError>{fe.real_name}</FieldError>
                 </div>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-2" data-field="phone_number">
                 <Label htmlFor="phoneNumber">{t("completeProfile.phoneNumber")}</Label>
                 {/* 区号选择使用系统原生 select，全平台适配（含 iOS 不卡顿） */}
                 <div className="grid grid-cols-[140px_1fr] gap-2">
@@ -210,6 +224,7 @@ export default function CompleteProfilePage() {
                   </select>
                   <Input
                     id="phoneNumber"
+                    aria-invalid={!!fe.phone_number}
                     inputMode="tel"
                     placeholder={phonePlaceholder}
                     value={phoneNumber}
@@ -218,6 +233,7 @@ export default function CompleteProfilePage() {
                     maxLength={32}
                   />
                 </div>
+                <FieldError>{fe.phone_number}</FieldError>
               </div>
 
               {error && (

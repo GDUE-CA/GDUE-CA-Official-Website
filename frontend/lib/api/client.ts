@@ -11,9 +11,16 @@
  * 各 lib/api/* 业务模块基于 apiFetch 实现具体接口调用。
  */
 
-import type { ApiResponse, BizCodeType, I18nMsg } from "@/types/response";
+import type { ApiResponse, BizCodeType } from "@/types/response";
 import { BizCode, getI18nKey, getI18nParams, isApiResponse } from "@/types/response";
-import { registerCalibrator, syncServerTime } from "@/lib/serverTime";
+import {
+  extractFieldErrors,
+  formatEnvelopeError,
+  networkErrorText,
+  withRequestId,
+  type FieldError,
+} from "@/lib/api/errorMessages";
+import { syncServerTime } from "@/lib/serverTime";
 import { locales, isLocale } from "@/lib/i18n";
 
 /**
@@ -34,7 +41,8 @@ export const API_BASE_URL =
 /**
  * 标准化后端错误响应。
  *
- * - 新壳错误（code !== 0）：优先使用 message 字段；如果是 i18n key 对象，提取到 i18nKey/i18nParams 供前端本地化
+ * - 新壳错误（code !== 0）：`message` 一律是已本地化的人话（见 lib/api/errorMessages.ts），
+ *   调用方直接 `err.message` 展示即可；需要定位表单项时用 `fieldErrors`
  * - 旧壳错误（HTTPException {detail, trace_id}）：保留兼容，按 detail 字段抽 message
  *
  * `traceId` 字段保留作为向后兼容别名，**推荐用 `requestId`** 与后端规范对齐。
@@ -57,6 +65,8 @@ export class ApiError extends Error {
   i18nKey: string | null;
   /** i18n params（来自新壳 message.params） */
   i18nParams: Record<string, unknown> | null;
+  /** 1001 校验失败的字段级错误（其他错误为空数组） */
+  fieldErrors: FieldError[];
 
   constructor(
     status: number,
@@ -71,6 +81,7 @@ export class ApiError extends Error {
     this.code = BizCode.Ok;
     this.i18nKey = null;
     this.i18nParams = null;
+    this.fieldErrors = [];
   }
 
   /** 新壳错误工厂：根据 ApiResponse 构造带 i18n 协议的 ApiError */
@@ -83,10 +94,13 @@ export class ApiError extends Error {
     err.code = env.code as BizCodeType;
     err.i18nKey = getI18nKey(env.message);
     err.i18nParams = getI18nParams(env.message);
-    err.message = computeMessageFromEnvelope(env.message, env.data);
-    if (status >= 500 && err.requestId) {
-      err.message += `（错误编号：${err.requestId.slice(0, 12)}）`;
-    }
+    err.fieldErrors =
+      env.code === BizCode.ValidationFailed ? extractFieldErrors(env.data) : [];
+    err.message = withRequestId(
+      formatEnvelopeError(env.code, env.message, err.fieldErrors),
+      status,
+      err.requestId,
+    );
     return err;
   }
 }
@@ -119,32 +133,22 @@ export async function getCsrfToken(forceRefresh = false): Promise<string> {
   return csrfPending;
 }
 
-/** 提取 detail 文案：兼容 string 与验证错误数组（旧壳） */
-function extractDetail(data: unknown): string {
-  if (typeof data === "string") return data;
-  if (data && typeof data === "object") {
-    const detail = (data as { detail?: unknown }).detail;
-    if (typeof detail === "string") return detail;
-    if (Array.isArray(detail)) {
-      const first = detail[0] as { msg?: string } | undefined;
-      if (first?.msg) return first.msg.replace(/^Value error, /, "");
-    }
-  }
-  return "请求失败，请稍后重试";
+/** 旧壳 / 非壳错误（如网关 502 HTML）：只认字符串 detail，其余一律兜底文案（不外泄原始报错） */
+function extractDetail(data: unknown): string | null {
+  if (typeof data === "string") return null;
+  const detail = (data as { detail?: unknown } | null)?.detail;
+  return typeof detail === "string" && detail ? detail : null;
 }
 
-/** 从新壳 message 字段计算展示文本：
- * - 字符串：直接使用；
- * - i18n key 对象：优先 params.detail / params.reason（旧 HTTPException 兜底壳保留的
- *   原可读文案，渐进 i18n 约定见后端 bizcode.py / exceptions.py），避免把 key 裸露给用户；
- *   i18n 数据库接管后调用方可用 err.i18nKey + renderMsg() 走翻译。
- */
-function computeMessageFromEnvelope(message: I18nMsg, _data: unknown): string {
-  if (typeof message === "string") return message;
-  const params = message.params as Record<string, unknown> | undefined;
-  const detail = params?.detail ?? params?.reason;
-  if (typeof detail === "string" && detail) return detail;
-  return message.key;
+/** 非壳错误的 HTTP 状态 → 通用错误文案 key 后缀（与后端 _STATUS_TO_BIZ 同向） */
+function httpStatusKey(status: number): string {
+  const map: Record<number, string> = {
+    400: "bad_request", 401: "unauthorized", 403: "forbidden", 404: "not_found",
+    409: "conflict", 413: "payload_too_large", 415: "unsupported_media_type",
+    422: "validation_failed", 423: "account_locked", 429: "rate_limited",
+    502: "upstream_failure", 503: "maintenance",
+  };
+  return map[status] ?? (status >= 500 ? "internal" : "bad_request");
 }
 
 function isCsrfFailure(status: number, data: unknown): boolean {
@@ -207,8 +211,8 @@ export async function secureFetch(path: string, init: RequestInit = {}): Promise
     const data: unknown = await res.clone().json().catch(() => null);
     if (isCsrfFailure(res.status, data)) res = await send(true);
   }
-  // 规范 §9：每次 API 响应都读取后端权威 UTC 时间，校准本地时钟偏移量
-  syncServerTime(res.headers.get("X-Server-Utc-Time"));
+  // 规范 §9：每次 API 响应读取标准 Date 头（服务器时间），校准本地时钟偏移量
+  syncServerTime(res.headers.get("Date"));
   return res;
 }
 
@@ -239,7 +243,7 @@ export async function apiFetch<T>(
   try {
     res = await secureFetch(path, { ...rest, headers: finalHeaders });
   } catch {
-    throw new ApiError(0, null, "网络错误，无法连接到服务器");
+    throw new ApiError(0, null, networkErrorText());
   }
 
   // 尝试解析响应体（兼容新旧壳）
@@ -262,13 +266,11 @@ export async function apiFetch<T>(
     if (isApiResponse(body)) {
       throw ApiError.fromEnvelope(res.status, body, requestId);
     }
-    // 旧壳：维持原 ApiError 构造
-    const message = extractDetail(body);
-    const finalMessage =
-      res.status >= 500 && requestId
-        ? `${message}（错误编号：${requestId.slice(0, 12)}）`
-        : message;
-    throw new ApiError(res.status, body, finalMessage, requestId);
+    // 旧壳 / 非壳：只透出字符串 detail，否则按 HTTP 状态走通用文案
+    const message =
+      extractDetail(body) ??
+      formatEnvelopeError(0, { key: `error.${httpStatusKey(res.status)}` }, []);
+    throw new ApiError(res.status, body, withRequestId(message, res.status, requestId), requestId);
   }
 
   // 成功响应：新壳取 data，旧壳取整体
@@ -285,10 +287,3 @@ export async function apiFetch<T>(
   // 旧壳 / 非壳（裸 list / 标量）直接返回
   return (body ?? null) as T;
 }
-
-// 规范 §9：注册轻量校准请求，供 30 秒间隔 / visibilitychange 自动触发
-// （直接读 Header，不走 apiFetch，避免 JSON 解析与循环依赖）
-registerCalibrator(async () => {
-  const res = await fetch(`${API_BASE_URL}/health`, { credentials: "include" });
-  syncServerTime(res.headers.get("X-Server-Utc-Time"));
-});

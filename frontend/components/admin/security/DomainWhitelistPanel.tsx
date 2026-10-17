@@ -17,6 +17,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { fetchSystemSettings, updateSystemSettings } from "@/lib/api/system";
+import { useServerFieldErrors } from "@/lib/hooks/useServerFieldErrors";
+import { FieldError } from "@/components/ui/field-error";
+
+/** 后端请求体字段名（data-field 对位，与 1001 data.errors[].field 一致） */
+type DomainField =
+  | "cors_origins" | "allowed_hosts";
 
 export function DomainWhitelistPanel() {
   const { t } = useI18n();
@@ -26,6 +32,8 @@ export function DomainWhitelistPanel() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const fieldErrors = useServerFieldErrors<DomainField>({ fallback: t("admin.settings.saveError") });
+  const fe = fieldErrors.errors;
 
   useEffect(() => {
     let cancelled = false;
@@ -60,7 +68,7 @@ export function DomainWhitelistPanel() {
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("admin.settings.saveError"));
+      setError(fieldErrors.capture(e));
     } finally {
       setSaving(false);
     }
@@ -76,28 +84,32 @@ export function DomainWhitelistPanel() {
         <CardTitle className="text-base">{t("admin.settings.domainWhitelist")}</CardTitle>
         <p className="text-sm text-muted-foreground">{t("admin.settings.domainWhitelistDesc")}</p>
       </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="space-y-2">
+      <CardContent {...fieldErrors.rootProps} className="space-y-3">
+        <div className="space-y-2" data-field="cors_origins">
           <Label htmlFor="corsOrigins">CORS Origins</Label>
           <Textarea
             id="corsOrigins"
+            aria-invalid={!!fe.cors_origins}
             rows={3}
             placeholder={t("admin.settings.domainWhitelistPlaceholder")}
             value={corsOrigins}
             onChange={(e) => setCorsOrigins(e.target.value)}
             className="font-mono text-sm"
           />
+          <FieldError>{fe.cors_origins}</FieldError>
         </div>
-        <div className="space-y-2">
+        <div className="space-y-2" data-field="allowed_hosts">
           <Label htmlFor="allowedHosts">Allowed Hosts</Label>
           <Textarea
             id="allowedHosts"
+            aria-invalid={!!fe.allowed_hosts}
             rows={3}
             placeholder="如：gdue-ca.paperee.guru"
             value={allowedHosts}
             onChange={(e) => setAllowedHosts(e.target.value)}
             className="font-mono text-sm"
           />
+          <FieldError>{fe.allowed_hosts}</FieldError>
         </div>
         {error && <p className="text-sm text-destructive">{error}</p>}
         {saved && (

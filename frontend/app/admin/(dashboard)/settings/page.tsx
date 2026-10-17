@@ -34,6 +34,12 @@ import QrCode from "@/assets/icons/action/qr-code.svg";
 import Timer from "@/assets/icons/status/timer.svg";
 import Database from "@/assets/icons/status/database.svg";
 import { DbBackupList } from "@/components/admin/settings/DbBackupList";
+import { useServerFieldErrors } from "@/lib/hooks/useServerFieldErrors";
+import { FieldError } from "@/components/ui/field-error";
+
+/** 后端请求体字段名（data-field 对位，与 1001 data.errors[].field 一致） */
+type SiteSettingField =
+  | "site_name" | "footer";
 
 export default function SettingsPage() {
   const { t } = useI18n();
@@ -45,6 +51,8 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const fieldErrors = useServerFieldErrors<SiteSettingField>({ fallback: t("admin.settings.saveError") });
+  const fe = fieldErrors.errors;
 
   // 会话超时
   const [sessionTimeout, setSessionTimeout] = useState(30);
@@ -133,7 +141,7 @@ export default function SettingsPage() {
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("admin.settings.saveError"));
+      setError(fieldErrors.capture(e));
     } finally {
       setSaving(false);
     }
@@ -232,14 +240,16 @@ export default function SettingsPage() {
         <CardHeader>
           <CardTitle className="text-base">站点信息</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="space-y-2">
+        <CardContent {...fieldErrors.rootProps} className="space-y-3">
+          <div className="space-y-2" data-field="site_name">
             <Label htmlFor="siteName">站点名称</Label>
-            <Input id="siteName" value={siteName} onChange={(e) => setSiteName(e.target.value)} />
+            <Input id="siteName" aria-invalid={!!fe.site_name} value={siteName} onChange={(e) => setSiteName(e.target.value)} />
+            <FieldError>{fe.site_name}</FieldError>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2" data-field="footer">
             <Label htmlFor="footer">页脚</Label>
-            <Textarea id="footer" rows={2} value={footer} onChange={(e) => setFooter(e.target.value)} />
+            <Textarea id="footer" aria-invalid={!!fe.footer} rows={2} value={footer} onChange={(e) => setFooter(e.target.value)} />
+            <FieldError>{fe.footer}</FieldError>
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
           {saved && (

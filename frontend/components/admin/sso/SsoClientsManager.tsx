@@ -38,6 +38,12 @@ import {
 } from "@/lib/api/sso";
 import { FormattedUserActionTime } from "@/components/shared/FormattedUserActionTime";
 import type { SsoClient } from "@/types/api";
+import { useServerFieldErrors } from "@/lib/hooks/useServerFieldErrors";
+import { FieldError } from "@/components/ui/field-error";
+
+/** 后端请求体字段名（data-field 对位，与 1001 data.errors[].field 一致） */
+type SsoClientField =
+  | "name" | "redirect_uris";
 
 export function SsoClientsManager() {
   const { t } = useI18n();
@@ -45,6 +51,8 @@ export function SsoClientsManager() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const fieldErrors = useServerFieldErrors<SsoClientField>({ fallback: t("common.error") });
+  const fe = fieldErrors.errors;
 
   // 新建表单
   const [createOpen, setCreateOpen] = useState(false);
@@ -86,7 +94,7 @@ export function SsoClientsManager() {
       }
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("common.error"));
+      setError(fieldErrors.capture(err));
     } finally {
       setBusy(false);
     }
@@ -214,31 +222,35 @@ export function SsoClientsManager() {
 
       {/* 新建弹窗 */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent>
+        <DialogContent {...fieldErrors.rootProps}>
           <DialogHeader>
             <DialogTitle>{t("admin.sso.create")}</DialogTitle>
             <DialogDescription>{t("admin.sso.createHint")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <div className="space-y-1.5">
+            <div className="space-y-1.5" data-field="name">
               <Label htmlFor="sso-name">{t("admin.sso.appName")}</Label>
               <Input
                 id="sso-name"
+                aria-invalid={!!fe.name}
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 maxLength={128}
               />
+              <FieldError>{fe.name}</FieldError>
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-1.5" data-field="redirect_uris">
               <Label htmlFor="sso-uris">{t("admin.sso.redirectUrisInput")}</Label>
               <Textarea
                 id="sso-uris"
+                aria-invalid={!!fe.redirect_uris}
                 rows={4}
                 value={newUris}
                 onChange={(e) => setNewUris(e.target.value)}
                 placeholder={"https://app.example.com/auth/callback\nhttps://app2.example.com/cb"}
                 className="font-mono text-xs"
               />
+              <FieldError>{fe.redirect_uris}</FieldError>
             </div>
             <Button className="w-full" onClick={handleCreate} disabled={busy || !newName.trim() || !newUris.trim()}>
               {busy && <Loader2 className="h-4 w-4 animate-spin" />}

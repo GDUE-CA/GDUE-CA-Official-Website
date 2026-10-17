@@ -56,6 +56,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { AdminUser, EmailChangeStatusOut } from "@/types/api";
+import { useServerFieldErrors } from "@/lib/hooks/useServerFieldErrors";
+import { FieldError } from "@/components/ui/field-error";
 
 /** 邮箱脱敏：a***@domain */
 function maskEmail(email: string): string {
@@ -76,6 +78,12 @@ interface ConfirmState {
   action: () => Promise<void>;
 }
 
+/** 三条换绑路径的后端字段名（同一时刻只渲染一条路径，共用一个 hook 按 DOM 对位） */
+type EmailChangeField =
+  | "code" | "current_password" | "new_code" | "new_email"
+  | "old_code" | "phone" | "real_name" | "remark"
+  | "student_id";
+
 export function EmailBinding() {
   const { t } = useI18n();
 
@@ -87,6 +95,8 @@ export function EmailBinding() {
   const [step, setStep] = useState<1 | 2>(1);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const fieldErrors = useServerFieldErrors<EmailChangeField>({ fallback: t("common.error") });
+  const fe = fieldErrors.errors;
   const [busy, setBusy] = useState(false);
   const [confirm, setConfirm] = useState<ConfirmState | null>(null);
 
@@ -148,6 +158,7 @@ export function EmailBinding() {
   }, [refreshStatus]);
 
   function resetFlow() {
+    fieldErrors.clear();
     setStep(1);
     setError(null);
     setVerifyFailed(false);
@@ -182,7 +193,7 @@ export function EmailBinding() {
       setStep(2);
       setSuccessMsg(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(fieldErrors.capture(e));
     } finally {
       setBusy(false);
       setConfirm(null);
@@ -200,7 +211,7 @@ export function EmailBinding() {
       });
       done(res.message || t("setting.emailChange.changeSuccess"));
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(fieldErrors.capture(e));
       setConfirm(null);
     } finally {
       setBusy(false);
@@ -222,7 +233,7 @@ export function EmailBinding() {
       });
       setStep(2);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(fieldErrors.capture(e));
       setVerifyFailed(true);
     } finally {
       setBusy(false);
@@ -236,7 +247,7 @@ export function EmailBinding() {
       await sendLostOldCode({ new_email: lostNewEmail.trim() });
       setStep(2);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(fieldErrors.capture(e));
     } finally {
       setBusy(false);
       setConfirm(null);
@@ -253,7 +264,7 @@ export function EmailBinding() {
       });
       done(res.message || t("setting.emailChange.changeSuccess"));
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(fieldErrors.capture(e));
       setConfirm(null);
     } finally {
       setBusy(false);
@@ -278,7 +289,7 @@ export function EmailBinding() {
       setMode("normal");
       await refreshStatus();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(fieldErrors.capture(e));
       setConfirm(null);
     } finally {
       setBusy(false);
@@ -294,7 +305,7 @@ export function EmailBinding() {
       const res = await confirmExemptEmailChange({ new_email: exemptEmail.trim() });
       done(res.message || t("setting.emailChange.exempt.success"));
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(fieldErrors.capture(e));
       setConfirm(null);
     } finally {
       setBusy(false);
@@ -333,7 +344,7 @@ export function EmailBinding() {
     });
 
   return (
-    <Card>
+    <Card {...fieldErrors.rootProps}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
           <Mail className="h-4 w-4" />
@@ -406,10 +417,11 @@ export function EmailBinding() {
                 {t("setting.emailChange.exempt.warning")}
               </p>
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-1.5" data-field="new_email">
               <Label htmlFor="exempt-email">{t("setting.emailChange.newEmail")}</Label>
               <Input
                 id="exempt-email"
+                aria-invalid={!!fe.new_email}
                 type="email"
                 value={exemptEmail}
                 onChange={(e) => setExemptEmail(e.target.value)}
@@ -421,6 +433,7 @@ export function EmailBinding() {
                   {t("setting.emailChange.exempt.prefill")}：{s.approved_application.new_email}
                 </p>
               )}
+              <FieldError>{fe.new_email}</FieldError>
             </div>
             {error && (
               <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{error}</p>
@@ -450,16 +463,18 @@ export function EmailBinding() {
               <div className="space-y-4">
                 {step === 1 ? (
                   <>
-                    <div className="space-y-1.5">
+                    <div className="space-y-1.5" data-field="new_email">
                       <Label htmlFor="ec-new-email">{t("setting.emailChange.newEmail")}</Label>
                       <Input
                         id="ec-new-email"
+                        aria-invalid={!!fe.new_email}
                         type="email"
                         value={newEmail}
                         onChange={(e) => setNewEmail(e.target.value)}
                         placeholder={t("setting.emailChange.newEmailPlaceholder")}
                         className={emailInputCls}
                       />
+                      <FieldError>{fe.new_email}</FieldError>
                     </div>
                     {error && (
                       <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{error}</p>
@@ -475,10 +490,11 @@ export function EmailBinding() {
                       <Info className="h-3.5 w-3.5 shrink-0" />
                       {t("setting.emailChange.sentHint", { new: newEmail.trim() })}
                     </p>
-                    <div className="space-y-1.5">
+                    <div className="space-y-1.5" data-field="old_code">
                       <Label htmlFor="ec-old-code">{t("setting.emailChange.oldCode")}</Label>
                       <Input
                         id="ec-old-code"
+                        aria-invalid={!!fe.old_code}
                         inputMode="numeric"
                         maxLength={6}
                         value={oldCode}
@@ -486,11 +502,13 @@ export function EmailBinding() {
                         placeholder="000000"
                         className={emailInputCls}
                       />
+                      <FieldError>{fe.old_code}</FieldError>
                     </div>
-                    <div className="space-y-1.5">
+                    <div className="space-y-1.5" data-field="new_code">
                       <Label htmlFor="ec-new-code">{t("setting.emailChange.newCode")}</Label>
                       <Input
                         id="ec-new-code"
+                        aria-invalid={!!fe.new_code}
                         inputMode="numeric"
                         maxLength={6}
                         value={newCode}
@@ -498,15 +516,18 @@ export function EmailBinding() {
                         placeholder="000000"
                         className={emailInputCls}
                       />
+                      <FieldError>{fe.new_code}</FieldError>
                     </div>
-                    <div className="space-y-1.5">
+                    <div className="space-y-1.5" data-field="current_password">
                       <Label htmlFor="ec-password">{t("setting.emailChange.currentPassword")}</Label>
                       <PasswordInput
                         id="ec-password"
+                        aria-invalid={!!fe.current_password}
                         value={currentPassword}
                         onChange={(e) => setCurrentPassword(e.target.value)}
                         autoComplete="current-password"
                       />
+                      <FieldError>{fe.current_password}</FieldError>
                     </div>
                     {error && (
                       <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{error}</p>
@@ -558,41 +579,49 @@ export function EmailBinding() {
                     <p className="rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
                       {t("setting.emailChange.lostOld.hint")}
                     </p>
-                    <div className="space-y-1.5">
+                    <div className="space-y-1.5" data-field="current_password">
                       <Label htmlFor="lo-password">{t("setting.emailChange.currentPassword")}</Label>
                       <PasswordInput
                         id="lo-password"
+                        aria-invalid={!!fe.current_password}
                         value={lostPassword}
                         onChange={(e) => setLostPassword(e.target.value)}
                         autoComplete="current-password"
                       />
+                      <FieldError>{fe.current_password}</FieldError>
                     </div>
-                    <div className="space-y-1.5">
+                    <div className="space-y-1.5" data-field="student_id">
                       <Label htmlFor="lo-student">{t("setting.emailChange.studentId")}</Label>
                       <Input
                         id="lo-student"
+                        aria-invalid={!!fe.student_id}
                         value={lostStudentId}
                         onChange={(e) => setLostStudentId(e.target.value)}
                         className={emailInputCls}
                       />
+                      <FieldError>{fe.student_id}</FieldError>
                     </div>
-                    <div className="space-y-1.5">
+                    <div className="space-y-1.5" data-field="phone">
                       <Label htmlFor="lo-phone">{t("setting.emailChange.phone")}</Label>
                       <Input
                         id="lo-phone"
+                        aria-invalid={!!fe.phone}
                         value={lostPhone}
                         onChange={(e) => setLostPhone(e.target.value)}
                         className={emailInputCls}
                       />
+                      <FieldError>{fe.phone}</FieldError>
                     </div>
-                    <div className="space-y-1.5">
+                    <div className="space-y-1.5" data-field="real_name">
                       <Label htmlFor="lo-realname">{t("setting.emailChange.realName")}</Label>
                       <Input
                         id="lo-realname"
+                        aria-invalid={!!fe.real_name}
                         value={lostRealName}
                         onChange={(e) => setLostRealName(e.target.value)}
                         className={emailInputCls}
                       />
+                      <FieldError>{fe.real_name}</FieldError>
                     </div>
                     {error && (
                       <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{error}</p>
@@ -628,16 +657,18 @@ export function EmailBinding() {
                   </>
                 ) : (
                   <>
-                    <div className="space-y-1.5">
+                    <div className="space-y-1.5" data-field="new_email">
                       <Label htmlFor="lo-new-email">{t("setting.emailChange.newEmail")}</Label>
                       <Input
                         id="lo-new-email"
+                        aria-invalid={!!fe.new_email}
                         type="email"
                         value={lostNewEmail}
                         onChange={(e) => setLostNewEmail(e.target.value)}
                         placeholder={t("setting.emailChange.newEmailPlaceholder")}
                         className={emailInputCls}
                       />
+                      <FieldError>{fe.new_email}</FieldError>
                     </div>
                     {error && (
                       <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{error}</p>
@@ -656,10 +687,11 @@ export function EmailBinding() {
                       {busy && <Loader2 className="h-4 w-4 animate-spin" />}
                       {t("setting.emailChange.sendCodes")}
                     </Button>
-                    <div className="space-y-1.5">
+                    <div className="space-y-1.5" data-field="code">
                       <Label htmlFor="lo-code">{t("setting.emailChange.newCode")}</Label>
                       <Input
                         id="lo-code"
+                        aria-invalid={!!fe.code}
                         inputMode="numeric"
                         maxLength={6}
                         value={lostCode}
@@ -667,6 +699,7 @@ export function EmailBinding() {
                         placeholder="000000"
                         className={emailInputCls}
                       />
+                      <FieldError>{fe.code}</FieldError>
                     </div>
                     <Button
                       disabled={busy || !lostCode.trim()}
@@ -702,27 +735,31 @@ export function EmailBinding() {
                     <Input value={me?.username ?? ""} readOnly disabled />
                   </div>
                 </div>
-                <div className="space-y-1.5">
+                <div className="space-y-1.5" data-field="new_email">
                   <Label htmlFor="mn-email">{t("setting.emailChange.newEmail")}</Label>
                   <Input
                     id="mn-email"
+                    aria-invalid={!!fe.new_email}
                     type="email"
                     value={manualEmail}
                     onChange={(e) => setManualEmail(e.target.value)}
                     placeholder={t("setting.emailChange.newEmailPlaceholder")}
                     className={emailInputCls}
                   />
+                  <FieldError>{fe.new_email}</FieldError>
                 </div>
-                <div className="space-y-1.5">
+                <div className="space-y-1.5" data-field="remark">
                   <Label htmlFor="mn-remark">{t("setting.emailChange.remark")}</Label>
                   <Textarea
                     id="mn-remark"
+                    aria-invalid={!!fe.remark}
                     value={manualRemark}
                     onChange={(e) => setManualRemark(e.target.value)}
                     placeholder={t("setting.emailChange.remarkPlaceholder")}
                     rows={4}
                     maxLength={1000}
                   />
+                  <FieldError>{fe.remark}</FieldError>
                 </div>
                 {error && (
                   <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{error}</p>

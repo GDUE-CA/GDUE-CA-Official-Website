@@ -10,6 +10,7 @@
  * - 已完成初始化时挂载即跳转登录页
  */
 import { useEffect, useState, useCallback, useRef } from "react";
+import { flushSync } from "react-dom";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import Loader2 from "@/assets/icons/status/loader-2.svg";
@@ -42,6 +43,10 @@ import {
 import { clearLocalSession } from "@/lib/auth";
 import { SecurityQuestionsForm } from "@/components/auth/SecurityQuestionsForm";
 import type { BGPasswordHashResult, SecurityQuestionItem } from "@/types/api";
+import { ApiError } from "@/lib/api/client";
+import { BizCode } from "@/types/response";
+import { useServerFieldErrors } from "@/lib/hooks/useServerFieldErrors";
+import { FieldError } from "@/components/ui/field-error";
 
 /** 步骤元数据：编号 + 标题 i18n key + 描述 i18n key */
 const STEPS = [
@@ -73,6 +78,15 @@ const COMMON_TIMEZONES = [
 /** 默认语言选项（与后端 locale 字段对齐） */
 const LOCALE_OPTIONS = ["zh-CN", "en-GB", "ja-JP", "ko-KR", "zh-TW", "vi-VN"];
 
+/** 后端字段路径 → 向导步骤下标（0 = BG 口令，1 = 系统默认值，2 = 首位超管） */
+function stepOfFirstFieldError(err: unknown): number | null {
+  if (!(err instanceof ApiError) || err.code !== BizCode.ValidationFailed) return null;
+  const field = err.fieldErrors[0]?.field ?? "";
+  if (field.startsWith("default_")) return 1;
+  if (field.startsWith("admin.")) return 2;
+  return null;
+}
+
 export default function SetupWizardPage() {
   const { t } = useI18n();
   const lp = useLocalizedPath();
@@ -83,6 +97,9 @@ export default function SetupWizardPage() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // 行内错误：字段名对齐后端 SystemInitIn（嵌套超管字段为 admin.xxx）
+  const fieldErrors = useServerFieldErrors({ fallback: t("admin.setup.error") });
+  const fe = fieldErrors.errors;
 
   // ---- Step 1: BG 密码 ----
   const [bgPassword, setBgPassword] = useState("");
@@ -265,7 +282,10 @@ export default function SetupWizardPage() {
       clearLocalSession();
       setTimeout(() => router.replace(lp("/login")), 1800);
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("admin.setup.error"));
+      // 提交在最后一步，出错字段所在步骤已卸载：先同步切回该步骤，再按 DOM 对位行内展示
+      const target = stepOfFirstFieldError(e);
+      if (target !== null && target !== step) flushSync(() => setStep(target));
+      setError(fieldErrors.capture(e));
     } finally {
       setSubmitting(false);
     }
@@ -301,7 +321,7 @@ export default function SetupWizardPage() {
             </CardDescription>
           </CardHeader>
 
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-6" {...fieldErrors.rootProps}>
             {/* Stepper */}
             <Stepper current={step} />
 
@@ -420,10 +440,11 @@ export default function SetupWizardPage() {
 
             {step === 1 && (
               <div className="space-y-4">
-                <div className="space-y-2">
+                <div className="space-y-2" data-field="default_locale">
                   <Label htmlFor="defaultLocale">{t("admin.setup.defaultLocale")}</Label>
                   <select
                     id="defaultLocale"
+                    aria-invalid={!!fe["default_locale"]}
                     value={defaultLocale}
                     onChange={(e) => setDefaultLocale(e.target.value)}
                     className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
@@ -434,11 +455,13 @@ export default function SetupWizardPage() {
                       </option>
                     ))}
                   </select>
+                  <FieldError>{fe["default_locale"]}</FieldError>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2" data-field="default_timezone">
                   <Label htmlFor="defaultTimezone">{t("admin.setup.defaultTimezone")}</Label>
                   <select
                     id="defaultTimezone"
+                    aria-invalid={!!fe["default_timezone"]}
                     value={defaultTimezone}
                     onChange={(e) => setDefaultTimezone(e.target.value)}
                     className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
@@ -449,21 +472,25 @@ export default function SetupWizardPage() {
                       </option>
                     ))}
                   </select>
+                  <FieldError>{fe["default_timezone"]}</FieldError>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2" data-field="default_region">
                   <Label htmlFor="defaultRegion">{t("admin.setup.defaultRegion")}</Label>
                   <Input
                     id="defaultRegion"
+                    aria-invalid={!!fe["default_region"]}
                     placeholder="CN"
                     value={defaultRegion}
                     onChange={(e) => setDefaultRegion(e.target.value)}
                     className="font-mono"
                   />
+                  <FieldError>{fe["default_region"]}</FieldError>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2" data-field="default_currency">
                   <Label htmlFor="defaultCurrency">{t("admin.setup.defaultCurrency")}</Label>
                   <select
                     id="defaultCurrency"
+                    aria-invalid={!!fe["default_currency"]}
                     value={defaultCurrency}
                     onChange={(e) => setDefaultCurrency(e.target.value)}
                     className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
@@ -472,6 +499,7 @@ export default function SetupWizardPage() {
                       <option key={c} value={c}>{c}</option>
                     ))}
                   </select>
+                  <FieldError>{fe["default_currency"]}</FieldError>
                 </div>
               </div>
             )}
@@ -479,43 +507,51 @@ export default function SetupWizardPage() {
             {step === 2 && (
               <div className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
+                  <div className="space-y-2" data-field="admin.username">
                     <Label htmlFor="adminUsername">{t("admin.setup.adminUsername")}</Label>
                     <Input
                       id="adminUsername"
+                      aria-invalid={!!fe["admin.username"]}
                       value={adminUsername}
                       onChange={(e) => setAdminUsername(e.target.value)}
                       autoComplete="username"
                     />
+                    <FieldError>{fe["admin.username"]}</FieldError>
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-2" data-field="admin.display_name">
                     <Label htmlFor="adminDisplayName">{t("admin.setup.adminDisplayName")}</Label>
                     <Input
                       id="adminDisplayName"
+                      aria-invalid={!!fe["admin.display_name"]}
                       value={adminDisplayName}
                       onChange={(e) => setAdminDisplayName(e.target.value)}
                     />
+                    <FieldError>{fe["admin.display_name"]}</FieldError>
                   </div>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2" data-field="admin.email">
                   <Label htmlFor="adminEmail">{t("admin.setup.adminEmail")}</Label>
                   <Input
                     id="adminEmail"
+                    aria-invalid={!!fe["admin.email"]}
                     type="email"
                     value={adminEmail}
                     onChange={(e) => setAdminEmail(e.target.value)}
                     autoComplete="email"
                   />
+                  <FieldError>{fe["admin.email"]}</FieldError>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
+                  <div className="space-y-2" data-field="admin.password">
                     <Label htmlFor="adminPassword">{t("admin.setup.adminPassword")}</Label>
                     <PasswordInput
                       id="adminPassword"
+                      aria-invalid={!!fe["admin.password"]}
                       value={adminPassword}
                       onChange={(e) => setAdminPassword(e.target.value)}
                       autoComplete="new-password"
                     />
+                    <FieldError>{fe["admin.password"]}</FieldError>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="adminPasswordConfirm">

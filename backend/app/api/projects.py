@@ -41,13 +41,13 @@ async def _ensure_slug_unique(db, slug: str, exclude_id: int | None = None) -> N
         stmt = stmt.where(Project.id != exclude_id)
     exists = (await db.execute(stmt)).scalar_one_or_none()
     if exists:
-        raise BizException(BizCode.CONFLICT, data={"detail": "slug 已被其他项目使用"})
+        raise BizException(BizCode.CONFLICT, reason="slug 已被其他项目使用")
 
 
 async def _get_or_404(db, project_id: int) -> Project:
     p = await db.get(Project, project_id)
     if not p:
-        raise BizException(BizCode.NOT_FOUND, data={"detail": "项目不存在"})
+        raise BizException(BizCode.NOT_FOUND, reason="项目不存在")
     return p
 
 
@@ -92,7 +92,7 @@ async def get_public_project(
         select(Project).where(Project.slug == slug)
     )).scalar_one_or_none()
     if not p or p.status != ProjectStatus.PUBLISHED:
-        raise BizException(BizCode.NOT_FOUND, data={"detail": "项目不存在"})
+        raise BizException(BizCode.NOT_FOUND, reason="项目不存在")
     out_obj = ProjectOut.model_validate(p)
     if lang:
         await translate_obj_fields(db, [out_obj], ("title", "description"), lang)
@@ -115,7 +115,7 @@ async def admin_list_projects(
         try:
             stmt = stmt.where(Project.status == ProjectStatus(status))
         except ValueError:
-            raise BizException(BizCode.VALIDATION_FAILED, data={"detail": "未知状态筛选值"})
+            raise BizException(BizCode.VALIDATION_FAILED, reason="未知状态筛选值")
     stmt = apply_search(stmt, [Project.title, Project.description], q)
     stmt = stmt.order_by(Project.updated_at.desc())
     data = await paginate(db, stmt, page, page_size, out_model=ProjectBriefOut)

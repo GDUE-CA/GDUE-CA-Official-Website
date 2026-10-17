@@ -7,6 +7,8 @@
  * / Redirect URI。对应后端 GET/PUT /api/admin/oauth/channels。
  */
 import { useEffect, useState } from "react";
+import { useServerFieldErrors } from "@/lib/hooks/useServerFieldErrors";
+import { FieldError } from "@/components/ui/field-error";
 import Loader2 from "@/assets/icons/status/loader-2.svg";
 import RefreshCw from "@/assets/icons/action/refresh-cw.svg";
 import { useI18n } from "@/i18n/provider";
@@ -41,6 +43,9 @@ export function OAuthChannelsManager() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<OAuthProvider | null>(null);
   const [message, setMessage] = useState<{ p: string; ok: boolean; text: string } | null>(null);
+  // 多个渠道卡片字段同名：data-field 加渠道前缀（github.client_id），capture 时按当前渠道映射
+  const fieldErrors = useServerFieldErrors({ fallback: t("common.error") });
+  const fe = fieldErrors.errors;
 
   async function load() {
     setLoading(true);
@@ -81,6 +86,7 @@ export function OAuthChannelsManager() {
     if (!draft) return;
     setSaving(p);
     setMessage(null);
+    fieldErrors.clear();
     try {
       await adminUpdateOAuthChannel(p, {
         enabled: draft.enabled,
@@ -92,11 +98,14 @@ export function OAuthChannelsManager() {
       setMessage({ p, ok: true, text: t("admin.oauth.saved") });
       await load();
     } catch (err) {
-      setMessage({
-        p,
-        ok: false,
-        text: err instanceof Error ? err.message : t("common.error"),
+      const banner = fieldErrors.capture(err, {
+        fieldMap: {
+          client_id: `${p}.client_id`,
+          client_secret: `${p}.client_secret`,
+          redirect_uri: `${p}.redirect_uri`,
+        },
       });
+      setMessage(banner ? { p, ok: false, text: banner } : null);
     } finally {
       setSaving(null);
     }
@@ -111,7 +120,7 @@ export function OAuthChannelsManager() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" {...fieldErrors.rootProps}>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold">{t("admin.oauth.title")}</h1>
@@ -152,20 +161,23 @@ export function OAuthChannelsManager() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="space-y-1.5">
+                <div className="space-y-1.5" data-field={`${p}.client_id`}>
                   <Label htmlFor={`${p}-client-id`}>Client ID</Label>
                   <Input
                     id={`${p}-client-id`}
+                    aria-invalid={!!fe[`${p}.client_id`]}
                     value={draft.client_id}
                     onChange={(e) => patchDraft(p, { client_id: e.target.value })}
                     placeholder="Client ID"
                     autoComplete="off"
                   />
+                  <FieldError>{fe[`${p}.client_id`]}</FieldError>
                 </div>
-                <div className="space-y-1.5">
+                <div className="space-y-1.5" data-field={`${p}.client_secret`}>
                   <Label htmlFor={`${p}-secret`}>{t("admin.oauth.clientSecret")}</Label>
                   <PasswordInput
                     id={`${p}-secret`}
+                    aria-invalid={!!fe[`${p}.client_secret`]}
                     value={draft.client_secret}
                     onChange={(e) => patchDraft(p, { client_secret: e.target.value })}
                     placeholder={
@@ -173,17 +185,20 @@ export function OAuthChannelsManager() {
                     }
                     autoComplete="new-password"
                   />
+                  <FieldError>{fe[`${p}.client_secret`]}</FieldError>
                 </div>
-                <div className="space-y-1.5">
+                <div className="space-y-1.5" data-field={`${p}.redirect_uri`}>
                   <Label htmlFor={`${p}-redirect`}>{t("admin.oauth.redirectUri")}</Label>
                   <Input
                     id={`${p}-redirect`}
+                    aria-invalid={!!fe[`${p}.redirect_uri`]}
                     value={draft.redirect_uri}
                     onChange={(e) => patchDraft(p, { redirect_uri: e.target.value })}
                     placeholder={`https://<domain>/api/oauth/${p}/callback`}
                     autoComplete="off"
                   />
                   <p className="text-xs text-muted-foreground">{t("admin.oauth.redirectHint")}</p>
+                  <FieldError>{fe[`${p}.redirect_uri`]}</FieldError>
                 </div>
 
                 {msg && (

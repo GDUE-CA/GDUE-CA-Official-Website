@@ -45,7 +45,7 @@ _THEME_NAME_RE = re.compile(r"^[a-z][a-z0-9-]{0,31}$")
 
 async def _current_user_id(user: dict) -> int:
     if user.get("break_glass"):
-        raise BizException(BizCode.FORBIDDEN, data={"detail": "应急账号不适用个人自服务功能"})
+        raise BizException(BizCode.FORBIDDEN, reason="应急账号不适用个人自服务功能")
     return int(user["user_id"])
 
 
@@ -84,7 +84,7 @@ async def update_display_preference(
     if body.theme_name is not None:
         name = body.theme_name.strip()
         if name and not _THEME_NAME_RE.match(name):
-            raise BizException(BizCode.BAD_REQUEST, data={"detail": "主题标识不合法"})
+            raise BizException(BizCode.BAD_REQUEST, reason="主题标识不合法")
         row.theme_name = name or None
     if body.color_scheme is not None:
         row.color_scheme = body.color_scheme
@@ -232,7 +232,7 @@ async def create_block(
 ):
     uid = await _current_user_id(user)
     if body.user_id is None and not body.username:
-        raise BizException(BizCode.BAD_REQUEST, data={"detail": "必须指定拉黑用户"})
+        raise BizException(BizCode.BAD_REQUEST, reason="必须指定拉黑用户")
 
     if body.user_id is not None:
         target = await db.get(User, body.user_id)
@@ -242,9 +242,9 @@ async def create_block(
         ).scalar_one_or_none()
 
     if target is None or target.is_deleted:
-        raise BizException(BizCode.NOT_FOUND, data={"detail": "用户不存在"})
+        raise BizException(BizCode.NOT_FOUND, reason="用户不存在")
     if target.id == uid:
-        raise BizException(BizCode.BAD_REQUEST, data={"detail": "不能拉黑自己"})
+        raise BizException(BizCode.BAD_REQUEST, reason="不能拉黑自己")
 
     exists = (
         await db.execute(
@@ -274,7 +274,7 @@ async def delete_block(
         )
     ).scalar_one_or_none()
     if row is None:
-        raise BizException(BizCode.NOT_FOUND, data={"detail": "拉黑记录不存在"})
+        raise BizException(BizCode.NOT_FOUND, reason="拉黑记录不存在")
     await db.delete(row)
     await db.commit()
     return ok({"ok": True})
@@ -315,7 +315,7 @@ async def revoke_oauth_grant(
     uid = await _current_user_id(user)
     row = await db.get(OAuthAccount, grant_id)
     if row is None or row.user_id != uid:
-        raise BizException(BizCode.NOT_FOUND, data={"detail": "授权记录不存在"})
+        raise BizException(BizCode.NOT_FOUND, reason="授权记录不存在")
     provider = row.provider.value
     await db.delete(row)
     log_action(

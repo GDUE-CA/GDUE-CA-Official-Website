@@ -36,6 +36,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { submitClubApply } from "@/lib/api/clubApply";
+import { ApiError } from "@/lib/api/client";
+import { useServerFieldErrors } from "@/lib/hooks/useServerFieldErrors";
+import { FieldError } from "@/components/ui/field-error";
+import { BizCode } from "@/types/response";
 import { listSysColleges, listSysMajors } from "@/lib/api/sysData";
 import type { SysCollege, SysMajor } from "@/types/api";
 import { COUNTRY_OPTIONS, PHONE_RULES } from "./phoneRules";
@@ -52,11 +56,20 @@ const DEPARTMENTS = [
 const STUDENT_ID_RE = /^\d{11}$/;
 const CLASS_SUFFIX_RE = /^[A-Z]$/;
 
+/** 后端 ClubApplyIn 字段名（data-field 对位用；前端预校验与后端错误共用） */
+type ClubField =
+  | "real_name" | "student_id" | "college_id" | "major_id" | "enroll_year"
+  | "class_suffix" | "phone" | "email" | "departments" | "intro";
+
 export function ClubJoinForm() {
   const { t } = useI18n();
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const fieldErrors = useServerFieldErrors<ClubField>({
+    fallback: t("join.form.errors.submitError"),
+  });
+  const fe = fieldErrors.errors;
 
   // 通用
   const [realName, setRealName] = useState("");
@@ -74,16 +87,15 @@ export function ClubJoinForm() {
   const [majorId, setMajorId] = useState("");
   const [enrollYear, setEnrollYear] = useState("");
   const [classSuffix, setClassSuffix] = useState("");
-  const [collegesLoaded, setCollegesLoaded] = useState(false);
 
-  // 学院列表（挂载时拉取）
+  // 学院列表（挂载时拉取一次；卸载后丢弃过期结果）
   useEffect(() => {
-    if (collegesLoaded) return;
-    setCollegesLoaded(true);
+    let alive = true;
     listSysColleges()
-      .then(setColleges)
-      .catch(() => setColleges([]));
-  }, [collegesLoaded]);
+      .then((list) => { if (alive) setColleges(list); })
+      .catch(() => { if (alive) setColleges([]); });
+    return () => { alive = false; };
+  }, []);
 
   // 专业联动
   function handleCollegeChange(v: string) {
@@ -109,45 +121,39 @@ export function ClubJoinForm() {
     setDepartments((prev) =>
       prev.includes(value) ? prev.filter((d) => d !== value) : [...prev, value]
     );
+    fieldErrors.clear("departments");
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitError(null);
+    fieldErrors.clear();
 
-    // 前端预校验（仅体验提示；后端为最终校验）
-    if (!realName.trim()) {
-      setSubmitError(t("join.form.errors.nameRequired"));
-      return;
-    }
-    const phone = `${phoneCc} ${phoneNumber.replace(/\s/g, "")}`.trim();
+    // 前端预校验（仅体验提示；后端为最终校验）：一次收集全部错误，行内展示
+    const digits = phoneNumber.replace(/\s/g, "");
+    const phone = `${phoneCc} ${digits}`.trim();
     const rule = PHONE_RULES[phoneCc];
-    if (!phoneNumber.trim() || (rule ? !rule.test(phoneNumber.replace(/\s/g, "")) : !/^\d{6,15}$/.test(phoneNumber.replace(/\s/g, "")))) {
-      setSubmitError(t("join.form.errors.phoneInvalid"));
-      return;
+    const suffix = classSuffix.trim().toUpperCase();
+    const localErrors: Partial<Record<ClubField, string>> = {};
+    if (!realName.trim()) localErrors.real_name = t("join.form.errors.nameRequired");
+    if (!STUDENT_ID_RE.test(studentId.trim())) {
+      localErrors.student_id = t("setting.school.studentIdInvalid");
+    }
+    if (!collegeId) localErrors.college_id = t("join.form.errors.collegeRequired");
+    if (!majorId) localErrors.major_id = t("join.form.errors.majorRequired");
+    if (!/^\d{4}$/.test(enrollYear.trim())) {
+      localErrors.enroll_year = t("join.form.errors.enrollYearInvalid");
+    }
+    if (suffix && !CLASS_SUFFIX_RE.test(suffix)) {
+      localErrors.class_suffix = t("join.form.errors.classSuffixInvalid");
+    }
+    if (!digits || (rule ? !rule.test(digits) : !/^\d{6,15}$/.test(digits))) {
+      localErrors.phone = t("join.form.errors.phoneInvalid");
     }
     if (departments.length === 0) {
-      setSubmitError(t("join.form.errors.positionRequired"));
-      return;
+      localErrors.departments = t("join.form.errors.positionRequired");
     }
-    // 本校在读学生必填校验
-    if (!STUDENT_ID_RE.test(studentId.trim())) {
-      setSubmitError(t("setting.school.studentIdInvalid"));
-      return;
-    }
-    if (!collegeId || !majorId) {
-      setSubmitError(t("join.form.errors.collegeRequired"));
-      return;
-    }
-    if (!/^\d{4}$/.test(enrollYear.trim())) {
-      setSubmitError(t("join.form.errors.enrollYearInvalid"));
-      return;
-    }
-    const suffix = classSuffix.trim().toUpperCase();
-    if (suffix && !CLASS_SUFFIX_RE.test(suffix)) {
-      setSubmitError(t("join.form.errors.classSuffixInvalid"));
-      return;
-    }
+    if (fieldErrors.set(localErrors)) return;
 
     setSubmitting(true);
     try {
@@ -166,12 +172,12 @@ export function ClubJoinForm() {
       });
       setSubmitted(true);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : t("join.form.errors.submitError");
-      setSubmitError(
-        msg === "Not authenticated" || msg.includes("401")
-          ? t("join.form.loginRequired")
-          : msg
-      );
+      if (err instanceof ApiError && err.code === BizCode.Unauthorized) {
+        setSubmitError(t("join.form.loginRequired"));
+      } else {
+        // 字段级错误标到对应输入框，其余进横幅
+        setSubmitError(fieldErrors.capture(err));
+      }
     } finally {
       setSubmitting(false);
     }
@@ -180,6 +186,7 @@ export function ClubJoinForm() {
   function handleReset() {
     setSubmitted(false);
     setSubmitError(null);
+    fieldErrors.clear();
     setRealName("");
     setPhoneNumber("");
     setEmail("");
@@ -239,22 +246,25 @@ export function ClubJoinForm() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onSubmit={handleSubmit}
+              {...fieldErrors.rootProps}
               className="space-y-5"
               noValidate
             >
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <div className="space-y-2">
+                <div className="space-y-2" data-field="real_name">
                   <Label htmlFor="cj-name">{t("join.form.name")}</Label>
                   <Input
                     id="cj-name"
                     value={realName}
                     onChange={(e) => setRealName(e.target.value)}
                     maxLength={64}
+                    aria-invalid={!!fe.real_name}
                     placeholder={t("join.form.namePlaceholder")}
                   />
+                  <FieldError>{fe.real_name}</FieldError>
                 </div>
                 {/* 学号（11 位） */}
-                <div className="space-y-2">
+                <div className="space-y-2" data-field="student_id">
                   <Label htmlFor="cj-studentId">{t("join.form.studentId")}</Label>
                   <Input
                     id="cj-studentId"
@@ -262,18 +272,23 @@ export function ClubJoinForm() {
                     onChange={(e) => setStudentId(e.target.value.replace(/\D/g, "").slice(0, 11))}
                     inputMode="numeric"
                     maxLength={11}
+                    aria-invalid={!!fe.student_id}
                     placeholder={t("join.form.studentIdPlaceholder")}
                   />
+                  <FieldError>{fe.student_id}</FieldError>
                 </div>
               </div>
 
               {/* 学院/专业/入学年份/班号后缀 */}
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  <div className="space-y-2">
-                    <Label>{t("join.form.college")}</Label>
-                    <Select value={collegeId} onValueChange={handleCollegeChange}>
-                      <SelectTrigger aria-label={t("join.form.college")}>
+                  <div className="space-y-2" data-field="college_id">
+                    <Label htmlFor="cj-college">{t("join.form.college")}</Label>
+                    <Select
+                      value={collegeId}
+                      onValueChange={(v) => { handleCollegeChange(v); fieldErrors.clear("college_id"); }}
+                    >
+                      <SelectTrigger id="cj-college" aria-label={t("join.form.college")} aria-invalid={!!fe.college_id}>
                         <SelectValue placeholder={t("join.form.collegePlaceholder")} />
                       </SelectTrigger>
                       <SelectContent>
@@ -284,15 +299,16 @@ export function ClubJoinForm() {
                         ))}
                       </SelectContent>
                     </Select>
+                    <FieldError>{fe.college_id}</FieldError>
                   </div>
-                  <div className="space-y-2">
-                    <Label>{t("join.form.major")}</Label>
+                  <div className="space-y-2" data-field="major_id">
+                    <Label htmlFor="cj-major">{t("join.form.major")}</Label>
                     <Select
                       value={majorId}
-                      onValueChange={setMajorId}
+                      onValueChange={(v) => { setMajorId(v); fieldErrors.clear("major_id"); }}
                       disabled={!collegeId}
                     >
-                      <SelectTrigger aria-label={t("join.form.major")}>
+                      <SelectTrigger id="cj-major" aria-label={t("join.form.major")} aria-invalid={!!fe.major_id}>
                         <SelectValue
                           placeholder={
                             collegeId ? t("join.form.majorPlaceholder") : t("setting.school.majorSelectCollegeFirst")
@@ -307,10 +323,11 @@ export function ClubJoinForm() {
                         ))}
                       </SelectContent>
                     </Select>
+                    <FieldError>{fe.major_id}</FieldError>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  <div className="space-y-2">
+                  <div className="space-y-2" data-field="enroll_year">
                     <Label htmlFor="cj-year">{t("join.form.enrollYear")}</Label>
                     <Input
                       id="cj-year"
@@ -318,18 +335,22 @@ export function ClubJoinForm() {
                       onChange={(e) => setEnrollYear(e.target.value.replace(/\D/g, "").slice(0, 4))}
                       inputMode="numeric"
                       maxLength={4}
+                      aria-invalid={!!fe.enroll_year}
                       placeholder="2026"
                     />
+                    <FieldError>{fe.enroll_year}</FieldError>
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-2" data-field="class_suffix">
                     <Label htmlFor="cj-suffix">{t("join.form.classSuffix")}</Label>
                     <Input
                       id="cj-suffix"
                       value={classSuffix}
                       onChange={(e) => setClassSuffix(e.target.value.toUpperCase().slice(0, 1))}
                       maxLength={1}
+                      aria-invalid={!!fe.class_suffix}
                       placeholder="A"
                     />
+                    <FieldError>{fe.class_suffix}</FieldError>
                   </div>
                 </div>
                 {/* 班级只读预览（后端拼接生成，用户不可直接编辑） */}
@@ -341,7 +362,7 @@ export function ClubJoinForm() {
                 )}
               </>
 
-              <div className="space-y-2">
+              <div className="space-y-2" data-field="phone">
                 <Label htmlFor="cj-phone">{t("join.form.phoneNumber")}</Label>
                 <div className="grid grid-cols-[140px_1fr] gap-2">
                   <Select value={phoneCc} onValueChange={setPhoneCc}>
@@ -359,24 +380,28 @@ export function ClubJoinForm() {
                     inputMode="tel"
                     value={phoneNumber}
                     onChange={(e) => setPhoneNumber(e.target.value)}
+                    aria-invalid={!!fe.phone}
                     placeholder={phonePlaceholder}
                   />
                 </div>
+                <FieldError>{fe.phone}</FieldError>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-2" data-field="email">
                 <Label htmlFor="cj-email">{t("join.form.email")}</Label>
                 <Input
                   id="cj-email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  aria-invalid={!!fe.email}
                   placeholder={t("join.form.emailPlaceholder")}
                 />
+                <FieldError>{fe.email}</FieldError>
               </div>
 
               {/* 意向部门（多选） */}
-              <div className="space-y-2">
+              <div className="space-y-2" data-field="departments">
                 <Label>{t("register.selectPosition")}</Label>
                 <div className="flex flex-wrap gap-2">
                   {DEPARTMENTS.map((d) => (
@@ -396,9 +421,10 @@ export function ClubJoinForm() {
                     </button>
                   ))}
                 </div>
+                <FieldError>{fe.departments}</FieldError>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-2" data-field="intro">
                 <Label htmlFor="cj-intro">{t("join.form.introduction")}</Label>
                 <Textarea
                   id="cj-intro"
@@ -406,8 +432,10 @@ export function ClubJoinForm() {
                   value={intro}
                   onChange={(e) => setIntro(e.target.value)}
                   maxLength={2000}
+                  aria-invalid={!!fe.intro}
                   placeholder={t("join.form.introductionPlaceholder")}
                 />
+                <FieldError>{fe.intro}</FieldError>
               </div>
 
               {submitError && (

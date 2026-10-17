@@ -58,6 +58,8 @@ import type {
   SysMajorAdmin,
 } from "@/types/api";
 import { cn } from "@/lib/utils";
+import { useServerFieldErrors } from "@/lib/hooks/useServerFieldErrors";
+import { FieldError } from "@/components/ui/field-error";
 
 type SysTab = "college" | "grade" | "major" | "class";
 const TABS: SysTab[] = ["college", "grade", "major", "class"];
@@ -71,11 +73,18 @@ interface RowView {
   sort_order: number;
 }
 
+/** 后端请求体字段名（学院/年级/专业/班级四类对话框共用一个 hook，data-field 对位） */
+type SysDataField =
+  | "college_name" | "grade_year" | "major_name" | "display_name"
+  | "class_suffix" | "college_id" | "grade_id" | "major_id";
+
 export function SysDataManager() {
   const { t } = useI18n();
   const [tab, setTab] = useState<SysTab>("college");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const fieldErrors = useServerFieldErrors<SysDataField>({ fallback: t("common.error") });
+  const fe = fieldErrors.errors;
   const [busyId, setBusyId] = useState<number | null>(null);
 
   const [colleges, setColleges] = useState<SysCollegeAdmin[]>([]);
@@ -188,6 +197,8 @@ export function SysDataManager() {
     setFormGradeId("");
     setFormMajorId("");
     setFormSuffix("");
+    fieldErrors.clear();
+    setError(null);
     setDialogOpen(true);
   }
 
@@ -205,6 +216,8 @@ export function SysDataManager() {
       setFormMajorId(row?.major_id != null ? String(row.major_id) : "");
       setFormSuffix(row?.class_suffix ?? "");
     }
+    fieldErrors.clear();
+    setError(null);
     setDialogOpen(true);
   }
 
@@ -245,7 +258,7 @@ export function SysDataManager() {
       setDialogOpen(false);
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("common.error"));
+      setError(fieldErrors.capture(err));
     } finally {
       setSaving(false);
     }
@@ -471,7 +484,7 @@ export function SysDataManager() {
 
       {/* 新增 / 编辑弹窗 */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
+        <DialogContent {...fieldErrors.rootProps}>
           <DialogHeader>
             <DialogTitle>
               {editId == null ? t("admin.sysdata.create") : t("admin.sysdata.edit")}
@@ -482,27 +495,31 @@ export function SysDataManager() {
           </DialogHeader>
           <div className="space-y-4">
             {tab === "college" && (
-              <div className="space-y-2">
+              <div className="space-y-2" data-field="college_name">
                 <Label htmlFor="sd-name">{t("admin.sysdata.collegeName")}</Label>
                 <Input
                   id="sd-name"
+                  aria-invalid={!!fe.college_name}
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
                   maxLength={128}
                 />
+                <FieldError>{fe.college_name}</FieldError>
               </div>
             )}
             {tab === "grade" && (
-              <div className="space-y-2">
+              <div className="space-y-2" data-field="grade_year">
                 <Label htmlFor="sd-year">{t("admin.sysdata.gradeYear")}</Label>
                 <Input
                   id="sd-year"
+                  aria-invalid={!!fe.grade_year}
                   value={formYear}
                   onChange={(e) => setFormYear(e.target.value.replace(/\D/g, "").slice(0, 4))}
                   inputMode="numeric"
                   maxLength={4}
                   placeholder="2026"
                 />
+                <FieldError>{fe.grade_year}</FieldError>
               </div>
             )}
             {tab === "major" && (
@@ -522,14 +539,16 @@ export function SysDataManager() {
                     ))}
                   </select>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2" data-field="major_name">
                   <Label htmlFor="sd-major-name">{t("admin.sysdata.majorName")}</Label>
                   <Input
                     id="sd-major-name"
+                    aria-invalid={!!fe.major_name}
                     value={formName}
                     onChange={(e) => setFormName(e.target.value)}
                     maxLength={128}
                   />
+                  <FieldError>{fe.major_name}</FieldError>
                 </div>
               </>
             )}
@@ -586,24 +605,28 @@ export function SysDataManager() {
                   </div>
                 </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div className="space-y-2">
+                  <div className="space-y-2" data-field="display_name">
                     <Label htmlFor="sd-class-name">{t("admin.sysdata.classDisplayName")}</Label>
                     <Input
                       id="sd-class-name"
+                      aria-invalid={!!fe.display_name}
                       value={formName}
                       onChange={(e) => setFormName(e.target.value)}
                       maxLength={128}
                     />
+                    <FieldError>{fe.display_name}</FieldError>
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-2" data-field="class_suffix">
                     <Label htmlFor="sd-suffix">{t("admin.sysdata.classSuffix")}</Label>
                     <Input
                       id="sd-suffix"
+                      aria-invalid={!!fe.class_suffix}
                       value={formSuffix}
                       onChange={(e) => setFormSuffix(e.target.value.toUpperCase().slice(0, 8))}
                       maxLength={8}
                       placeholder="A"
                     />
+                    <FieldError>{fe.class_suffix}</FieldError>
                   </div>
                 </div>
               </>

@@ -37,8 +37,14 @@ import {
 import { getSession, isAdminRole } from "@/lib/auth";
 import { COUNTRY_OPTIONS, PHONE_RULES } from "@/components/join/phoneRules";
 import type { RealnameRequest, RealnameStatusOut } from "@/types/api";
+import { useServerFieldErrors } from "@/lib/hooks/useServerFieldErrors";
+import { FieldError } from "@/components/ui/field-error";
 
 /** 状态徽章通用样式 */
+/** 后端请求体字段名（data-field 对位，与 1001 data.errors[].field 一致） */
+type RealnameField =
+  | "student_id" | "real_name" | "phone_number" | "evidence_url";
+
 function StatusBadge({ status }: { status: RealnameRequest["status"] }) {
   const { t } = useI18n();
   const map = {
@@ -88,6 +94,8 @@ export default function RealnamePage() {
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const fieldErrors = useServerFieldErrors<RealnameField>({ fallback: t("realname.submitError") });
+  const fe = fieldErrors.errors;
   const [success, setSuccess] = useState(false);
 
   /** 未登录回登录页；登录后加载实名状态 */
@@ -143,7 +151,7 @@ export default function RealnamePage() {
       const refreshed = await getRealnameStatus();
       setStatus(refreshed);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("realname.submitError"));
+      setError(fieldErrors.capture(err));
     } finally {
       setSubmitting(false);
     }
@@ -223,33 +231,37 @@ export default function RealnamePage() {
 
             {/* 提交表单（已实名 / 审核中隐藏） */}
             {canSubmit && !success && (
-              <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+              <form {...fieldErrors.rootProps} onSubmit={handleSubmit} className="space-y-4" noValidate>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
+                  <div className="space-y-2" data-field="student_id">
                     <Label htmlFor="studentId">{t("realname.form.studentId")}</Label>
                     <Input
                       id="studentId"
+                      aria-invalid={!!fe.student_id}
                       placeholder={t("realname.form.studentIdPlaceholder")}
                       value={studentId}
                       onChange={(e) => setStudentId(e.target.value)}
                       required
                       maxLength={32}
                     />
+                    <FieldError>{fe.student_id}</FieldError>
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-2" data-field="real_name">
                     <Label htmlFor="realName">{t("realname.form.realName")}</Label>
                     <Input
                       id="realName"
+                      aria-invalid={!!fe.real_name}
                       placeholder={t("realname.form.realNamePlaceholder")}
                       value={realName}
                       onChange={(e) => setRealName(e.target.value)}
                       required
                       maxLength={64}
                     />
+                    <FieldError>{fe.real_name}</FieldError>
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2" data-field="phone_number">
                   <Label htmlFor="phoneNumber">{t("realname.form.phoneNumber")}</Label>
                   {/* 区号选择使用系统原生 select，全平台适配 */}
                   <div className="grid grid-cols-[140px_1fr] gap-2">
@@ -268,6 +280,7 @@ export default function RealnamePage() {
                     </select>
                     <Input
                       id="phoneNumber"
+                      aria-invalid={!!fe.phone_number}
                       inputMode="tel"
                       placeholder={phoneCc === "+86" ? "13800138000" : t("realname.form.phonePlaceholder")}
                       value={phoneNumber}
@@ -276,14 +289,16 @@ export default function RealnamePage() {
                       maxLength={32}
                     />
                   </div>
+                  <FieldError>{fe.phone_number}</FieldError>
                 </div>
 
                 {/* 凭证图片（可选）：先上传换 URL，预览本地文件 */}
-                <div className="space-y-2">
+                <div className="space-y-2" data-field="evidence_url">
                   <Label htmlFor="evidence">{t("realname.form.evidence")}</Label>
                   <input
                     ref={fileInputRef}
                     id="evidence"
+                    aria-invalid={!!fe.evidence_url}
                     type="file"
                     accept="image/jpeg,image/png,image/webp"
                     className="hidden"
@@ -318,6 +333,7 @@ export default function RealnamePage() {
                       className="mt-1 max-h-40 rounded-md border object-contain"
                     />
                   )}
+                  <FieldError>{fe.evidence_url}</FieldError>
                 </div>
 
                 {error && (

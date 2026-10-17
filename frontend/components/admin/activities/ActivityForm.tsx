@@ -18,6 +18,14 @@ import {
   updateActivity,
 } from "@/lib/api/activities";
 import type { Activity, ActivityStatus } from "@/types/api";
+import { useServerFieldErrors } from "@/lib/hooks/useServerFieldErrors";
+import { FieldError } from "@/components/ui/field-error";
+
+/** 后端 ActivityIn 字段名（前端预校验与后端 1001 错误共用，data-field 对位） */
+type ActivityField =
+  | "title" | "slug" | "description" | "content" | "category"
+  | "register_start" | "register_end" | "start_at" | "end_at"
+  | "max_participants" | "participants" | "status" | "cover_url";
 
 const STATUSES: ActivityStatus[] = [
   "draft",
@@ -65,27 +73,28 @@ export function ActivityForm({
     initial?.status ?? "draft"
   );
   const [coverUrl, setCoverUrl] = useState(initial?.cover_url ?? "");
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const fieldErrors = useServerFieldErrors<ActivityField>();
+  const fe = fieldErrors.errors;
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   function validate(): boolean {
-    const next: Record<string, string> = {};
+    const next: Partial<Record<ActivityField, string>> = {};
     if (!title.trim()) next.title = t("admin.activities.fieldRequired");
     if (!content.trim()) next.content = t("admin.activities.fieldRequired");
     if (!category.trim()) next.category = t("admin.activities.fieldRequired");
-    if (!registerStart) next.registerStart = t("admin.activities.fieldRequired");
-    if (!registerEnd) next.registerEnd = t("admin.activities.fieldRequired");
+    if (!registerStart) next.register_start = t("admin.activities.fieldRequired");
+    if (!registerEnd) next.register_end = t("admin.activities.fieldRequired");
     // Phase 3：活动开始/结束时间双必填
-    if (!startAt) next.startAt = t("admin.activities.fieldRequired");
-    if (!endAt) next.endAt = t("admin.activities.fieldRequired");
+    if (!startAt) next.start_at = t("admin.activities.fieldRequired");
+    if (!endAt) next.end_at = t("admin.activities.fieldRequired");
     const cap = Number(maxParticipants);
     if (
       maxParticipants === "" ||
       !Number.isInteger(cap) ||
       cap < 0
     ) {
-      next.maxParticipants = t("admin.activities.capacityInvalid");
+      next.max_participants = t("admin.activities.capacityInvalid");
     }
     if (participants !== "" && (!Number.isInteger(Number(participants)) || Number(participants) < 0)) {
       next.participants = t("admin.activities.capacityInvalid");
@@ -93,16 +102,15 @@ export function ActivityForm({
     if (registerStart && registerEnd) {
       const s = new Date(registerStart).getTime();
       const e = new Date(registerEnd).getTime();
-      if (e <= s) next.registerEnd = t("admin.activities.dateOrder");
+      if (e <= s) next.register_end = t("admin.activities.dateOrder");
     }
     // Phase 3：活动时间顺序校验
     if (startAt && endAt) {
       const s = new Date(startAt).getTime();
       const e = new Date(endAt).getTime();
-      if (e <= s) next.endAt = t("admin.activities.dateOrder");
+      if (e <= s) next.end_at = t("admin.activities.dateOrder");
     }
-    setFieldErrors(next);
-    return Object.keys(next).length === 0;
+    return !fieldErrors.set(next);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -134,76 +142,80 @@ export function ActivityForm({
       }
       onSaved();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Save failed");
+      setError(fieldErrors.capture(err));
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
+    <form onSubmit={handleSubmit} className="space-y-4" {...fieldErrors.rootProps}>
+      <div className="space-y-2" data-field="title">
         <Label htmlFor="title">{t("admin.activities.name")}</Label>
-        <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} />
-        {fieldErrors.title && <p className="text-xs text-destructive">{fieldErrors.title}</p>}
+        <Input id="title" aria-invalid={!!fe.title} value={title} onChange={(e) => setTitle(e.target.value)} />
+        <FieldError>{fe.title}</FieldError>
       </div>
-      <div className="space-y-2">
+      <div className="space-y-2" data-field="content">
         <Label htmlFor="content">{t("admin.activities.description")}</Label>
-        <Textarea id="content" rows={3} value={content} onChange={(e) => setContent(e.target.value)} />
-        {fieldErrors.content && <p className="text-xs text-destructive">{fieldErrors.content}</p>}
+        <Textarea id="content" aria-invalid={!!fe.content} rows={3} value={content} onChange={(e) => setContent(e.target.value)} />
+        <FieldError>{fe.content}</FieldError>
       </div>
-      <div className="space-y-2">
+      <div className="space-y-2" data-field="description">
         <Label htmlFor="shortDescription">{t("admin.activities.shortDescription")}</Label>
         <Textarea
           id="shortDescription"
+          aria-invalid={!!fe.description}
           rows={2}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder={t("admin.activities.shortDescriptionPlaceholder")}
         />
+        <FieldError>{fe.description}</FieldError>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-2">
+        <div className="space-y-2" data-field="category">
           <Label htmlFor="category">{t("admin.activities.category")}</Label>
           <Input
             id="category"
+            aria-invalid={!!fe.category}
             value={category}
             onChange={(e) => setCategory(e.target.value)}
             placeholder={t("admin.activities.categoryPlaceholder")}
           />
-          {fieldErrors.category && <p className="text-xs text-destructive">{fieldErrors.category}</p>}
+          <FieldError>{fe.category}</FieldError>
         </div>
-        <div className="space-y-2">
+        <div className="space-y-2" data-field="max_participants">
           <Label htmlFor="maxParticipants">{t("admin.activities.capacity")}</Label>
           <Input
             id="maxParticipants"
+            aria-invalid={!!fe.max_participants}
             type="number"
             min={0}
             step={1}
             value={maxParticipants}
             onChange={(e) => setMaxParticipants(e.target.value)}
           />
-          {fieldErrors.maxParticipants && (
-            <p className="text-xs text-destructive">{fieldErrors.maxParticipants}</p>
-          )}
+          <FieldError>{fe.max_participants}</FieldError>
         </div>
       </div>
       {/* 前台展示标识 + 实际参与人数（历史活动统计） */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-2">
+        <div className="space-y-2" data-field="slug">
           <Label htmlFor="slug">{t("admin.activities.slug")}</Label>
           <Input
             id="slug"
+            aria-invalid={!!fe.slug}
             value={slug}
             onChange={(e) => setSlug(e.target.value)}
             placeholder={t("admin.activities.slugPlaceholder")}
           />
-          {fieldErrors.slug && <p className="text-xs text-destructive">{fieldErrors.slug}</p>}
+          <FieldError>{fe.slug}</FieldError>
         </div>
-        <div className="space-y-2">
+        <div className="space-y-2" data-field="participants">
           <Label htmlFor="participants">{t("admin.activities.participants")}</Label>
           <Input
             id="participants"
+            aria-invalid={!!fe.participants}
             type="number"
             min={0}
             step={1}
@@ -211,69 +223,64 @@ export function ActivityForm({
             onChange={(e) => setParticipants(e.target.value)}
             placeholder={t("admin.activities.participantsPlaceholder")}
           />
-          {fieldErrors.participants && (
-            <p className="text-xs text-destructive">{fieldErrors.participants}</p>
-          )}
+          <FieldError>{fe.participants}</FieldError>
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-2">
+        <div className="space-y-2" data-field="register_start">
           <Label htmlFor="registerStart">{t("admin.activities.registerStart")}</Label>
           <Input
             id="registerStart"
+            aria-invalid={!!fe.register_start}
             type="datetime-local"
             value={registerStart}
             onChange={(e) => setRegisterStart(e.target.value)}
           />
-          {fieldErrors.registerStart && (
-            <p className="text-xs text-destructive">{fieldErrors.registerStart}</p>
-          )}
+          <FieldError>{fe.register_start}</FieldError>
         </div>
-        <div className="space-y-2">
+        <div className="space-y-2" data-field="register_end">
           <Label htmlFor="registerEnd">{t("admin.activities.registerEnd")}</Label>
           <Input
             id="registerEnd"
+            aria-invalid={!!fe.register_end}
             type="datetime-local"
             value={registerEnd}
             onChange={(e) => setRegisterEnd(e.target.value)}
           />
-          {fieldErrors.registerEnd && (
-            <p className="text-xs text-destructive">{fieldErrors.registerEnd}</p>
-          )}
+          <FieldError>{fe.register_end}</FieldError>
         </div>
       </div>
       {/* Phase 3：活动开始/结束时间（发布活动时双必填） */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-2">
+        <div className="space-y-2" data-field="start_at">
           <Label htmlFor="startAt">{t("admin.activities.startAt")}</Label>
           <Input
             id="startAt"
+            aria-invalid={!!fe.start_at}
             type="datetime-local"
             value={startAt}
             onChange={(e) => setStartAt(e.target.value)}
           />
-          {fieldErrors.startAt && (
-            <p className="text-xs text-destructive">{fieldErrors.startAt}</p>
-          )}
+          <FieldError>{fe.start_at}</FieldError>
         </div>
-        <div className="space-y-2">
+        <div className="space-y-2" data-field="end_at">
           <Label htmlFor="endAt">{t("admin.activities.endAt")}</Label>
           <Input
             id="endAt"
+            aria-invalid={!!fe.end_at}
             type="datetime-local"
             value={endAt}
             onChange={(e) => setEndAt(e.target.value)}
           />
-          {fieldErrors.endAt && (
-            <p className="text-xs text-destructive">{fieldErrors.endAt}</p>
-          )}
+          <FieldError>{fe.end_at}</FieldError>
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-2">
+        <div className="space-y-2" data-field="status">
           <Label htmlFor="status">{t("admin.activities.status")}</Label>
           <select
             id="status"
+            aria-invalid={!!fe.status}
             className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
             value={status}
             onChange={(e) => setStatus(e.target.value as ActivityStatus)}
@@ -284,15 +291,18 @@ export function ActivityForm({
               </option>
             ))}
           </select>
+          <FieldError>{fe.status}</FieldError>
         </div>
-        <div className="space-y-2">
+        <div className="space-y-2" data-field="cover_url">
           <Label htmlFor="coverUrl">{t("admin.activities.coverUrl")}</Label>
           <Input
             id="coverUrl"
+            aria-invalid={!!fe.cover_url}
             value={coverUrl}
             onChange={(e) => setCoverUrl(e.target.value)}
             placeholder={t("admin.activities.coverUrlPlaceholder")}
           />
+          <FieldError>{fe.cover_url}</FieldError>
         </div>
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
