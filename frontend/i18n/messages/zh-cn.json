@@ -1427,7 +1427,7 @@
       "title": "审核中心",
       "noAccess": "没有可访问的审核模块，请联系管理员开通权限",
       "tabs": {
-        "registrations": "报名审核",
+        "registrations": "活动报名审核",
         "bugs": "Bug 反馈",
         "resets": "重置密码"
       },
@@ -1781,7 +1781,7 @@
       "filterType": "按类型筛选",
       "filterStatus": "按状态筛选",
       "typeActivity": "活动报名",
-      "typeClub": "社团报名",
+      "typeClub": "社团报名（旧版）",
       "colType": "类型",
       "export": "导出",
       "exportCsv": "导出 CSV",

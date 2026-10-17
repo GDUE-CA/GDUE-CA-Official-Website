@@ -188,8 +188,10 @@ class ManualRegistrationCreate(RegistrationCreate):
 
     @model_validator(mode="after")
     def _check_type(self) -> "ManualRegistrationCreate":
-        if self.registration_type == RegistrationType.ACTIVITY and not self.activity_id:
+        # 社团报名已统一为账号内报名（club_apply_records，含回执码与独立审核流），
+        # 不再向 registrations 写入社团类型；历史社团数据仅保留查看 / 导出
+        if self.registration_type == RegistrationType.CLUB:
+            raise ValueError("社团报名请在「社团报名审核」中处理，此处仅可补录活动报名")
+        if not self.activity_id:
             raise ValueError("活动报名必须指定活动")
-        if self.registration_type == RegistrationType.CLUB and not self.position:
-            raise ValueError("社团报名必须填写意向部门")
         return self

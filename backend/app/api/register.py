@@ -89,35 +89,6 @@ async def submit_for_activity(
     return SubmitReceiptOut(receipt_code=reg.receipt_code, submitted_at=reg.submitted_at)
 
 
-# ---------- 社团报名（公开，意向部门入会，无需关联活动） ----------
-@router.post(
-    "/club",
-    response_model=SubmitReceiptOut,
-    status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(_submit_limit)],
-)
-async def submit_club_registration(
-    req: RegistrationCreate,
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-):
-    if not req.position:
-        raise HTTPException(status_code=400, detail="社团报名必须填写意向部门")
-
-    reg = Registration(
-        registration_type=RegistrationType.CLUB,
-        activity_id=None,
-        receipt_code=await unique_receipt_code(db),
-        content_lang=detect_lang(req.introduction or f"{req.college}{req.major}{req.name}"),
-        submit_ip=get_client_ip(request),
-        **req.model_dump(),
-    )
-    db.add(reg)
-    await db.flush()
-    _log(db, None, "registration.club.submit", None, reg.submit_ip)
-    return SubmitReceiptOut(receipt_code=reg.receipt_code, submitted_at=reg.submitted_at)
-
-
 # ---------- 管理员：列表 + 筛选 ----------
 @router.get("", response_model=list[RegistrationOut])
 async def list_registrations(

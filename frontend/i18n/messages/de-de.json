@@ -1062,7 +1062,7 @@
       "title": "Review Centre",
       "noAccess": "No review modules available. Contact an administrator for access.",
       "tabs": {
-        "registrations": "Registrations",
+        "registrations": "Event registrations",
         "bugs": "Bug Reports",
         "resets": "Password Resets"
       },

@@ -1036,7 +1036,7 @@
       "title": "審核中心",
       "noAccess": "沒有可存取的審核模組，請聯絡管理員開通權限",
       "tabs": {
-        "registrations": "報名審核",
+        "registrations": "活動報名審核",
         "bugs": "Bug 回報",
         "resets": "重設密碼"
       },
@@ -1368,7 +1368,7 @@
       "filterType": "按類型篩選",
       "filterStatus": "按狀態篩選",
       "typeActivity": "活動報名",
-      "typeClub": "社團報名",
+      "typeClub": "社團報名（舊版）",
       "colType": "類型",
       "export": "匯出",
       "exportCsv": "匯出 CSV",

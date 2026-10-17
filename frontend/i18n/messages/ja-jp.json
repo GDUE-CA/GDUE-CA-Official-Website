@@ -1036,7 +1036,7 @@
       "title": "審査センター",
       "noAccess": "利用できる審査モジュールがありません。管理者に権限の付与を依頼してください。",
       "tabs": {
-        "registrations": "申し込み審査",
+        "registrations": "イベント申し込み審査",
         "bugs": "バグ報告",
         "resets": "パスワードリセット"
       },
@@ -1375,7 +1375,7 @@
       "filterType": "種類で絞り込み",
       "filterStatus": "ステータスで絞り込み",
       "typeActivity": "活動申し込み",
-      "typeClub": "サークル入会",
+      "typeClub": "サークル申し込み（旧版）",
       "colType": "種別",
       "export": "エクスポート",
       "exportCsv": "CSV エクスポート",
