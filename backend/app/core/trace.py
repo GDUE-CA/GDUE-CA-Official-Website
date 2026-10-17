@@ -10,7 +10,6 @@
 """
 import logging
 import time
-from datetime import datetime, timezone
 from typing import Awaitable, Callable
 
 from fastapi import Request, Response
@@ -20,13 +19,8 @@ from app.core.middleware import _ip_to_str, _is_trusted_proxy, get_client_ip
 
 TRACE_HEADER = "X-Trace-Id"
 REQUEST_ID_HEADER = "X-Request-Id"  # 与 X-Trace-Id 同值；规范要求的"request_id"命名
-SERVER_TIME_HEADER = "X-Server-Utc-Time"  # 规范：后端权威计时器，前端据此维护服务端时间偏移
 _INCOMING_HEADERS = ("x-request-id", "x-trace-id")
 
-
-def server_utc_now_iso() -> str:
-    """当前服务器 UTC 时间的 ISO-8601 毫秒级字符串（Z 结尾），供 X-Server-Utc-Time 头使用。"""
-    return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
 access_logger = logging.getLogger("gdueca.access")
 error_logger = logging.getLogger("gdueca.error")
@@ -62,8 +56,6 @@ async def trace_middleware(
         response.headers[TRACE_HEADER] = trace_id
         # 规范要求 request_id 同步出现在响应头；与 X-Trace-Id 同值，便于前端按规范读取
         response.headers[REQUEST_ID_HEADER] = trace_id
-        # 规范：所有 API 固定返回后端权威 UTC 时间，前端 useSystemTimer 据此校准
-        response.headers[SERVER_TIME_HEADER] = server_utc_now_iso()
         return response
     finally:
         duration_ms = round((time.perf_counter() - start) * 1000, 1)

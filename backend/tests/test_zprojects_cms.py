@@ -7,7 +7,7 @@
 - 公开列表仅返回已发布项目，year 降序 + id 升序
 - 公开详情：草稿/归档 404（新壳 1004）
 - 管理端：未登录 401 / 创建（自动 slug project-{id}）/ 更新状态 / 删除
-- 成功响应壳四字段齐全 + X-Server-Utc-Time Header
+- 成功响应壳四字段齐全 + no-store（前端据标准 Date 头校准服务器时间的前提）
 """
 from fastapi.testclient import TestClient
 
@@ -73,7 +73,10 @@ def test_public_list_empty_ok(app):
     body = res.json()
     assert body["code"] == 0 and body["message"] == ""
     assert isinstance(body["data"]["items"], list)
-    assert "X-Server-Utc-Time" in res.headers
+    # 前端以标准 Date 头校准服务器时间（Date 由 uvicorn 服务器层添加，TestClient 不经过它）；
+    # 这里守住其前提：API 响应禁止缓存，否则浏览器缓存命中时 Date 是过期时间
+    assert res.headers["cache-control"] == "no-store"
+    assert "x-server-utc-time" not in res.headers
 
 
 def test_admin_requires_auth(app):

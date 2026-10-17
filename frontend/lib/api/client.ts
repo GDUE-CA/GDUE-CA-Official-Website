@@ -20,7 +20,7 @@ import {
   withRequestId,
   type FieldError,
 } from "@/lib/api/errorMessages";
-import { registerCalibrator, syncServerTime } from "@/lib/serverTime";
+import { syncServerTime } from "@/lib/serverTime";
 import { locales, isLocale } from "@/lib/i18n";
 
 /**
@@ -211,8 +211,8 @@ export async function secureFetch(path: string, init: RequestInit = {}): Promise
     const data: unknown = await res.clone().json().catch(() => null);
     if (isCsrfFailure(res.status, data)) res = await send(true);
   }
-  // 规范 §9：每次 API 响应都读取后端权威 UTC 时间，校准本地时钟偏移量
-  syncServerTime(res.headers.get("X-Server-Utc-Time"));
+  // 规范 §9：每次 API 响应读取标准 Date 头（服务器时间），校准本地时钟偏移量
+  syncServerTime(res.headers.get("Date"));
   return res;
 }
 
@@ -287,10 +287,3 @@ export async function apiFetch<T>(
   // 旧壳 / 非壳（裸 list / 标量）直接返回
   return (body ?? null) as T;
 }
-
-// 规范 §9：注册轻量校准请求，供 30 秒间隔 / visibilitychange 自动触发
-// （直接读 Header，不走 apiFetch，避免 JSON 解析与循环依赖）
-registerCalibrator(async () => {
-  const res = await fetch(`${API_BASE_URL}/health`, { credentials: "include" });
-  syncServerTime(res.headers.get("X-Server-Utc-Time"));
-});

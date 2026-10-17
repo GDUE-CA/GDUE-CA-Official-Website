@@ -24,7 +24,7 @@ from app.core.middleware import (
     security_headers_middleware,
 )
 from app.core.security import Role
-from app.core.trace import REQUEST_ID_HEADER, SERVER_TIME_HEADER, TRACE_HEADER, trace_middleware
+from app.core.trace import REQUEST_ID_HEADER, TRACE_HEADER, trace_middleware
 from app.api.recycle import RETENTION_DAYS, _purge_user
 from app.core.admin_gate import admin_gate_middleware
 from app.db.models import (
@@ -572,8 +572,9 @@ if settings.cors_origins_list:
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
         allow_headers=["Content-Type", CSRF_HEADER],
-        # 同时暴露 trace / request id 与服务器权威 UTC 时间；前端按规范读取
-        expose_headers=[TRACE_HEADER, REQUEST_ID_HEADER, SERVER_TIME_HEADER],
+        # 暴露 trace / request id 与标准 Date 头（Date 不在 CORS 默认可读白名单内，
+        # 跨域部署时前端需读取它校准服务器时间，见 SPEC §9）
+        expose_headers=[TRACE_HEADER, REQUEST_ID_HEADER, "Date"],
     )
 # 6. traceId（最外层）：覆盖所有请求，包括被 CORS / 黑名单 / CSRF 拦截的请求
 app.middleware("http")(trace_middleware)
