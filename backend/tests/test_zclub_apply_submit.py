@@ -140,3 +140,18 @@ def test_backfill_missing_receipts(app):
     assert codes and all(c and c.startswith("GDUECA-") for c in codes)
     assert len(set(codes)) == len(codes)
 
+
+def test_manual_registration_rejects_club_type():
+    """社团报名只走 club_apply_records；后台手动补录不再允许写入社团类型。"""
+    import pytest
+    from pydantic import ValidationError
+
+    from app.schemas.register import ManualRegistrationCreate
+
+    base = {
+        "name": "张三", "student_id": "20250001", "college": "计算机学院", "major": "软件工程",
+        "phone_cc": "+86", "phone_number": "13800000001",
+    }
+    with pytest.raises(ValidationError, match="社团报名审核"):
+        ManualRegistrationCreate(**base, registration_type="club", position="技术部")
+    assert ManualRegistrationCreate(**base, activity_id=1).registration_type.value == "activity"

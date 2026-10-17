@@ -1366,7 +1366,7 @@
       "title": "Review Centre",
       "noAccess": "No review modules available. Contact an administrator for access.",
       "tabs": {
-        "registrations": "Registrations",
+        "registrations": "Event registrations",
         "bugs": "Bug Reports",
         "resets": "Password Resets"
       },
@@ -1710,7 +1710,7 @@
       "filterType": "Filter by Type",
       "filterStatus": "Filter by Status",
       "typeActivity": "Activity",
-      "typeClub": "Club",
+      "typeClub": "Club (legacy)",
       "colType": "Type",
       "export": "Export",
       "exportCsv": "Export CSV",
