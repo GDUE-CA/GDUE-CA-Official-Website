@@ -50,12 +50,26 @@ def test_frontend_bizcode_matches_backend():
 
 
 @needs_frontend
+def test_frontend_code_message_keys_match_backend():
+    """前端错误页按业务码取通用文案（服务端组件错误只剩业务码），映射须与后端登记表一致。"""
+    src = RESPONSE_TS.read_text(encoding="utf-8")
+    block = re.search(r"export const BizCodeMessageKey[^=]*= \{(.*?)\};", src, re.S)
+    assert block, "types/response.ts 中找不到 BizCodeMessageKey"
+    frontend = {int(c): k for c, k in re.findall(r'(\d+):\s*"([\w.]+)"', block.group(1))}
+    backend = {int(c): meta.i18n_key for c, meta in _BIZCODE_REGISTRY.items()}
+    assert frontend == backend
+
+
+@needs_frontend
 @pytest.mark.parametrize("locale", ["zh-cn", "en-us"])
 def test_error_i18n_keys_exist(locale):
     messages = json.loads((MESSAGES / f"{locale}.json").read_text(encoding="utf-8"))
     keys = [meta.i18n_key for meta in _BIZCODE_REGISTRY.values()]
     keys += [f"error.validation.reason.{r.value}" for r in FieldReason]
     keys += ["error.validation.withField", "error.validation.generic"]
+    keys += [f"error.page.{k}" for k in (
+        "title", "unexpected", "hint", "requestId", "digest", "copy", "copied", "retry", "home",
+    )]
     missing = [k for k in keys if not isinstance(_lookup(messages, k), str)]
     assert not missing, f"{locale} 缺少错误文案：{missing}"
 
