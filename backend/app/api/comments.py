@@ -18,12 +18,14 @@ from app.core.audit import ctx_uid, log_action
 from app.core.ip_location import resolve_location
 from app.core.middleware import get_client_ip
 from app.core.permissions import require_permission
+from app.core.security import get_optional_user
 from app.db.models import (
     AuditLog,
     BlogPost,
     BlogPostStatus,
     Comment,
     SystemSetting,
+    User,
 )
 from app.db.session import get_db
 from app.schemas.comments import (
@@ -34,6 +36,7 @@ from app.schemas.comments import (
     CommentSettingsUpdate,
 )
 from app.utils.crud import apply_search, paginate
+from app.utils.device import device_category
 
 # 公开接口（无鉴权，挂在 /api/blog 下）
 public_router = APIRouter(prefix="/api/blog", tags=["comments-public"])
@@ -140,17 +143,27 @@ async def create_public_comment(
     req: CommentCreate,
     request: Request,
     db: AsyncSession = Depends(get_db),
+    viewer: dict | None = Depends(get_optional_user),
 ):
-    """访客发表评论：双开关关闭时 403；内容为纯文本，前端转义渲染。"""
+    """发表评论：双开关关闭时 403；内容为纯文本，前端转义渲染。
+
+    登录用户（非 Break-Glass）关联账号：昵称取账号显示名（忽略表单昵称，防冒名），
+    公开展示头像与主页链接；匿名访客沿用表单昵称。
+    """
     post = await _published_post_or_404(db, post_id)
     if not await _comments_allowed(db, post):
         raise HTTPException(status_code=403, detail="评论功能已关闭")
     ip = get_client_ip(request)
     _check_comment_rate(ip)
     zh, en = resolve_location(ip)
+    author: User | None = None
+    if viewer and not viewer.get("break_glass") and viewer.get("user_id"):
+        author = await db.get(User, int(viewer["user_id"]))
     c = Comment(
         post_id=post_id,
-        author_name=req.author_name,
+        user_id=author.id if author else None,
+        author_name=(author.display_name or author.username)[:64] if author else req.author_name,
+        device=device_category(request.headers.get("user-agent")),
         content=req.content,
         submit_ip=ip,
         location_zh=zh,

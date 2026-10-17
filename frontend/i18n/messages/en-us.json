@@ -626,10 +626,24 @@
     "contentPlaceholder": "Write a comment...",
     "submitBtn": "Post comment",
     "submitOk": "Comment posted",
-    "formHint": "Only your name and location (country/province) are shown. Posting implies agreement with the Terms of Use",
+    "formHint": "Your name, IP location (country/province) and device type are shown publicly. Posting implies agreement with the Terms of Use",
     "closed": "Comments are closed",
     "locLocal": "Local",
-    "locIntranet": "Campus network"
+    "locIntranet": "Campus network",
+    "postAs": "Posting as {name}",
+    "charCount": "{n}/1000",
+    "shortcut": "⌘/Ctrl + Enter to post",
+    "ipLocation": "IP location",
+    "anonymous": "Guest",
+    "device": {
+      "iphone": "iPhone",
+      "ipad": "iPad",
+      "android": "Android",
+      "windows": "Windows",
+      "macos": "macOS",
+      "linux": "Linux",
+      "other": "Other device"
+    }
   },
   "contact": {
     "title": "Contact Us",

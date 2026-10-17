@@ -1271,8 +1271,15 @@ export interface CommentPublic {
   location_zh: string | null;
   /** IP 属地英文（GeoLite2） */
   location_en: string | null;
+  /** 设备类别（提交时由 UA 解析；粗粒度，不含机型 / 版本） */
+  device: CommentDevice | null;
+  /** 登录用户发表且账号有效时有值：主页链接 / 头像；匿名评论为 null */
+  author_username: string | null;
+  author_avatar_url: string | null;
   created_at: string;
 }
+
+export type CommentDevice = "iphone" | "ipad" | "android" | "windows" | "macos" | "linux" | "other";
 
 /** 公开评论列表响应：allowed 表示当前是否可提交（双开关判定） */
 export interface CommentListResponse extends Paginated<CommentPublic> {

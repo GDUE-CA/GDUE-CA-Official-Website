@@ -695,10 +695,24 @@
     "contentPlaceholder": "写下你的评论…",
     "submitBtn": "发表评论",
     "submitOk": "评论已发表",
-    "formHint": "评论仅展示昵称与属地（国家/省份），发表即视为同意使用条款",
+    "formHint": "评论将公开展示昵称、IP 属地（国家/省份）与设备类型，发表即视为同意使用条款",
     "closed": "评论功能已关闭",
     "locLocal": "本机",
-    "locIntranet": "校园内网"
+    "locIntranet": "校园内网",
+    "postAs": "以 {name} 身份发表",
+    "charCount": "{n}/1000",
+    "shortcut": "⌘/Ctrl + Enter 发送",
+    "ipLocation": "IP 属地",
+    "anonymous": "访客",
+    "device": {
+      "iphone": "iPhone",
+      "ipad": "iPad",
+      "android": "Android",
+      "windows": "Windows",
+      "macos": "macOS",
+      "linux": "Linux",
+      "other": "其他设备"
+    }
   },
   "contact": {
     "title": "联系我们",

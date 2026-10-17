@@ -1059,8 +1059,9 @@ class CommentStatus(str, Enum):
 class Comment(Base):
     """博客评论（双布尔软删除 + 管理员可物理删除）。
 
-    访客无账号，评论以「昵称 + 内容」提交；提交 IP 完整存储仅后台可见，
-    公开接口只返回属地（国家/省份粒度）。
+    访客可匿名以「昵称 + 内容」提交；登录用户提交时关联账号（user_id），
+    公开展示其头像与主页链接、昵称以账号显示名为准（防冒名）。
+    提交 IP 完整存储仅后台可见，公开接口只返回属地（国家/省份粒度）与设备类别。
 
     软删除矩阵：
     - is_deleted=True  → 用户自删（公开列表不可见，后台留存）
@@ -1072,6 +1073,12 @@ class Comment(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     post_id: Mapped[int] = mapped_column(ForeignKey("blog_posts.id"), index=True)
+    # 登录用户发表时关联账号；匿名访客为空
+    user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id"), nullable=True, index=True
+    )
+    # 预加载作者（列表分页时批量取头像 / 用户名，避免 N+1）
+    author_user: Mapped["User | None"] = relationship(lazy="selectin")
     author_name: Mapped[str] = mapped_column(String(64))
     content: Mapped[str] = mapped_column(Text)
     # 提交者完整 IP：仅后台管理员可见，公开接口绝不返回
@@ -1080,6 +1087,8 @@ class Comment(Base):
     # "local"=本机回环，"intranet"=校园内网（特殊枚举由前端 i18n 渲染）
     location_zh: Mapped[str | None] = mapped_column(String(128), nullable=True)
     location_en: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    # 设备类别（app.utils.device.DEVICE_CATEGORIES），提交时由 User-Agent 解析；不存原始 UA
+    device: Mapped[str | None] = mapped_column(String(16), nullable=True)
     # 用户自删标记（软删除）：公开列表过滤 is_deleted=false
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     # 管理员屏蔽标记（软删除）：公开列表过滤 is_hidden=false

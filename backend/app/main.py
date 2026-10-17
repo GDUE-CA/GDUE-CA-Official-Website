@@ -216,6 +216,9 @@ async def _migrate_columns(conn):
         "comments": [
             ("is_deleted", "BOOLEAN DEFAULT 0"),
             ("is_hidden", "BOOLEAN DEFAULT 0"),
+            # 评论区改版：登录用户关联账号（头像 / 主页链接）+ 设备类别
+            ("user_id", "INTEGER NULL REFERENCES users(id)"),
+            ("device", "VARCHAR(16) NULL"),
         ],
         # 随手笔记：分享计数
         "memos": [
@@ -320,6 +323,10 @@ async def _migrate_columns(conn):
     # 活动 slug 部分唯一索引（迁移自 markdown 的前台标识；NULL 不去重）
     await conn.execute(text(
         "CREATE UNIQUE INDEX IF NOT EXISTS ix_activities_slug ON activities (slug) WHERE slug IS NOT NULL"
+    ))
+    # 评论关联账号索引（ADD COLUMN 不会建索引）
+    await conn.execute(text(
+        "CREATE INDEX IF NOT EXISTS ix_comments_user_id ON comments (user_id)"
     ))
     # 社团报名回执码：ADD COLUMN 不能带 UNIQUE，单独建唯一索引后回填存量记录
     await conn.execute(text(
