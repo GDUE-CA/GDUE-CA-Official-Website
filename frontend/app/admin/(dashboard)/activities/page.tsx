@@ -14,6 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { AdminListCard } from "@/components/admin/shared/AdminListCard";
 import {
   deleteActivity,
   listActivities,
@@ -156,74 +157,83 @@ export default function ActivitiesPage() {
         </Card>
       ) : (
         <div className="grid gap-3">
-          {filtered.map((a) => (
-            <Card key={a.id}>
-              <CardContent className="p-4 flex items-center justify-between gap-4">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-semibold truncate">{a.title}</h3>
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">
-                      {t(`admin.activities.statuses.${a.status}`)}
-                    </span>
-                  </div>
-                  <p className="text-sm text-muted-foreground line-clamp-1 flex items-center gap-1.5">
-                    <span className="truncate">{a.content || "—"}</span>
-                    <span>·</span>
-                    {a.register_start ? (
-                      <FormattedUserActionTime utcIso={a.register_start} />
-                    ) : (
-                      "—"
-                    )}
-                  </p>
-                </div>
-                <div className="flex items-center gap-1">
-                  {/* 签到开关：开放后报名者可凭回执码签到 */}
-                  <Button
-                    variant={a.checkin_open ? "default" : "outline"}
-                    size="sm"
-                    className={a.checkin_open ? "" : "text-muted-foreground"}
-                    onClick={() => toggleCheckin(a)}
-                    title={a.checkin_open ? t("admin.activities.checkinOpenHint") : t("admin.activities.checkinClosedHint")}
-                  >
-                    <QrCode className="h-4 w-4 mr-1" />
-                    {a.checkin_open
-                      ? t("admin.activities.checkinOpen")
-                      : t("admin.activities.checkinClosed")}
-                  </Button>
-                  {/* 归档 / 取消归档（P0：二次确认 + 审计日志） */}
-                  <Button
-                    variant={a.status === "archived" ? "default" : "outline"}
-                    size="sm"
-                    className={a.status === "archived" ? "" : "text-muted-foreground"}
-                    onClick={() => toggleArchive(a)}
-                    title={
-                      a.status === "archived"
-                        ? t("admin.activities.unarchiveHint")
-                        : t("admin.activities.archiveHint")
-                    }
-                  >
-                    {a.status === "archived" ? (
-                      <>
-                        <ArchiveRestore className="h-4 w-4 mr-1" />
-                        {t("admin.activities.unarchive")}
-                      </>
-                    ) : (
-                      <>
-                        <Archive className="h-4 w-4 mr-1" />
-                        {t("admin.activities.archive")}
-                      </>
-                    )}
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={() => openEdit(a)} aria-label="Edit">
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={() => handleDelete(a.id)} aria-label="Delete">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+          {filtered.map((a) => {
+            // 桌面端右侧按钮组（原布局位置）；移动端同一组按钮落卡片底部
+            const rowActions = (
+              <>
+                {/* 签到开关：开放后报名者可凭回执码签到 */}
+                <Button
+                  variant={a.checkin_open ? "default" : "outline"}
+                  size="sm"
+                  className={a.checkin_open ? "" : "text-muted-foreground"}
+                  onClick={() => toggleCheckin(a)}
+                  title={a.checkin_open ? t("admin.activities.checkinOpenHint") : t("admin.activities.checkinClosedHint")}
+                >
+                  <QrCode className="h-4 w-4 mr-1" />
+                  {a.checkin_open
+                    ? t("admin.activities.checkinOpen")
+                    : t("admin.activities.checkinClosed")}
+                </Button>
+                {/* 归档 / 取消归档（P0：二次确认 + 审计日志） */}
+                <Button
+                  variant={a.status === "archived" ? "default" : "outline"}
+                  size="sm"
+                  className={a.status === "archived" ? "" : "text-muted-foreground"}
+                  onClick={() => toggleArchive(a)}
+                  title={
+                    a.status === "archived"
+                      ? t("admin.activities.unarchiveHint")
+                      : t("admin.activities.archiveHint")
+                  }
+                >
+                  {a.status === "archived" ? (
+                    <>
+                      <ArchiveRestore className="h-4 w-4 mr-1" />
+                      {t("admin.activities.unarchive")}
+                    </>
+                  ) : (
+                    <>
+                      <Archive className="h-4 w-4 mr-1" />
+                      {t("admin.activities.archive")}
+                    </>
+                  )}
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => openEdit(a)} aria-label="Edit">
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => handleDelete(a.id)} aria-label="Delete">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </>
+            );
+            return (
+            <AdminListCard
+              key={a.id}
+              contentClassName="space-y-1"
+              title={
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="min-w-0 truncate">{a.title}</span>
+                  <span className="shrink-0 text-xs px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">
+                    {t(`admin.activities.statuses.${a.status}`)}
+                  </span>
+                </span>
+              }
+              headerActions={rowActions}
+              footerClassName="border-t-0 pt-0 justify-end gap-1"
+              actions={rowActions}
+            >
+              <p className="text-sm text-muted-foreground line-clamp-1 flex items-center gap-1.5">
+                <span className="truncate">{a.content || "—"}</span>
+                <span>·</span>
+                {a.register_start ? (
+                  <FormattedUserActionTime utcIso={a.register_start} />
+                ) : (
+                  "—"
+                )}
+              </p>
+            </AdminListCard>
+            );
+          })}
         </div>
       )}
 

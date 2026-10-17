@@ -24,6 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { AdminListCard } from "@/components/admin/shared/AdminListCard";
 import {
   approveEmailChangeRequest,
   listEmailChangeRequests,
@@ -149,53 +150,25 @@ export default function EmailChangeRequestsPage() {
       ) : (
         <div className="space-y-3">
           {items.map((item) => (
-            <Card key={item.id}>
-              <CardContent className="p-4 space-y-3">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">{item.username}</span>
-                    <span className="text-xs text-muted-foreground">UID {item.user_id}</span>
-                  </div>
-                  <StatusBadge tone={statusTone(item.status)}>
-                    {t(`admin.emailChange.statuses.${item.status}`)}
-                  </StatusBadge>
-                </div>
-
-                <div className="grid gap-2 text-sm sm:grid-cols-2">
-                  <div>
-                    <span className="text-muted-foreground">{t("admin.emailChange.colOldEmail")}：</span>
-                    <span className="font-medium break-all">{item.old_email}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">{t("admin.emailChange.colNewEmail")}：</span>
-                    <span className="font-medium break-all">{item.new_email}</span>
-                  </div>
-                </div>
-
-                {item.remark && (
-                  <div className="text-sm">
-                    <span className="text-muted-foreground">{t("admin.emailChange.colRemark")}：</span>
-                    <span className="whitespace-pre-line break-words">{item.remark}</span>
-                  </div>
-                )}
-
-                <div className="grid gap-x-4 gap-y-1 text-xs text-muted-foreground sm:grid-cols-2">
-                  <div>
-                    {t("admin.emailChange.colCreatedAt")}：
-                    <FormattedUserActionTime utcIso={item.created_at} />
-                  </div>
-                  <div>
-                    {t("admin.emailChange.colIp")}：{item.submit_ip ?? "-"}
-                  </div>
-                  <div className="sm:col-span-2 break-all">
-                    {t("admin.emailChange.colFingerprint")}：
-                    <span className="font-mono">{item.fingerprint ?? "-"}</span>
-                  </div>
-                </div>
-
-                {item.status === "pending" ? (
-                  <div className="flex gap-2 border-t border-border pt-3">
+            <AdminListCard
+              key={item.id}
+              title={
+                <span className="inline-flex items-center gap-2">
+                  <Mail className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">{item.username}</span>
+                  <span className="text-xs text-muted-foreground">UID {item.user_id}</span>
+                </span>
+              }
+              badge={
+                <StatusBadge tone={statusTone(item.status)}>
+                  {t(`admin.emailChange.statuses.${item.status}`)}
+                </StatusBadge>
+              }
+              contentClassName="space-y-3"
+              footerClassName={item.status === "pending" ? "pt-3" : undefined}
+              actions={
+                item.status === "pending" ? (
+                  <>
                     <Button
                       size="sm"
                       disabled={busyId === item.id}
@@ -220,28 +193,62 @@ export default function EmailChangeRequestsPage() {
                       <X className="h-4 w-4" />
                       {t("admin.emailChange.reject")}
                     </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-1 border-t border-border pt-2 text-xs text-muted-foreground">
-                    <div>
-                      {t("admin.emailChange.reviewedAt")}：
-                      {item.reviewed_at ? (
-                        <FormattedUserActionTime utcIso={item.reviewed_at} />
-                      ) : (
-                        "-"
-                      )}
-                      {item.reviewed_by != null && ` · UID ${item.reviewed_by}`}
-                    </div>
-                    {item.status === "rejected" && item.reject_reason && (
-                      <div className="break-words">
-                        {t("admin.emailChange.rejectReason")}：
-                        <span className="text-destructive">{item.reject_reason}</span>
-                      </div>
+                  </>
+                ) : undefined
+              }
+            >
+              <div className="grid gap-2 text-sm sm:grid-cols-2">
+                <div>
+                  <span className="text-muted-foreground">{t("admin.emailChange.colOldEmail")}：</span>
+                  <span className="font-medium break-all">{item.old_email}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">{t("admin.emailChange.colNewEmail")}：</span>
+                  <span className="font-medium break-all">{item.new_email}</span>
+                </div>
+              </div>
+
+              {item.remark && (
+                <div className="text-sm">
+                  <span className="text-muted-foreground">{t("admin.emailChange.colRemark")}：</span>
+                  <span className="whitespace-pre-line break-words">{item.remark}</span>
+                </div>
+              )}
+
+              <div className="grid gap-x-4 gap-y-1 text-xs text-muted-foreground sm:grid-cols-2">
+                <div>
+                  {t("admin.emailChange.colCreatedAt")}：
+                  <FormattedUserActionTime utcIso={item.created_at} />
+                </div>
+                <div>
+                  {t("admin.emailChange.colIp")}：{item.submit_ip ?? "-"}
+                </div>
+                <div className="sm:col-span-2 break-all">
+                  {t("admin.emailChange.colFingerprint")}：
+                  <span className="font-mono">{item.fingerprint ?? "-"}</span>
+                </div>
+              </div>
+
+              {item.status !== "pending" && (
+                <div className="space-y-1 border-t border-border pt-2 text-xs text-muted-foreground">
+                  <div>
+                    {t("admin.emailChange.reviewedAt")}：
+                    {item.reviewed_at ? (
+                      <FormattedUserActionTime utcIso={item.reviewed_at} />
+                    ) : (
+                      "-"
                     )}
+                    {item.reviewed_by != null && ` · UID ${item.reviewed_by}`}
                   </div>
-                )}
-              </CardContent>
-            </Card>
+                  {item.status === "rejected" && item.reject_reason && (
+                    <div className="break-words">
+                      {t("admin.emailChange.rejectReason")}：
+                      <span className="text-destructive">{item.reject_reason}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </AdminListCard>
           ))}
         </div>
       )}

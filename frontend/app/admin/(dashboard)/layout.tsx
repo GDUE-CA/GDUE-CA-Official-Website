@@ -42,6 +42,7 @@ import BadgeCheck from "@/assets/icons/status/badge-check.svg";
 import FileText from "@/assets/icons/status/file-text.svg";
 import Globe from "@/assets/icons/navigation/globe.svg";
 import ShieldBan from "@/assets/icons/status/shield-ban.svg";
+import ShieldAlert from "@/assets/icons/status/shield-alert.svg";
 import ScrollText from "@/assets/icons/status/scroll-text.svg";
 import Trash2 from "@/assets/icons/action/trash-2.svg";
 import FolderOpen from "@/assets/icons/navigation/folder-open.svg";
@@ -198,6 +199,7 @@ const firstLevelItems: FirstLevel[] = [
       { key: "admin.nav.security.breakglass", icon: KeyRound, placeholder: true }, // ⏳常驻状态页未实现
       { key: "admin.nav.security.login", href: "/admin/security/bans", icon: ShieldBan, modules: ["security"] }, // 封禁列表+解封
       { key: "admin.nav.security.access", href: "/admin/security/access-control", icon: Globe, modules: ["security"] }, // 访问控制 Tab
+      { key: "admin.nav.security.systemReset", href: "/admin/system-reset", icon: ShieldAlert, modules: ["system_reset"] }, // V0.5.7 高危：仅超管/Break-Glass
     ],
   },
   // 8. 系统配置（admin 角色）

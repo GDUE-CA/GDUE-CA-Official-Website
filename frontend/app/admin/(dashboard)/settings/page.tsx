@@ -33,6 +33,7 @@ import Check from "@/assets/icons/action/check.svg";
 import QrCode from "@/assets/icons/action/qr-code.svg";
 import Timer from "@/assets/icons/status/timer.svg";
 import Database from "@/assets/icons/status/database.svg";
+import { DbBackupList } from "@/components/admin/settings/DbBackupList";
 
 export default function SettingsPage() {
   const { t } = useI18n();
@@ -53,6 +54,8 @@ export default function SettingsPage() {
   const [exporting, setExporting] = useState(false);
   const [exportSubmitted, setExportSubmitted] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+  /** 备份文件列表刷新计数：提交后 +1，任务预计完成时再 +1 */
+  const [backupListTick, setBackupListTick] = useState(0);
 
   /** 提交一次完整数据库导出：HTTP 立刻返回 task_id，后台继续跑 */
   async function runDbExport() {
@@ -65,6 +68,9 @@ export default function SettingsPage() {
       // 通知右下角悬浮窗立即开始轮询该任务
       notifyBackgroundTaskSubmitted();
       setExportSubmitted(true);
+      setBackupListTick((n) => n + 1);
+      // SQLite 快照导出很快，3 秒后再自动刷新一次文件列表
+      setTimeout(() => setBackupListTick((n) => n + 1), 3000);
     } catch (e) {
       setExportError(e instanceof Error ? e.message : "Export failed");
     } finally {
@@ -281,6 +287,9 @@ export default function SettingsPage() {
           <p className="text-xs text-muted-foreground">
             {t("admin.settings.dbExportNote")}
           </p>
+
+          {/* 备份与恢复文件列表（系统重置的自动备份同样在此可见可下载） */}
+          <DbBackupList refreshTick={backupListTick} />
         </CardContent>
       </Card>
     </div>

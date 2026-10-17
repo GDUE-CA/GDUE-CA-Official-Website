@@ -15,6 +15,7 @@ import RotateCcw from "@/assets/icons/action/rotate-ccw.svg";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MemoCard } from "@/components/memo/MemoCard";
+import { AdminListCard } from "@/components/admin/shared/AdminListCard";
 import { adminListMemos, adminGetMemo, adminRemoveMemo, adminRestoreMemo } from "@/lib/api/memos";
 import { getSession } from "@/lib/auth";
 import type { MemoBriefOut, MemoOut } from "@/types/api";
@@ -168,46 +169,94 @@ export function MemoManager() {
       ) : (
         <div className="space-y-3">
           {items.map((m) => (
-            <div key={m.id} className="flex items-stretch gap-2">
-              <div className="flex-1">
-                <MemoCard
-                  memo={m}
-                  currentUsername={session?.username ?? null}
-                />
-              </div>
-              <div className="flex flex-col gap-1.5 w-24">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => openDetail(m.id)}
-                  disabled={busy === `open-${m.id}`}
-                >
-                  <Eye className="h-3.5 w-3.5" />
-                </Button>
-                {tab === "removed" ? (
+            <div key={m.id}>
+              {/* 桌面端：保持原布局（MemoCard + 右侧竖排操作列） */}
+              <div className="hidden md:flex items-stretch gap-2">
+                <div className="flex-1">
+                  <MemoCard
+                    memo={m}
+                    currentUsername={session?.username ?? null}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5 w-24">
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => restore(m.id)}
-                    disabled={busy === `rs-${m.id}`}
+                    onClick={() => openDetail(m.id)}
+                    disabled={busy === `open-${m.id}`}
                   >
-                    <RotateCcw className="h-3.5 w-3.5" />
+                    <Eye className="h-3.5 w-3.5" />
                   </Button>
-                ) : (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => remove(m.id)}
-                    disabled={busy === `rm-${m.id}`}
-                    className="text-destructive hover:bg-destructive/10"
-                  >
-                    <Ban className="h-3.5 w-3.5" />
-                  </Button>
-                )}
+                  {tab === "removed" ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => restore(m.id)}
+                      disabled={busy === `rs-${m.id}`}
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" />
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => remove(m.id)}
+                      disabled={busy === `rm-${m.id}`}
+                      className="text-destructive hover:bg-destructive/10"
+                    >
+                      <Ban className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                </div>
               </div>
+
+              {/* 移动端：MemoCard 本身即卡片，操作按钮统一落卡片底部（V0.5.7） */}
+              <AdminListCard
+                className="md:hidden border-none bg-transparent shadow-none"
+                contentClassName="p-0 space-y-2"
+                title={<span className="sr-only">memo-{m.id}</span>}
+                footerClassName="border-t-0 pt-0 gap-1.5"
+                actions={
+                  <>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openDetail(m.id)}
+                      disabled={busy === `open-${m.id}`}
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                    </Button>
+                    {tab === "removed" ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => restore(m.id)}
+                        disabled={busy === `rs-${m.id}`}
+                      >
+                        <RotateCcw className="h-3.5 w-3.5" />
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => remove(m.id)}
+                        disabled={busy === `rm-${m.id}`}
+                        className="text-destructive hover:bg-destructive/10"
+                      >
+                        <Ban className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </>
+                }
+              >
+                <MemoCard memo={m} currentUsername={session?.username ?? null} />
+              </AdminListCard>
             </div>
           ))}
         </div>

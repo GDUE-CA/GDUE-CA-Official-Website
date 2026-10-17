@@ -41,6 +41,8 @@ export const PERMISSION_MODULES = [
   "memo",
   // ---------- V0.5.5 §3.2 角色管理 ----------
   "roles",
+  // ---------- V0.5.7 系统重置（仅 super_admin；Break-Glass 应急账号旁路） ----------
+  "system_reset",
 ] as const;
 
 export type PermissionModule = (typeof PERMISSION_MODULES)[number];
@@ -79,6 +81,8 @@ export const ROLE_DEFAULTS: Record<string, Partial<Record<PermissionModule, Perm
     stats: ["view", "manage"],
     audit_logs: ["view", "manage"],
     roles: ["view", "manage"],
+    // V0.5.7 最高危权限：仅 super_admin
+    system_reset: ["view", "manage"],
   },
   admin: {
     dashboard: ["view"],

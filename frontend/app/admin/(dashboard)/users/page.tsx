@@ -39,6 +39,7 @@ import {
 } from "@/lib/api/auth";
 import { BatchBar } from "@/components/admin/review/BatchBar";
 import { useBatchSelection } from "@/components/admin/review/useBatchSelection";
+import { AdminList } from "@/components/admin/shared/AdminList";
 import { UserFilterBar, type UserFilters } from "@/components/admin/users/UserFilterBar";
 import { UserCreateDialog } from "@/components/admin/users/UserCreateDialog";
 import { ResetPasswordDialog } from "@/components/admin/users/ResetPasswordDialog";
@@ -292,217 +293,274 @@ export default function UsersPage() {
       ) : (
         <Card>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full table-fixed text-sm">
-                <thead className="border-b border-border bg-muted/30">
-                  <tr className="text-left">
-                    {isSuperAdmin && (
-                      <th className="px-3 py-3 w-[4%]">
-                        <input
-                          type="checkbox"
-                          checked={selection.allSelected}
-                          onChange={selection.toggleAll}
-                          className="h-4 w-4 accent-primary cursor-pointer"
-                          aria-label={t("admin.users.batchSelected", { count: selection.selected.size })}
-                        />
-                      </th>
-                    )}
-                    <th className="px-3 py-3 font-medium text-muted-foreground w-[12%]">{t("admin.users.colDisplayName")}</th>
-                    <th className="px-3 py-3 font-medium text-muted-foreground w-[11%]">{t("admin.users.colRealName")}</th>
-                    <th className="px-3 py-3 font-medium text-muted-foreground w-[11%]">{t("admin.users.colStudentId")}</th>
-                    <th className="px-3 py-3 font-medium text-muted-foreground w-[13%]">{t("admin.users.colPhone")}</th>
-                    <th className="px-3 py-3 font-medium text-muted-foreground w-[15%]">{t("admin.users.colEmail")}</th>
-                    <th className="px-3 py-3 font-medium text-muted-foreground w-[12%]">{t("admin.users.colRole")}</th>
-                    <th className="px-3 py-3 font-medium text-muted-foreground w-[9%]">{t("admin.users.colStatus")}</th>
-                    <th className="px-3 py-3 font-medium text-muted-foreground text-right w-[13%]">{t("admin.users.colActions")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map((u) => (
-                    <tr key={u.id} className="border-b border-border last:border-0 hover:bg-muted/20 align-top">
-                      {isSuperAdmin && (
-                        <td className="px-3 py-3">
-                          {editingId === u.id ? null : canToggleActive(u) ? (
-                            <input
-                              type="checkbox"
-                              checked={selection.selected.has(u.id)}
-                              onChange={() => selection.toggle(u.id)}
-                              className="h-4 w-4 accent-primary cursor-pointer"
-                              aria-label={u.username}
-                            />
-                          ) : null}
-                        </td>
-                      )}
-                      {editingId === u.id ? (
-                        /* 编辑行 */
-                        <>
-                          <td className="px-3 py-3">
-                            <Input
-                              value={editForm.username ?? ""}
-                              onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
-                              className="h-8"
-                            />
-                          </td>
-                          <td className="px-3 py-3">
-                            <Input
-                              value={editForm.real_name ?? ""}
-                              onChange={(e) => setEditForm({ ...editForm, real_name: e.target.value })}
-                              className="h-8"
-                            />
-                          </td>
-                          <td className="px-3 py-3">
-                            <Input
-                              value={editForm.student_id ?? ""}
-                              onChange={(e) => setEditForm({ ...editForm, student_id: e.target.value })}
-                              className="h-8"
-                            />
-                          </td>
-                          <td className="px-3 py-3">
-                            <Input
-                              value={editForm.phone ?? ""}
-                              onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-                              className="h-8"
-                            />
-                          </td>
-                          <td className="px-3 py-3 text-muted-foreground text-xs truncate">{u.email}</td>
-                          <td className="px-3 py-3">
-                            {isSuperAdmin ? (
-                              <select
-                                value={editForm.role ?? "member"}
-                                onChange={(e) => setEditForm({ ...editForm, role: e.target.value as AdminRole })}
-                                className="flex h-8 w-full rounded-md border border-input bg-transparent px-2 py-1 text-xs"
-                              >
-                                {(["super_admin", "admin", "editor", "member"] as AdminRole[]).map((r) => (
-                                  <option key={r} value={r}>
-                                    {t(`admin.users.roles.${r}`)}
-                                  </option>
-                                ))}
-                              </select>
-                            ) : (
-                              roleBadge(u.role)
-                            )}
-                          </td>
-                          <td className="px-3 py-3">
-                            <Badge variant={u.is_active ? "outline" : "secondary"} className={u.is_active ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}>
-                              {u.is_active ? t("admin.users.statusActive") : t("admin.users.statusDisabled")}
-                            </Badge>
-                          </td>
-                          <td className="px-3 py-3">
-                            <div className="flex justify-end gap-1">
-                              <Button
-                                size="sm"
-                                onClick={() => handleSaveEdit(u.id)}
-                                disabled={saving}
-                              >
-                                {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
-                                {t("admin.users.save")}
-                              </Button>
-                              <Button size="sm" variant="ghost" onClick={cancelEdit}>
-                                <X className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          </td>
-                        </>
+            <AdminList<AdminUser>
+              rows={users}
+              rowKey={(u) => u.id}
+              tableClassName="w-full table-fixed text-sm"
+              selectable={isSuperAdmin}
+              selectedKeys={selection.selected}
+              allSelected={selection.allSelected}
+              indeterminate={selection.someSelected && !selection.allSelected}
+              onToggleAll={selection.toggleAll}
+              onToggleOne={(u) => selection.toggle(u.id)}
+              isRowSelectable={(u) => editingId !== u.id && canToggleActive(u)}
+              selectAllLabel={t("admin.users.batchSelected", { count: selection.selected.size })}
+              checkboxAriaLabel={(u) => u.username}
+              actionsHeader={t("admin.users.colActions")}
+              actionsHeaderClassName="w-[13%]"
+              mobileTitle={(u) => (
+                <>
+                  {u.username}
+                  {u.id === myId && (
+                    <span className="ml-2 text-xs text-muted-foreground">
+                      ({t("admin.users.you")})
+                    </span>
+                  )}
+                </>
+              )}
+              mobileBadge={(u) => roleBadge(u.role)}
+              columns={[
+                {
+                  key: "username",
+                  header: t("admin.users.colDisplayName"),
+                  headerClassName: "w-[12%]",
+                  cellClassName: "font-medium truncate",
+                  mobileLabel: t("admin.users.colDisplayName"),
+                  render: (u) =>
+                    editingId === u.id ? (
+                      <Input
+                        value={editForm.username ?? ""}
+                        onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
+                        className="h-8"
+                      />
+                    ) : (
+                      u.username
+                    ),
+                },
+                {
+                  key: "real_name",
+                  header: t("admin.users.colRealName"),
+                  headerClassName: "w-[11%]",
+                  cellClassName: "truncate",
+                  mobileLabel: t("admin.users.colRealName"),
+                  render: (u) =>
+                    editingId === u.id ? (
+                      <Input
+                        value={editForm.real_name ?? ""}
+                        onChange={(e) => setEditForm({ ...editForm, real_name: e.target.value })}
+                        className="h-8"
+                      />
+                    ) : (
+                      u.real_name
+                    ),
+                },
+                {
+                  key: "student_id",
+                  header: t("admin.users.colStudentId"),
+                  headerClassName: "w-[11%]",
+                  cellClassName: "font-mono text-xs truncate",
+                  mobileLabel: t("admin.users.colStudentId"),
+                  mobileMono: true,
+                  render: (u) =>
+                    editingId === u.id ? (
+                      <Input
+                        value={editForm.student_id ?? ""}
+                        onChange={(e) => setEditForm({ ...editForm, student_id: e.target.value })}
+                        className="h-8"
+                      />
+                    ) : (
+                      u.student_id
+                    ),
+                },
+                {
+                  key: "phone",
+                  header: t("admin.users.colPhone"),
+                  headerClassName: "w-[13%]",
+                  cellClassName: "font-mono text-xs truncate",
+                  mobileLabel: t("admin.users.colPhone"),
+                  mobileMono: true,
+                  render: (u) =>
+                    editingId === u.id ? (
+                      <Input
+                        value={editForm.phone ?? ""}
+                        onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                        className="h-8"
+                      />
+                    ) : (
+                      u.phone
+                    ),
+                },
+                {
+                  key: "email",
+                  header: t("admin.users.colEmail"),
+                  headerClassName: "w-[15%]",
+                  cellClassName: "text-muted-foreground truncate",
+                  mobileLabel: t("admin.users.colEmail"),
+                  render: (u) =>
+                    editingId === u.id ? (
+                      <span className="text-muted-foreground text-xs truncate">{u.email}</span>
+                    ) : (
+                      u.email
+                    ),
+                },
+                {
+                  key: "role",
+                  header: t("admin.users.colRole"),
+                  headerClassName: "w-[12%]",
+                  // 角色徽标已在移动端卡片右上角展示，键值区不重复
+                  render: (u) =>
+                    editingId === u.id ? (
+                      isSuperAdmin ? (
+                        <select
+                          value={editForm.role ?? "member"}
+                          onChange={(e) =>
+                            setEditForm({ ...editForm, role: e.target.value as AdminRole })
+                          }
+                          className="flex h-8 w-full rounded-md border border-input bg-transparent px-2 py-1 text-xs"
+                        >
+                          {(["super_admin", "admin", "editor", "member"] as AdminRole[]).map(
+                            (r) => (
+                              <option key={r} value={r}>
+                                {t(`admin.users.roles.${r}`)}
+                              </option>
+                            )
+                          )}
+                        </select>
                       ) : (
-                        /* 只读行 */
-                        <>
-                          <td className="px-3 py-3 font-medium truncate">
-                            {u.username}
-                            {u.id === myId && (
-                              <span className="ml-2 text-xs text-muted-foreground">({t("admin.users.you")})</span>
-                            )}
-                          </td>
-                          <td className="px-3 py-3 truncate">{u.real_name}</td>
-                          <td className="px-3 py-3 font-mono text-xs truncate">{u.student_id}</td>
-                          <td className="px-3 py-3 font-mono text-xs truncate">{u.phone}</td>
-                          <td className="px-3 py-3 text-muted-foreground truncate">{u.email}</td>
-                          <td className="px-3 py-3">{roleBadge(u.role)}</td>
-                          <td className="px-3 py-3">
-                            {canToggleActive(u) ? (
-                              <input
-                                type="checkbox"
-                                checked={u.is_active}
-                                disabled={togglingId === u.id}
-                                onChange={(e) => handleToggleActive(u, e.target.checked)}
-                                className="h-4 w-4 accent-primary cursor-pointer"
-                                aria-label={t("admin.users.colStatus")}
-                                title={u.is_active ? t("admin.users.statusActive") : t("admin.users.statusDisabled")}
-                              />
-                            ) : (
-                              <Badge variant={u.is_active ? "outline" : "secondary"} className={u.is_active ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}>
-                                {u.is_active ? t("admin.users.statusActive") : t("admin.users.statusDisabled")}
-                              </Badge>
-                            )}
-                          </td>
-                          <td className="px-3 py-3">
-                            <div className="flex justify-end gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                asChild
-                                title={t("admin.users.detailBtn")}
-                                aria-label={t("admin.users.detailBtn")}
-                              >
-                                <Link href={`/admin/users/${u.id}`}>
-                                  <IdCard className="h-4 w-4" />
-                                </Link>
-                              </Button>
-                              {canEdit(u) && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => startEdit(u)}
-                                  aria-label="edit"
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                              )}
-                              {canPerm(u) && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => setPermTarget(u)}
-                                  title={t("admin.users.permBtn")}
-                                  aria-label={t("admin.users.permBtn")}
-                                >
-                                  <SlidersHorizontal className="h-4 w-4" />
-                                </Button>
-                              )}
-                              {canResetPwd(u) && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => setResetTarget(u)}
-                                  title={t("admin.users.resetPwdBtn")}
-                                  aria-label={t("admin.users.resetPwdBtn")}
-                                >
-                                  <KeyRound className="h-4 w-4" />
-                                </Button>
-                              )}
-                              {canDelete(u) && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleDelete(u.id)}
-                                  disabled={deletingId === u.id}
-                                  aria-label="delete"
-                                >
-                                  {deletingId === u.id ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <Trash2 className="h-4 w-4 text-destructive" />
-                                  )}
-                                </Button>
-                              )}
-                            </div>
-                          </td>
-                        </>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                        roleBadge(u.role)
+                      )
+                    ) : (
+                      roleBadge(u.role)
+                    ),
+                },
+                {
+                  key: "status",
+                  header: t("admin.users.colStatus"),
+                  headerClassName: "w-[9%]",
+                  mobileLabel: t("admin.users.colStatus"),
+                  mobileRender: (u) =>
+                    u.is_active
+                      ? t("admin.users.statusActive")
+                      : t("admin.users.statusDisabled"),
+                  render: (u) =>
+                    editingId === u.id ? (
+                      <Badge
+                        variant={u.is_active ? "outline" : "secondary"}
+                        className={
+                          u.is_active
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : "text-muted-foreground"
+                        }
+                      >
+                        {u.is_active
+                          ? t("admin.users.statusActive")
+                          : t("admin.users.statusDisabled")}
+                      </Badge>
+                    ) : canToggleActive(u) ? (
+                      <input
+                        type="checkbox"
+                        checked={u.is_active}
+                        disabled={togglingId === u.id}
+                        onChange={(e) => handleToggleActive(u, e.target.checked)}
+                        className="h-4 w-4 accent-primary cursor-pointer"
+                        aria-label={t("admin.users.colStatus")}
+                        title={
+                          u.is_active
+                            ? t("admin.users.statusActive")
+                            : t("admin.users.statusDisabled")
+                        }
+                      />
+                    ) : (
+                      <Badge
+                        variant={u.is_active ? "outline" : "secondary"}
+                        className={
+                          u.is_active
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : "text-muted-foreground"
+                        }
+                      >
+                        {u.is_active
+                          ? t("admin.users.statusActive")
+                          : t("admin.users.statusDisabled")}
+                      </Badge>
+                    ),
+                },
+              ]}
+              actions={(u) =>
+                editingId === u.id ? (
+                  <>
+                    <Button size="sm" onClick={() => handleSaveEdit(u.id)} disabled={saving}>
+                      {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                      {t("admin.users.save")}
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={cancelEdit}>
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      asChild
+                      title={t("admin.users.detailBtn")}
+                      aria-label={t("admin.users.detailBtn")}
+                    >
+                      <Link href={`/admin/users/${u.id}`}>
+                        <IdCard className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                    {canEdit(u) && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => startEdit(u)}
+                        aria-label="edit"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {canPerm(u) && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setPermTarget(u)}
+                        title={t("admin.users.permBtn")}
+                        aria-label={t("admin.users.permBtn")}
+                      >
+                        <SlidersHorizontal className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {canResetPwd(u) && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setResetTarget(u)}
+                        title={t("admin.users.resetPwdBtn")}
+                        aria-label={t("admin.users.resetPwdBtn")}
+                      >
+                        <KeyRound className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {canDelete(u) && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDelete(u.id)}
+                        disabled={deletingId === u.id}
+                        aria-label="delete"
+                      >
+                        {deletingId === u.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        )}
+                      </Button>
+                    )}
+                  </>
+                )
+              }
+            />
           </CardContent>
         </Card>
       )}

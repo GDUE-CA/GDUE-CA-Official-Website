@@ -1404,8 +1404,9 @@ class MemoAttachment(Base):
 # ==================== 后台异步任务（通用基础设施） ====================
 
 class BackgroundTaskCategory(str, Enum):
-    """后台任务类别（可扩展；当前仅数据库全量导出）。"""
+    """后台任务类别（可扩展）。"""
     DB_EXPORT = "db_export"
+    SYSTEM_RESET = "system_reset"   # V0.5.7 系统重置（强制备份→全清→回到初始化态）
 
 
 class BackgroundTaskStatus(str, Enum):

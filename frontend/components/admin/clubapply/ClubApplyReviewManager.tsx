@@ -27,6 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { AdminListCard } from "../shared/AdminListCard";
 import {
   adminExportClubApplies,
   adminListClubApplies,
@@ -214,55 +215,29 @@ export function ClubApplyReviewManager() {
       ) : (
         <div className="space-y-3">
           {items.map((r) => (
-            <Card key={r.id}>
-              <CardContent className="p-4 space-y-2">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-medium">{r.real_name}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {r.username ? `@${r.username}` : `#${r.user_id}`}
-                    </span>
-                    <Badge variant="outline">
-                      {t("admin.clubApply.typeSchool")}
-                    </Badge>
-                    <StatusBadge status={r.status} />
-                  </div>
+            <AdminListCard
+              key={r.id}
+              title={
+                <span className="flex items-center gap-2 flex-wrap">
+                  <span className="font-medium">{r.real_name}</span>
                   <span className="text-xs text-muted-foreground">
-                    <FormattedUserActionTime utcIso={r.created_at} />
+                    {r.username ? `@${r.username}` : `#${r.user_id}`}
                   </span>
-                </div>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-3">
-                  <p><span className="text-muted-foreground">{t("admin.clubApply.phone")}：</span>{r.phone}</p>
-                  {r.email && (
-                    <p className="truncate"><span className="text-muted-foreground">Email：</span>{r.email}</p>
-                  )}
-                  <p><span className="text-muted-foreground">{t("setting.school.studentId")}：</span>{r.student_id ?? "-"}</p>
-                  <p><span className="text-muted-foreground">{t("profile.schoolCollege")}：</span>{r.college ?? "-"}</p>
-                  <p><span className="text-muted-foreground">{t("profile.schoolMajor")}：</span>{r.major ?? "-"}</p>
-                  <p><span className="text-muted-foreground">{t("admin.clubApply.enrollYear")}：</span>{r.enroll_year ?? "-"}</p>
-                  <p><span className="text-muted-foreground">{t("admin.clubApply.className")}：</span>{r.class_name ?? "-"}</p>
-                </div>
-                <p className="text-sm">
-                  <span className="text-muted-foreground">{t("admin.clubApply.departments")}：</span>
-                  {(r.departments ?? []).join("、") || "-"}
-                </p>
-                {r.intro && (
-                  <p className="text-sm text-muted-foreground whitespace-pre-wrap line-clamp-4">
-                    {t("admin.clubApply.intro")}：{r.intro}
-                  </p>
-                )}
-                {r.status === "reject" && (
-                  <p className="text-sm text-destructive">
-                    {t("admin.clubApply.adminNote")}：{r.admin_note || "-"}
-                  </p>
-                )}
-                {r.status === "accept" && r.admin_note && (
-                  <p className="text-sm text-muted-foreground">
-                    {t("admin.clubApply.adminNote")}：{r.admin_note}
-                  </p>
-                )}
-                {r.status === "pending" && (
-                  <div className="flex justify-end gap-2 pt-1">
+                  <Badge variant="outline">
+                    {t("admin.clubApply.typeSchool")}
+                  </Badge>
+                  <StatusBadge status={r.status} />
+                </span>
+              }
+              badge={
+                <span className="text-xs text-muted-foreground">
+                  <FormattedUserActionTime utcIso={r.created_at} />
+                </span>
+              }
+              footerClassName="border-t-0 pt-1 justify-end"
+              actions={
+                r.status === "pending" ? (
+                  <>
                     <Button
                       variant="outline"
                       size="sm"
@@ -279,10 +254,41 @@ export function ClubApplyReviewManager() {
                       {busyId === r.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
                       {t("admin.clubApply.accept")}
                     </Button>
-                  </div>
+                  </>
+                ) : undefined
+              }
+            >
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-3">
+                <p><span className="text-muted-foreground">{t("admin.clubApply.phone")}：</span>{r.phone}</p>
+                {r.email && (
+                  <p className="truncate"><span className="text-muted-foreground">Email：</span>{r.email}</p>
                 )}
-              </CardContent>
-            </Card>
+                <p><span className="text-muted-foreground">{t("setting.school.studentId")}：</span>{r.student_id ?? "-"}</p>
+                <p><span className="text-muted-foreground">{t("profile.schoolCollege")}：</span>{r.college ?? "-"}</p>
+                <p><span className="text-muted-foreground">{t("profile.schoolMajor")}：</span>{r.major ?? "-"}</p>
+                <p><span className="text-muted-foreground">{t("admin.clubApply.enrollYear")}：</span>{r.enroll_year ?? "-"}</p>
+                <p><span className="text-muted-foreground">{t("admin.clubApply.className")}：</span>{r.class_name ?? "-"}</p>
+              </div>
+              <p className="text-sm">
+                <span className="text-muted-foreground">{t("admin.clubApply.departments")}：</span>
+                {(r.departments ?? []).join("、") || "-"}
+              </p>
+              {r.intro && (
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap line-clamp-4">
+                  {t("admin.clubApply.intro")}：{r.intro}
+                </p>
+              )}
+              {r.status === "reject" && (
+                <p className="text-sm text-destructive">
+                  {t("admin.clubApply.adminNote")}：{r.admin_note || "-"}
+                </p>
+              )}
+              {r.status === "accept" && r.admin_note && (
+                <p className="text-sm text-muted-foreground">
+                  {t("admin.clubApply.adminNote")}：{r.admin_note}
+                </p>
+              )}
+            </AdminListCard>
           ))}
         </div>
       )}

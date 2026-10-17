@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/admin/review/StatusBadge";
+import { AdminList } from "@/components/admin/shared/AdminList";
 import { FormattedUserActionTime } from "@/components/shared/FormattedUserActionTime";
 import {
   adminListBlogPosts,
@@ -206,114 +207,187 @@ export function BlogManager() {
               {t("admin.blog.empty")}
             </p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground">
-                  <tr>
-                    <th className="px-3 py-2 w-12">{t("admin.blog.colId")}</th>
-                    <th className="px-3 py-2">{t("admin.blog.colTitle")}</th>
-                    <th className="px-3 py-2">{t("admin.blog.colStatus")}</th>
-                    <th className="px-3 py-2 hidden md:table-cell">{t("admin.blog.colTags")}</th>
-                    <th className="px-3 py-2 hidden lg:table-cell">{t("admin.blog.colAuthor")}</th>
-                    <th className="px-3 py-2 hidden lg:table-cell">{t("admin.blog.colPublished")}</th>
-                    <th className="px-3 py-2 text-center hidden xl:table-cell">{t("admin.blog.colLike")}</th>
-                    <th className="px-3 py-2 text-center hidden xl:table-cell">{t("admin.blog.colComment")}</th>
-                    <th className="px-3 py-2 text-center hidden xl:table-cell">{t("admin.blog.colShare")}</th>
-                    <th className="px-3 py-2 text-center hidden xl:table-cell">{t("admin.blog.colFavourite")}</th>
-                    <th className="px-3 py-2 text-center hidden xl:table-cell">{t("admin.blog.colAllowComments")}</th>
-                    <th className="px-3 py-2 text-right">{t("admin.activities.actions")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((p) => (
-                    <tr key={p.id} className="border-t border-border hover:bg-muted/30">
-                      <td className="px-3 py-2 text-xs text-muted-foreground font-mono">{p.id}</td>
-                      <td className="px-3 py-2 font-medium max-w-[220px] truncate">
-                        {p.title}
-                      </td>
-                      <td className="px-3 py-2">
-                        <StatusBadge tone={STATUS_TONE[p.status]}>
-                          {statusLabel(p.status)}
-                        </StatusBadge>
-                      </td>
-                      <td className="px-3 py-2 hidden md:table-cell">
-                        <div className="flex flex-wrap gap-1 max-w-[160px]">
-                          {p.tags.length === 0 ? (
-                            <span className="text-muted-foreground">—</span>
-                          ) : (
-                            p.tags.map((tg) => (
-                              <span
-                                key={tg.id}
-                                className="text-xs px-1.5 py-0.5 rounded bg-secondary text-secondary-foreground"
-                              >
-                                {tg.name}
-                              </span>
-                            ))
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-3 py-2 text-muted-foreground hidden lg:table-cell">
-                        {p.author ?? "—"}
-                      </td>
-                      <td className="px-3 py-2 text-xs text-muted-foreground whitespace-nowrap hidden lg:table-cell">
-                        {p.published_at ? (
-                          <FormattedUserActionTime utcIso={p.published_at} />
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                      <td className="px-3 py-2 text-center hidden xl:table-cell">
-                        <span className="inline-flex items-center gap-0.5 text-xs">
-                          {p.like_count}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 text-center hidden xl:table-cell">
-                        <span className="inline-flex items-center gap-0.5 text-xs">
-                          {p.comment_count}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 text-center hidden xl:table-cell">
-                        <span className="inline-flex items-center gap-0.5 text-xs">
-                          {p.share_count}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 text-center hidden xl:table-cell">
-                        <span className="inline-flex items-center gap-0.5 text-xs">
-                          {p.favourite_count}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 text-center hidden xl:table-cell">
-                        {p.allow_comments ? (
-                          <span className="text-emerald-600 font-semibold" title={t("admin.blog.allowCommentsYes")}><Check className="inline h-4 w-4" /></span>
-                        ) : (
-                          <span className="text-muted-foreground" title={t("admin.blog.allowCommentsNo")}><X className="inline h-4 w-4" /></span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2">
-                        <div className="flex justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => router.push(lp(`/admin/blog/${p.id}/edit`))}
-                            aria-label={t("admin.blog.editBtn")}
+            <AdminList<BlogPost>
+              rows={items}
+              rowKey={(p) => p.id}
+              tableClassName="w-full text-sm"
+              tableHeadClassName="bg-muted/50 text-left text-xs uppercase text-muted-foreground"
+              headRowClassName=""
+              headerCellBaseClassName="px-3 py-2"
+              cellBaseClassName="px-3 py-2"
+              headerCellTextClassName=""
+              // 外层 CardContent 自带 padding，移动卡片不重复加 p-3
+              mobileContainerClassName="space-y-3"
+              mobileTitle={(p) => p.title}
+              mobileBadge={(p) => (
+                <StatusBadge tone={STATUS_TONE[p.status]}>{statusLabel(p.status)}</StatusBadge>
+              )}
+              columns={[
+                {
+                  key: "id",
+                  header: t("admin.blog.colId"),
+                  headerClassName: "w-12",
+                  cellClassName: "text-xs text-muted-foreground font-mono",
+                  mobileLabel: t("admin.blog.colId"),
+                  mobileMono: true,
+                  render: (p) => p.id,
+                },
+                {
+                  key: "title",
+                  header: t("admin.blog.colTitle"),
+                  cellClassName: "font-medium max-w-[220px] truncate",
+                  // 标题已是卡片主标识
+                  render: (p) => p.title,
+                },
+                {
+                  key: "status",
+                  header: t("admin.blog.colStatus"),
+                  // 状态在卡片右上角徽标展示
+                  render: (p) => (
+                    <StatusBadge tone={STATUS_TONE[p.status]}>
+                      {statusLabel(p.status)}
+                    </StatusBadge>
+                  ),
+                },
+                {
+                  key: "tags",
+                  header: t("admin.blog.colTags"),
+                  headerClassName: "hidden md:table-cell",
+                  cellClassName: "hidden md:table-cell",
+                  mobileLabel: t("admin.blog.colTags"),
+                  render: (p) => (
+                    <div className="flex flex-wrap gap-1 max-w-[160px]">
+                      {p.tags.length === 0 ? (
+                        <span className="text-muted-foreground">—</span>
+                      ) : (
+                        p.tags.map((tg) => (
+                          <span
+                            key={tg.id}
+                            className="text-xs px-1.5 py-0.5 rounded bg-secondary text-secondary-foreground"
                           >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDelete(p.id)}
-                            aria-label={t("admin.blog.deleteBtn")}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                            {tg.name}
+                          </span>
+                        ))
+                      )}
+                    </div>
+                  ),
+                },
+                {
+                  key: "author",
+                  header: t("admin.blog.colAuthor"),
+                  headerClassName: "hidden lg:table-cell",
+                  cellClassName: "text-muted-foreground hidden lg:table-cell",
+                  mobileLabel: t("admin.blog.colAuthor"),
+                  render: (p) => p.author ?? "—",
+                },
+                {
+                  key: "published_at",
+                  header: t("admin.blog.colPublished"),
+                  headerClassName: "hidden lg:table-cell",
+                  cellClassName:
+                    "text-xs text-muted-foreground whitespace-nowrap hidden lg:table-cell",
+                  mobileLabel: t("admin.blog.colPublished"),
+                  render: (p) =>
+                    p.published_at ? (
+                      <FormattedUserActionTime utcIso={p.published_at} />
+                    ) : (
+                      "—"
+                    ),
+                },
+                {
+                  key: "like_count",
+                  header: t("admin.blog.colLike"),
+                  headerClassName: "text-center hidden xl:table-cell",
+                  cellClassName: "text-center hidden xl:table-cell",
+                  mobileLabel: t("admin.blog.colLike"),
+                  render: (p) => (
+                    <span className="inline-flex items-center gap-0.5 text-xs">
+                      {p.like_count}
+                    </span>
+                  ),
+                },
+                {
+                  key: "comment_count",
+                  header: t("admin.blog.colComment"),
+                  headerClassName: "text-center hidden xl:table-cell",
+                  cellClassName: "text-center hidden xl:table-cell",
+                  mobileLabel: t("admin.blog.colComment"),
+                  render: (p) => (
+                    <span className="inline-flex items-center gap-0.5 text-xs">
+                      {p.comment_count}
+                    </span>
+                  ),
+                },
+                {
+                  key: "share_count",
+                  header: t("admin.blog.colShare"),
+                  headerClassName: "text-center hidden xl:table-cell",
+                  cellClassName: "text-center hidden xl:table-cell",
+                  mobileLabel: t("admin.blog.colShare"),
+                  render: (p) => (
+                    <span className="inline-flex items-center gap-0.5 text-xs">
+                      {p.share_count}
+                    </span>
+                  ),
+                },
+                {
+                  key: "favourite_count",
+                  header: t("admin.blog.colFavourite"),
+                  headerClassName: "text-center hidden xl:table-cell",
+                  cellClassName: "text-center hidden xl:table-cell",
+                  mobileLabel: t("admin.blog.colFavourite"),
+                  render: (p) => (
+                    <span className="inline-flex items-center gap-0.5 text-xs">
+                      {p.favourite_count}
+                    </span>
+                  ),
+                },
+                {
+                  key: "allow_comments",
+                  header: t("admin.blog.colAllowComments"),
+                  headerClassName: "text-center hidden xl:table-cell",
+                  cellClassName: "text-center hidden xl:table-cell",
+                  mobileLabel: t("admin.blog.colAllowComments"),
+                  render: (p) =>
+                    p.allow_comments ? (
+                      <span
+                        className="text-emerald-600 font-semibold"
+                        title={t("admin.blog.allowCommentsYes")}
+                      >
+                        <Check className="inline h-4 w-4" />
+                      </span>
+                    ) : (
+                      <span
+                        className="text-muted-foreground"
+                        title={t("admin.blog.allowCommentsNo")}
+                      >
+                        <X className="inline h-4 w-4" />
+                      </span>
+                    ),
+                },
+              ]}
+              actionsHeader={t("admin.activities.actions")}
+              actions={(p) => (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => router.push(lp(`/admin/blog/${p.id}/edit`))}
+                    aria-label={t("admin.blog.editBtn")}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleDelete(p.id)}
+                    aria-label={t("admin.blog.deleteBtn")}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </>
+              )}
+            />
           )}
 
           {/* 分页（服务端分页） */}

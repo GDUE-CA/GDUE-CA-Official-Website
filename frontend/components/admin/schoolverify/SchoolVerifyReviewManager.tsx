@@ -26,6 +26,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { AdminListCard } from "../shared/AdminListCard";
 import {
   adminListSchoolVerify,
   adminReviewSchoolVerify,
@@ -187,51 +188,26 @@ export function SchoolVerifyReviewManager() {
       ) : (
         <div className="space-y-3">
           {items.map((r) => (
-            <Card key={r.id}>
-              <CardContent className="p-4 space-y-2">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-medium">
-                      {r.display_name || r.username || `#${r.user_id}`}
-                    </span>
-                    <span className="text-xs text-muted-foreground">@{r.username}</span>
-                    <StatusBadge status={r.status} />
-                  </div>
-                  <span className="text-xs text-muted-foreground">
-                    <FormattedUserActionTime utcIso={r.created_at} />
+            <AdminListCard
+              key={r.id}
+              title={
+                <span className="flex items-center gap-2 flex-wrap">
+                  <span className="font-medium">
+                    {r.display_name || r.username || `#${r.user_id}`}
                   </span>
-                </div>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-3">
-                  <p><span className="text-muted-foreground">{t("setting.school.studentId")}：</span>{r.student_id}</p>
-                  <p><span className="text-muted-foreground">{t("profile.schoolCollege")}：</span>{r.college_name ?? "-"}</p>
-                  <p><span className="text-muted-foreground">{t("profile.schoolMajor")}：</span>{r.major_name ?? "-"}</p>
-                  <p><span className="text-muted-foreground">{t("profile.schoolGrade")}：</span>{r.grade_year ?? "-"}</p>
-                  <p><span className="text-muted-foreground">{t("profile.schoolClass")}：</span>{r.class_display_name ?? "-"}</p>
-                  {r.attach_url && (
-                    <p className="truncate">
-                      <a href={r.attach_url} target="_blank" rel="noreferrer" className="text-primary hover:underline">
-                        {t("setting.school.attach")}
-                      </a>
-                    </p>
-                  )}
-                </div>
-                {r.remark && (
-                  <p className="text-sm text-muted-foreground">
-                    {t("setting.school.remark")}：{r.remark}
-                  </p>
-                )}
-                {r.status === "approved" && r.admin_remark && (
-                  <p className="text-sm text-muted-foreground">
-                    {t("admin.schoolVerify.remarkLabel")}：{r.admin_remark}
-                  </p>
-                )}
-                {r.status === "rejected" && (
-                  <p className="text-sm text-destructive">
-                    {t("setting.school.rejectionReason")}：{r.admin_remark || "-"}
-                  </p>
-                )}
-                {r.status === "pending" && (
-                  <div className="flex justify-end gap-2 pt-1">
+                  <span className="text-xs text-muted-foreground">@{r.username}</span>
+                  <StatusBadge status={r.status} />
+                </span>
+              }
+              badge={
+                <span className="text-xs text-muted-foreground">
+                  <FormattedUserActionTime utcIso={r.created_at} />
+                </span>
+              }
+              footerClassName="border-t-0 pt-1 justify-end"
+              actions={
+                r.status === "pending" ? (
+                  <>
                     <Button
                       variant="outline"
                       size="sm"
@@ -248,10 +224,40 @@ export function SchoolVerifyReviewManager() {
                       {busyId === r.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
                       {t("admin.schoolVerify.approve")}
                     </Button>
-                  </div>
+                  </>
+                ) : undefined
+              }
+            >
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-3">
+                <p><span className="text-muted-foreground">{t("setting.school.studentId")}：</span>{r.student_id}</p>
+                <p><span className="text-muted-foreground">{t("profile.schoolCollege")}：</span>{r.college_name ?? "-"}</p>
+                <p><span className="text-muted-foreground">{t("profile.schoolMajor")}：</span>{r.major_name ?? "-"}</p>
+                <p><span className="text-muted-foreground">{t("profile.schoolGrade")}：</span>{r.grade_year ?? "-"}</p>
+                <p><span className="text-muted-foreground">{t("profile.schoolClass")}：</span>{r.class_display_name ?? "-"}</p>
+                {r.attach_url && (
+                  <p className="truncate">
+                    <a href={r.attach_url} target="_blank" rel="noreferrer" className="text-primary hover:underline">
+                      {t("setting.school.attach")}
+                    </a>
+                  </p>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+              {r.remark && (
+                <p className="text-sm text-muted-foreground">
+                  {t("setting.school.remark")}：{r.remark}
+                </p>
+              )}
+              {r.status === "approved" && r.admin_remark && (
+                <p className="text-sm text-muted-foreground">
+                  {t("admin.schoolVerify.remarkLabel")}：{r.admin_remark}
+                </p>
+              )}
+              {r.status === "rejected" && (
+                <p className="text-sm text-destructive">
+                  {t("setting.school.rejectionReason")}：{r.admin_remark || "-"}
+                </p>
+              )}
+            </AdminListCard>
           ))}
         </div>
       )}

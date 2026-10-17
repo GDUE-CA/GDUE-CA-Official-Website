@@ -876,7 +876,7 @@ export interface NotificationItem {
 }
 
 /* ---------- 后台异步任务（数据库导出等） ---------- */
-export type BackgroundTaskCategory = "db_export";
+export type BackgroundTaskCategory = "db_export" | "system_reset";
 export type BackgroundTaskStatus = "pending" | "running" | "success" | "failed";
 
 export interface BackgroundTask {
@@ -887,11 +887,18 @@ export interface BackgroundTask {
   /** 0-100；失败时保持当前进度 */
   progress: number;
   message: string;
-  /** 成功：{filename, path, size_bytes}；失败：{error} */
+  /** 成功：导出 {filename,path,size_bytes} / 重置 {backup_filename,...}；失败：{error} */
   result_payload: {
     filename?: string;
     path?: string;
     size_bytes?: number;
+    // V0.5.7 system_reset 任务字段
+    backup_filename?: string;
+    backup_path?: string;
+    files_deleted?: number;
+    file_delete_failures?: number;
+    bg_sessions_revoked?: number;
+    aborted_before_wipe?: boolean;
     error?: string;
   } | null;
   created_by_user_id: number | null;

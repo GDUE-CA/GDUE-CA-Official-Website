@@ -28,6 +28,7 @@ import { batchTranslate } from "@/lib/api/translations";
 import { StatusBadge } from "./StatusBadge";
 import { BatchBar } from "./BatchBar";
 import { useBatchSelection } from "./useBatchSelection";
+import { AdminList } from "@/components/admin/shared/AdminList";
 import { ManualRegistrationDialog } from "./ManualRegistrationDialog";
 import { useEffectivePermissions } from "@/lib/permissions";
 import { FormattedUserActionTime } from "@/components/shared/FormattedUserActionTime";
@@ -266,100 +267,189 @@ export function RegistrationsTab() {
         </Card>
       ) : (
         <Card>
-          <CardContent className="p-0 overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground">
-                <tr>
-                  <th className="px-3 py-2 w-10">
-                    <button
-                      type="button"
-                      onClick={toggleAll}
-                      className="flex items-center justify-center text-muted-foreground hover:text-foreground"
-                      title={t("admin.registrations.selectAll")}
-                    >
-                      {allSelected ? (
-                        <SquareCheck className="h-4 w-4 text-primary" />
-                      ) : someSelected ? (
-                        <Square className="h-4 w-4 text-primary fill-primary/40" />
-                      ) : (
-                        <Square className="h-4 w-4" />
-                      )}
-                    </button>
-                  </th>
-                  <th className="px-3 py-2">{t("admin.registrations.colType")}</th>
-                  <th className="px-3 py-2">{t("admin.registrations.colName")}</th>
-                  <th className="px-3 py-2">{t("admin.registrations.colStudentId")}</th>
-                  <th className="px-3 py-2 hidden md:table-cell">{t("admin.registrations.colCollege")}</th>
-                  <th className="px-3 py-2 hidden lg:table-cell">{t("admin.registrations.colMajor")}</th>
-                  <th className="px-3 py-2">{t("admin.registrations.colPhone")}</th>
-                  <th className="px-3 py-2">{t("admin.registrations.colStatus")}</th>
-                  <th className="px-3 py-2 hidden sm:table-cell">{t("admin.review.colSource")}</th>
-                  <th className="px-3 py-2 hidden sm:table-cell">{t("admin.registrations.colSubmittedAt")}</th>
-                  <th className="px-3 py-2">{t("admin.activities.actions")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((r) => (
-                  <tr key={r.id} className={`border-t border-border hover:bg-muted/30 ${selected.has(r.id) ? "bg-primary/5" : ""}`}>
-                    <td className="px-3 py-2">
-                      <button
-                        type="button"
-                        onClick={() => toggle(r.id)}
-                        disabled={r.status === "checked_in"}
-                        className="flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
-                        title={r.status !== "checked_in" ? t("admin.registrations.selectRow") : t("admin.registrations.checkedInLock")}
-                      >
-                        {selected.has(r.id) ? (
-                          <SquareCheck className="h-4 w-4 text-primary" />
-                        ) : (
-                          <Square className="h-4 w-4 text-muted-foreground" />
-                        )}
-                      </button>
-                    </td>
-                    <td className="px-3 py-2">
-                      <StatusBadge tone={r.registration_type === "club" ? "success" : "info"}>
-                        {typeLabel(r.registration_type, t)}
-                      </StatusBadge>
-                    </td>
-                    <td className="px-3 py-2 font-medium">
-                      {r.name}
-                      <div className="font-mono text-[10px] text-muted-foreground mt-0.5">{r.receipt_code}</div>
-                    </td>
-                    <td className="px-3 py-2 font-mono text-xs">{r.student_id}</td>
-                    <td className="px-3 py-2 hidden md:table-cell">{tv(r, "college")}</td>
-                    <td className="px-3 py-2 hidden lg:table-cell">{tv(r, "major")}</td>
-                    <td className="px-3 py-2 font-mono text-xs whitespace-nowrap">{r.phone_cc} {r.phone_number}</td>
-                    <td className="px-3 py-2">
-                      <StatusBadge
-                        tone={
-                          r.status === "pending" ? "warning"
-                          : r.status === "approved" ? "success"
-                          : r.status === "rejected" ? "danger"
+          <CardContent className="p-0">
+            <AdminList<Registration>
+              rows={items}
+              rowKey={(r) => r.id}
+              tableClassName="w-full text-sm"
+              tableHeadClassName="bg-muted/50 text-left text-xs uppercase text-muted-foreground"
+              headRowClassName=""
+              headerCellBaseClassName="px-3 py-2"
+              cellBaseClassName="px-3 py-2"
+              headerCellTextClassName=""
+              selectionHeaderClassName="w-10"
+              actionsContainerClassName="flex gap-1"
+              actionsHeaderClassName="text-left"
+              rowClassName={(r) =>
+                `border-t border-border hover:bg-muted/30 ${selected.has(r.id) ? "bg-primary/5" : ""}`
+              }
+              selectable
+              selectedKeys={selected}
+              allSelected={allSelected}
+              indeterminate={someSelected && !allSelected}
+              onToggleAll={toggleAll}
+              onToggleOne={(r) => toggle(r.id)}
+              isRowSelectable={(r) => r.status !== "checked_in"}
+              selectAllLabel={t("admin.registrations.selectAll")}
+              renderHeaderSelection={() => (
+                <button
+                  type="button"
+                  onClick={toggleAll}
+                  className="flex items-center justify-center text-muted-foreground hover:text-foreground"
+                  title={t("admin.registrations.selectAll")}
+                >
+                  {allSelected ? (
+                    <SquareCheck className="h-4 w-4 text-primary" />
+                  ) : someSelected ? (
+                    <Square className="h-4 w-4 text-primary fill-primary/40" />
+                  ) : (
+                    <Square className="h-4 w-4" />
+                  )}
+                </button>
+              )}
+              renderRowSelection={(r) => (
+                <button
+                  type="button"
+                  onClick={() => toggle(r.id)}
+                  disabled={r.status === "checked_in"}
+                  className="flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
+                  title={
+                    r.status !== "checked_in"
+                      ? t("admin.registrations.selectRow")
+                      : t("admin.registrations.checkedInLock")
+                  }
+                >
+                  {selected.has(r.id) ? (
+                    <SquareCheck className="h-4 w-4 text-primary" />
+                  ) : (
+                    <Square className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </button>
+              )}
+              mobileTitle={(r) => r.name}
+              mobileBadge={(r) => (
+                <StatusBadge
+                  tone={
+                    r.status === "pending"
+                      ? "warning"
+                      : r.status === "approved"
+                        ? "success"
+                        : r.status === "rejected"
+                          ? "danger"
                           : "info"
-                        }
-                      >
-                        {t(`admin.registrations.statuses.${r.status}`)}
-                      </StatusBadge>
-                    </td>
-                    <td className="px-3 py-2 hidden sm:table-cell">
-                      <StatusBadge tone={r.source === "manual" ? "info" : "neutral"}>
-                        {r.source === "manual" ? t("admin.review.sourceManual") : t("admin.review.sourceForm")}
-                      </StatusBadge>
-                    </td>
-                    <td className="px-3 py-2 hidden sm:table-cell text-xs text-muted-foreground whitespace-nowrap">
-                      <FormattedUserActionTime utcIso={r.submitted_at} />
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="flex gap-1">
-                        <Button size="sm" variant="ghost" onClick={() => setDetail(r)}>
-                          {t("admin.registrations.viewDetail")}
-                        </Button>
+                  }
+                >
+                  {t(`admin.registrations.statuses.${r.status}`)}
+                </StatusBadge>
+              )}
+              columns={[
+                {
+                  key: "type",
+                  header: t("admin.registrations.colType"),
+                  mobileLabel: t("admin.registrations.colType"),
+                  render: (r) => (
+                    <StatusBadge tone={r.registration_type === "club" ? "success" : "info"}>
+                      {typeLabel(r.registration_type, t)}
+                    </StatusBadge>
+                  ),
+                },
+                {
+                  key: "name",
+                  header: t("admin.registrations.colName"),
+                  cellClassName: "font-medium",
+                  mobileLabel: t("admin.registrations.colName"),
+                  render: (r) => (
+                    <>
+                      {r.name}
+                      <div className="font-mono text-[10px] text-muted-foreground mt-0.5">
+                        {r.receipt_code}
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </>
+                  ),
+                },
+                {
+                  key: "student_id",
+                  header: t("admin.registrations.colStudentId"),
+                  cellClassName: "font-mono text-xs",
+                  mobileLabel: t("admin.registrations.colStudentId"),
+                  mobileMono: true,
+                  render: (r) => r.student_id,
+                },
+                {
+                  key: "college",
+                  header: t("admin.registrations.colCollege"),
+                  headerClassName: "hidden md:table-cell",
+                  cellClassName: "hidden md:table-cell",
+                  mobileLabel: t("admin.registrations.colCollege"),
+                  render: (r) => tv(r, "college"),
+                },
+                {
+                  key: "major",
+                  header: t("admin.registrations.colMajor"),
+                  headerClassName: "hidden lg:table-cell",
+                  cellClassName: "hidden lg:table-cell",
+                  mobileLabel: t("admin.registrations.colMajor"),
+                  render: (r) => tv(r, "major"),
+                },
+                {
+                  key: "phone",
+                  header: t("admin.registrations.colPhone"),
+                  cellClassName: "font-mono text-xs whitespace-nowrap",
+                  mobileLabel: t("admin.registrations.colPhone"),
+                  mobileMono: true,
+                  render: (r) => `${r.phone_cc} ${r.phone_number}`,
+                },
+                {
+                  key: "status",
+                  header: t("admin.registrations.colStatus"),
+                  // 状态徽标在移动端卡片右上角展示
+                  render: (r) => (
+                    <StatusBadge
+                      tone={
+                        r.status === "pending"
+                          ? "warning"
+                          : r.status === "approved"
+                            ? "success"
+                            : r.status === "rejected"
+                              ? "danger"
+                              : "info"
+                      }
+                    >
+                      {t(`admin.registrations.statuses.${r.status}`)}
+                    </StatusBadge>
+                  ),
+                },
+                {
+                  key: "source",
+                  header: t("admin.review.colSource"),
+                  headerClassName: "hidden sm:table-cell",
+                  cellClassName: "hidden sm:table-cell",
+                  mobileLabel: t("admin.review.colSource"),
+                  render: (r) => (
+                    <StatusBadge tone={r.source === "manual" ? "info" : "neutral"}>
+                      {r.source === "manual"
+                        ? t("admin.review.sourceManual")
+                        : t("admin.review.sourceForm")}
+                    </StatusBadge>
+                  ),
+                },
+                {
+                  key: "submitted_at",
+                  header: t("admin.registrations.colSubmittedAt"),
+                  headerClassName: "hidden sm:table-cell",
+                  cellClassName:
+                    "hidden sm:table-cell text-xs text-muted-foreground whitespace-nowrap",
+                  mobileLabel: t("admin.registrations.colSubmittedAt"),
+                  render: (r) => <FormattedUserActionTime utcIso={r.submitted_at} />,
+                },
+              ]}
+              actionsHeader={t("admin.activities.actions")}
+              actions={(r) => (
+                <Button size="sm" variant="ghost" onClick={() => setDetail(r)}>
+                  {t("admin.registrations.viewDetail")}
+                </Button>
+              )}
+            />
           </CardContent>
         </Card>
       )}

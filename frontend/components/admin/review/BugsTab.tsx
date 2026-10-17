@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { listBugReports, setBugResolved, batchUpdateBugs } from "@/lib/api/bugReport";
 import { batchTranslate } from "@/lib/api/translations";
+import { AdminListCard } from "../shared/AdminListCard";
 import { StatusBadge } from "./StatusBadge";
 import { BatchBar } from "./BatchBar";
 import { useBatchSelection } from "./useBatchSelection";
@@ -147,28 +148,31 @@ export function BugsTab() {
             const descTr = trans[`b${b.id}.description`]?.translated;
             const shown = tv(b, "description");
             return (
-              <Card key={b.id} className={selected.has(b.id) ? "border-primary/50" : undefined}>
-                <CardContent className="p-4 space-y-2">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-2 min-w-0">
-                      <button
-                        type="button"
-                        onClick={() => toggleSelect(b.id)}
-                        className="mt-0.5 flex items-center justify-center shrink-0"
-                        title={t("admin.bugs.selectRow")}
-                      >
-                        {selected.has(b.id) ? (
-                          <SquareCheck className="h-4 w-4 text-primary" />
-                        ) : (
-                          <Square className="h-4 w-4 text-muted-foreground" />
-                        )}
-                      </button>
-                      <h3 className="font-semibold whitespace-pre-wrap">{shown.slice(0, 80)}</h3>
-                    </div>
-                    <StatusBadge tone={b.resolved ? "success" : "warning"}>
-                      {b.resolved ? t("admin.bugs.statuses.resolved") : t("admin.bugs.statuses.open")}
-                    </StatusBadge>
-                  </div>
+              <AdminListCard
+                key={b.id}
+                selected={selected.has(b.id)}
+                selectionNode={
+                  <button
+                    type="button"
+                    onClick={() => toggleSelect(b.id)}
+                    className="mt-0.5 flex items-center justify-center shrink-0"
+                    title={t("admin.bugs.selectRow")}
+                  >
+                    {selected.has(b.id) ? (
+                      <SquareCheck className="h-4 w-4 text-primary" />
+                    ) : (
+                      <Square className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </button>
+                }
+                title={shown.slice(0, 80)}
+                titleClassName="whitespace-pre-wrap"
+                badge={
+                  <StatusBadge tone={b.resolved ? "success" : "warning"}>
+                    {b.resolved ? t("admin.bugs.statuses.resolved") : t("admin.bugs.statuses.open")}
+                  </StatusBadge>
+                }
+                meta={
                   <div className="flex items-center gap-2 flex-wrap text-xs text-muted-foreground">
                     <code className="font-mono">{b.receipt_code}</code>
                     {descTr && (
@@ -190,35 +194,37 @@ export function BugsTab() {
                       </Button>
                     )}
                   </div>
-                  {shown.length > 80 && (
-                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">{shown}</p>
-                  )}
-                  {b.extra && (
-                    <p className="text-xs text-muted-foreground whitespace-pre-wrap pt-1 border-t border-border/60">
-                      {tv(b, "extra")}
-                    </p>
-                  )}
-                  <div className="flex flex-wrap gap-4 text-xs text-muted-foreground pt-2 border-t border-border">
-                    {b.contact_email && <span>{t("admin.bugs.colContact")}: {b.contact_email}</span>}
-                    {b.contact_phone && <span>{t("admin.bugs.colContact")}: {b.contact_phone}</span>}
-                    <span>{t("admin.bugs.colCreatedAt")}: <FormattedUserActionTime utcIso={b.created_at} /></span>
-                    <span className="font-mono">IP: {b.submit_ip ?? "-"}</span>
-                  </div>
-                  <div className="pt-2">
-                    {b.resolved ? (
-                      <Button size="sm" variant="outline" onClick={() => toggle(b)}>
-                        <RotateCcw className="h-4 w-4 mr-1" />
-                        {t("admin.bugs.reopen")}
-                      </Button>
-                    ) : (
-                      <Button size="sm" onClick={() => toggle(b)}>
-                        <Check className="h-4 w-4 mr-1" />
-                        {t("admin.bugs.markResolved")}
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+                }
+                actions={
+                  b.resolved ? (
+                    <Button size="sm" variant="outline" onClick={() => toggle(b)}>
+                      <RotateCcw className="h-4 w-4 mr-1" />
+                      {t("admin.bugs.reopen")}
+                    </Button>
+                  ) : (
+                    <Button size="sm" onClick={() => toggle(b)}>
+                      <Check className="h-4 w-4 mr-1" />
+                      {t("admin.bugs.markResolved")}
+                    </Button>
+                  )
+                }
+                footerClassName="border-t-0"
+              >
+                {shown.length > 80 && (
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">{shown}</p>
+                )}
+                {b.extra && (
+                  <p className="text-xs text-muted-foreground whitespace-pre-wrap pt-1 border-t border-border/60">
+                    {tv(b, "extra")}
+                  </p>
+                )}
+                <div className="flex flex-wrap gap-4 text-xs text-muted-foreground pt-2 border-t border-border">
+                  {b.contact_email && <span>{t("admin.bugs.colContact")}: {b.contact_email}</span>}
+                  {b.contact_phone && <span>{t("admin.bugs.colContact")}: {b.contact_phone}</span>}
+                  <span>{t("admin.bugs.colCreatedAt")}: <FormattedUserActionTime utcIso={b.created_at} /></span>
+                  <span className="font-mono">IP: {b.submit_ip ?? "-"}</span>
+                </div>
+              </AdminListCard>
             );
           })}
         </div>

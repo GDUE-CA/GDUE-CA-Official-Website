@@ -58,6 +58,8 @@ PERMISSION_MODULES = (
     "badges",          # 用户自定义徽章的增删改与排序
     # ---------- 角色管理（V0.5.5 §3.2） ----------
     "roles",           # 角色定义查看 + 用户权限覆盖矩阵管理（manage 仅 super_admin）
+    # ---------- V0.5.7 系统重置（最高危操作；仅 super_admin，BG 应急账号旁路） ----------
+    "system_reset",
 )
 
 # 角色默认矩阵：module -> role -> 允许的动作集合（member 无后台权限，不列出）
@@ -206,6 +208,10 @@ ROLE_DEFAULTS: dict[str, dict[Role, set[str]]] = {
         Role.SUPER_ADMIN: {"view", "manage"},
         Role.ADMIN: {"view"},
         Role.EDITOR: {"view"},
+    },
+    # ---------- V0.5.7 系统重置：唯一最高危权限，仅 super_admin（BG 由 require_permission 旁路） ----------
+    "system_reset": {
+        Role.SUPER_ADMIN: {"view", "manage"},
     },
 }
 

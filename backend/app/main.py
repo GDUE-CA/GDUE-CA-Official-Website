@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import delete as sa_delete
 from sqlalchemy import func, select
 
-from app.api import account, activities, admin_stats, announcements, audit, auth, background_tasks, badges, blog, bug_report, club_apply, comments, content, db_maintenance, email_change, geo, i18n_public, health, memos, media, members, notifications, oauth, projects, query, realname, recruitment, recycle, register, roles, school_verify, security, sso, stats, sys_data, system, system_init, tags, themes, translations, users, version
+from app.api import account, activities, admin_stats, announcements, audit, auth, background_tasks, badges, blog, bug_report, club_apply, comments, content, db_maintenance, email_change, geo, i18n_public, health, memos, media, members, notifications, oauth, projects, query, realname, recruitment, recycle, register, roles, school_verify, security, sso, stats, sys_data, system, system_init, system_reset, tags, themes, translations, users, version
 from app.core.config import get_settings
 from app.core.csrf import CSRF_HEADER, csrf_middleware
 from app.core.exceptions import register_exception_handlers
@@ -635,6 +635,8 @@ app.include_router(roles.router)
 # 后台异步任务（数据库导出等）：任务查询/关闭 + 数据库维护提交入口
 app.include_router(background_tasks.router)
 app.include_router(db_maintenance.router)
+# V0.5.7 系统重置（最高危；仅 super_admin / Break-Glass）
+app.include_router(system_reset.router)
 # ---------- Phase 8: Memo 碎片笔记 + 全局共享标签 ----------
 # 注意：author_router 与 public_router 共享 /api/memos 前缀；
 # FastAPI 按注册顺序匹配，必须先注册具体路径（公开 /shared/{share_slug} 等），再注册参数路由（{memo_id}）。

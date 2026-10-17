@@ -22,6 +22,7 @@ import {
   handlePasswordReset,
   batchHandlePasswordResets,
 } from "@/lib/api/auth";
+import { AdminListCard } from "../shared/AdminListCard";
 import { StatusBadge } from "./StatusBadge";
 import { BatchBar } from "./BatchBar";
 import { useBatchSelection } from "./useBatchSelection";
@@ -133,91 +134,100 @@ export function PasswordResetsTab() {
       ) : (
         <div className="space-y-3">
           {items.map((item) => (
-            <Card key={item.id} className={selected.has(item.id) ? "border-primary/50" : undefined}>
-              <CardContent className="p-4 space-y-3">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <div className="flex items-center gap-2">
-                    {item.status === "pending" ? (
-                      <button
-                        type="button"
-                        onClick={() => toggle(item.id)}
-                        className="flex items-center justify-center"
-                        title={t("admin.passwordResets.selectRow")}
-                      >
-                        {selected.has(item.id) ? (
-                          <SquareCheck className="h-4 w-4 text-primary" />
-                        ) : (
-                          <Square className="h-4 w-4 text-muted-foreground" />
-                        )}
-                      </button>
+            <AdminListCard
+              key={item.id}
+              selected={selected.has(item.id)}
+              selectionNode={
+                item.status === "pending" ? (
+                  <button
+                    type="button"
+                    onClick={() => toggle(item.id)}
+                    className="flex items-center justify-center"
+                    title={t("admin.passwordResets.selectRow")}
+                  >
+                    {selected.has(item.id) ? (
+                      <SquareCheck className="h-4 w-4 text-primary" />
                     ) : (
-                      <span className="flex items-center justify-center w-4 opacity-30">
-                        <Square className="h-4 w-4 text-muted-foreground" />
-                      </span>
+                      <Square className="h-4 w-4 text-muted-foreground" />
                     )}
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">{item.contact_email}</span>
-                  </div>
-                  <StatusBadge tone={statusTone(item.status)}>
-                    {t(`admin.passwordResets.statuses.${item.status}`)}
-                  </StatusBadge>
-                </div>
-                {item.username_hint && (
-                  <div className="text-sm">
-                    <span className="text-muted-foreground">{t("admin.passwordResets.colUsername")}：</span>
-                    {item.username_hint}
-                  </div>
-                )}
-                <div className="text-sm">
-                  <span className="text-muted-foreground">{t("admin.passwordResets.colReason")}：</span>
-                  {item.reason}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {t("admin.passwordResets.colCreatedAt")}：<FormattedUserActionTime utcIso={item.created_at} />
-                </div>
-
-                {item.status === "pending" && (
+                  </button>
+                ) : (
+                  <span className="flex items-center justify-center w-4 opacity-30">
+                    <Square className="h-4 w-4 text-muted-foreground" />
+                  </span>
+                )
+              }
+              title={
+                <span className="inline-flex items-center gap-2">
+                  <Mail className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">{item.contact_email}</span>
+                </span>
+              }
+              badge={
+                <StatusBadge tone={statusTone(item.status)}>
+                  {t(`admin.passwordResets.statuses.${item.status}`)}
+                </StatusBadge>
+              }
+              contentClassName="space-y-3"
+              footerClassName="border-t-0 pt-0"
+              actions={
+                item.status === "pending" ? (
                   <>
-                    <Textarea
-                      placeholder={t("admin.passwordResets.adminNotePlaceholder")}
-                      value={notes[item.id] || ""}
-                      onChange={(e) => setNotes({ ...notes, [item.id]: e.target.value })}
-                      rows={2}
-                    />
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        disabled={handlingId === item.id}
-                        onClick={() => handle(item.id, "handled")}
-                      >
-                        {handlingId === item.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Check className="h-4 w-4" />
-                        )}
-                        {t("admin.passwordResets.markHandled")}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={handlingId === item.id}
-                        onClick={() => handle(item.id, "rejected")}
-                      >
-                        <X className="h-4 w-4" />
-                        {t("admin.passwordResets.markRejected")}
-                      </Button>
-                    </div>
+                    <Button
+                      size="sm"
+                      disabled={handlingId === item.id}
+                      onClick={() => handle(item.id, "handled")}
+                    >
+                      {handlingId === item.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Check className="h-4 w-4" />
+                      )}
+                      {t("admin.passwordResets.markHandled")}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={handlingId === item.id}
+                      onClick={() => handle(item.id, "rejected")}
+                    >
+                      <X className="h-4 w-4" />
+                      {t("admin.passwordResets.markRejected")}
+                    </Button>
                   </>
-                )}
+                ) : undefined
+              }
+            >
+              {item.username_hint && (
+                <div className="text-sm">
+                  <span className="text-muted-foreground">{t("admin.passwordResets.colUsername")}：</span>
+                  {item.username_hint}
+                </div>
+              )}
+              <div className="text-sm">
+                <span className="text-muted-foreground">{t("admin.passwordResets.colReason")}：</span>
+                {item.reason}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {t("admin.passwordResets.colCreatedAt")}：<FormattedUserActionTime utcIso={item.created_at} />
+              </div>
 
-                {item.admin_note && item.status !== "pending" && (
-                  <div className="text-sm border-t border-border pt-2">
-                    <span className="text-muted-foreground">{t("admin.passwordResets.adminNote")}：</span>
-                    {item.admin_note}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+              {item.status === "pending" && (
+                <Textarea
+                  placeholder={t("admin.passwordResets.adminNotePlaceholder")}
+                  value={notes[item.id] || ""}
+                  onChange={(e) => setNotes({ ...notes, [item.id]: e.target.value })}
+                  rows={2}
+                />
+              )}
+
+              {item.admin_note && item.status !== "pending" && (
+                <div className="text-sm border-t border-border pt-2">
+                  <span className="text-muted-foreground">{t("admin.passwordResets.adminNote")}：</span>
+                  {item.admin_note}
+                </div>
+              )}
+            </AdminListCard>
           ))}
         </div>
       )}

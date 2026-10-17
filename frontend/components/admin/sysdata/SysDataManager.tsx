@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { AdminListCard } from "@/components/admin/shared/AdminListCard";
 import {
   Dialog,
   DialogContent,
@@ -345,62 +346,125 @@ export function SysDataManager() {
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       ) : (
-        <div className="divide-y divide-border rounded-md border border-border bg-background">
-          {rows.length === 0 && (
-            <p className="px-4 py-8 text-center text-sm text-muted-foreground">
-              {t("admin.sysdata.empty")}
-            </p>
-          )}
-          {rows.map((r, i) => (
-            <div key={r.id} className="flex items-center gap-3 px-4 py-2.5">
-              <div className="flex flex-col gap-0.5">
-                <button
-                  type="button"
-                  disabled={i === 0 || busyId === r.id}
-                  onClick={() => handleMove(r, -1)}
-                  className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-30"
-                  aria-label={t("admin.sysdata.moveUp")}
-                >
-                  <ArrowUp className="h-3.5 w-3.5" />
-                </button>
-                <button
-                  type="button"
-                  disabled={i === rows.length - 1 || busyId === r.id}
-                  onClick={() => handleMove(r, 1)}
-                  className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-30"
-                  aria-label={t("admin.sysdata.moveDown")}
-                >
-                  <ArrowDown className="h-3.5 w-3.5" />
-                </button>
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">
-                  {r.title}
-                  {r.is_disabled && (
-                    <Badge variant="secondary" className="ml-2">
-                      {t("admin.sysdata.disabled")}
-                    </Badge>
+        <>
+          {/* 桌面端：保持原分隔列表布局（V0.5.7 PC 零变化） */}
+          <div className="hidden md:block divide-y divide-border rounded-md border border-border bg-background">
+            {rows.length === 0 && (
+              <p className="px-4 py-8 text-center text-sm text-muted-foreground">
+                {t("admin.sysdata.empty")}
+              </p>
+            )}
+            {rows.map((r, i) => (
+              <div key={r.id} className="flex items-center gap-3 px-4 py-2.5">
+                <div className="flex flex-col gap-0.5">
+                  <button
+                    type="button"
+                    disabled={i === 0 || busyId === r.id}
+                    onClick={() => handleMove(r, -1)}
+                    className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-30"
+                    aria-label={t("admin.sysdata.moveUp")}
+                  >
+                    <ArrowUp className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={i === rows.length - 1 || busyId === r.id}
+                    onClick={() => handleMove(r, 1)}
+                    className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-30"
+                    aria-label={t("admin.sysdata.moveDown")}
+                  >
+                    <ArrowDown className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">
+                    {r.title}
+                    {r.is_disabled && (
+                      <Badge variant="secondary" className="ml-2">
+                        {t("admin.sysdata.disabled")}
+                      </Badge>
+                    )}
+                  </p>
+                  {r.subtitle && (
+                    <p className="truncate text-xs text-muted-foreground">{r.subtitle}</p>
                   )}
-                </p>
-                {r.subtitle && (
-                  <p className="truncate text-xs text-muted-foreground">{r.subtitle}</p>
-                )}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={busyId === r.id}
+                  onClick={() => handleToggle(r)}
+                >
+                  {r.is_disabled ? t("admin.sysdata.enable") : t("admin.sysdata.disable")}
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => openEdit(r)}>
+                  <Pencil className="h-4 w-4" />
+                  {t("common.edit")}
+                </Button>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={busyId === r.id}
-                onClick={() => handleToggle(r)}
-              >
-                {r.is_disabled ? t("admin.sysdata.enable") : t("admin.sysdata.disable")}
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => openEdit(r)}>
-                <Pencil className="h-4 w-4" />
-                {t("common.edit")}
-              </Button>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+
+          {/* 移动端：卡片式布局（V0.5.7，无横向滚动，功能完整保留） */}
+          <div className="md:hidden space-y-3">
+            {rows.length === 0 && (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                {t("admin.sysdata.empty")}
+              </p>
+            )}
+            {rows.map((r) => (
+              <AdminListCard
+                key={r.id}
+                title={
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span className="min-w-0 truncate">{r.title}</span>
+                    {r.is_disabled && (
+                      <Badge variant="secondary" className="shrink-0">
+                        {t("admin.sysdata.disabled")}
+                      </Badge>
+                    )}
+                  </span>
+                }
+                meta={r.subtitle || undefined}
+                footerClassName="gap-1.5"
+                actions={
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={busyId === r.id}
+                      onClick={() => handleMove(r, -1)}
+                      aria-label={t("admin.sysdata.moveUp")}
+                    >
+                      <ArrowUp className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={busyId === r.id}
+                      onClick={() => handleMove(r, 1)}
+                      aria-label={t("admin.sysdata.moveDown")}
+                    >
+                      <ArrowDown className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={busyId === r.id}
+                      onClick={() => handleToggle(r)}
+                    >
+                      {r.is_disabled ? t("admin.sysdata.enable") : t("admin.sysdata.disable")}
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => openEdit(r)}>
+                      <Pencil className="h-4 w-4" />
+                      {t("common.edit")}
+                    </Button>
+                  </>
+                }
+              />
+            ))}
+          </div>
+        </>
       )}
 
       <p className="text-xs text-muted-foreground">{t("admin.sysdata.noDeleteHint")}</p>

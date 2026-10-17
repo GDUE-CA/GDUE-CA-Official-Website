@@ -401,7 +401,8 @@
     "backgroundTask": {
       "sectionTitle": "Background tasks",
       "category": {
-        "db_export": "Full database export"
+        "db_export": "Full database export",
+        "system_reset": "System reset"
       },
       "statusRunning": "Running",
       "statusSuccess": "Succeeded",
@@ -657,27 +658,55 @@
   "terms": {
     "title": "Terms of Use",
     "subtitle": "By accessing or using this website, you agree to the following terms",
-    "updatedAt": "Last updated: September 2026",
+    "updatedAt": "Last updated: October 2026",
     "items": [
       {
         "title": "Acceptance of Terms",
-        "content": "By accessing or using this website, you accept these terms. If you do not agree, please stop using the site."
+        "content": "By accessing, browsing, or using this website in any manner (including registering an account, submitting forms, or posting content), you acknowledge that you have read, understood, and agree to be bound by these terms. If you do not agree to any part of these terms, please stop using this website immediately."
       },
       {
         "title": "Lawful Use",
-        "content": "Users must not use this website for any illegal, malicious, harmful, or unauthorized purpose, including but not limited to attacks, scraping forms, or harassment."
+        "content": "You agree to use this website only within the bounds of applicable laws, regulations, and campus rules. You must not use this website for any unlawful purpose, including but not limited to: malicious attacks, destructive vulnerability scanning, form scraping, bulk registration, harassment, or spreading unlawful information."
       },
       {
-        "title": "Content Licence",
-        "content": "Content you submit (bug reports, registration info) is licensed to the club for activity management and site optimisation. It will not be publicly disclosed without your consent."
+        "title": "Accounts and Security",
+        "content": "You are responsible for safeguarding your account credentials and for all activities under your account. Lending, transferring accounts, or registering under another person's identity is prohibited. Report account theft to the club administrators immediately. The club may lock or disable accounts that violate these terms."
       },
       {
-        "title": "Prohibited Conduct",
-        "content": "Unauthorized bulk scraping of site content or malicious form submissions to block others is prohibited. Violators may have their access revoked."
+        "title": "Source Availability and Intellectual Property",
+        "content": "This website project is released under a custom Source-Available licence: its source code is publicly viewable in the official repository solely for transparency, learning, and research. This is NOT an open-source project as defined by the OSI, and it must not be labelled or marketed as open-source in any language or context. All rights in the project are held by the Guangdong University of Education Computer Association; rights not expressly granted are reserved."
+      },
+      {
+        "title": "No Public Deployment or Redistribution",
+        "content": "Without prior written permission from the club, you must not deploy the project or any derivative work on the public internet as a publicly accessible website or service, nor distribute or disseminate the source code or compiled artifacts, whether complete or modified. Local study, research, secondary development, and classroom demonstrations on your own machine or a private intranet are permitted."
+      },
+      {
+        "title": "No Commercial Use",
+        "content": "You must not use the project, in whole or in part, for any commercial purpose without prior written permission from the club. Commercial licence requests may be submitted through the official GitHub repository or other official channels."
+      },
+      {
+        "title": "User Content Licence",
+        "content": "Content you submit to this website (including activity registrations, bug reports, blog posts, moments, and comments) is deemed to grant the club a non-exclusive licence to use such content to the extent necessary for site operation, activity management, and feature improvement. You warrant that your submissions are truthful, lawful, and do not infringe third-party rights; you must not post unlawful content or content that violates others' privacy."
+      },
+      {
+        "title": "Content Moderation",
+        "content": "The club may hide, take down, or remove content that violates applicable laws, these terms, or community order, and may warn, suspend, or ban the responsible accounts depending on severity."
+      },
+      {
+        "title": "Service Changes and Termination",
+        "content": "The club may modify website features or content, or suspend or terminate part or all of the service, at any time with or without notice. The club is not liable for service interruptions caused by maintenance, upgrades, or force majeure."
+      },
+      {
+        "title": "Disclaimer",
+        "content": "This website is provided on an \"as is\" and \"as available\" basis, without any express or implied warranty of fitness, accuracy, or uninterrupted operation. To the maximum extent permitted by law, the club shall not be liable for any direct or indirect losses arising from accessing or using this website."
       },
       {
         "title": "Changes to Terms",
-        "content": "The club may modify site content, suspend or terminate service, or revise these terms at any time. Changes will be posted on the website."
+        "content": "The club may revise these terms from time to time. Revised terms will be posted on this page with an updated \"last updated\" date. Your continued use of this website after posting constitutes acceptance of the revised terms."
+      },
+      {
+        "title": "Governing Text",
+        "content": "These Terms of Use are an online, browsable summary of the LICENSE (Source-Available licence, English version) at the repository root. In case of any ambiguity between the two, the English text of the root LICENSE shall govern all legal rights and obligations; the Chinese content of this page is provided for reading reference only."
       }
     ]
   },
@@ -1471,6 +1500,7 @@
       "security.breakglass": "Break-Glass Account",
       "security.login": "Login Protection",
       "security.access": "Access Control",
+      "security.systemReset": "System Reset",
       "config": "System Configuration",
       "config.site": "Site Basics",
       "config.sysdata": "College & Major Data",
@@ -1773,7 +1803,15 @@
       "dbMaintenanceDesc": "Database backup and migration. Export runs as an async background task: no need to stay on this page after submitting; track progress in the bottom-right floating panel or the notification center.",
       "dbExportButton": "Run a full database export",
       "dbExportSubmitted": "Task submitted to run in the background. You can keep working; progress appears in the bottom-right panel or the notification center.",
-      "dbExportNote": "When finished, the backup file is stored in the server ./exports directory (0600 permissions); download it manually via SFTP. Task records stay in the notification list until you dismiss them.",
+      "dbExportNote": "When finished, the backup file is stored in the server ./exports directory (0600 permissions) and can be downloaded directly from the list below. Task records stay in the notification list until you dismiss them.",
+      "dbBackupListTitle": "Backup files",
+      "dbBackupRefresh": "Refresh",
+      "dbBackupColFilename": "Filename",
+      "dbBackupColSize": "Size",
+      "dbBackupColCreatedAt": "Created at",
+      "dbBackupColActions": "Actions",
+      "dbBackupDownload": "Download",
+      "dbBackupEmpty": "No backup files yet",
       "netTitle": "Network Configuration",
       "netDesc": "Reference values for backend port, listen address and site domains. Changes require manual Nginx/Caddy reload by ops.",
       "netPort": "Backend Port",
@@ -1921,6 +1959,31 @@
         "memo": "Moments",
         "badges": "Badge management"
       }
+    },
+    "systemReset": {
+      "title": "System Reset (Dangerous Operation)",
+      "warningText": "⚠️ WARNING: This operation will erase the entire business database and return the project to its initial state; all users, blogs, moments, activities, and announcements will be removed. We strongly recommend downloading a backup manually first. Once confirmed, the data cannot be undone or recovered.",
+      "confirmTitle": "Triple confirmation (the execute button stays disabled until all three are complete)",
+      "acknowledge": "I have read and understood all the risks",
+      "inputLabel": "Type the confirmation text verbatim",
+      "inputHint": "Fixed English phrase; capitalization and spaces must match exactly: I confirm system reset",
+      "inputMismatch": "The text does not match the required confirmation phrase",
+      "executeBtn": "Execute system reset",
+      "dialogTitle": "Final confirmation: execute system reset?",
+      "dialogDesc": "The system will first take a complete automatic backup; business data is wiped only after the backup succeeds, and every account will be signed out immediately.\nThis cannot be undone. Continue?",
+      "dialogConfirm": "Confirm reset",
+      "dialogCancel": "Cancel",
+      "runningTitle": "System reset in progress. Please keep this page open…",
+      "progressDetail": "Current: {message} ({progress}%)",
+      "successTitle": "System reset complete",
+      "backupReady": "Automatic backup file: {name} (available for download in the Backup & Restore list)",
+      "successSessions": "All login sessions have been revoked. Re-take the system through the Break-Glass initialization wizard.",
+      "completedTitle": "System reset complete; your session has been signed out",
+      "completedHint": "The system is back to the uninitialized state, and the automatic backup is kept in the server export directory. Sign in with the Break-Glass emergency account and complete the initialization wizard.",
+      "goSetup": "Go to initialization wizard",
+      "goLogin": "Back to login",
+      "failedTitle": "System reset failed",
+      "sessionLost": "Your session was revoked during the reset and the system initialization state could not be confirmed. Sign in with the emergency account to verify."
     },
     "security": {
       "accessDesc": "Configure IP blacklist, IP whitelist, admin trusted IPs, and domain whitelist (CORS Origins / Allowed Hosts) access-control rules",

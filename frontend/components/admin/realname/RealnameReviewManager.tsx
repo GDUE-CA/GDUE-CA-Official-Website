@@ -25,6 +25,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { AdminListCard } from "../shared/AdminListCard";
 import {
   adminApproveRealname,
   adminListRealnameRequests,
@@ -182,75 +183,82 @@ export function RealnameReviewManager() {
         </Card>
       ) : (
         <div className="space-y-3">
-          {items.map((r) => (
-            <Card key={r.id}>
-              <CardContent className="py-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="space-y-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-medium">{r.real_name}</span>
-                      <span className="font-mono text-xs text-muted-foreground">{r.student_id}</span>
-                      <StatusBadge status={r.status} />
-                      {r.username && (
-                        <span className="text-xs text-muted-foreground">@{r.username}</span>
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {t("admin.realname.phone")}：{r.phone}
-                      {" · "}
-                      {t("realname.submittedAt")}：
-                      <FormattedUserActionTime utcIso={r.submitted_at} />
-                    </p>
-                    {r.status === "rejected" && r.note && (
-                      <p className="text-xs text-destructive">
-                        {t("realname.rejectReason")}：{r.note}
-                      </p>
-                    )}
-                    {r.evidence_url && (
-                      <a
-                        href={r.evidence_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-block mt-1"
-                      >
-                        {/* 凭证缩略图：点击原图新窗查看（学生证/校园卡） */}
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={r.evidence_url}
-                          alt={t("admin.realname.evidence")}
-                          className="h-20 rounded-md border object-cover hover:opacity-80 transition-opacity"
-                        />
-                      </a>
-                    )}
-                  </div>
-                  {r.status === "pending" && (
-                    <div className="flex gap-1.5 shrink-0">
-                      <Button
-                        size="sm"
-                        disabled={busyId === r.id}
-                        onClick={() => handleApprove(r)}
-                      >
-                        <Check className="h-4 w-4" />
-                        {t("admin.realname.approve")}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={busyId === r.id}
-                        onClick={() => {
-                          setRejectTarget(r);
-                          setRejectNote("");
-                        }}
-                      >
-                        <X className="h-4 w-4 text-destructive" />
-                        {t("admin.realname.reject")}
-                      </Button>
-                    </div>
+          {items.map((r) => {
+            // 桌面端右上按钮组（原布局）；移动端同一组按钮落卡片底部
+            const rowActions =
+              r.status === "pending" ? (
+                <>
+                  <Button
+                    size="sm"
+                    disabled={busyId === r.id}
+                    onClick={() => handleApprove(r)}
+                  >
+                    <Check className="h-4 w-4" />
+                    {t("admin.realname.approve")}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={busyId === r.id}
+                    onClick={() => {
+                      setRejectTarget(r);
+                      setRejectNote("");
+                    }}
+                  >
+                    <X className="h-4 w-4 text-destructive" />
+                    {t("admin.realname.reject")}
+                  </Button>
+                </>
+              ) : undefined;
+            return (
+            <AdminListCard
+              key={r.id}
+              title={
+                <span className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium">{r.real_name}</span>
+                  <span className="font-mono text-xs text-muted-foreground">{r.student_id}</span>
+                  <StatusBadge status={r.status} />
+                  {r.username && (
+                    <span className="text-xs text-muted-foreground">@{r.username}</span>
                   )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </span>
+              }
+              contentClassName="px-5 py-4 space-y-1"
+              footerClassName="justify-end gap-1.5"
+              headerActions={rowActions}
+              // 移动端：同一组按钮落卡片底部（headerActions 存在时底部区 md:hidden）
+              actions={rowActions}
+            >
+              <p className="text-xs text-muted-foreground">
+                {t("admin.realname.phone")}：{r.phone}
+                {" · "}
+                {t("realname.submittedAt")}：
+                <FormattedUserActionTime utcIso={r.submitted_at} />
+              </p>
+              {r.status === "rejected" && r.note && (
+                <p className="text-xs text-destructive">
+                  {t("realname.rejectReason")}：{r.note}
+                </p>
+              )}
+              {r.evidence_url && (
+                <a
+                  href={r.evidence_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block mt-1"
+                >
+                  {/* 凭证缩略图：点击原图新窗查看（学生证/校园卡） */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={r.evidence_url}
+                    alt={t("admin.realname.evidence")}
+                    className="h-20 rounded-md border object-cover hover:opacity-80 transition-opacity"
+                  />
+                </a>
+              )}
+            </AdminListCard>
+            );
+          })}
         </div>
       )}
 

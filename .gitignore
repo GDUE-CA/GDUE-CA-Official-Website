@@ -45,3 +45,8 @@ Thumbs.db
 
 # IDE tool artifacts
 .trae/
+
+# local E2E / diagnostic scratch (never commit)
+_e2e_/
+_e2e_tmp.db
+backend/scripts/_*.py

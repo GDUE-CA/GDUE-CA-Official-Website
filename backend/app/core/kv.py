@@ -56,6 +56,22 @@ class KV(ABC):
     @abstractmethod
     async def srem(self, key: str, member: str) -> int: ...
 
+    async def delete_prefix(self, prefix: str) -> int:
+        """删除所有以 prefix 开头的键，返回删除数量（默认基于 iterate_keys）。"""
+        count = 0
+        async for k in self.iterate_keys():
+            if k.startswith(prefix):
+                count += await self.delete(k)
+        return count
+
+    async def iterate_keys(self):
+        """异步迭代全部键（默认实现基于 keys()；后端可覆写为 scan 游标）。"""
+        for k in await self.keys():
+            yield k
+
+    @abstractmethod
+    async def keys(self) -> list[str]: ...
+
 
 class MemoryKV(KV):
     """进程内存兜底实现：{key: (value, expires_at_monotonic | None)}。"""
@@ -125,6 +141,9 @@ class MemoryKV(KV):
             return 1
         return 0
 
+    async def keys(self) -> list[str]:
+        return list(self._data.keys()) + [k for k in self._sets if k not in self._data]
+
     # ---- 清扫 ----
     def sweep(self) -> int:
         """物理清除全部已过期键，返回清除数量（周期任务调用）。"""
@@ -172,6 +191,14 @@ class RedisKV(KV):
 
     async def srem(self, key: str, member: str) -> int:
         return int(await self._redis.srem(key, member))
+
+    async def keys(self) -> list[str]:
+        return [k async for k in self._redis.scan_iter("*")]
+
+    async def iterate_keys(self):
+        # Redis 用 scan 游标迭代，避免 KEYS * 阻塞
+        async for k in self._redis.scan_iter("*"):
+            yield k
 
 
 _kv: KV | None = None
