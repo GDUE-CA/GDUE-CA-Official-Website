@@ -60,6 +60,8 @@ PERMISSION_MODULES = (
     "roles",           # 角色定义查看 + 用户权限覆盖矩阵管理（manage 仅 super_admin）
     # ---------- V0.5.7 系统重置（最高危操作；仅 super_admin，BG 应急账号旁路） ----------
     "system_reset",
+    # ---------- V0.5.8 安全问题预设题库 ----------
+    "security_questions",
 )
 
 # 角色默认矩阵：module -> role -> 允许的动作集合（member 无后台权限，不列出）
@@ -212,6 +214,12 @@ ROLE_DEFAULTS: dict[str, dict[Role, set[str]]] = {
     # ---------- V0.5.7 系统重置：唯一最高危权限，仅 super_admin（BG 由 require_permission 旁路） ----------
     "system_reset": {
         Role.SUPER_ADMIN: {"view", "manage"},
+    },
+    # ---------- V0.5.8 安全问题题库：内容类，admin view+manage；editor 仅查看 ----------
+    "security_questions": {
+        Role.SUPER_ADMIN: {"view", "manage"},
+        Role.ADMIN: {"view", "manage"},
+        Role.EDITOR: {"view"},
     },
 }
 

@@ -2,7 +2,7 @@
 
 /**
  * /admin/review - 统一审核中心
- * 报名审核 / Bug 反馈 / 重置密码 三类业务按 Tab 分类展示；
+ * 报名审核 / Bug 反馈 / 重置密码 / 找回账号人工审核 按 Tab 分类展示；
  * Tab 状态持久化到 searchParams（?tab=）支持深链；按有效权限显隐 Tab
  */
 import { Suspense, useMemo } from "react";
@@ -12,6 +12,7 @@ import { ReviewShell, type ReviewTabKey } from "@/components/admin/review/Review
 import { RegistrationsTab } from "@/components/admin/review/RegistrationsTab";
 import { BugsTab } from "@/components/admin/review/BugsTab";
 import { PasswordResetsTab } from "@/components/admin/review/PasswordResetsTab";
+import { RecoveryReviewsTab } from "@/components/admin/review/RecoveryReviewsTab";
 import { useEffectivePermissions } from "@/lib/permissions";
 
 function ReviewPageInner() {
@@ -25,7 +26,7 @@ function ReviewPageInner() {
     const list: ReviewTabKey[] = [];
     if (can("review.registrations", "view")) list.push("registrations");
     if (can("review.bugs", "view")) list.push("bugs");
-    if (can("review.resets", "view")) list.push("resets");
+    if (can("review.resets", "view")) list.push("resets", "recovery");
     return list;
   }, [can]);
 
@@ -61,6 +62,7 @@ function ReviewPageInner() {
       {active === "registrations" && <RegistrationsTab />}
       {active === "bugs" && <BugsTab />}
       {active === "resets" && <PasswordResetsTab />}
+      {active === "recovery" && <RecoveryReviewsTab />}
     </ReviewShell>
   );
 }

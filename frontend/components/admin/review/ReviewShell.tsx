@@ -1,12 +1,12 @@
 /**
- * 审核中心外壳：标题 + 业务类型 Tab（报名审核 / Bug 反馈 / 重置密码）
+ * 审核中心外壳：标题 + 业务类型 Tab（报名审核 / Bug 反馈 / 重置密码 / 找回账号审核）
  * Tab 状态由父页面持久化到 searchParams（?tab=），支持深链直达
  */
 "use client";
 
 import { cn } from "@/lib/utils";
 
-export type ReviewTabKey = "registrations" | "bugs" | "resets";
+export type ReviewTabKey = "registrations" | "bugs" | "resets" | "recovery";
 
 export function ReviewShell({
   title,

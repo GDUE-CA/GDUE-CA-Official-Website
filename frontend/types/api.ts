@@ -40,12 +40,18 @@ export interface LoginResponse {
 export interface SecurityQuestionItem {
   /** 位置序号 1/2/3 */
   position: number;
-  /** 预设问题存 i18n key（如 sq.first_pet）；自定义问题存原文 */
+  /** 问题文本快照（预设题为选择题库时的显示文本；自定义题为原文），不关联题库ID */
   question: string;
   /** 答案明文（后端规范化 + bcrypt 哈希存储） */
   answer: string;
   /** 是否自定义问题 */
   is_custom: boolean;
+}
+
+/** 预设安全问题（题库 DB 化）：key 仅历史内置题有值，question 为当前语言文本 */
+export interface PresetSecurityQuestion {
+  key: string | null;
+  question: string;
 }
 
 /** 恢复时单个问题答案项 */
@@ -81,13 +87,136 @@ export interface RecoverRequest {
   confirm_password: string;
 }
 
-/** 公开注册（P0：强制 member，无角色字段） */
+/* ---------- 忘记密码多分支（V0.5.8 §5） ---------- */
+
+/** 找回入口账号识别结果（分支路由 + 脱敏邮箱回显） */
+export interface ForgotIdentifyResult {
+  exists: boolean;
+  email_masked: string | null;
+  has_security_questions: boolean;
+}
+
+/** 一次性安全恢复码重置密码请求 */
+export interface RecoveryResetRequest {
+  account: string;
+  recovery_code: string;
+  new_password: string;
+  confirm_password: string;
+}
+
+/** 人工审核找回账号提交（校内 school / 社会外部 external 双表单） */
+export interface ManualReviewRequest {
+  kind: "school" | "external";
+  contact_email: string;
+  account_hint?: string;
+  real_name: string;
+  student_id?: string;
+  id_card?: string;
+  college?: string;
+  major?: string;
+  class_name?: string;
+  register_time_hint?: string;
+  old_password?: string;
+}
+
+export interface ManualReviewResult {
+  ok: boolean;
+  message: string;
+  request_id: number;
+}
+
+/* ---------- 后台：安全问题预设题库（V0.5.8 §3） ---------- */
+
+/** 题库条目（含使用量统计；key 仅历史内置题有值） */
+export interface AdminPresetQuestion {
+  id: number;
+  key: string | null;
+  question_zh: string;
+  question_en: string;
+  enabled: boolean;
+  sort_order: number;
+  /** 已被多少用户安全问题引用（已用题禁止物理删除，仅可停用） */
+  usage_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PresetQuestionIn {
+  question_zh: string;
+  question_en: string;
+  enabled?: boolean;
+  sort_order?: number;
+}
+
+export interface PresetQuestionUpdate {
+  question_zh?: string;
+  question_en?: string;
+  enabled?: boolean;
+  sort_order?: number;
+}
+
+/* ---------- 后台：忘记密码人工审核工单（V0.5.8 §5.4） ---------- */
+
+/** 人工审核工单视图（身份证仅脱敏文本，绝无明文） */
+export interface ManualReviewItem {
+  id: number;
+  kind: string;
+  contact_email: string;
+  username_hint: string | null;
+  real_name: string | null;
+  student_id: string | null;
+  /** 脱敏身份证（如 1101**********1234） */
+  id_card_masked: string | null;
+  college: string | null;
+  major: string | null;
+  class_name: string | null;
+  register_time_hint: string | null;
+  /** 曾经旧密码瞬时哈希比对结果（true=匹配），明文绝不入库 */
+  old_password_matched: boolean | null;
+  matched_user_id: number | null;
+  matched_username: string | null;
+  status: string;
+  admin_note: string | null;
+  handled_action: string | null;
+  handled_by: number | null;
+  handled_at: string | null;
+  submit_ip: string | null;
+  created_at: string;
+}
+
+/** 审核通过动作：发一次性恢复码到联系邮箱 / 将联系邮箱绑定为账号新邮箱 */
+export interface ManualReviewApprovePayload {
+  action: "send_recovery_code" | "bind_contact_email";
+  admin_note?: string;
+}
+
+/* ---------- 一次性安全恢复码（V0.5.8 §4） ---------- */
+
+/** 恢复码元数据（绝不包含明文 / 哈希） */
+export interface RecoveryCodeItem {
+  id: number;
+  created_at: string;
+  used_at: string | null;
+  revoked: boolean;
+  revoked_at: string | null;
+}
+
+/** 生成响应：明文仅此一次返回，服务端不再可还原 */
+export interface RecoveryCodeCreateResult {
+  code: string;
+  item: RecoveryCodeItem;
+}
+
+/** 公开注册（P0：强制 member，无角色字段；V0.5.8 三步向导最终提交） */
 export interface RegisterRequest {
   username: string;
   display_name: string;
   password: string;
   confirm_password: string;
-  email?: string;
+  /** 注册邮箱（必填，第一步已发送 6 位验证码验证所有权） */
+  email: string;
+  /** 第一步邮箱验证码（后端提交时一次性核销） */
+  code: string;
   phone?: string;
   /** 安全问题（per-user 3 个）：注册时强制设 3 个 */
   security_questions: SecurityQuestionItem[];

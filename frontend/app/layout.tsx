@@ -55,7 +55,7 @@ export default async function RootLayout({
           nonce={nonce}
           suppressHydrationWarning
         >
-          {`(function(){try{var s=localStorage.getItem('gdueca-theme');var t=s||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');if(t==='dark')document.documentElement.classList.add('dark');var ss=localStorage.getItem('gdueca-theme-style');if(ss&&/^[a-z][a-z0-9-]{0,31}$/.test(ss)){document.documentElement.setAttribute('data-theme-style',ss);}else{document.documentElement.setAttribute('data-theme-style','default');}}catch(e){}})();`}
+          {`(function(){try{var s=localStorage.getItem('gdueca-theme');var t=s||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');if(t==='dark')document.documentElement.classList.add('dark');var ss=localStorage.getItem('gdueca-theme-style');if(ss&&/^[a-z][a-z0-9-]{0,31}$/.test(ss)){document.documentElement.setAttribute('data-theme-style',ss);}else{document.documentElement.setAttribute('data-theme-style','apple');}}catch(e){}})();`}
         </Script>
       </head>
       <body className="min-h-full flex flex-col bg-background">

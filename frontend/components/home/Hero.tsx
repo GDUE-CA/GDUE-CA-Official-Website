@@ -64,17 +64,23 @@ export function Hero() {
 
           <motion.div
             {...fadeUp(0.2)}
-            className="mt-6 md:mt-8 flex w-full flex-col gap-3 sm:w-auto sm:flex-row"
+            className="mt-6 md:mt-8 flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap"
           >
+            {/* V0.5.8 §8.9：「加入我们」拆分为社团报名 + 活动报名双入口，保留关于我们 */}
             <Button asChild size="lg">
-              <Link href={`/${locale}/join`} transitionTypes={["nav-forward"]}>
-                {t("home.hero.cta1")}
+              <Link href={`/${locale}/join?mode=club`} transitionTypes={["nav-forward"]}>
+                {t("register.clubTitle")}
                 <ArrowRight />
               </Link>
             </Button>
             <Button asChild size="lg" variant="outline">
-              <Link href={`/${locale}/events`} transitionTypes={["nav-forward"]}>
-                {t("home.hero.cta2")}
+              <Link href={`/${locale}/join?mode=event`} transitionTypes={["nav-forward"]}>
+                {t("register.eventTitle")}
+              </Link>
+            </Button>
+            <Button asChild size="lg" variant="outline">
+              <Link href={`/${locale}/about`} transitionTypes={["nav-forward"]}>
+                {t("nav.about")}
               </Link>
             </Button>
           </motion.div>

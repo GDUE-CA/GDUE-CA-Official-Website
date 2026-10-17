@@ -55,17 +55,28 @@ export default function SetupSecurityQuestionsPage() {
       setError(t("auth.setupSecurityQuestions.passwordRequired"));
       return;
     }
-    // 校验 3 个安全问题
+    // 校验 3 个安全问题（与后端规则一致：预设答案 ≥2，自定义答案 ≥6，自定义问题 ≥2）
     const errs: string[] = [];
     let valid = true;
     securityQuestions.forEach((item) => {
       const e: string[] = [];
-      if (!item.question.trim()) {
+      const q = item.question.trim();
+      const a = item.answer.trim();
+      if (!q) {
         e.push(t("auth.securityQuestions.questionRequired"));
         valid = false;
+      } else if (item.is_custom && q.length < 2) {
+        e.push(t("auth.securityQuestions.questionTooShort"));
+        valid = false;
       }
-      if (!item.answer.trim()) {
+      if (!a) {
         e.push(t("auth.securityQuestions.answerRequired"));
+        valid = false;
+      } else if (item.is_custom && a.length < 6) {
+        e.push(t("auth.securityQuestions.answerTooShortCustom"));
+        valid = false;
+      } else if (!item.is_custom && a.length < 2) {
+        e.push(t("auth.securityQuestions.answerTooShortPreset"));
         valid = false;
       }
       errs[item.position - 1] = e.join("；");

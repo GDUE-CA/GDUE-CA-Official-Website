@@ -15,11 +15,16 @@ import type {
   BannerUploadOut,
   ChangePasswordRequest,
   ChangePasswordResult,
+  ForgotIdentifyResult,
   ForgotPasswordRequest,
   ForgotPasswordResetRequest,
   ForgotPasswordSendCodeRequest,
   ForgotPasswordSendCodeResult,
+  ManualReviewRequest,
+  ManualReviewResult,
   PasswordResetItem,
+  PresetSecurityQuestion,
+  RecoveryResetRequest,
   RegisterRequest,
   RegisterResponse,
   RecoverRequest,
@@ -56,6 +61,22 @@ export function register(payload: RegisterRequest) {
     method: "POST",
     body: JSON.stringify(payload),
   });
+}
+
+/* ---------- 注册三步向导（V0.5.8） ---------- */
+
+/** 注册第一步：向待注册邮箱发送 6 位验证码（邮箱占用时后端显式 400） */
+export function sendRegisterCode(email: string) {
+  return apiFetch<{ ok: boolean; message: string }>("/api/auth/register/send-code", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+}
+
+/** 注册第二步：用户名占用实时检查（available=true 表示可用） */
+export function checkRegisterUsername(username: string) {
+  const q = encodeURIComponent(username);
+  return apiFetch<{ available: boolean }>(`/api/auth/register/check-username?username=${q}`);
 }
 
 export function fetchMe() {
@@ -187,6 +208,32 @@ export function resetPasswordWithCode(payload: ForgotPasswordResetRequest) {
   });
 }
 
+/* ---------- 忘记密码多分支（V0.5.8 §5） ---------- */
+
+/** 找回入口账号识别：用户名或绑定邮箱 → 分支路由信息（脱敏邮箱 / 是否设安全问题） */
+export function forgotIdentify(account: string) {
+  return apiFetch<ForgotIdentifyResult>("/api/auth/forgot-password/identify", {
+    method: "POST",
+    body: JSON.stringify({ account }),
+  });
+}
+
+/** 一次性安全恢复码找回账号：码一次性核销 + 重置密码 + 全部会话强制下线 */
+export function resetPasswordWithRecoveryCode(payload: RecoveryResetRequest) {
+  return apiFetch<{ ok: boolean; message?: string }>(
+    "/api/auth/forgot-password/recovery-reset",
+    { method: "POST", body: JSON.stringify(payload) }
+  );
+}
+
+/** 提交人工审核找回账号工单（校内 / 社会外部双表单，分支3 强制入口） */
+export function submitManualReview(payload: ManualReviewRequest) {
+  return apiFetch<ManualReviewResult>("/api/auth/forgot-password/manual-review", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 /** 下线全部其他设备（保留当前设备会话），返回被下线数量 */
 export function revokeOtherSessions() {
   return apiFetch<{ ok: boolean; revoked: number }>(
@@ -236,9 +283,9 @@ export function batchHandlePasswordResets(ids: number[], status: "handled" | "re
 
 /* ---------- 安全问题（per-user 3 个，答对 2/3 可恢复账号） ---------- */
 
-/** 获取预设问题 key 列表（公开，前端下拉用） */
+/** 获取启用中的预设安全问题（公开，前端下拉用；题库 DB 化，返回当前语言文本） */
 export function fetchPresetSecurityQuestions() {
-  return apiFetch<{ presets: string[] }>("/api/auth/security-questions/presets");
+  return apiFetch<{ presets: PresetSecurityQuestion[] }>("/api/auth/security-questions/presets");
 }
 
 /** 公开获取指定用户 3 个安全问题（不含答案）；账号不存在返回固定假问题（防枚举） */

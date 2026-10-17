@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import delete as sa_delete
 from sqlalchemy import func, select
 
-from app.api import account, activities, admin_stats, announcements, audit, auth, background_tasks, badges, blog, bug_report, club_apply, comments, content, db_maintenance, email_change, geo, i18n_public, health, memos, media, members, notifications, oauth, projects, query, realname, recruitment, recycle, register, roles, school_verify, security, sso, stats, sys_data, system, system_init, system_reset, tags, themes, translations, users, version
+from app.api import account, activities, admin_stats, announcements, audit, auth, background_tasks, badges, blog, bug_report, club_apply, comments, content, db_maintenance, email_change, geo, i18n_public, health, memos, media, members, notifications, oauth, projects, query, realname, recovery_codes, recovery_review, recruitment, recycle, register, roles, school_verify, security, security_questions, sso, stats, sys_data, system, system_init, system_reset, tags, themes, translations, users, version
 from app.core.config import get_settings
 from app.core.csrf import CSRF_HEADER, csrf_middleware
 from app.core.exceptions import register_exception_handlers
@@ -186,6 +186,21 @@ async def _migrate_columns(conn):
             ("source", "VARCHAR(16) NOT NULL DEFAULT 'form'"),
         ],
         "bug_reports": [("submit_ip", "VARCHAR(64) NULL")],
+        # V0.5.8 §5.3：人工审核找回账号双表单扩展（校内 / 社会外部）
+        "password_reset_requests": [
+            ("kind", "VARCHAR(16) DEFAULT 'legacy'"),
+            ("real_name", "VARCHAR(64) NULL"),
+            ("student_id", "VARCHAR(32) NULL"),
+            ("id_card_enc", "TEXT NULL"),
+            ("college", "VARCHAR(64) NULL"),
+            ("major", "VARCHAR(64) NULL"),
+            ("class_name", "VARCHAR(64) NULL"),
+            ("register_time_hint", "VARCHAR(64) NULL"),
+            ("old_password_matched", "BOOLEAN NULL"),
+            ("matched_user_id", "INTEGER NULL"),
+            ("handled_action", "VARCHAR(32) NULL"),
+            ("submit_ip", "VARCHAR(64) NULL"),
+        ],
         # 博客展示用作者名（历史迁移内容无系统账号）+ 4 项统计指标
         "blog_posts": [
             ("author_name", "VARCHAR(64) NULL"),
@@ -380,6 +395,24 @@ async def _init_db():
             )).scalar_one_or_none()
             if not exists:
                 s.add(Theme(**spec))
+        await s.commit()
+
+        # V0.5.8 预置安全问题题库：仅当表为空时 seed 10 条内置题（key 幂等，管理员后续修改不被覆盖）
+        from app.core.security_questions import BUILTIN_PRESET_QUESTIONS
+        from app.db.models import SecurityPresetQuestion
+        preset_count = (await s.execute(
+            select(func.count()).select_from(SecurityPresetQuestion)
+        )).scalar_one()
+        if preset_count == 0:
+            for idx, item in enumerate(BUILTIN_PRESET_QUESTIONS):
+                s.add(SecurityPresetQuestion(
+                    key=item["key"],
+                    question_zh=item["zh"],
+                    question_en=item["en"],
+                    enabled=True,
+                    sort_order=idx,
+                ))
+            logger.info("已 seed %d 条内置安全问题预设题库", len(BUILTIN_PRESET_QUESTIONS))
         await s.commit()
 
 
@@ -590,6 +623,8 @@ app.include_router(geo.router)
 app.include_router(i18n_public.router)
 app.include_router(auth.router)
 app.include_router(email_change.router)
+app.include_router(recovery_codes.router)
+app.include_router(recovery_review.router)
 app.include_router(account.router)
 app.include_router(users.router)
 app.include_router(activities.router)
@@ -654,6 +689,8 @@ app.include_router(school_verify.router)
 app.include_router(school_verify.admin_router)
 app.include_router(club_apply.router)
 app.include_router(club_apply.admin_router)
+# V0.5.8 安全问题预设题库后台 CRUD
+app.include_router(security_questions.router)
 
 # ---------- 静态文件服务（头像上传 + 成员头像 + 博客图片 + Memo 附件） ----------
 os.makedirs("uploads/avatars", exist_ok=True)

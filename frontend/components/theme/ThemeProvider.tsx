@@ -4,7 +4,7 @@
  * 全局风格主题 Provider（与颜色模式 light/dark 正交）
  *
  * - 主题列表来自后端 GET /api/themes（管理员可上传/启停，无需改前端代码）；
- * - 当前主题 key 存 localStorage（gdueca-theme-style），校验在启用列表内否则回退 "default"；
+ * - 当前主题 key 存 localStorage（gdueca-theme-style），校验在启用列表内否则回退 "apple"（V0.5.8 §8.2 Apple 主题为默认）；
  * - 应用方式：<html> data-theme-style=key + 注入 css_vars（dark 模式叠加 dark_vars）；
  * - MutationObserver 监听 <html> class 变化（dark 切换）时重注变量包。
  */
@@ -34,8 +34,8 @@ interface ThemeStyleContextValue {
 
 const ThemeStyleContext = createContext<ThemeStyleContextValue>({
   themes: [],
-  current: "default",
-  layout: "microsoft",
+  current: "apple",
+  layout: "apple",
   setTheme: () => {},
 });
 
@@ -61,11 +61,11 @@ function clearVars(injected: Set<string>) {
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [themes, setThemes] = useState<Theme[]>([]);
-  const [current, setCurrent] = useState<string>("default");
+  const [current, setCurrent] = useState<string>("apple");
   // 当前已注入的变量键（切换主题/dark 时先清除再注入）
   const injectedRef = useRef<Set<string>>(new Set());
   const themesRef = useRef<Theme[]>([]);
-  const currentRef = useRef<string>("default");
+  const currentRef = useRef<string>("apple");
 
   const applyTheme = useCallback((key: string, list: Theme[]) => {
     const theme = list.find((t) => t.key === key);
@@ -81,14 +81,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // 初始化：拉取主题列表 → 校验存储 key 在启用列表内（否则回退 default）→ 应用
+  // 初始化：拉取主题列表 → 校验存储 key 在启用列表内（否则回退 apple）→ 应用
   useEffect(() => {
     let cancelled = false;
     const stored = getStoredThemeStyle();
     listPublicThemes()
       .then((list) => {
         if (cancelled) return;
-        const valid = list.some((t) => t.key === stored) ? stored : "default";
+        const valid = list.some((t) => t.key === stored) ? stored : "apple";
         themesRef.current = list;
         currentRef.current = valid;
         setThemes(list);

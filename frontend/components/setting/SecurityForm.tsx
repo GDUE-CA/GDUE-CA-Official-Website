@@ -39,6 +39,7 @@ import {
 import { fetchProfile, updateProfile, changePassword } from "@/lib/api/auth";
 import { getSession, saveSession, clearLocalSession } from "@/lib/auth";
 import { meetsPasswordPolicy, passwordClassCount } from "@/lib/passwordPolicy";
+import { RecoveryCodesCard } from "./RecoveryCodesCard";
 import { cn } from "@/lib/utils";
 import { useServerFieldErrors } from "@/lib/hooks/useServerFieldErrors";
 import { FieldError } from "@/components/ui/field-error";
@@ -367,7 +368,10 @@ export function SecurityForm() {
         </CardContent>
       </Card>
 
-      {/* c) 预留入口 */}
+      {/* c) 一次性安全恢复码（V0.5.8 §4 账号兜底找回密钥） */}
+      <RecoveryCodesCard />
+
+      {/* d) 预留入口 */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">{t("setting.security.title")}</CardTitle>

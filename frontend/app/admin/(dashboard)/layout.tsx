@@ -53,6 +53,7 @@ import ClipboardList from "@/assets/icons/action/clipboard-list.svg";
 import MailPlus from "@/assets/icons/status/mail-plus.svg";
 import Palette from "@/assets/icons/status/palette.svg";
 import GraduationCap from "@/assets/icons/status/graduation-cap.svg";
+import LifeBuoy from "@/assets/icons/status/life-buoy.svg";
 import Database from "@/assets/icons/status/database.svg";
 import Bug from "@/assets/icons/status/bug.svg";
 import { LanguagePopover } from "@/components/layout/LanguagePopover";
@@ -150,6 +151,7 @@ const firstLevelItems: FirstLevel[] = [
       { key: "admin.nav.activities.clubApply", href: "/admin/club-apply", icon: UserPlus, modules: ["recruitment"] }, // ↩社团报名审核（原活动管理子项迁移）
       { key: "admin.review.tabs.bugs", href: "/admin/review?tab=bugs", icon: Bug, modules: ["review.bugs"] }, // Bug 反馈工单
       { key: "admin.review.tabs.resets", href: "/admin/review?tab=resets", icon: KeyRound, modules: ["review.resets"] }, // 账号重置申请
+      { key: "admin.review.tabs.recovery", href: "/admin/review?tab=recovery", icon: LifeBuoy, modules: ["review.resets"] }, // 找回账号审核（V0.5.8 §5.4 人工审核工单）
       { key: "admin.nav.users.schoolVerify", href: "/admin/school-verify", icon: GraduationCap, modules: ["review.school"] }, // ↩学校身份核验
       { key: "admin.nav.users.emailChange", href: "/admin/email-change-requests", icon: MailPlus, modules: ["review.emails"] }, // ↩更换绑定邮箱申请列表
     ],
@@ -163,6 +165,7 @@ const firstLevelItems: FirstLevel[] = [
       { key: "admin.nav.content.blog", href: "/admin/blog", icon: Newspaper, modules: ["blog"] },
       { key: "admin.nav.content.memo", href: "/admin/memo", icon: FileText, modules: ["memo"] },
       { key: "admin.nav.content.blocks", href: "/admin/content/club-intro", icon: FileText, modules: ["content"] }, // ↩内容块
+      { key: "admin.nav.content.securityQuestions", href: "/admin/security-questions", icon: ShieldCheck, modules: ["security_questions"] }, // ↩安全问题库（V0.5.8 §3）
       { key: "admin.nav.content.media", href: "/admin/media", icon: FolderOpen, modules: ["media"] }, // ↩媒体库
       { key: "admin.nav.content.recycle", href: "/admin/recycle", icon: Trash2 }, // ↩内容回收站
     ],
@@ -567,6 +570,7 @@ function LocaleSelect() {
           size="icon"
           aria-label={t("nav.language")}
           className="h-8 w-8"
+          onClick={() => setOpen(true)}
         >
           <Globe className="h-4 w-4" />
         </Button>

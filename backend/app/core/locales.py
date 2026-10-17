@@ -4,8 +4,9 @@
 以及 locale / region_code / currency 的校验函数。
 
 规范约束（本地化系统，2026-10-13 版）：
-- 18 门语言，URL 路径全小写横杠分隔；
-- 变体语言（zh-cn-sg/zh-yue-cn/zh-yue-tw/zh-mo）缺失词条沿回退链落到 zh-cn；
+- 19 门语言，URL 路径全小写横杠分隔；
+- 变体语言缺失词条沿回退链按分组兜底：亚洲语言（zh/ja/ko）落到 zh-cn，
+  欧美/拉丁系语言落到 en-gb（双基准语言：zh-cn + en-gb）；
 - 时区一律 IANA 标识符（如 Asia/Shanghai），禁止存 ±偏移量；
 - region_code 为 ISO-3166-1 二位国家/地区代码（如 CN/US/JP）；
 - currency 为 ISO-4217 货币代码（如 CNY/USD/EUR）。
@@ -22,13 +23,13 @@ class LocaleMeta:
     id: str
     native_name: str
     english_name: str
-    # 变体回退目标；None = 无特殊回退（缺失词条最终落到 zh-cn）
+    # 变体回退目标；None = 无特殊回退（缺失词条按分组终态落到 zh-cn / en-gb）
     fallback: str | None
     # locale → ISO-3166-1 二位 region_code（「切换语言同步更新区域」复选框用）
     region_code: str
 
 
-# 唯一源：支持的全部 18 门 UI 界面语言
+# 唯一源：支持的全部 19 门 UI 界面语言
 SUPPORTED_LOCALES: tuple[LocaleMeta, ...] = (
     LocaleMeta("zh-cn", "简体中文（中国大陆）", "Simplified Chinese (China)", None, "CN"),
     LocaleMeta("zh-cn-sg", "简体中文（新加坡）", "Simplified Chinese (Singapore)", "zh-cn", "SG"),
@@ -36,7 +37,8 @@ SUPPORTED_LOCALES: tuple[LocaleMeta, ...] = (
     LocaleMeta("zh-mo", "繁體中文（中國澳門）", "Traditional Chinese (Macao)", "zh-hk", "MO"),
     LocaleMeta("zh-yue-cn", "简体粤语", "Cantonese (Simplified)", "zh-cn", "CN"),
     LocaleMeta("zh-yue-tw", "繁體廣東話", "Cantonese (Traditional)", "zh-hk", "TW"),
-    LocaleMeta("en-us", "English (US)", "English (United States)", None, "US"),
+    LocaleMeta("en-gb", "English (UK)", "English (United Kingdom)", None, "GB"),
+    LocaleMeta("en-us", "English (US)", "English (United States)", "en-gb", "US"),
     LocaleMeta("ja-jp", "日本語", "Japanese (Japan)", None, "JP"),
     LocaleMeta("ko-kr", "한국어", "Korean (South Korea)", None, "KR"),
     LocaleMeta("es-es", "Español", "Spanish (Spain)", None, "ES"),

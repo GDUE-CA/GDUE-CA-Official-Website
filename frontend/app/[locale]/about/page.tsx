@@ -43,6 +43,7 @@ export default async function AboutPage({
     "zh-mo": "zh-tw",
     "zh-yue-cn": "zh-cn",
     "zh-yue-tw": "zh-tw",
+    "en-gb": "en-us",
     "en-us": "en-us",
     "ja-jp": "ja",
     "ko-kr": "en-us",

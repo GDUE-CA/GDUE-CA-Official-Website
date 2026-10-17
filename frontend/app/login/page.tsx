@@ -29,11 +29,13 @@ import UserPlus from "@/assets/icons/user/user-plus.svg";
 import LayoutDashboard from "@/assets/icons/navigation/layout-dashboard.svg";
 import Home from "@/assets/icons/navigation/home.svg";
 import Check from "@/assets/icons/action/check.svg";
+import Globe from "@/assets/icons/navigation/globe.svg";
 import { useI18n } from "@/i18n/provider";
 import { useAdminLocale } from "@/app/admin/AdminProviders";
-import { useLocalizedPath, useSwitchLocale } from "@/lib/navigation";
-import { locales, localeDisplayName, urlLangToLocale, type Locale } from "@/lib/i18n";
+import { useLocalizedPath } from "@/lib/navigation";
+import { localeDisplayName, urlLangToLocale, type Locale } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
+import { LanguagePopover } from "@/components/layout/LanguagePopover";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
@@ -69,23 +71,27 @@ function parseReturnTarget(): string | null {
   return raw;
 }
 
-/** 语言切换：只替换 URL 顶层 locale 段（规范 §3），保留子路径与 query */
+/** 语言切换：按钮样式 + 地球矢量图标 + 语言浮层（V0.5.8 §7.4 与首页按钮选择器样式统一） */
 function LoginLocaleSwitcher() {
   const { locale } = useAdminLocale();
-  const switchLocale = useSwitchLocale();
+  const [open, setOpen] = useState(false);
   return (
-    <select
-      value={locale}
-      onChange={(e) => switchLocale(e.target.value as Locale)}
-      aria-label="Language"
-      className="h-8 rounded-md border border-input bg-background px-1.5 text-xs font-medium cursor-pointer"
-    >
-      {locales.map((l) => (
-        <option key={l} value={l}>
-          {localeDisplayName(l)}
-        </option>
-      ))}
-    </select>
+    <LanguagePopover
+      open={open}
+      onOpenChange={setOpen}
+      anchor={
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          aria-label="Language"
+          onClick={() => setOpen(true)}
+        >
+          <Globe className="h-4 w-4" />
+          {localeDisplayName(locale)}
+        </Button>
+      }
+    />
   );
 }
 
@@ -392,7 +398,7 @@ export default function LoginPage() {
               </>
             )}
 
-            {/* 忘记密码 + 注册账号 + 账号恢复 */}
+            {/* 忘记密码 + 注册账号（V0.5.8：独立账号找回入口已合并进忘记密码） */}
             <div className="mt-4 flex items-center justify-between text-sm">
               <Link
                 href={lp("/forgot-password")}
@@ -406,14 +412,6 @@ export default function LoginPage() {
               >
                 <UserPlus className="h-4 w-4" />
                 {t("auth.login.toRegister")}
-              </Link>
-            </div>
-            <div className="mt-2 text-center">
-              <Link
-                href={lp("/auth/recover")}
-                className="text-xs text-muted-foreground hover:text-primary transition-colors"
-              >
-                {t("auth.recover.title")}
               </Link>
             </div>
 

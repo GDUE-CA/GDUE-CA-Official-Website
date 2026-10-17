@@ -83,19 +83,22 @@ class SecurityQuestionItem(BaseModel):
     @model_validator(mode="after")
     def _validate(self) -> "SecurityQuestionItem":
         # 延迟导入避免 schema ↔ core 循环依赖
+        from app.core.security_question_filter import check_question_text
         from app.core.security_questions import (
             CUSTOM_MIN_ANSWER_LEN,
             PRESET_MIN_ANSWER_LEN,
-            is_preset_question_key,
         )
         if self.is_custom:
+            # 自定义问题：前后端双重黑名单过滤（禁隐私 / 敏感政治历史内容）
+            reason = check_question_text(self.question)
+            if reason:
+                raise ValueError(reason)
             # 自定义问题：答案需更强（≥ 6 字符），避免短答案被枚举猜中
             if len(self.answer.strip()) < CUSTOM_MIN_ANSWER_LEN:
                 raise ValueError(f"自定义问题答案长度不足（最少 {CUSTOM_MIN_ANSWER_LEN} 字符）")
         else:
-            # 预设问题：question 必须是合法预设 key
-            if not is_preset_question_key(self.question):
-                raise ValueError("预设问题 key 不合法")
+            # 预设问题：合法性（历史 key 或启用题库文本）在 API 层校验（需查 DB）；
+            # 这里仅校验答案长度下限
             if len(self.answer.strip()) < PRESET_MIN_ANSWER_LEN:
                 raise ValueError(f"答案长度不足（最少 {PRESET_MIN_ANSWER_LEN} 字符）")
         return self
@@ -165,14 +168,23 @@ class RecoverRequest(BaseModel):
         return self
 
 
-# ---------- 公开注册（P0） ----------
+# ---------- 公开注册（P0，V0.5.8 三步向导） ----------
+class RegisterSendCodeRequest(BaseModel):
+    """注册第一步：发送 6 位邮箱验证码（占用校验在接口层显式返回，供向导提示）。"""
+    email: LooseEmail
+
+
 class RegisterRequest(BaseModel):
-    """公开注册入参：强制 member 角色，不提供任何角色字段。"""
+    """公开注册入参：强制 member 角色，不提供任何角色字段。
+
+    V0.5.8：邮箱必填 + 邮箱验证码必填（第一步已验证所有权，提交时后端核销一次性码）。
+    """
     username: PlainText = Field(min_length=2, max_length=64)
     display_name: PlainText = Field(min_length=1, max_length=64)
     password: str = Field(min_length=1, max_length=PASSWORD_MAX_LENGTH)
     confirm_password: str = Field(min_length=1, max_length=PASSWORD_MAX_LENGTH)
-    email: LooseEmail | None = None
+    email: LooseEmail
+    code: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
     phone: str | None = Field(default=None, pattern=_PHONE_PATTERN)
     # 安全问题（per-user 3 个）：注册时强制设 3 个，注册完成写 must_set_security_questions=False
     security_questions: list[SecurityQuestionItem]
@@ -493,6 +505,112 @@ class PasswordResetOut(BaseModel):
 class PasswordResetHandleRequest(BaseModel):
     status: str = Field(pattern="^(handled|rejected)$")
     admin_note: MultilineText | None = Field(default=None, max_length=1000)
+
+
+# ---------- 一次性安全恢复码（V0.5.8 §4） ----------
+class RecoveryCodeOut(BaseModel):
+    """恢复码元数据（绝不包含明文 / 哈希）。"""
+    id: int
+    created_at: UTCDatetime
+    used_at: UTCDatetime | None = None
+    revoked: bool
+    revoked_at: UTCDatetime | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class RecoveryCodeCreateOut(BaseModel):
+    """生成响应：明文仅此一次返回，服务端不再可还原。"""
+    code: str
+    item: RecoveryCodeOut
+
+
+class RecoveryResetRequest(BaseModel):
+    """忘记密码·恢复码找回账号：账号（用户名或绑定邮箱）+ 恢复码 + 新密码。"""
+    account: PlainText = Field(min_length=2, max_length=128)
+    recovery_code: str = Field(min_length=8, max_length=64)
+    new_password: str = Field(min_length=1, max_length=PASSWORD_MAX_LENGTH)
+    confirm_password: str = Field(min_length=1, max_length=PASSWORD_MAX_LENGTH)
+
+    @model_validator(mode="after")
+    def _validate(self) -> "RecoveryResetRequest":
+        if self.new_password != self.confirm_password:
+            raise ValueError("两次输入的新密码不相同")
+        return self
+
+
+# ---------- 忘记密码·人工审核找回账号（V0.5.8 §5.3/§5.4 双表单） ----------
+class ForgotIdentifyRequest(BaseModel):
+    """找回入口账号识别：用户名或绑定邮箱（用于分支路由与脱敏邮箱回显）。"""
+    account: PlainText = Field(min_length=2, max_length=128)
+
+
+_ID_CARD_PATTERN = r"^\d{15}(\d{2}[\dXx])?$"
+
+
+class ManualReviewRequest(BaseModel):
+    """人工审核找回账号提交（校内 / 社会外部双表单）。
+
+    - school：真实姓名 + 学号必填；选填学院/专业/班级/注册大致时间/曾经旧密码；
+    - external：真实姓名 + 身份证号必填（后端加密入库、后台脱敏展示）；选填注册时间/旧密码。
+    旧密码仅用于瞬时哈希比对，绝不入库明文；结果邮件通知 contact_email。
+    """
+    kind: str = Field(pattern="^(school|external)$")
+    contact_email: EmailStr
+    # 记得的话提供用户名或绑定邮箱（辅助定位账号；分支3 全不记得可空）
+    account_hint: PlainText | None = Field(default=None, max_length=128)
+    real_name: PlainText = Field(min_length=1, max_length=64)
+    student_id: str | None = Field(default=None, pattern=_STUDENT_ID_PATTERN)
+    id_card: str | None = Field(default=None, pattern=_ID_CARD_PATTERN)
+    college: PlainText | None = Field(default=None, max_length=64)
+    major: PlainText | None = Field(default=None, max_length=64)
+    class_name: PlainText | None = Field(default=None, max_length=64)
+    register_time_hint: PlainText | None = Field(default=None, max_length=64)
+    old_password: str | None = Field(default=None, max_length=PASSWORD_MAX_LENGTH)
+
+    @model_validator(mode="after")
+    def _validate(self) -> "ManualReviewRequest":
+        if self.kind == "school" and not (self.student_id or "").strip():
+            raise ValueError("校内账号必须填写学号")
+        if self.kind == "external" and not (self.id_card or "").strip():
+            raise ValueError("社会外部账号必须填写身份证号")
+        return self
+
+
+class ManualReviewOut(BaseModel):
+    """后台人工审核工单视图（身份证脱敏展示，绝不明文输出）。"""
+    id: int
+    kind: str
+    contact_email: str
+    username_hint: str | None
+    real_name: str | None
+    student_id: str | None
+    # 脱敏身份证（如 1101**********1234）；无身份证工单为 None
+    id_card_masked: str | None = None
+    college: str | None
+    major: str | None
+    class_name: str | None
+    register_time_hint: str | None
+    old_password_matched: bool | None
+    matched_user_id: int | None
+    matched_username: str | None = None
+    status: str
+    admin_note: str | None
+    handled_action: str | None
+    handled_by: int | None
+    handled_at: UTCDatetime | None
+    submit_ip: str | None
+    created_at: UTCDatetime
+
+
+class ManualReviewApproveRequest(BaseModel):
+    """审核通过动作：发一次性恢复码到联系邮箱 / 将联系邮箱绑定为账号新邮箱。"""
+    action: str = Field(pattern="^(send_recovery_code|bind_contact_email)$")
+    admin_note: MultilineText | None = Field(default=None, max_length=1000)
+
+
+class ManualReviewRejectRequest(BaseModel):
+    reason: MultilineText = Field(min_length=2, max_length=1000)
 
 
 # ---------- 更换绑定邮箱（路径A 自助 / 路径B 自助核验 / 路径C 人工申请 / 豁免确认） ----------

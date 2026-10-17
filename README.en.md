@@ -14,7 +14,7 @@
 [![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-ready-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org)
 [![Nginx](https://img.shields.io/badge/Nginx-HTTP%2F3-269539?logo=nginx&logoColor=white)](https://nginx.org)
-[![i18n](https://img.shields.io/badge/i18n-18_locales-orange)](#internationalization)
+[![i18n](https://img.shields.io/badge/i18n-19_locales-orange)](#internationalization)
 
 [![Status](https://img.shields.io/badge/status-active-success)]()
 [![Maintenance](https://img.shields.io/badge/503_static-maintenance-blueviolet)](#503-static-maintenance-fallback)
@@ -61,7 +61,7 @@ The **official website of the Computer Association (Huadu Campus) of Guangdong U
 
 ### Internationalization
 
-- **18 languages**; UI translation language and regional formatting (dates / numbers / currency) are **strictly separated** and can be selected independently.
+- **19 languages**; UI translation language and regional formatting (dates / numbers / currency) are **strictly separated** and can be selected independently.
 - Three-level priority resolution: user personal settings > URL `/{locale}/` prefix > system global default. Variant languages with missing keys fall back along the fallback chain, never leaving blanks.
 - The language list is auto-generated at build time by scanning `i18n/messages/*.json` (single source of truth), driving Edge rewrites, dictionary loading, the language switcher, sitemap, and hreflang.
 

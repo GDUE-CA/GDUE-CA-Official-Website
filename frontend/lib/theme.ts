@@ -66,15 +66,15 @@ export const THEME_STYLE_KEY = "gdueca-theme-style";
 /** 主题 key 合法形态（与后端 User.theme / Theme.key 校验一致） */
 export const THEME_KEY_RE = /^[a-z][a-z0-9-]{0,31}$/;
 
-/** 读取存储的风格主题 key；未设置或非法值返回 "default" */
+/** 读取存储的风格主题 key；未设置或非法值返回 "apple"（V0.5.8 §8.2 Apple 主题为默认） */
 export function getStoredThemeStyle(): string {
-  if (typeof window === "undefined") return "default";
+  if (typeof window === "undefined") return "apple";
   try {
     const stored = window.localStorage.getItem(THEME_STYLE_KEY);
     if (stored && THEME_KEY_RE.test(stored)) return stored;
-    return "default";
+    return "apple";
   } catch {
-    return "default";
+    return "apple";
   }
 }
 

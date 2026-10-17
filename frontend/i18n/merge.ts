@@ -4,7 +4,7 @@
  * 规范约束（§3 / S06）：
  * - 语言文件中的「扁平点号 key」（如 "common.save"）展开为嵌套结构后再合并；
  * - 空字符串视为缺失词条（翻译留空 → 自动回退兜底语言，防页面空白）；
- * - 合并方向：zh-cn 为底，回退链上越靠后的语言优先级越高（自身差异最后覆盖）。
+ * - 合并方向：回退链终态语言（zh-cn / en-gb）为底，回退链上越靠后的语言优先级越高（自身差异最后覆盖）。
  */
 
 export type Dict = Record<string, unknown>;
@@ -75,8 +75,8 @@ export function stripEmptyLeaves(obj: Dict): Dict {
 
 /**
  * 按回退链构建最终字典。
- * dicts 顺序 = [自身, 父语言, …, zh-cn]（localeFallbackChain 的输出顺序）；
- * 内部反转后以 zh-cn 为底逐层覆盖，保证自身词条优先级最高。
+ * dicts 顺序 = [自身, 父语言, …, 分组终态语言]（localeFallbackChain 的输出顺序）；
+ * 内部反转后以终态语言（zh-cn / en-gb）为底逐层覆盖，保证自身词条优先级最高。
  */
 export function mergeLocaleChain(dicts: Dict[]): Dict {
   let acc: Dict = {};

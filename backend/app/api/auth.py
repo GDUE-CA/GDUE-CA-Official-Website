@@ -89,6 +89,7 @@ from app.schemas.auth import (
     RecoverRequest,
     RegisterOut,
     RegisterRequest,
+    RegisterSendCodeRequest,
     SecurityQuestionOutItem,
     SecurityQuestionsOut,
     SecurityQuestionsSetupRequest,
@@ -217,6 +218,95 @@ async def get_csrf_token(request: Request, response: Response):
 # ---------- 公开注册（P0） ----------
 # 强制 role=member：公开注册永远不能产生管理员账号，admin 只能由现有管理员后台创建或升级
 @router.post(
+    "/register/send-code",
+    dependencies=[Depends(rate_limit("register-send-code", limit=5, window_seconds=3600))],
+)
+async def register_send_code(
+    req: RegisterSendCodeRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """注册第一步：向待注册邮箱发送 6 位验证码。
+
+    V0.5.8：邮箱占用是本步的显式校验项（向导需提示用户换邮箱），
+    因此「邮箱已被使用」直接明确返回，不做模糊化处理。
+    验证码 KV 存 SHA-256（TTL/重发间隔/尝试上限复用全局邮件验证码配置），
+    SMTP 未配置时仅打服务端日志（开发兜底，绝不经响应回传）。
+    """
+    client_ip = get_client_ip(request)
+    email = str(req.email).strip()
+    if _placeholder_email(email):
+        raise HTTPException(status_code=400, detail="请输入有效的邮箱地址")
+    dup = (await db.execute(
+        select(User).where(User.email == email)
+    )).scalar_one_or_none()
+    if dup is not None:
+        raise HTTPException(status_code=400, detail="邮箱已被使用")
+
+    ehash = _email_hash(email)
+    kv = get_kv()
+    sent_key = f"regcode:sent:{ehash}"
+    code_key = f"regcode:code:{ehash}"
+    att_key = f"regcode:att:{ehash}"
+    if await kv.exists(sent_key):
+        return {"ok": True, "message": "验证码发送间隔未到，请稍后查收"}
+    await kv.set(sent_key, "1", ttl_seconds=settings.EMAIL_CODE_RESEND_INTERVAL_SECONDS)
+
+    code = f"{secrets.randbelow(1000000):06d}"
+    await kv.setex(code_key, settings.EMAIL_CODE_TTL_SECONDS,
+                   hashlib.sha256(code.encode()).hexdigest())
+    await kv.setex(att_key, settings.EMAIL_CODE_TTL_SECONDS, "0")
+    body = (
+        "您正在注册 GDUE-CA 账号。\n\n"
+        f"验证码：{code}\n"
+        f"{max(settings.EMAIL_CODE_TTL_SECONDS // 60, 1)} 分钟内有效，"
+        "请勿泄露给他人。若非本人操作，请忽略本邮件。\n"
+    )
+    sent = await send_email(email, "GDUE-CA 注册验证码", body)
+    if not sent:
+        logger.warning(
+            "注册验证码未成功投递（SMTP未配置或失败，仅限开发环境排查）邮箱=%s 验证码=%s",
+            email, code)
+    _log(db, None, "register.code_sent",
+         f"email_hash:{ehash[:12]} sent:{sent} smtp:{mailer_configured()}", client_ip)
+    await db.commit()
+    return {"ok": True, "message": "验证码已发送，请查收"}
+
+
+@router.get(
+    "/register/check-username",
+    dependencies=[Depends(rate_limit("register-check-username", limit=30, window_seconds=60))],
+)
+async def register_check_username(
+    username: str = Query(min_length=2, max_length=64),
+    db: AsyncSession = Depends(get_db),
+):
+    """注册第二步：用户名占用实时检查（available=True 表示可用）。"""
+    dup = (await db.execute(
+        select(User.id).where(User.username == username).limit(1)
+    )).first()
+    return {"available": dup is None}
+
+
+async def _consume_register_code(db: AsyncSession, email: str, code: str) -> None:
+    """核销注册邮箱验证码（一次性）：错误/过期/尝试超限统一 400 模糊提示。"""
+    ehash = _email_hash(email)
+    kv = get_kv()
+    code_key = f"regcode:code:{ehash}"
+    att_key = f"regcode:att:{ehash}"
+    raw = await kv.get(code_key)
+    if not raw:
+        raise HTTPException(status_code=400, detail="验证码无效或已过期")
+    attempts = await kv.incrby(att_key, 1)
+    if attempts > settings.EMAIL_CODE_MAX_ATTEMPTS:
+        await kv.delete(code_key, att_key)
+        raise HTTPException(status_code=400, detail="验证码无效或已过期")
+    if raw != hashlib.sha256(code.encode()).hexdigest():
+        raise HTTPException(status_code=400, detail="验证码无效或已过期")
+    await kv.delete(code_key, att_key, f"regcode:sent:{ehash}")
+
+
+@router.post(
     "/register",
     response_model=RegisterOut,
     status_code=status.HTTP_201_CREATED,
@@ -236,13 +326,14 @@ async def register(
     )).scalar_one_or_none()
     if dup:
         raise HTTPException(status_code=400, detail="用户名已存在")
-    # 邮箱可选但唯一（列 NOT NULL + UNIQUE）；未提供时生成占位邮箱满足约束
-    email = str(req.email) if req.email else f"{req.username}@users.placeholder"
+    email = str(req.email).strip()
     dup_email = (await db.execute(
         select(User).where(User.email == email)
     )).scalar_one_or_none()
     if dup_email:
         raise HTTPException(status_code=400, detail="邮箱已被使用")
+    # 邮箱验证码核销（第一步发码，一次性，验证通过即作废）
+    await _consume_register_code(db, email, req.code)
     u = User(
         username=req.username,
         email=email,
@@ -259,6 +350,8 @@ async def register(
     )
     db.add(u)
     await db.flush()
+    # 预设问题合法性校验（题库 DB 化：历史 key 或启用题库文本）
+    await _validate_preset_questions(db, req.security_questions)
     # 写入 3 个安全问题（规范化 + bcrypt 哈希）
     for item in req.security_questions:
         db.add(UserSecurityQuestion(
@@ -1587,6 +1680,15 @@ def security_answer_digest(answer: str) -> str:
     return hashlib.sha256(answer.strip().lower().encode("utf-8")).hexdigest()
 
 
+async def _validate_preset_questions(db: AsyncSession, items) -> None:
+    """API 层预设问题合法性校验（需查 DB）：is_custom=False 的 question 必须是
+    历史 i18n key 或启用中题库的 zh/en 文本；非法 / 已停用抛 422。"""
+    from app.core.security_questions import is_valid_preset_question
+    for item in items:
+        if not item.is_custom and not await is_valid_preset_question(db, item.question):
+            raise HTTPException(status_code=422, detail="预设问题不合法或已停用")
+
+
 # 防账号枚举：账号不存在 / 未设安全问题时返回的固定假预设问题（3 个）
 _FAKE_SECURITY_QUESTIONS = [
     SecurityQuestionOutItem(position=1, question="sq.first_pet", is_custom=False),
@@ -1596,10 +1698,28 @@ _FAKE_SECURITY_QUESTIONS = [
 
 
 @router.get("/security-questions/presets")
-async def list_preset_security_questions():
-    """返回预设问题 key 列表（公开，前端下拉用；key 对应 i18n 文案）。"""
-    from app.core.security_questions import PRESET_SECURITY_QUESTIONS
-    return ok({"presets": [item["key"] for item in PRESET_SECURITY_QUESTIONS]})
+async def list_preset_security_questions(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """返回启用中的预设问题列表（公开，前端下拉用）。
+
+    V0.5.8 题库 DB 化：按 X-Locale 返回对应语言文本（zh 系→question_zh，其余→question_en）；
+    响应结构为对象数组 ``[{key, question}]``，key 仅历史内置题有值（新选题为 None）。
+    """
+    from app.core.localization import X_LOCALE_HEADER
+    from app.db.models import SecurityPresetQuestion
+    raw = request.headers.get(X_LOCALE_HEADER, "")
+    is_zh = raw.lower().startswith("zh")
+    rows = (await db.execute(
+        select(SecurityPresetQuestion)
+        .where(SecurityPresetQuestion.enabled.is_(True))
+        .order_by(SecurityPresetQuestion.sort_order.asc(), SecurityPresetQuestion.id.asc())
+    )).scalars().all()
+    return ok({"presets": [
+        {"key": q.key, "question": q.question_zh if is_zh else q.question_en}
+        for q in rows
+    ]})
 
 
 @router.get(
@@ -1612,11 +1732,14 @@ async def get_security_questions(
 ):
     """返回指定用户 3 个安全问题（不含答案）。
 
+    定位支持用户名或绑定邮箱（忘记密码分支2 只记得邮箱）；
     防账号枚举：账号不存在 / 已软删 / 未设安全问题时，均返回 3 个固定假预设问题，
     与真实用户响应结构完全一致，不暴露账号是否存在。
     """
     user = (await db.execute(
-        select(User).where(User.username == username)
+        select(User).where(
+            or_(User.username == username, User.email == username)
+        )
     )).scalar_one_or_none()
     if not user or user.is_deleted:
         return ok({"questions": [q.model_dump() for q in _FAKE_SECURITY_QUESTIONS]})
@@ -1718,6 +1841,8 @@ async def setup_security_questions(
         _log(db, u.id, "security_questions.setup_fail", "bad_password", client_ip)
         await db.commit()
         raise HTTPException(status_code=400, detail="当前密码错误")
+    # 预设问题合法性校验（题库 DB 化：历史 key 或启用题库文本）
+    await _validate_preset_questions(db, req.questions)
     # 删除旧问题（如有），写新 3 行
     await db.execute(
         sa_delete(UserSecurityQuestion).where(UserSecurityQuestion.user_id == u.id)

@@ -43,6 +43,8 @@ export const PERMISSION_MODULES = [
   "roles",
   // ---------- V0.5.7 系统重置（仅 super_admin；Break-Glass 应急账号旁路） ----------
   "system_reset",
+  // ---------- V0.5.8 安全问题预设题库 ----------
+  "security_questions",
 ] as const;
 
 export type PermissionModule = (typeof PERMISSION_MODULES)[number];

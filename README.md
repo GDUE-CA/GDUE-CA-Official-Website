@@ -14,7 +14,7 @@
 [![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-ready-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org)
 [![Nginx](https://img.shields.io/badge/Nginx-HTTP%2F3-269539?logo=nginx&logoColor=white)](https://nginx.org)
-[![i18n](https://img.shields.io/badge/i18n-18_locales-orange)](#国际化)
+[![i18n](https://img.shields.io/badge/i18n-19_locales-orange)](#国际化)
 
 [![Status](https://img.shields.io/badge/status-active-success)]()
 [![Maintenance](https://img.shields.io/badge/503_static-maintenance-blueviolet)](#503-静态维护兜底机制)
@@ -61,7 +61,7 @@
 
 ### 国际化
 
-- **18 门语言**，UI 翻译语言与区域格式化（日期 / 数字 / 货币）**严格分离**，可独立选择；
+- **19 门语言**，UI 翻译语言与区域格式化（日期 / 数字 / 货币）**严格分离**，可独立选择；
 - 三级优先级解析：用户个人设置 > URL `/{locale}/` 前缀 > 系统全局默认；变体语言缺失词条沿回退链兜底，不落空白；
 - 语言清单由构建期扫描 `i18n/messages/*.json` 自动生成（单一真值源），驱动 Edge 重写、字典加载、语言切换器、sitemap 与 hreflang。
 

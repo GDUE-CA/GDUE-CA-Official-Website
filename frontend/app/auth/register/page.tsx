@@ -1,30 +1,24 @@
 "use client";
 
 /**
- * /auth/register - 用户端注册页（P0）
- * - zod + react-hook-form 表单校验：用户名 / 昵称 / 密码 / 确认密码 / 邮箱（选填）/ 手机号（选填）
- * - 页面不含任何角色选择控件：后端强制 role=member，admin 仅能由管理员后台创建或升级
- * - 注册成功跳转登录页 /login
+ * /auth/register - 用户端注册页（V0.5.8 三步分步向导）
+ * 页面只做组合：语言切换 + 卡片壳 + RegisterWizard 业务组件
+ * 注册成功不自动登录，用户在向导成功弹窗中自选跳转
  */
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import Loader2 from "@/assets/icons/status/loader-2.svg";
 import UserPlus from "@/assets/icons/user/user-plus.svg";
 import ArrowLeft from "@/assets/icons/navigation/arrow-left.svg";
 import LogIn from "@/assets/icons/navigation/log-in.svg";
 import { useI18n } from "@/i18n/provider";
 import { useLocalizedPath } from "@/lib/navigation";
 import { useAdminLocale } from "@/app/admin/AdminProviders";
-import { localeDisplayName, locales, localeToUrlLang, urlLangToLocale, type Locale } from "@/lib/i18n";
+import { localeDisplayName, urlLangToLocale } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { PasswordInput } from "@/components/ui/password-input";
-import { Label } from "@/components/ui/label";
+import { LanguagePopover } from "@/components/layout/LanguagePopover";
+import Globe from "@/assets/icons/navigation/globe.svg";
 import {
   Card,
   CardContent,
@@ -32,67 +26,30 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { register } from "@/lib/api/auth";
-import { applyServerErrors } from "@/lib/api/formErrors";
 import { getSession } from "@/lib/auth";
-import { SecurityQuestionsForm } from "@/components/auth/SecurityQuestionsForm";
-import type { SecurityQuestionItem } from "@/types/api";
+import { RegisterWizard } from "@/components/auth/RegisterWizard";
 
-/** 表单校验 schema（与后端规则一致：用户名 2-64，密码强度由后端细化校验） */
-const registerSchema = z
-  .object({
-    username: z
-      .string()
-      .trim()
-      .min(2, "用户名至少 2 个字符")
-      .max(64, "用户名最长 64 个字符"),
-    display_name: z
-      .string()
-      .trim()
-      .min(1, "请输入昵称")
-      .max(64, "昵称最长 64 个字符"),
-    password: z.string().min(8, "密码至少 8 个字符").max(72, "密码最长 72 个字符"),
-    confirm_password: z.string().min(1, "请再次输入密码"),
-    email: z
-      .string()
-      .trim()
-      .email("邮箱格式不正确")
-      .max(128, "邮箱过长")
-      .optional()
-      .or(z.literal("")),
-    phone: z
-      .string()
-      .trim()
-      .regex(/^\+?[0-9\- ]{5,32}$/, "手机号格式不正确")
-      .optional()
-      .or(z.literal("")),
-  })
-  .refine((data) => data.password === data.confirm_password, {
-    message: "两次输入的密码不一致",
-    path: ["confirm_password"],
-  });
-
-type RegisterFormValues = z.infer<typeof registerSchema>;
-
-/** 语言切换：跳转到对应语言前缀路由（/{lang}/auth/register） */
+/** 语言切换：按钮样式 + 地球矢量图标 + 语言浮层（V0.5.8 §7.4，与登录页/首页统一） */
 function AuthLocaleSwitcher() {
   const { locale } = useAdminLocale();
-  const router = useRouter();
+  const [open, setOpen] = useState(false);
   return (
-    <select
-      value={locale}
-      onChange={(e) =>
-        router.replace(`/${localeToUrlLang(e.target.value as Locale)}/auth/register`)
+    <LanguagePopover
+      open={open}
+      onOpenChange={setOpen}
+      anchor={
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          aria-label="Language"
+          onClick={() => setOpen(true)}
+        >
+          <Globe className="h-4 w-4" />
+          {localeDisplayName(locale)}
+        </Button>
       }
-      aria-label="Language"
-      className="h-8 rounded-md border border-input bg-background px-1.5 text-xs font-medium cursor-pointer"
-    >
-      {locales.map((l) => (
-        <option key={l} value={l}>
-          {localeDisplayName(l)}
-        </option>
-      ))}
-    </select>
+    />
   );
 }
 
@@ -102,31 +59,6 @@ export default function AuthRegisterPage() {
   const router = useRouter();
   const pathname = usePathname();
   const { setLocale } = useAdminLocale();
-  const [serverError, setServerError] = useState<string | null>(null);
-  const [sqErrors, setSqErrors] = useState<string[]>([]);
-  const [securityQuestions, setSecurityQuestions] = useState<SecurityQuestionItem[]>([
-    { position: 1, question: "", answer: "", is_custom: false },
-    { position: 2, question: "", answer: "", is_custom: false },
-    { position: 3, question: "", answer: "", is_custom: false },
-  ]);
-
-  const {
-    register: registerField,
-    handleSubmit,
-    setError,
-    getValues,
-    formState: { errors, isSubmitting },
-  } = useForm<RegisterFormValues>({
-    resolver: zodResolver(registerSchema),
-    defaultValues: {
-      username: "",
-      display_name: "",
-      password: "",
-      confirm_password: "",
-      email: "",
-      phone: "",
-    },
-  });
 
   /** 从 URL 路径同步语言（/en-us/auth/register → en-us） */
   useEffect(() => {
@@ -141,46 +73,6 @@ export default function AuthRegisterPage() {
     const session = getSession();
     if (session) router.replace(`/${locale}`);
   }, [router, locale]);
-
-  async function onSubmit(values: RegisterFormValues) {
-    setServerError(null);
-    // 校验 3 个安全问题：每个 question 和 answer 非空
-    const sqErrs: string[] = [];
-    let sqValid = true;
-    securityQuestions.forEach((item) => {
-      const errs: string[] = [];
-      if (!item.question.trim()) {
-        errs.push(t("auth.securityQuestions.questionRequired"));
-        sqValid = false;
-      }
-      if (!item.answer.trim()) {
-        errs.push(t("auth.securityQuestions.answerRequired"));
-        sqValid = false;
-      }
-      sqErrs[item.position - 1] = errs.join("；");
-    });
-    setSqErrors(sqErrs);
-    if (!sqValid) return;
-    try {
-      await register({
-        username: values.username,
-        display_name: values.display_name,
-        password: values.password,
-        confirm_password: values.confirm_password,
-        email: values.email || undefined,
-        phone: values.phone || undefined,
-        security_questions: securityQuestions,
-      });
-      // P0：注册成功跳转登录页
-      router.replace(lp("/login"));
-    } catch (err) {
-      // 字段名与后端一致（username / email …）直接标到输入框；
-      // 「两次输入的密码不一致」这类模型级错误、安全问题错误进横幅
-      setServerError(
-        applyServerErrors(err, { setError, getValues }, { fallback: t("auth.register.error") }),
-      );
-    }
-  }
 
   return (
     <div className="relative min-h-screen flex items-center justify-center px-4 py-12 bg-gradient-to-br from-background to-muted/30">
@@ -202,133 +94,7 @@ export default function AuthRegisterPage() {
             <CardDescription>{t("auth.register.subtitle")}</CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-              <div className="space-y-2">
-                <Label htmlFor="username">{t("auth.register.username")}</Label>
-                <Input
-                  id="username"
-                  autoComplete="username"
-                  placeholder={t("auth.register.usernamePlaceholder")}
-                  aria-invalid={!!errors.username}
-                  {...registerField("username")}
-                />
-                {errors.username && (
-                  <p className="text-xs text-destructive">{errors.username.message}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="display_name">{t("auth.register.displayName")}</Label>
-                <Input
-                  id="display_name"
-                  autoComplete="nickname"
-                  placeholder={t("auth.register.displayNamePlaceholder")}
-                  aria-invalid={!!errors.display_name}
-                  {...registerField("display_name")}
-                />
-                {errors.display_name && (
-                  <p className="text-xs text-destructive">{errors.display_name.message}</p>
-                )}
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="password">{t("auth.register.password")}</Label>
-                  <PasswordInput
-                    id="password"
-                    autoComplete="new-password"
-                    aria-invalid={!!errors.password}
-                    {...registerField("password")}
-                  />
-                  {errors.password && (
-                    <p className="text-xs text-destructive">{errors.password.message}</p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="confirm_password">{t("auth.register.confirmPassword")}</Label>
-                  <PasswordInput
-                    id="confirm_password"
-                    autoComplete="new-password"
-                    aria-invalid={!!errors.confirm_password}
-                    {...registerField("confirm_password")}
-                  />
-                  {errors.confirm_password && (
-                    <p className="text-xs text-destructive">{errors.confirm_password.message}</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email">
-                  {t("auth.register.email")}
-                  <span className="ml-1 text-xs text-muted-foreground">
-                    {t("auth.register.optional")}
-                  </span>
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  autoComplete="email"
-                  placeholder="name@example.com"
-                  aria-invalid={!!errors.email}
-                  {...registerField("email")}
-                />
-                {errors.email && (
-                  <p className="text-xs text-destructive">{errors.email.message}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="phone">
-                  {t("auth.register.phone")}
-                  <span className="ml-1 text-xs text-muted-foreground">
-                    {t("auth.register.optional")}
-                  </span>
-                </Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  autoComplete="tel"
-                  placeholder="+86 138 0000 0000"
-                  aria-invalid={!!errors.phone}
-                  {...registerField("phone")}
-                />
-                {errors.phone && (
-                <p className="text-xs text-destructive">{errors.phone.message}</p>
-              )}
-              </div>
-
-              <div className="space-y-3">
-                <Label className="text-sm font-semibold">
-                  {t("auth.securityQuestions.title")}
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  {t("auth.securityQuestions.description")}
-                </p>
-                <SecurityQuestionsForm
-                  value={securityQuestions}
-                  onChange={setSecurityQuestions}
-                  errors={sqErrors}
-                />
-              </div>
-
-              {serverError && (
-                <p className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md">
-                  {serverError}
-                </p>
-              )}
-
-              <Button type="submit" disabled={isSubmitting} className="w-full" size="lg">
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    {t("auth.register.submitting")}
-                  </>
-                ) : (
-                  t("auth.register.submit")
-                )}
-              </Button>
-            </form>
+            <RegisterWizard />
 
             <div className="mt-5 flex items-center justify-between text-sm">
               <Link

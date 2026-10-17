@@ -4,8 +4,10 @@
  * /[locale]/join 报名入口页
  * 顶部三个卡片按钮：活动报名 / 社团报名 / 查询报名结果
  * 点击切换到对应表单或查询界面
+ * 支持 ?mode=event|club|query 深链直达对应表单（V0.5.8 §8.9 首页双入口）
  */
-import { useState, ViewTransition } from "react";
+import { Suspense, useState, ViewTransition } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import CalendarDays from "@/assets/icons/status/calendar-days.svg";
 import Users from "@/assets/icons/user/users.svg";
@@ -21,17 +23,26 @@ import { DirectionalTransition } from "@/components/shared/DirectionalTransition
 
 type FormMode = "event" | "club" | "query";
 
+/** ?mode= 深链参数白名单校验 */
+function parseMode(raw: string | null): FormMode | null {
+  return raw === "event" || raw === "club" || raw === "query" ? raw : null;
+}
+
 export default function RegisterPage() {
   return (
     <DirectionalTransition>
-      <RegisterContent />
+      <Suspense fallback={null}>
+        <RegisterContent />
+      </Suspense>
     </DirectionalTransition>
   );
 }
 
 function RegisterContent() {
   const { t } = useI18n();
-  const [mode, setMode] = useState<FormMode | null>(null);
+  const search = useSearchParams();
+  // 仅作初始值：进入后用户切换 / 返回不再回写 URL
+  const [mode, setMode] = useState<FormMode | null>(() => parseMode(search.get("mode")));
 
   // 入口选择界面
   if (!mode) {

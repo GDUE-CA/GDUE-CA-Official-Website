@@ -29,11 +29,10 @@ const LOCALE_LIKE_RE = /^[a-z]{2}(-[a-z]{2,3})?$/i;
 
 /**
  * 旧 locale 前缀 → 新 locale 前缀的 301 永久重定向映射。
- * en-gb 改名 en-us；zh-tw 改名 zh-hk；zh-yue-hk 改名 zh-yue-tw；ja 改名 ja-jp。
+ * zh-tw 改名 zh-hk；zh-yue-hk 改名 zh-yue-tw；ja 改名 ja-jp。
  * 放在 localeRedirect 最早处，优先于非法 locale 剥离逻辑。
  */
 const OLD_LOCALE_REDIRECTS: Record<string, string> = {
-  "en-gb": "en-us",
   "zh-tw": "zh-hk",
   "zh-yue-hk": "zh-yue-tw",
   ja: "ja-jp",
@@ -205,8 +204,8 @@ function detectLocale(request: NextRequest): Locale {
       if (l.startsWith("tr")) return "tr-tr";
       if (l.startsWith("it")) return "it-it";
       if (l.startsWith("en")) {
-        // 所有英语统一归入 en-us
-        return "en-us";
+        // 英式英语 → en-gb；其余英语变体统一归入 en-us
+        return l.includes("gb") || l.includes("uk") ? "en-gb" : "en-us";
       }
     }
   }

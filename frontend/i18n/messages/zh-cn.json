@@ -23,7 +23,30 @@
       "submit": "注册",
       "submitting": "注册中...",
       "toLogin": "已有账号？去登录",
-      "error": "注册失败，请稍后重试"
+      "error": "注册失败，请稍后重试",
+      "wizard": {
+        "stepEmail": "邮箱验证",
+        "stepAccount": "账号信息",
+        "stepSecurity": "安全问答",
+        "next": "下一步",
+        "prev": "上一步",
+        "emailCode": "邮箱验证码",
+        "codePlaceholder": "输入 6 位验证码",
+        "sendCode": "发送验证码",
+        "codeSentTip": "验证码已发送，请查收",
+        "emailInvalid": "请输入有效的邮箱地址",
+        "sendCodeFirst": "请先发送邮箱验证码",
+        "codeRequired": "请输入 6 位邮箱验证码",
+        "usernameInvalid": "用户名需为 2-64 个字符",
+        "usernameChecking": "正在检查用户名可用性...",
+        "usernameAvailable": "用户名可用",
+        "usernameTaken": "用户名已被占用",
+        "displayNameRequired": "请输入昵称",
+        "successTitle": "注册成功",
+        "successDesc": "账号已创建，请登录后使用完整功能。你可以前往个人主页完善更多资料，或返回网站首页。",
+        "goProfile": "前往个人主页完善资料",
+        "goHome": "返回网站首页"
+      }
     },
     "securityQuestions": {
       "title": "安全问题",
@@ -35,7 +58,13 @@
       "customPlaceholder": "输入自定义问题",
       "answerPlaceholder": "输入答案",
       "questionRequired": "请选择或输入问题",
-      "answerRequired": "请输入答案"
+      "answerRequired": "请输入答案",
+      "questionTooShort": "问题至少 2 个字符",
+      "answerTooShortPreset": "答案至少 2 个字符",
+      "answerTooShortCustom": "自定义问题答案至少 6 个字符",
+      "customHint": "提示：请勿填写身份证、学号、护照、手机号等个人隐私信息，请勿填写敏感历史、政治争议内容；个人经历、爱好、学科、哲学内容均可。",
+      "blacklistPrivacy": "请勿填写身份证、学号、护照、手机号等个人隐私信息",
+      "blacklistSensitive": "请勿填写敏感历史、政治争议内容"
     },
     "recover": {
       "title": "账号恢复",
@@ -473,7 +502,31 @@
     },
     "keepCurrentDevice": "保留当前设备登录",
     "keepCurrentDeviceHint": "取消勾选后，本次修改密码将下线所有设备（包括当前设备）",
-    "newPasswordMismatch": "两次输入的新密码不相同"
+    "newPasswordMismatch": "两次输入的新密码不相同",
+    "recoveryCodes": {
+      "title": "一次性安全恢复码",
+      "desc": "忘记密码且无法使用其他验证方式时，可使用恢复码兜底找回账号。每个恢复码仅可使用一次。",
+      "generate": "生成恢复码",
+      "empty": "尚未生成恢复码",
+      "createdAt": "生成时间",
+      "usedAt": "使用时间",
+      "revokedAt": "作废时间",
+      "revoke": "作废",
+      "revokeTitle": "作废恢复码",
+      "revokeDesc": "作废后该恢复码将立即失效，无法再用于找回账号。此操作不可撤销。",
+      "revokeConfirm": "确认作废",
+      "generatedTitle": "恢复码已生成",
+      "generatedDesc": "请立即复制并妥善保管以下恢复码。",
+      "generatedWarning": "明文仅此一次展示，关闭后无法再查看。请离线保存在安全位置，不要泄露给他人。",
+      "copy": "复制",
+      "copied": "已复制",
+      "saved": "我已妥善保存",
+      "status": {
+        "active": "有效",
+        "used": "已使用",
+        "revoked": "已作废"
+      }
+    }
   },
   "projects": {
     "title": "项目展示",
@@ -1423,13 +1476,91 @@
         "rejected": "已驳回"
       }
     },
+    "recoveryReviews": {
+      "filterPending": "待审核",
+      "filterAll": "全部",
+      "empty": "暂无人工审核工单",
+      "kind": {
+        "school": "校内账号",
+        "external": "社会外部账号"
+      },
+      "statuses": {
+        "pending": "待审核",
+        "handled": "已通过",
+        "rejected": "已驳回"
+      },
+      "colRealName": "真实姓名",
+      "colStudentId": "学号",
+      "colIdCard": "身份证号",
+      "colCollege": "学院",
+      "colMajor": "专业",
+      "colClassName": "班级",
+      "colUsernameHint": "账号线索",
+      "colMatchedUser": "匹配账号",
+      "noMatch": "未匹配到账号",
+      "colOldPassword": "旧密码比对",
+      "oldPasswordMatched": "匹配",
+      "oldPasswordNotMatched": "不匹配",
+      "colRegisterTime": "注册时间线索",
+      "colSubmitIp": "提交 IP",
+      "colCreatedAt": "提交时间",
+      "approve": "通过",
+      "reject": "驳回",
+      "approveTitle": "通过审核",
+      "approveDesc": "选择执行动作，结果将通过邮件通知用户联系邮箱。",
+      "approveActionCode": "发送一次性恢复码到联系邮箱",
+      "approveActionBind": "将联系邮箱绑定为账号新邮箱",
+      "approveNotePlaceholder": "审核备注（可选）",
+      "approveConfirm": "确认通过",
+      "rejectTitle": "驳回申请",
+      "rejectDesc": "驳回理由将通过邮件通知用户。",
+      "rejectReasonPlaceholder": "驳回理由（必填）",
+      "rejectConfirm": "确认驳回",
+      "rejectReasonRequired": "请填写驳回理由",
+      "handledActionLabel": "执行动作",
+      "handledAction": {
+        "send_recovery_code": "已发送恢复码",
+        "bind_contact_email": "已换绑邮箱"
+      },
+      "adminNote": "审核备注",
+      "handledAt": "处理时间"
+    },
+    "securityQuestions": {
+      "title": "安全问题库",
+      "desc": "注册安全问答预设题库管理；已停用的题目新用户不可见，老用户数据不受影响。",
+      "add": "新增问题",
+      "empty": "暂无预设问题",
+      "enabled": "已启用",
+      "disabled": "已停用",
+      "edit": "编辑",
+      "disable": "停用",
+      "enable": "启用",
+      "delete": "删除",
+      "colSort": "排序",
+      "colUsage": "使用人数",
+      "colCreatedAt": "创建时间",
+      "addTitle": "新增预设问题",
+      "editTitle": "编辑预设问题",
+      "form": {
+        "desc": "中英文本均必填，内容同样受黑名单过滤约束。",
+        "zh": "中文问题",
+        "en": "英文问题",
+        "sort": "排序值",
+        "enabled": "启用",
+        "textRequired": "中英文本均需至少 2 个字符"
+      },
+      "deleteTitle": "删除预设问题",
+      "deleteConfirm": "确认删除该预设问题？",
+      "deleteUsedHint": "该问题已被 {count} 位用户使用，仅可停用，无法物理删除。"
+    },
     "review": {
       "title": "审核中心",
       "noAccess": "没有可访问的审核模块，请联系管理员开通权限",
       "tabs": {
         "registrations": "报名审核",
         "bugs": "Bug 反馈",
-        "resets": "重置密码"
+        "resets": "重置密码",
+        "recovery": "找回账号审核"
       },
       "manualCreate": "手动新增报名",
       "colSource": "来源",
@@ -1550,6 +1681,7 @@
       "content.blog": "博客管理",
       "content.memo": "说说管理",
       "content.blocks": "内容块",
+      "content.securityQuestions": "安全问题库",
       "content.media": "媒体库",
       "content.recycle": "内容回收站",
       "notifications": "通知管理",
@@ -2112,7 +2244,8 @@
         "audit_logs": "操作日志",
         "memo": "说说管理",
         "badges": "徽章管理",
-        "roles": "角色管理"
+        "roles": "角色管理",
+        "security_questions": "安全问题库"
       }
     },
     "rolesPage": {
@@ -2989,7 +3122,7 @@
   },
   "forgotPassword": {
     "title": "找回密码",
-    "subtitle": "输入绑定邮箱获取验证码，重置登录密码",
+    "subtitle": "通过邮箱验证码、安全问题或安全恢复码重置密码",
     "email": "绑定邮箱",
     "emailPlaceholder": "you@example.com",
     "sendCode": "发送验证码",
@@ -3003,7 +3136,53 @@
     "success": "密码重置成功",
     "successHint": "所有登录会话已强制下线，即将跳转到登录页",
     "backToLogin": "返回登录",
-    "manualEntry": "邮箱不可用？提交人工找回申请"
+    "manualEntry": "邮箱不可用？提交人工找回申请",
+    "wizard": {
+      "accountLabel": "用户名或绑定邮箱",
+      "accountPlaceholder": "输入用户名或绑定邮箱",
+      "accountRequired": "请输入用户名或绑定邮箱",
+      "identifyContinue": "继续",
+      "identifying": "识别中…",
+      "accountNotFound": "未找到匹配账号，请检查输入，或提交人工审核找回",
+      "noAccountHint": "用户名和邮箱都不记得了？",
+      "goManual": "提交人工审核找回",
+      "methodTitle": "选择验证方式",
+      "methodEmail": "邮箱验证码",
+      "methodEmailDesc": "发送验证码到绑定邮箱 {email}",
+      "methodEmailUnavailable": "（未绑定可用邮箱）",
+      "methodSq": "安全问题",
+      "methodSqDesc": "回答注册时设置的 3 个安全问题，答对 2 个即可重置",
+      "methodSqUnavailable": "（未设置安全问题）",
+      "methodRecovery": "安全恢复码",
+      "methodRecoveryDesc": "使用一次性安全恢复码找回账号",
+      "methodManualHint": "以上方式都无法使用？",
+      "back": "返回",
+      "emailMaskedHint": "完整输入绑定邮箱（{email}）",
+      "recoveryCodeLabel": "安全恢复码",
+      "recoveryCodeRequired": "请输入安全恢复码",
+      "manualDesc": "提交身份信息后，管理员将在审核中心核验，结果通过邮件通知。",
+      "kindSchool": "校内账号（学生/教职工）",
+      "kindExternal": "社会外部账号",
+      "contactEmail": "联系邮箱（接收审核结果）",
+      "contactEmailRequired": "请输入有效的联系邮箱",
+      "realName": "真实姓名",
+      "realNameRequired": "请输入真实姓名",
+      "studentId": "学号",
+      "studentIdRequired": "请输入学号",
+      "idCard": "身份证号",
+      "idCardRequired": "请输入身份证号",
+      "idCardInvalid": "身份证号格式不正确",
+      "idCardHint": "身份证号加密存储，后台仅脱敏展示",
+      "college": "学院（选填）",
+      "major": "专业（选填）",
+      "className": "班级（选填）",
+      "registerTimeHint": "注册大致时间（选填）",
+      "oldPassword": "曾经旧密码（选填，仅用于核验）",
+      "manualSubmit": "提交审核",
+      "manualSubmitting": "提交中…",
+      "manualSuccessTitle": "申请已提交",
+      "manualSuccessDesc": "管理员审核结果将通过邮件发送至您的联系邮箱，请留意查收。"
+    }
   },
   "badges": {
     "system": {

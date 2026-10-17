@@ -4,14 +4,14 @@
  * 安全问题表单（可复用：注册 / 补设 / 修改 / 初始化向导共用）
  *
  * 受控组件：父级持有 SecurityQuestionItem[]，通过 onChange 回调同步。
- * 预设问题存 i18n key（前端按 locale 渲染），自定义问题存原文。
+ * V0.5.8 题库 DB 化：预设题提交显示文本快照（不关联题库ID），自定义题存原文。
  */
 import { useEffect, useState } from "react";
 import { useI18n } from "@/i18n/provider";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { fetchPresetSecurityQuestions } from "@/lib/api/auth";
-import type { SecurityQuestionItem } from "@/types/api";
+import type { PresetSecurityQuestion, SecurityQuestionItem } from "@/types/api";
 
 interface Props {
   value: SecurityQuestionItem[];
@@ -23,14 +23,15 @@ interface Props {
 const POSITIONS = [1, 2, 3] as const;
 
 export function SecurityQuestionsForm({ value, onChange, errors }: Props) {
-  const { t } = useI18n();
-  const [presets, setPresets] = useState<string[]>([]);
+  const { t, locale } = useI18n();
+  const [presets, setPresets] = useState<PresetSecurityQuestion[]>([]);
 
   useEffect(() => {
     fetchPresetSecurityQuestions()
       .then((res) => setPresets(res.presets))
       .catch(() => setPresets([]));
-  }, []);
+    // 切换语言时按新语言重取题库文本
+  }, [locale]);
 
   function ensureItem(pos: number): SecurityQuestionItem {
     const found = value.find((v) => v.position === pos);
@@ -50,6 +51,10 @@ export function SecurityQuestionsForm({ value, onChange, errors }: Props) {
 
   return (
     <div className="space-y-4">
+      {/* 自定义问题固定提示文案（V0.5.8 §2.3：页面固定展示） */}
+      <p className="text-xs text-muted-foreground bg-muted/60 px-3 py-2 rounded-md">
+        {t("auth.securityQuestions.customHint")}
+      </p>
       {POSITIONS.map((pos) => {
         const item = ensureItem(pos);
         const err = errors?.[pos - 1];
@@ -95,9 +100,9 @@ export function SecurityQuestionsForm({ value, onChange, errors }: Props) {
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 <option value="">{t("auth.securityQuestions.selectPreset")}</option>
-                {presets.map((key) => (
-                  <option key={key} value={key}>
-                    {t(key)}
+                {presets.map((p, idx) => (
+                  <option key={p.key ?? `db-${idx}`} value={p.question}>
+                    {p.question}
                   </option>
                 ))}
               </select>

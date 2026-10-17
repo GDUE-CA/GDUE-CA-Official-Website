@@ -188,6 +188,29 @@ class UserSecurityQuestion(Base):
     user: Mapped["User"] = relationship(back_populates="security_questions")
 
 
+# ---------- 安全问题预设题库（V0.5.8：后台可 CRUD，停用不删除） ----------
+class SecurityPresetQuestion(Base):
+    """管理员可维护的安全问题预设题库。
+
+    - ``key`` 存历史 i18n key（如 ``sq.first_pet``），仅用于老数据关联与启动 seed 幂等；
+      管理员新增的自定义预设题 ``key`` 为 NULL。
+    - 用户安全问题表只存问题文本快照，不关联本表 ID，后台改题不影响老用户。
+    - 已被用户使用过的题禁止物理删除，仅可停用（``enabled=False``）。
+    """
+    __tablename__ = "security_preset_questions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    # 历史 i18n key（seed 的 10 条带 key；管理员新选题 key 为 NULL）
+    key: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
+    question_zh: Mapped[str] = mapped_column(String(256))
+    question_en: Mapped[str] = mapped_column(String(256))
+    # 停用后新用户不可见，老用户数据不受影响
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+
+
 # ---------- 社交关注（V0.5.5 §9.2）：单向关注；双向互关自动视为好友 ----------
 class UserFollow(Base):
     __tablename__ = "user_follows"
@@ -557,7 +580,14 @@ class PasswordResetStatus(str, Enum):
 
 
 class PasswordResetRequest(Base):
-    """访客提交的忘记密码申请，管理员审核后手动处理。"""
+    """访客提交的忘记密码 / 人工审核找回账号申请，管理员审核处理。
+
+    V0.5.8 §5.3 扩展（kind 区分三类）：
+    - ``legacy``：旧版 reason 文本申请（V0.5.7 及以前，兼容保留）；
+    - ``school``：校内账号人工审核（真实姓名 + 学号必填，选填学院/专业/班级等）；
+    - ``external``：社会外部账号人工审核（真实姓名 + 身份证号必填，加密入库、后台脱敏展示）。
+    旧密码选填项仅做哈希比对存布尔结果，绝不入库明文。
+    """
     __tablename__ = "password_reset_requests"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -569,6 +599,25 @@ class PasswordResetRequest(Base):
     handled_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     handled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
+    # ---- V0.5.8 人工审核找回账号扩展 ----
+    # 工单类型：legacy / school / external
+    kind: Mapped[str] = mapped_column(String(16), default="legacy")
+    real_name: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    student_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # 身份证号（Fernet 加密入库，后台仅脱敏展示，绝不存明文）
+    id_card_enc: Mapped[str | None] = mapped_column(Text, nullable=True)
+    college: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    major: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    class_name: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # 注册大致时间（用户自述文本，如 "2024 年秋"）
+    register_time_hint: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # 曾经旧密码哈希比对结果：None=未提供，True/False=比对结果（明文只用于瞬时比对，绝不入库）
+    old_password_matched: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    # 提交时按 username_hint 解析到的账号（辅助审核；可能为 None = 未匹配到）
+    matched_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    # 审核通过时执行的动作：send_recovery_code / bind_contact_email
+    handled_action: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    submit_ip: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
 
 class EmailChangeStatus(str, Enum):
@@ -601,6 +650,29 @@ class EmailChangeRequest(Base):
     reviewed_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
+
+
+# ---------- 一次性安全恢复码（V0.5.8 §4：账号兜底找回密钥） ----------
+class UserRecoveryCode(Base):
+    """用户一次性安全恢复码。
+
+    - 明文仅生成瞬间通过 API 返回一次，库中只存 SHA-256 哈希（高熵随机码，无需 bcrypt）；
+    - 一次性使用：找回账号成功即写 ``used_at``，永久失效；
+    - 可多次生成（多码并存）、可手动作废（``revoked``/``revoked_at``）；
+    - 生成 / 使用 / 作废全部写审计日志。
+    """
+    __tablename__ = "user_recovery_codes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    # 规范化（去分隔符 + 大写）后的 SHA-256 十六进制
+    code_sha256: Mapped[str] = mapped_column(String(64), unique=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    revoked: Mapped[bool] = mapped_column(Boolean, default=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 # ---------- IP 规则（黑白名单，替代 system_settings.ip_blacklist JSON） ----------

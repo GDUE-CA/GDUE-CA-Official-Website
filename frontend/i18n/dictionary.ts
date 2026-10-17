@@ -1,7 +1,8 @@
 /**
  * 服务端字典加载器
  * 通过 next/headers 读取当前 URL，从中解析 locale 前缀；
- * 字典按 localeFallbackChain 合并：扁平点号 key 展开、空串/缺失词条自动回退，最终兜底 zh-cn。
+ * 字典按 localeFallbackChain 合并：扁平点号 key 展开、空串/缺失词条自动回退，
+ * 亚洲语言最终兜底 zh-cn、欧美/拉丁系语言最终兜底 en-gb。
  */
 import { headers } from "next/headers";
 import type { Locale } from "@/lib/i18n";
@@ -60,8 +61,8 @@ export async function getDictionary(paramLocale?: string): Promise<Messages> {
 
 /**
  * 根据指定 locale 获取翻译字典。
- * 沿 localeFallbackChain 合并（自身 → 父语言 → … → zh-cn）：
- * 任一语言某 key 为空字符串或缺失时自动回退兜底 zh-cn，不落英文、防页面空白。
+ * 沿 localeFallbackChain 合并（自身 → 父语言 → … → 分组终态语言）：
+ * 任一语言某 key 为空字符串或缺失时自动沿链回退兜底（zh-cn / en-gb），防页面空白。
  */
 export async function getDictionaryByLocale(loc: Locale): Promise<Messages> {
   const chain = localeFallbackChain(loc);
