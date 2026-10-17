@@ -223,10 +223,8 @@ export interface RegisterRequest {
 }
 
 export interface RegisterResponse {
-  id: number;
   username: string;
   display_name: string | null;
-  role: string;
 }
 
 /** 登录会话（设备管理） */
@@ -414,7 +412,6 @@ export interface SchoolInfoBlock {
 
 /** 用户公开个人主页信息（GET /api/users/{username}/profile）：隐私过滤后 */
 export interface UserProfile {
-  id: number;
   username: string;
   display_name: string;
   avatar_url: string | null;
@@ -1089,6 +1086,16 @@ export interface ContentBlockUpdate {
 /* ---------- 成员（Phase 3） ---------- */
 export type MemberTerm = "current" | "former";
 
+/** 公开成员墙（GET /api/members）：仅展示字段，花名册与管理字段只在管理端返回 */
+export interface MemberPublic {
+  id: number;
+  name: string;
+  role_title: string;
+  term: MemberTerm;
+  bio: string | null;
+  avatar_url: string | null;
+}
+
 export interface Member {
   id: number;
   name: string;
@@ -1161,6 +1168,9 @@ export interface MemberImportResult {
 }
 
 /* ---------- 招新信息（Phase 3） ---------- */
+/** 前台招新信息（GET /api/recruitment；只返回已启用条目） */
+export type RecruitmentPublic = Omit<RecruitmentInfo, "enabled" | "created_at">;
+
 export interface RecruitmentInfo {
   id: number;
   title: string;
@@ -1488,11 +1498,20 @@ export interface RealnameRequest {
   user_realname_verified: boolean | null;
 }
 
+/** 本人视角的实名申请（不含主键 / user_id / 证件信息回显） */
+export interface MyRealnameRequest {
+  status: RealnameStatus;
+  /** 拒绝原因 */
+  note: string | null;
+  submitted_at: string;
+  reviewed_at: string | null;
+}
+
 /** 用户端实名状态：当前账号实名状态 + 最近一次申请 */
 export interface RealnameStatusOut {
   verified: boolean;
   verified_at: string | null;
-  latest: RealnameRequest | null;
+  latest: MyRealnameRequest | null;
 }
 
 /** 提交实名申请 */
@@ -1605,7 +1624,6 @@ export interface CustomBadgePayload {
 
 /** Memo 作者摘要 */
 export interface MemoAuthorBrief {
-  id: number;
   username: string;
   /** 对外展示昵称（主显示名）；为空时前端回落 username */
   display_name: string | null;
@@ -2185,13 +2203,26 @@ export interface SchoolVerifyApplication {
   class_display_name?: string | null;
 }
 
+/** 本人视角的学校验证申请（不含主键 / user_id / 内部外键 / 附件地址） */
+export interface MySchoolVerify {
+  student_id: string;
+  college_name: string | null;
+  major_name: string | null;
+  grade_year: number | null;
+  class_display_name: string | null;
+  status: "pending" | "approved" | "rejected";
+  admin_remark: string | null;
+  created_at: string;
+  reviewed_at: string | null;
+}
+
 /** 用户端学校验证状态（个人设置页） */
 export interface SchoolVerifyStatusOut {
   identity_school_verified: boolean;
   /** none / pending / approved / rejected（以最近一次申请为准） */
   status: SchoolVerifyState;
-  latest: SchoolVerifyApplication | null;
-  history: SchoolVerifyApplication[];
+  latest: MySchoolVerify | null;
+  history: MySchoolVerify[];
 }
 
 /** 提交学校验证申请 */

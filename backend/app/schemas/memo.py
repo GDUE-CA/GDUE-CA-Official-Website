@@ -165,8 +165,7 @@ class MemoAttachmentOut(BaseModel):
 
 # ---------- 作者摘要（嵌入到 Memo 输出中） ----------
 class MemoAuthorBrief(BaseModel):
-    """Memo 作者摘要：仅暴露 username/display_name/avatar/badges，不暴露真实姓名/手机号/学号。"""
-    id: int
+    """Memo 作者摘要：仅暴露 username/display_name/avatar/badges（不含内部用户 id / 真实姓名 / 手机号 / 学号）。"""
     username: str
     display_name: str | None = None
     avatar_url: str | None = None

@@ -16,7 +16,12 @@ from app.core.middleware import get_client_ip
 from app.core.permissions import require_permission
 from app.db.models import AuditLog, RecruitmentInfo, Registration, RegistrationStatus, RegistrationType
 from app.db.session import get_db
-from app.schemas.recruitment import RecruitmentInfoCreate, RecruitmentInfoOut, RecruitmentInfoUpdate
+from app.schemas.recruitment import (
+    RecruitmentInfoCreate,
+    RecruitmentInfoOut,
+    RecruitmentInfoUpdate,
+    RecruitmentPublicOut,
+)
 from app.schemas.register import RegistrationOut
 from app.utils.crud import apply_eq, apply_search, paginate
 from app.utils.export import to_csv, to_xlsx
@@ -41,7 +46,7 @@ def _is_in_effect(r: RecruitmentInfo, now: datetime) -> bool:
 
 
 # ---------- 公开：招新信息列表 ----------
-@public_router.get("", response_model=list[RecruitmentInfoOut])
+@public_router.get("", response_model=list[RecruitmentPublicOut])
 async def list_public_recruitment(
     db: AsyncSession = Depends(get_db),
 ):

@@ -10,9 +10,9 @@ import { listPublicMembers } from "@/lib/api/members";
 import { SectionHeading } from "@/components/shared/SectionHeading";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import type { Member } from "@/types/api";
+import type { MemberPublic } from "@/types/api";
 
-function MemberCard({ member }: { member: Member }) {
+function MemberCard({ member }: { member: MemberPublic }) {
   return (
     <Card>
       <CardContent className="flex items-start gap-4 p-5">
@@ -44,7 +44,7 @@ function MemberCard({ member }: { member: Member }) {
 
 export function MembersSection() {
   const { t } = useI18n();
-  const [members, setMembers] = useState<Member[] | null>(null);
+  const [members, setMembers] = useState<MemberPublic[] | null>(null);
 
   useEffect(() => {
     let cancelled = false;
