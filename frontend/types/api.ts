@@ -2089,6 +2089,20 @@ export type ClubApplyStatus = "pending" | "accept" | "reject";
 /** 报名主体仅限本校在读学生（校外社会报名通道已移除） */
 export type ClubApplicantType = "school";
 
+/** 本人社团报名进度（GET /api/club-apply/mine；不含内部主键与个人信息回显） */
+export interface MyClubApply {
+  receipt_code: string | null;
+  status: ClubApplyStatus;
+  departments: string[];
+  college: string | null;
+  major: string | null;
+  class_name: string | null;
+  /** 仅 rejected 时有值 */
+  reject_reason: string | null;
+  created_at: string;
+  reviewed_at: string | null;
+}
+
 export interface ClubApplyRecord {
   id: number;
   user_id: number;

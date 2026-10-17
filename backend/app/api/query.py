@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import (
     Activity,
     BugReport,
+    ClubApplyRecord,
     Registration,
     RegistrationStatus,
     RegistrationType,
@@ -54,6 +55,23 @@ def _bug_response(bug: BugReport) -> dict:
     }
 
 
+# 社团报名状态（accept/reject）→ 回执查询统一状态词（与活动报名一致）
+_CLUB_APPLY_STATUS = {"pending": "pending", "accept": "approved", "reject": "rejected"}
+
+
+def _club_apply_response(row: ClubApplyRecord) -> dict:
+    """社团报名（账号内报名）查询：只回状态，不回个人信息 / 审核备注。"""
+    return {
+        "receipt_code": row.receipt_code,
+        "type": "club",
+        "activity_title": None,
+        "status": _CLUB_APPLY_STATUS.get(row.status, row.status),
+        "submitted_at": row.created_at,
+        "checkin_open": False,
+        "checked_in_at": None,
+    }
+
+
 # 回执码只含字母数字和连字符；按 IP 限流防止枚举
 ReceiptCode = Path(pattern=r"^[A-Za-z0-9\-]{4,40}$")
 
@@ -70,6 +88,12 @@ async def query_receipt(receipt_code: str = ReceiptCode, db: AsyncSession = Depe
     ).scalar_one_or_none()
     if reg:
         return await _reg_response(db, reg)
+
+    club = (
+        await db.execute(select(ClubApplyRecord).where(ClubApplyRecord.receipt_code == code))
+    ).scalar_one_or_none()
+    if club:
+        return _club_apply_response(club)
 
     bug = (
         await db.execute(select(BugReport).where(BugReport.receipt_code == code))
@@ -97,6 +121,11 @@ async def checkin_receipt(receipt_code: str = ReceiptCode, db: AsyncSession = De
         ).scalar_one_or_none()
         if bug:
             raise HTTPException(status_code=400, detail="Bug 反馈无需签到")
+        club = (
+            await db.execute(select(ClubApplyRecord).where(ClubApplyRecord.receipt_code == code))
+        ).scalar_one_or_none()
+        if club:
+            raise HTTPException(status_code=400, detail="社团报名无需签到，请等待审核结果")
         raise HTTPException(status_code=404, detail="未找到该回执码对应的记录")
 
     # 已签到：幂等返回当前状态

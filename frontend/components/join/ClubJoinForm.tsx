@@ -36,6 +36,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { submitClubApply } from "@/lib/api/clubApply";
+import { ReceiptPanel } from "@/components/shared/ReceiptPanel";
 import { ApiError } from "@/lib/api/client";
 import { useServerFieldErrors } from "@/lib/hooks/useServerFieldErrors";
 import { FieldError } from "@/components/ui/field-error";
@@ -64,6 +65,7 @@ type ClubField =
 export function ClubJoinForm() {
   const { t } = useI18n();
   const [submitted, setSubmitted] = useState(false);
+  const [receiptCode, setReceiptCode] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const fieldErrors = useServerFieldErrors<ClubField>({
@@ -157,7 +159,7 @@ export function ClubJoinForm() {
 
     setSubmitting(true);
     try {
-      await submitClubApply({
+      const receipt = await submitClubApply({
         real_name: realName.trim(),
         phone,
         email: email.trim() || null,
@@ -170,6 +172,7 @@ export function ClubJoinForm() {
         enroll_year: Number(enrollYear.trim()),
         class_suffix: classSuffix.trim().toUpperCase() || null,
       });
+      setReceiptCode(receipt.receipt_code);
       setSubmitted(true);
     } catch (err) {
       if (err instanceof ApiError && err.code === BizCode.Unauthorized) {
@@ -185,6 +188,7 @@ export function ClubJoinForm() {
 
   function handleReset() {
     setSubmitted(false);
+    setReceiptCode(null);
     setSubmitError(null);
     fieldErrors.clear();
     setRealName("");
@@ -234,7 +238,12 @@ export function ClubJoinForm() {
                 <CheckCircle2 className="h-8 w-8" />
               </motion.div>
               <h3 className="text-lg font-semibold mb-2">{t("join.form.success")}</h3>
-              <p className="text-sm text-muted-foreground mb-6">{t("join.form.successDesc")}</p>
+              <p className="text-sm text-muted-foreground mb-5">{t("join.form.successDesc")}</p>
+              {receiptCode && (
+                <div className="mb-6 flex justify-center">
+                  <ReceiptPanel receiptCode={receiptCode} />
+                </div>
+              )}
               <Button onClick={handleReset} variant="outline">
                 {t("join.form.submitAnother")}
               </Button>

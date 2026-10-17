@@ -22,7 +22,7 @@ from app.schemas.register import (
     RegistrationType as RegistrationTypeSchema,
 )
 from app.utils.export import registrations_to_csv, registrations_to_xlsx
-from app.utils.receipt import gen_receipt_code
+from app.utils.receipt import unique_receipt_code
 from app.utils.translator import detect_lang
 
 router = APIRouter(prefix="/api/registrations", tags=["registrations"])
@@ -31,18 +31,6 @@ router = APIRouter(prefix="/api/registrations", tags=["registrations"])
 def _log(db: AsyncSession, ctx_or_uid, action: str, target: str | None, ip: str | None):
     """统一审计写入：ctx_or_uid 支持 ctx dict（自动区分 Break-Glass）/ int / None。"""
     log_action(db, ctx_or_uid, action, target=target, ip=ip)
-
-
-async def _unique_receipt_code(db: AsyncSession) -> str:
-    """生成不重复的回执码（碰撞时重试）。"""
-    for _ in range(8):
-        code = gen_receipt_code()
-        exists = await db.execute(
-            select(Registration).where(Registration.receipt_code == code)
-        )
-        if not exists.scalar_one_or_none():
-            return code
-    return gen_receipt_code()
 
 
 # ---------- 活动报名（公开，按活动） ----------
@@ -89,7 +77,7 @@ async def submit_for_activity(
     reg = Registration(
         registration_type=RegistrationType.ACTIVITY,
         activity_id=activity_id,
-        receipt_code=await _unique_receipt_code(db),
+        receipt_code=await unique_receipt_code(db),
         content_lang=detect_lang(req.introduction or f"{req.college}{req.major}{req.name}"),
         submit_ip=get_client_ip(request),
         **req.model_dump(),
@@ -119,7 +107,7 @@ async def submit_club_registration(
     reg = Registration(
         registration_type=RegistrationType.CLUB,
         activity_id=None,
-        receipt_code=await _unique_receipt_code(db),
+        receipt_code=await unique_receipt_code(db),
         content_lang=detect_lang(req.introduction or f"{req.college}{req.major}{req.name}"),
         submit_ip=get_client_ip(request),
         **req.model_dump(),
@@ -302,7 +290,7 @@ async def manual_create_registration(
     reg = Registration(
         registration_type=RegistrationType(req.registration_type.value),
         activity_id=activity_id,
-        receipt_code=await _unique_receipt_code(db),
+        receipt_code=await unique_receipt_code(db),
         content_lang=detect_lang(req.introduction or f"{req.college}{req.major}{req.name}"),
         submit_ip=get_client_ip(request),
         source=RegistrationSource.MANUAL,
