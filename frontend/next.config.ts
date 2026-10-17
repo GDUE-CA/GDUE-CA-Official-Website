@@ -82,6 +82,9 @@ const nextConfig: NextConfig = {
   // 不暴露 X-Powered-By: Next.js（减少指纹信息）
   poweredByHeader: false,
 
+  // 关闭 next dev 检测到 AI 编程代理时自动生成 AGENTS.md / CLAUDE.md（避免工作区冒出未跟踪文件）
+  agentRules: false,
+
   // Docker 镜像构建时输出精简的独立服务端（node server.js）；本地 pnpm start 不受影响
   output: process.env.NEXT_OUTPUT === "standalone" ? "standalone" : undefined,
 
