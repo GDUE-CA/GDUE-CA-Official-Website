@@ -4,7 +4,7 @@
  * 新建账号弹窗：单 Dialog 完成创建，避免页面内嵌表单的跳转与拥挤
  * 创建的账号为管理员代设初始密码，首次登录强制修改（后端 must_change_password）
  */
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Loader2 from "@/assets/icons/status/loader-2.svg";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,8 @@ import {
 } from "@/components/ui/select";
 import { createUser } from "@/lib/api/auth";
 import type { AdminRole, UserCreatePayload } from "@/types/api";
+import { useServerFieldErrors } from "@/lib/hooks/useServerFieldErrors";
+import { FieldError } from "@/components/ui/field-error";
 
 const ROLE_OPTIONS: AdminRole[] = ["member", "editor", "admin", "super_admin"];
 
@@ -49,21 +51,24 @@ export function UserCreateDialog({
 }) {
   const { t } = useI18n();
   const [form, setForm] = useState<UserCreatePayload>(EMPTY);
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
+  const fieldErrors = useServerFieldErrors<keyof UserCreatePayload>({ fallback: t("common.saveFailed") });
+  const fe = fieldErrors.errors;
   const [saving, setSaving] = useState(false);
 
-  // 关闭时重置表单
-  useEffect(() => {
+  // 关闭时重置表单（渲染期对比前值，避免 effect 内同步 setState 引发级联渲染）
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
     if (!open) {
       setForm(EMPTY);
-      setFieldErrors({});
+      fieldErrors.clear();
       setError(null);
     }
-  }, [open]);
+  }
 
   function validate(): boolean {
-    const next: Record<string, string> = {};
+    const next: Partial<Record<keyof UserCreatePayload, string>> = {};
     if (!form.username.trim()) next.username = t("admin.users.displayNameRequired");
     if (!form.real_name.trim()) next.real_name = t("admin.users.realNameRequired");
     if (!form.student_id.trim()) next.student_id = t("admin.users.studentIdRequired");
@@ -78,8 +83,7 @@ export function UserCreateDialog({
       next.email = t("admin.users.emailInvalid");
     }
     if (form.password.length < 10) next.password = t("admin.users.passwordTooShort");
-    setFieldErrors(next);
-    return Object.keys(next).length === 0;
+    return !fieldErrors.set(next);
   }
 
   async function handleSubmit() {
@@ -91,7 +95,7 @@ export function UserCreateDialog({
       onOpenChange(false);
       onCreated();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(fieldErrors.capture(e));
     } finally {
       setSaving(false);
     }
@@ -99,25 +103,24 @@ export function UserCreateDialog({
 
   function field(key: keyof UserCreatePayload, label: string, placeholder: string) {
     return (
-      <div className="space-y-1.5">
+      <div className="space-y-1.5" data-field={key}>
         <label className="text-sm font-medium">
           {label} <span className="text-destructive">*</span>
         </label>
         <Input
+          aria-invalid={!!fe[key]}
           value={(form[key] as string) ?? ""}
           onChange={(e) => setForm({ ...form, [key]: e.target.value })}
           placeholder={placeholder}
         />
-        {fieldErrors[key] && (
-          <p className="text-xs text-destructive">{fieldErrors[key]}</p>
-        )}
+        <FieldError>{fe[key]}</FieldError>
       </div>
     );
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+      <DialogContent {...fieldErrors.rootProps} className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{t("admin.users.formTitle")}</DialogTitle>
           <DialogDescription>{t("admin.users.createDesc")}</DialogDescription>
@@ -131,7 +134,7 @@ export function UserCreateDialog({
           {field("email", t("admin.users.email"), t("admin.users.emailPlaceholder"))}
           {field("password", t("admin.users.password"), t("admin.users.passwordPlaceholder"))}
 
-          <div className="space-y-1.5">
+          <div className="space-y-1.5" data-field="role">
             <label className="text-sm font-medium">
               {t("admin.users.role")} <span className="text-destructive">*</span>
             </label>
@@ -150,6 +153,7 @@ export function UserCreateDialog({
                 ))}
               </SelectContent>
             </Select>
+            <FieldError>{fe.role}</FieldError>
           </div>
         </div>
 

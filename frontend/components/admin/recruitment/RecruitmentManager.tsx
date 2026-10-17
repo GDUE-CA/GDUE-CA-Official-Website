@@ -43,11 +43,18 @@ import type {
   Registration,
   RegistrationStatus,
 } from "@/types/api";
+import { useServerFieldErrors } from "@/lib/hooks/useServerFieldErrors";
+import { FieldError } from "@/components/ui/field-error";
 
 const PAGE_SIZE = 20;
 const STATUSES: RegistrationStatus[] = ["pending", "approved", "rejected", "checked_in"];
 
 type TabKey = "infos" | "registrations";
+
+/** 后端请求体字段名（data-field 对位，与 1001 data.errors[].field 一致） */
+type RecruitmentField =
+  | "title" | "content" | "target_dept" | "start_at"
+  | "end_at";
 
 export function RecruitmentManager() {
   const { t } = useI18n();
@@ -114,6 +121,8 @@ function InfosTab() {
   const [enabled, setEnabled] = useState(true);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const fieldErrors = useServerFieldErrors<RecruitmentField>({ fallback: t("common.saveFailed") });
+  const fe = fieldErrors.errors;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -158,6 +167,7 @@ function InfosTab() {
     setEndAt("");
     setEnabled(true);
     setFormError(null);
+    fieldErrors.clear();
     setOpen(true);
   }
 
@@ -170,11 +180,13 @@ function InfosTab() {
     setEndAt(info.end_at ? info.end_at.slice(0, 16) : "");
     setEnabled(info.enabled);
     setFormError(null);
+    fieldErrors.clear();
     setOpen(true);
   }
 
   async function handleSave() {
     setFormError(null);
+    fieldErrors.clear();
     if (!title.trim() || !content.trim()) {
       setFormError(t("admin.activities.fieldRequired"));
       return;
@@ -198,7 +210,7 @@ function InfosTab() {
       setNotice(t("admin.recruitment.infoSaved"));
       await load();
     } catch (e) {
-      setFormError(e instanceof Error ? e.message : "Save failed");
+      setFormError(fieldErrors.capture(e));
     } finally {
       setSaving(false);
     }
@@ -363,56 +375,66 @@ function InfosTab() {
 
       {/* 创建 / 编辑弹窗 */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogContent {...fieldErrors.rootProps} className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editing ? t("admin.recruitment.infoEditBtn") : t("admin.recruitment.infoAddBtn")}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2">
+            <div className="space-y-2" data-field="title">
               <Label htmlFor="ri-title">{t("admin.recruitment.infoColTitle")}</Label>
               <Input
                 id="ri-title"
+                aria-invalid={!!fe.title}
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
               />
+              <FieldError>{fe.title}</FieldError>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2" data-field="content">
               <Label htmlFor="ri-content">{t("admin.recruitment.infoColContent")}</Label>
               <Textarea
                 id="ri-content"
+                aria-invalid={!!fe.content}
                 rows={5}
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
               />
+              <FieldError>{fe.content}</FieldError>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2" data-field="target_dept">
               <Label htmlFor="ri-dept">{t("admin.recruitment.infoColTargetDept")}</Label>
               <Input
                 id="ri-dept"
+                aria-invalid={!!fe.target_dept}
                 value={targetDept}
                 onChange={(e) => setTargetDept(e.target.value)}
               />
+              <FieldError>{fe.target_dept}</FieldError>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
+              <div className="space-y-2" data-field="start_at">
                 <Label htmlFor="ri-start">{t("admin.recruitment.infoColStartAt")}</Label>
                 <Input
                   id="ri-start"
+                  aria-invalid={!!fe.start_at}
                   type="datetime-local"
                   value={startAt}
                   onChange={(e) => setStartAt(e.target.value)}
                 />
+                <FieldError>{fe.start_at}</FieldError>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2" data-field="end_at">
                 <Label htmlFor="ri-end">{t("admin.recruitment.infoColEndAt")}</Label>
                 <Input
                   id="ri-end"
+                  aria-invalid={!!fe.end_at}
                   type="datetime-local"
                   value={endAt}
                   onChange={(e) => setEndAt(e.target.value)}
                 />
+                <FieldError>{fe.end_at}</FieldError>
               </div>
             </div>
             <label className="flex items-center gap-2 text-sm cursor-pointer">

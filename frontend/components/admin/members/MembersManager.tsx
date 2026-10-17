@@ -42,10 +42,17 @@ import {
   adminBatchUpdateMembers,
 } from "@/lib/api/members";
 import type { Member, MemberImportResult, MemberTerm } from "@/types/api";
+import { useServerFieldErrors } from "@/lib/hooks/useServerFieldErrors";
+import { FieldError } from "@/components/ui/field-error";
 
 const PAGE_SIZE = 20;
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024; // 与后端限制一致：5MB
 const AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
+/** 后端请求体字段名（data-field 对位，与 1001 data.errors[].field 一致） */
+type MemberField =
+  | "avatar_url" | "name" | "role_title" | "term"
+  | "display_order" | "bio";
 
 export function MembersManager() {
   const { t } = useI18n();
@@ -78,6 +85,8 @@ export function MembersManager() {
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const fieldErrors = useServerFieldErrors<MemberField>({ fallback: t("common.saveFailed") });
+  const fe = fieldErrors.errors;
 
   // 批量勾选（跨页保留 id）+ 批量改届别/职务
   const [selected, setSelected] = useState<number[]>([]);
@@ -142,6 +151,7 @@ export function MembersManager() {
     setArchived(false);
     setAvatarUrl("");
     setFormError(null);
+    fieldErrors.clear();
     setOpen(true);
   }
 
@@ -155,6 +165,7 @@ export function MembersManager() {
     setArchived(m.archived);
     setAvatarUrl(m.avatar_url ?? "");
     setFormError(null);
+    fieldErrors.clear();
     setOpen(true);
   }
 
@@ -163,6 +174,7 @@ export function MembersManager() {
     const file = e.target.files?.[0];
     if (!file) return;
     setFormError(null);
+    fieldErrors.clear();
     if (!AVATAR_TYPES.includes(file.type)) {
       setFormError(t("admin.members.errAvatarFormat"));
       return;
@@ -187,6 +199,7 @@ export function MembersManager() {
 
   async function handleSave() {
     setFormError(null);
+    fieldErrors.clear();
     if (!name.trim()) {
       setFormError(t("admin.activities.fieldRequired"));
       return;
@@ -211,7 +224,7 @@ export function MembersManager() {
       setNotice(t("admin.members.saved"));
       await load();
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Save failed");
+      setFormError(fieldErrors.capture(err));
     } finally {
       setSaving(false);
     }
@@ -562,7 +575,7 @@ export function MembersManager() {
 
       {/* 创建 / 编辑弹窗 */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogContent {...fieldErrors.rootProps} className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editing ? t("admin.members.editBtn") : t("admin.members.addBtn")}
@@ -570,7 +583,7 @@ export function MembersManager() {
           </DialogHeader>
           <div className="space-y-4">
             {/* 头像上传 + 预览 */}
-            <div className="space-y-2">
+            <div className="space-y-2" data-field="avatar_url">
               <Label htmlFor="member-avatar">{t("admin.members.colAvatar")}</Label>
               <div className="flex items-center gap-3">
                 {avatarUrl ? (
@@ -588,6 +601,7 @@ export function MembersManager() {
                 <div className="space-y-1">
                   <Input
                     id="member-avatar"
+                    aria-invalid={!!fe.avatar_url}
                     type="file"
                     accept="image/jpeg,image/png,image/webp"
                     onChange={handleAvatarChange}
@@ -605,30 +619,36 @@ export function MembersManager() {
                   </p>
                 </div>
               </div>
+              <FieldError>{fe.avatar_url}</FieldError>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
+              <div className="space-y-2" data-field="name">
                 <Label htmlFor="member-name">{t("admin.members.colName")}</Label>
                 <Input
                   id="member-name"
+                  aria-invalid={!!fe.name}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                 />
+                <FieldError>{fe.name}</FieldError>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2" data-field="role_title">
                 <Label htmlFor="member-role">{t("admin.members.colRoleTitle")}</Label>
                 <Input
                   id="member-role"
+                  aria-invalid={!!fe.role_title}
                   value={roleTitle}
                   onChange={(e) => setRoleTitle(e.target.value)}
                 />
+                <FieldError>{fe.role_title}</FieldError>
               </div>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
+              <div className="space-y-2" data-field="term">
                 <Label htmlFor="member-term">{t("admin.members.colTerm")}</Label>
                 <select
                   id="member-term"
+                  aria-invalid={!!fe.term}
                   value={term}
                   onChange={(e) => setTerm(e.target.value as MemberTerm)}
                   className="w-full h-9 rounded-md border border-input bg-background px-2 text-sm"
@@ -636,26 +656,31 @@ export function MembersManager() {
                   <option value="current">{t("admin.members.termCurrent")}</option>
                   <option value="former">{t("admin.members.termFormer")}</option>
                 </select>
+                <FieldError>{fe.term}</FieldError>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2" data-field="display_order">
                 <Label htmlFor="member-order">{t("admin.members.colDisplayOrder")}</Label>
                 <Input
                   id="member-order"
+                  aria-invalid={!!fe.display_order}
                   type="number"
                   step={1}
                   value={displayOrder}
                   onChange={(e) => setDisplayOrder(e.target.value)}
                 />
+                <FieldError>{fe.display_order}</FieldError>
               </div>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2" data-field="bio">
               <Label htmlFor="member-bio">{t("admin.members.colBio")}</Label>
               <Textarea
                 id="member-bio"
+                aria-invalid={!!fe.bio}
                 rows={3}
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
               />
+              <FieldError>{fe.bio}</FieldError>
             </div>
             <label className="flex items-center gap-2 text-sm cursor-pointer">
               <input

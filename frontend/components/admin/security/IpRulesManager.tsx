@@ -26,6 +26,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createIpRule, deleteIpRule, fetchIpRules } from "@/lib/api/security";
 import { fetchMe, listUsers } from "@/lib/api/auth";
 import type { AdminUser, IpRule, IpRuleType } from "@/types/api";
+import { useServerFieldErrors } from "@/lib/hooks/useServerFieldErrors";
+import { FieldError } from "@/components/ui/field-error";
+
+/** 后端请求体字段名（data-field 对位，与 1001 data.errors[].field 一致） */
+type IpRuleField =
+  | "rule" | "label" | "reason" | "expires_at"
+  | "bound_user_id";
 
 export function IpRulesManager({ type }: { type: IpRuleType }) {
   const { t } = useI18n();
@@ -51,6 +58,8 @@ export function IpRulesManager({ type }: { type: IpRuleType }) {
   const [canManage, setCanManage] = useState(false);
   const [creating, setCreating] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const fieldErrors = useServerFieldErrors<IpRuleField>({ fallback: t("common.saveFailed") });
+  const fe = fieldErrors.errors;
 
   const load = useCallback(
     async (query: string) => {
@@ -96,6 +105,7 @@ export function IpRulesManager({ type }: { type: IpRuleType }) {
 
   async function handleCreate() {
     setFormError(null);
+    fieldErrors.clear();
     if (!rule.trim()) {
       setFormError(t("admin.security.errRuleRequired"));
       return;
@@ -118,7 +128,7 @@ export function IpRulesManager({ type }: { type: IpRuleType }) {
       setBoundUserId("");
       await load(q);
     } catch (e) {
-      setFormError(e instanceof Error ? e.message : "Create failed");
+      setFormError(fieldErrors.capture(e));
     } finally {
       setCreating(false);
     }
@@ -171,34 +181,39 @@ export function IpRulesManager({ type }: { type: IpRuleType }) {
               {isBlack ? t("admin.security.addBlacklist") : t("admin.security.addWhitelist")}
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent {...fieldErrors.rootProps} className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
+              <div className="space-y-2" data-field="rule">
                 <Label htmlFor="rule">{t("admin.security.colRule")}</Label>
                 <Input
                   id="rule"
+                  aria-invalid={!!fe.rule}
                   value={rule}
                   onChange={(e) => setRule(e.target.value)}
                   placeholder={t("admin.security.rulePlaceholder")}
                   className="font-mono text-sm"
                 />
+                <FieldError>{fe.rule}</FieldError>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2" data-field="label">
                 <Label htmlFor="label">{t("admin.security.colLabel")}</Label>
                 <Input
                   id="label"
+                  aria-invalid={!!fe.label}
                   value={label}
                   onChange={(e) => setLabel(e.target.value)}
                   placeholder={t("admin.security.labelPlaceholder")}
                 />
+                <FieldError>{fe.label}</FieldError>
               </div>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2" data-field="reason">
               <Label htmlFor="reason">
                 {isBlack ? t("admin.security.colReason") : t("admin.security.colTrustReason")}
               </Label>
               <Textarea
                 id="reason"
+                aria-invalid={!!fe.reason}
                 rows={2}
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
@@ -208,12 +223,14 @@ export function IpRulesManager({ type }: { type: IpRuleType }) {
                     : t("admin.security.trustReasonPlaceholder")
                 }
               />
+              <FieldError>{fe.reason}</FieldError>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
+              <div className="space-y-2" data-field="expires_at">
                 <Label htmlFor="expiresAt">{t("admin.security.colExpiresAt")}</Label>
                 <Input
                   id="expiresAt"
+                  aria-invalid={!!fe.expires_at}
                   type="datetime-local"
                   value={expiresAt}
                   onChange={(e) => setExpiresAt(e.target.value)}
@@ -221,12 +238,14 @@ export function IpRulesManager({ type }: { type: IpRuleType }) {
                 <p className="text-xs text-muted-foreground">
                   {t("admin.security.expiresHint")}
                 </p>
+                <FieldError>{fe.expires_at}</FieldError>
               </div>
               {!isBlack && (
-                <div className="space-y-2">
+                <div className="space-y-2" data-field="bound_user_id">
                   <Label htmlFor="boundUser">{t("admin.security.colBoundUser")}</Label>
                   <select
                     id="boundUser"
+                    aria-invalid={!!fe.bound_user_id}
                     value={boundUserId}
                     onChange={(e) => setBoundUserId(e.target.value)}
                     className="w-full h-9 rounded-md border border-input bg-background px-2 text-sm"
@@ -241,6 +260,7 @@ export function IpRulesManager({ type }: { type: IpRuleType }) {
                   <p className="text-xs text-muted-foreground">
                     {t("admin.security.boundUserHint")}
                   </p>
+                  <FieldError>{fe.bound_user_id}</FieldError>
                 </div>
               )}
             </div>

@@ -5,7 +5,7 @@
  */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Loader2 from "@/assets/icons/status/loader-2.svg";
 import UserPlus from "@/assets/icons/user/user-plus.svg";
 import { useI18n } from "@/i18n/provider";
@@ -29,6 +29,8 @@ import {
 import { createManualRegistration } from "@/lib/api/register";
 import { COUNTRY_OPTIONS, PHONE_RULES } from "@/components/join/phoneRules";
 import type { Activity, Registration, RegistrationStatus, RegistrationType } from "@/types/api";
+import { useServerFieldErrors } from "@/lib/hooks/useServerFieldErrors";
+import { FieldError } from "@/components/ui/field-error";
 
 /** 意向部门取值与公开社团报名表单一致（存英文键值） */
 const DEPARTMENTS = [
@@ -55,6 +57,13 @@ const EMPTY = {
   remark: "",
 };
 
+/** 后端 ManualRegistrationIn 字段名（前端预校验与后端 1001 错误共用，data-field 对位） */
+type ManualField =
+  | "registration_type" | "activity_id" | "status" | "name"
+  | "student_id" | "college" | "major" | "phone_cc"
+  | "phone_number" | "email" | "position" | "introduction"
+  | "remark";
+
 export function ManualRegistrationDialog({
   open,
   onOpenChange,
@@ -68,51 +77,61 @@ export function ManualRegistrationDialog({
 }) {
   const { t } = useI18n();
   const [form, setForm] = useState(EMPTY);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const fieldErrors = useServerFieldErrors<ManualField>({
+    // 区号与号码同处一栏，区号错误显示在号码下方
+    fieldMap: { phone_cc: "phone_number" },
+    fallback: t("admin.review.manual.error"),
+  });
+  const errors = fieldErrors.errors;
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // 每次打开重置为初始状态
-  useEffect(() => {
+  // 每次打开重置为初始状态（渲染期对比前值，避免 effect 内同步 setState 引发级联渲染）
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
     if (open) {
       setForm(EMPTY);
-      setErrors({});
+      fieldErrors.clear();
+      setSubmitError(null);
     }
-  }, [open]);
+  }
 
   function set<K extends keyof typeof EMPTY>(key: K, value: (typeof EMPTY)[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
   function validate(): boolean {
-    const next: Record<string, string> = {};
+    const next: Partial<Record<ManualField, string>> = {};
     if (!form.name.trim()) next.name = t("join.form.errors.nameRequired");
-    if (!form.studentId.trim()) next.studentId = t("join.form.errors.studentIdRequired");
+    if (!form.studentId.trim()) next.student_id = t("join.form.errors.studentIdRequired");
     if (!form.college.trim()) next.college = t("join.form.errors.collegeRequired");
     if (!form.major.trim()) next.major = t("join.form.errors.majorRequired");
-    if (!form.phoneCc) next.phoneCc = t("join.form.errors.phoneCcRequired");
-    if (!form.phoneNumber.trim()) {
-      next.phoneNumber = t("join.form.errors.phoneRequired");
+    if (!form.phoneCc) {
+      next.phone_number = t("join.form.errors.phoneCcRequired");
+    } else if (!form.phoneNumber.trim()) {
+      next.phone_number = t("join.form.errors.phoneRequired");
     } else {
       const rule = PHONE_RULES[form.phoneCc];
       const ok = rule
         ? rule.test(form.phoneNumber.replace(/\s/g, ""))
         : /^\d{6,15}$/.test(form.phoneNumber);
-      if (!ok) next.phoneNumber = t("join.form.errors.phoneInvalid");
+      if (!ok) next.phone_number = t("join.form.errors.phoneInvalid");
     }
     if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
       next.email = t("join.form.errors.emailInvalid");
     }
     if (form.registrationType === "activity" && !form.activityId) {
-      next.activityId = t("join.form.errors.activityRequired");
+      next.activity_id = t("join.form.errors.activityRequired");
     }
     if (form.registrationType === "club" && !form.position) {
       next.position = t("join.form.errors.positionRequired");
     }
-    setErrors(next);
-    return Object.keys(next).length === 0;
+    return !fieldErrors.set(next);
   }
 
   async function submit() {
+    setSubmitError(null);
     if (!validate()) return;
     setSubmitting(true);
     try {
@@ -135,7 +154,7 @@ export function ManualRegistrationDialog({
       onCreated(reg);
       onOpenChange(false);
     } catch (e) {
-      alert(e instanceof Error ? e.message : t("admin.review.manual.error"));
+      setSubmitError(fieldErrors.capture(e));
     } finally {
       setSubmitting(false);
     }
@@ -154,7 +173,7 @@ export function ManualRegistrationDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+      <DialogContent {...fieldErrors.rootProps} className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UserPlus className="h-5 w-5" />
@@ -177,23 +196,23 @@ export function ManualRegistrationDialog({
               </select>
             </div>
             {form.registrationType === "activity" ? (
-              <div className="space-y-1.5 sm:col-span-2">
+              <div className="space-y-1.5 sm:col-span-2" data-field="activity_id">
                 <Label>{t("admin.review.manual.activity")}</Label>
                 <select
                   className={selectCls}
                   value={form.activityId}
                   onChange={(e) => set("activityId", e.target.value)}
-                  aria-invalid={!!errors.activityId}
+                  aria-invalid={!!errors.activity_id}
                 >
                   <option value="">{t("admin.registrations.filterActivity")}</option>
                   {activities.map((a) => (
                     <option key={a.id} value={a.id}>{a.title}</option>
                   ))}
                 </select>
-                {errors.activityId && <p className="text-xs text-destructive">{errors.activityId}</p>}
+                <FieldError>{errors.activity_id}</FieldError>
               </div>
             ) : (
-              <div className="space-y-1.5 sm:col-span-2">
+              <div className="space-y-1.5 sm:col-span-2" data-field="position">
                 <Label>{t("join.form.position")}</Label>
                 <Select value={form.position} onValueChange={(val) => set("position", val)}>
                   <SelectTrigger aria-invalid={!!errors.position}>
@@ -205,13 +224,13 @@ export function ManualRegistrationDialog({
                     ))}
                   </SelectContent>
                 </Select>
-                {errors.position && <p className="text-xs text-destructive">{errors.position}</p>}
+                <FieldError>{errors.position}</FieldError>
               </div>
             )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-1.5">
+            <div className="space-y-1.5" data-field="name">
               <Label>{t("join.form.name")}</Label>
               <Input
                 value={form.name}
@@ -219,22 +238,22 @@ export function ManualRegistrationDialog({
                 placeholder={t("join.form.namePlaceholder")}
                 aria-invalid={!!errors.name}
               />
-              {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
+              <FieldError>{errors.name}</FieldError>
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-1.5" data-field="student_id">
               <Label>{t("join.form.studentId")}</Label>
               <Input
                 value={form.studentId}
                 onChange={(e) => set("studentId", e.target.value)}
                 placeholder={t("join.form.studentIdPlaceholder")}
-                aria-invalid={!!errors.studentId}
+                aria-invalid={!!errors.student_id}
               />
-              {errors.studentId && <p className="text-xs text-destructive">{errors.studentId}</p>}
+              <FieldError>{errors.student_id}</FieldError>
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-1.5">
+            <div className="space-y-1.5" data-field="college">
               <Label>{t("join.form.college")}</Label>
               <Input
                 value={form.college}
@@ -242,9 +261,9 @@ export function ManualRegistrationDialog({
                 placeholder={t("join.form.collegePlaceholder")}
                 aria-invalid={!!errors.college}
               />
-              {errors.college && <p className="text-xs text-destructive">{errors.college}</p>}
+              <FieldError>{errors.college}</FieldError>
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-1.5" data-field="major">
               <Label>{t("join.form.major")}</Label>
               <Input
                 value={form.major}
@@ -252,11 +271,11 @@ export function ManualRegistrationDialog({
                 placeholder={t("join.form.majorPlaceholder")}
                 aria-invalid={!!errors.major}
               />
-              {errors.major && <p className="text-xs text-destructive">{errors.major}</p>}
+              <FieldError>{errors.major}</FieldError>
             </div>
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-1.5" data-field="phone_number">
             <Label>{t("join.form.phoneNumber")}</Label>
             <div className="grid grid-cols-[150px_1fr] gap-2">
               <select
@@ -274,14 +293,14 @@ export function ManualRegistrationDialog({
                 value={form.phoneNumber}
                 onChange={(e) => set("phoneNumber", e.target.value)}
                 placeholder={phonePlaceholder}
-                aria-invalid={!!errors.phoneNumber}
+                aria-invalid={!!errors.phone_number}
               />
             </div>
-            {errors.phoneNumber && <p className="text-xs text-destructive">{errors.phoneNumber}</p>}
+            <FieldError>{errors.phone_number}</FieldError>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-1.5">
+            <div className="space-y-1.5" data-field="email">
               <Label>{t("join.form.email")}</Label>
               <Input
                 type="email"
@@ -290,7 +309,7 @@ export function ManualRegistrationDialog({
                 placeholder={t("join.form.emailPlaceholder")}
                 aria-invalid={!!errors.email}
               />
-              {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
+              <FieldError>{errors.email}</FieldError>
             </div>
             <div className="space-y-1.5">
               <Label>{t("admin.review.manual.status")}</Label>
@@ -327,6 +346,9 @@ export function ManualRegistrationDialog({
           </div>
         </div>
 
+        {submitError && (
+          <p className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md">{submitError}</p>
+        )}
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
             {t("common.cancel")}

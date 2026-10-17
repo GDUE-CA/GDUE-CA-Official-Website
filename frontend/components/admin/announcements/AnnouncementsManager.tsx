@@ -41,6 +41,8 @@ import {
   adminDeleteAnnouncementAttachment,
 } from "@/lib/api/announcements";
 import type { Announcement, AnnouncementCategory } from "@/types/api";
+import { useServerFieldErrors } from "@/lib/hooks/useServerFieldErrors";
+import { FieldError } from "@/components/ui/field-error";
 
 const PAGE_SIZE = 20;
 
@@ -51,6 +53,11 @@ const ATTACHMENT_EXTS = [
   "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx",
 ] as const;
 const ATTACHMENT_ACCEPT = ATTACHMENT_EXTS.map((ext) => `.${ext}`).join(",");
+
+/** 后端请求体字段名（data-field 对位，与 1001 data.errors[].field 一致） */
+type AnnouncementField =
+  | "title" | "content" | "link" | "start_at"
+  | "end_at" | "priority" | "enabled";
 
 export function AnnouncementsManager({ category }: { category: AnnouncementCategory }) {
   const { t } = useI18n();
@@ -83,6 +90,8 @@ export function AnnouncementsManager({ category }: { category: AnnouncementCateg
   const [enabled, setEnabled] = useState(true);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const fieldErrors = useServerFieldErrors<AnnouncementField>({ fallback: t("common.saveFailed") });
+  const fe = fieldErrors.errors;
 
   // 附件（详情页在线预览）：仅对已保存公告可用
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -136,6 +145,7 @@ export function AnnouncementsManager({ category }: { category: AnnouncementCateg
     setPriority("0");
     setEnabled(true);
     setFormError(null);
+    fieldErrors.clear();
     setAttachmentError(null);
     setOpen(true);
   }
@@ -152,6 +162,7 @@ export function AnnouncementsManager({ category }: { category: AnnouncementCateg
     setPriority(String(a.priority));
     setEnabled(a.enabled);
     setFormError(null);
+    fieldErrors.clear();
     setAttachmentError(null);
     setOpen(true);
   }
@@ -191,6 +202,7 @@ export function AnnouncementsManager({ category }: { category: AnnouncementCateg
 
   async function handleSave() {
     setFormError(null);
+    fieldErrors.clear();
     if (!title.trim()) {
       setFormError(t("admin.announcements.errTitleRequired"));
       return;
@@ -224,7 +236,7 @@ export function AnnouncementsManager({ category }: { category: AnnouncementCateg
       setNotice(t("admin.announcements.saved"));
       await load();
     } catch (e) {
-      setFormError(e instanceof Error ? e.message : "Save failed");
+      setFormError(fieldErrors.capture(e));
     } finally {
       setSaving(false);
     }
@@ -389,22 +401,24 @@ export function AnnouncementsManager({ category }: { category: AnnouncementCateg
 
       {/* 创建 / 编辑弹窗 */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogContent {...fieldErrors.rootProps} className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editing ? t("admin.announcements.editBtn") : t("admin.announcements.addBtn")}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2">
+            <div className="space-y-2" data-field="title">
               <Label htmlFor="ann-title">{t("admin.announcements.colTitle")}</Label>
               <Input
                 id="ann-title"
+                aria-invalid={!!fe.title}
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
               />
+              <FieldError>{fe.title}</FieldError>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2" data-field="content">
               <div className="flex items-center justify-between gap-2">
                 <Label htmlFor="ann-content">{t("admin.announcements.colContent")}</Label>
                 <div className="flex gap-1">
@@ -429,6 +443,7 @@ export function AnnouncementsManager({ category }: { category: AnnouncementCateg
               {contentMode === "edit" ? (
                 <Textarea
                   id="ann-content"
+                  aria-invalid={!!fe.content}
                   rows={8}
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
@@ -448,43 +463,51 @@ export function AnnouncementsManager({ category }: { category: AnnouncementCateg
               <p className="text-xs text-muted-foreground">
                 {t("admin.announcements.contentHint")}
               </p>
+              <FieldError>{fe.content}</FieldError>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2" data-field="link">
               <Label htmlFor="ann-link">{t("admin.announcements.colLink")}</Label>
               <Input
                 id="ann-link"
+                aria-invalid={!!fe.link}
                 value={link}
                 onChange={(e) => setLink(e.target.value)}
                 placeholder={t("admin.announcements.linkPlaceholder")}
               />
+              <FieldError>{fe.link}</FieldError>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
+              <div className="space-y-2" data-field="start_at">
                 <Label htmlFor="ann-start">{t("admin.announcements.colStartAt")}</Label>
                 <Input
                   id="ann-start"
+                  aria-invalid={!!fe.start_at}
                   type="datetime-local"
                   value={startAt}
                   onChange={(e) => setStartAt(e.target.value)}
                 />
+                <FieldError>{fe.start_at}</FieldError>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2" data-field="end_at">
                 <Label htmlFor="ann-end">{t("admin.announcements.colEndAt")}</Label>
                 <Input
                   id="ann-end"
+                  aria-invalid={!!fe.end_at}
                   type="datetime-local"
                   value={endAt}
                   onChange={(e) => setEndAt(e.target.value)}
                 />
+                <FieldError>{fe.end_at}</FieldError>
               </div>
             </div>
             <p className="text-xs text-muted-foreground -mt-2">
               {t("admin.announcements.timeWindowHint")}
             </p>
-            <div className="space-y-2">
+            <div className="space-y-2" data-field="priority">
               <Label htmlFor="ann-priority">{t("admin.announcements.colPriority")}</Label>
               <Input
                 id="ann-priority"
+                aria-invalid={!!fe.priority}
                 type="number"
                 step={1}
                 value={priority}
@@ -493,11 +516,13 @@ export function AnnouncementsManager({ category }: { category: AnnouncementCateg
               <p className="text-xs text-muted-foreground">
                 {t("admin.announcements.priorityHint")}
               </p>
+              <FieldError>{fe.priority}</FieldError>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2" data-field="enabled">
               <Label htmlFor="ann-status">{t("admin.announcements.colEnabled")}</Label>
               <select
                 id="ann-status"
+                aria-invalid={!!fe.enabled}
                 value={enabled ? "published" : "draft"}
                 onChange={(e) => setEnabled(e.target.value === "published")}
                 className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
@@ -508,6 +533,7 @@ export function AnnouncementsManager({ category }: { category: AnnouncementCateg
               <p className="text-xs text-muted-foreground">
                 {t("admin.announcements.statusHint")}
               </p>
+              <FieldError>{fe.enabled}</FieldError>
             </div>
 
             {/* 附件管理（详情页在线预览；仅已保存公告可上传） */}
