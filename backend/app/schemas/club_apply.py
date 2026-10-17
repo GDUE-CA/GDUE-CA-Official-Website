@@ -6,9 +6,11 @@
 """
 from datetime import datetime
 
+import re
+
 from pydantic import BaseModel, ConfigDict, field_validator
 
-import re
+from app.schemas.common import UTCDatetime
 
 STUDENT_ID_PATTERN = re.compile(r"^\d{11}$")
 CLASS_SUFFIX_PATTERN = re.compile(r"^[A-Z]$")
@@ -116,6 +118,20 @@ class ClubApplySubmit(BaseModel):
             return v
         v = v.strip()
         return v[:2000] if v else None
+
+
+class MyClubApplyOut(BaseModel):
+    """本人报名进度（最小化：不含内部主键 / user_id / 审核人 / 提交时填写的个人信息）。"""
+    receipt_code: str | None
+    status: str
+    departments: list
+    college: str | None
+    major: str | None
+    class_name: str | None
+    # 仅被拒绝时回传审核备注作为拒绝原因；通过时的备注属内部意见，不外泄
+    reject_reason: str | None
+    created_at: UTCDatetime
+    reviewed_at: UTCDatetime | None
 
 
 class ClubApplyOut(BaseModel):

@@ -7,6 +7,8 @@
 import { apiFetch, secureFetch } from "./client";
 import type {
   ClubApplyRecord,
+  MyClubApply,
+  SubmitReceipt,
   ClubApplyReviewRequest,
   ClubApplySubmit,
   ClubApplyStatus,
@@ -14,14 +16,14 @@ import type {
 
 /* ---------- 用户接口 ---------- */
 
-/** 当前用户自己的报名记录（含历史） */
+/** 当前用户自己的报名进度（含历史；最小化字段） */
 export function listMyClubApplies() {
-  return apiFetch<ClubApplyRecord[]>("/api/club-apply/mine");
+  return apiFetch<MyClubApply[]>("/api/club-apply/mine");
 }
 
-/** 提交社团报名（限流 10 次/10 分钟；审核中重复提交后端 409） */
+/** 提交社团报名（限流 10 次/10 分钟；审核中重复提交后端 409）；成功返回回执码 */
 export function submitClubApply(payload: ClubApplySubmit) {
-  return apiFetch<ClubApplyRecord>("/api/club-apply", {
+  return apiFetch<SubmitReceipt>("/api/club-apply", {
     method: "POST",
     body: JSON.stringify(payload),
   });
