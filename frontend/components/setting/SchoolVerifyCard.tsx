@@ -39,6 +39,8 @@ import Loader2 from "@/assets/icons/status/loader-2.svg";
 import Paperclip from "@/assets/icons/action/paperclip.svg";
 import XCircle from "@/assets/icons/status/x-circle.svg";
 import { cn } from "@/lib/utils";
+import { useServerFieldErrors } from "@/lib/hooks/useServerFieldErrors";
+import { FieldError } from "@/components/ui/field-error";
 
 const PAGE_KEY = "school-verify";
 
@@ -49,6 +51,10 @@ function fmtDate(s: string | null | undefined): string {
   return s.slice(0, 10);
 }
 
+/** 后端请求体字段名（data-field 对位，与 1001 data.errors[].field 一致） */
+type SchoolVerifyField =
+  | "student_id" | "remark" | "attach_url";
+
 export function SchoolVerifyCard() {
   const { t } = useI18n();
   const { registerDirty } = useDirtyGuard();
@@ -57,6 +63,8 @@ export function SchoolVerifyCard() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const fieldErrors = useServerFieldErrors<SchoolVerifyField>({ fallback: t("setting.school.submitFailed") });
+  const fe = fieldErrors.errors;
   const [success, setSuccess] = useState(false);
 
   const [data, setData] = useState<SchoolVerifyStatusOut | null>(null);
@@ -145,7 +153,7 @@ export function SchoolVerifyCard() {
       setTimeout(() => setSuccess(false), 3000);
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("setting.school.submitFailed"));
+      setError(fieldErrors.capture(err));
     } finally {
       setSaving(false);
     }
@@ -224,12 +232,13 @@ export function SchoolVerifyCard() {
 
         {/* 提交表单（none / rejected 展开；其余可手动展开查看但按钮禁用） */}
         {showForm && (
-          <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+          <form {...fieldErrors.rootProps} onSubmit={handleSubmit} className="space-y-5" noValidate>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
+              <div className="space-y-2" data-field="student_id">
                 <Label htmlFor="sv-studentId">{t("setting.school.studentId")}</Label>
                 <Input
                   id="sv-studentId"
+                  aria-invalid={!!fe.student_id}
                   value={studentId}
                   onChange={(e) => setStudentId(e.target.value.replace(/\D/g, "").slice(0, 11))}
                   inputMode="numeric"
@@ -237,15 +246,17 @@ export function SchoolVerifyCard() {
                   maxLength={11}
                 />
                 <p className="text-xs text-muted-foreground">{t("setting.school.studentIdHint")}</p>
+                <FieldError>{fe.student_id}</FieldError>
               </div>
             </div>
 
             <SchoolCascadeSelects value={cascade} onChange={setCascade} />
 
-            <div className="space-y-2">
+            <div className="space-y-2" data-field="remark">
               <Label htmlFor="sv-remark">{t("setting.school.remark")}</Label>
               <textarea
                 id="sv-remark"
+                aria-invalid={!!fe.remark}
                 value={remark}
                 onChange={(e) => setRemark(e.target.value)}
                 placeholder={t("setting.school.remarkPlaceholder")}
@@ -253,13 +264,15 @@ export function SchoolVerifyCard() {
                 rows={3}
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               />
+              <FieldError>{fe.remark}</FieldError>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2" data-field="attach_url">
               <Label htmlFor="sv-attach">{t("setting.school.attach")}</Label>
               <div className="flex gap-2">
                 <Input
                   id="sv-attach"
+                  aria-invalid={!!fe.attach_url}
                   value={attachUrl}
                   onChange={(e) => setAttachUrl(e.target.value)}
                   placeholder={t("setting.school.attachPlaceholder")}
@@ -287,6 +300,7 @@ export function SchoolVerifyCard() {
                 />
               </div>
               <p className="text-xs text-muted-foreground">{t("setting.school.attachHint")}</p>
+              <FieldError>{fe.attach_url}</FieldError>
             </div>
 
             {error && (

@@ -40,6 +40,8 @@ import { fetchProfile, updateProfile, changePassword } from "@/lib/api/auth";
 import { getSession, saveSession, clearLocalSession } from "@/lib/auth";
 import { meetsPasswordPolicy, passwordClassCount } from "@/lib/passwordPolicy";
 import { cn } from "@/lib/utils";
+import { useServerFieldErrors } from "@/lib/hooks/useServerFieldErrors";
+import { FieldError } from "@/components/ui/field-error";
 
 /** 用户名格式：≥4 字符，字母/数字/下划线 */
 const USERNAME_RE = /^[A-Za-z0-9_]{4,}$/;
@@ -49,6 +51,10 @@ function passwordStrength(pwd: string): "weak" | "medium" | "strong" {
   if (!meetsPasswordPolicy(pwd)) return "weak";
   return pwd.length >= 14 && passwordClassCount(pwd) === 4 ? "strong" : "medium";
 }
+
+/** 后端请求体字段名（data-field 对位，与 1001 data.errors[].field 一致） */
+type PasswordField =
+  | "old_password" | "new_password" | "confirm_password";
 
 export function SecurityForm() {
   const { t } = useI18n();
@@ -75,6 +81,8 @@ export function SecurityForm() {
   const [keepCurrentDevice, setKeepCurrentDevice] = useState(true);
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+  const passwordFields = useServerFieldErrors<PasswordField>({ fallback: t("account.passwordSaveError") });
+  const pfe = passwordFields.errors;
   const [passwordSuccess, setPasswordSuccess] = useState(false);
 
   useEffect(() => {
@@ -92,12 +100,18 @@ export function SecurityForm() {
     return null;
   }
 
-  function validatePassword(oldp: string, newp: string, confirm: string): string | null {
-    if (!oldp) return t("account.oldPasswordRequired");
-    if (!meetsPasswordPolicy(newp)) return t("account.passwordTooShort");
-    if (newp === oldp) return t("account.passwordSame");
-    if (newp !== confirm) return t("account.passwordMismatch");
-    return null;
+  /** 前端预校验：按字段返回错误（与后端字段名一致，行内展示） */
+  function validatePassword(
+    oldp: string,
+    newp: string,
+    confirm: string,
+  ): Partial<Record<PasswordField, string>> {
+    const errs: Partial<Record<PasswordField, string>> = {};
+    if (!oldp) errs.old_password = t("account.oldPasswordRequired");
+    if (!meetsPasswordPolicy(newp)) errs.new_password = t("account.passwordTooShort");
+    else if (newp === oldp) errs.new_password = t("account.passwordSame");
+    if (newp !== confirm) errs.confirm_password = t("account.passwordMismatch");
+    return errs;
   }
 
   /** Dialog① 提交：校验通过后弹出二次确认 */
@@ -144,11 +158,7 @@ export function SecurityForm() {
 
   async function handlePasswordSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const err = validatePassword(oldPassword, newPassword, confirmPassword);
-    if (err) {
-      setPasswordError(err);
-      return;
-    }
+    if (passwordFields.set(validatePassword(oldPassword, newPassword, confirmPassword))) return;
     setPasswordSaving(true);
     setPasswordError(null);
     setPasswordSuccess(false);
@@ -171,7 +181,7 @@ export function SecurityForm() {
       setConfirmPassword("");
       setTimeout(() => setPasswordSuccess(false), 3000);
     } catch (err2) {
-      setPasswordError(err2 instanceof Error ? err2.message : t("account.passwordSaveError"));
+      setPasswordError(passwordFields.capture(err2));
     } finally {
       setPasswordSaving(false);
     }
@@ -244,11 +254,12 @@ export function SecurityForm() {
           <CardDescription>{t("account.passwordHint")}</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handlePasswordSubmit} className="space-y-4" noValidate>
-            <div className="space-y-2">
+          <form {...passwordFields.rootProps} onSubmit={handlePasswordSubmit} className="space-y-4" noValidate>
+            <div className="space-y-2" data-field="old_password">
               <Label htmlFor="sec-oldPassword">{t("account.oldPassword")}</Label>
               <PasswordInput
                 id="sec-oldPassword"
+                aria-invalid={!!pfe.old_password}
                 value={oldPassword}
                 onChange={(e) => {
                   setOldPassword(e.target.value);
@@ -257,11 +268,13 @@ export function SecurityForm() {
                 placeholder={t("account.oldPasswordPlaceholder")}
                 autoComplete="current-password"
               />
+              <FieldError>{pfe.old_password}</FieldError>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2" data-field="new_password">
               <Label htmlFor="sec-newPassword">{t("account.newPassword")}</Label>
               <PasswordInput
                 id="sec-newPassword"
+                aria-invalid={!!pfe.new_password}
                 value={newPassword}
                 onChange={(e) => {
                   setNewPassword(e.target.value);
@@ -299,11 +312,13 @@ export function SecurityForm() {
                 </div>
               )}
               <p className="text-xs text-muted-foreground">{t("account.passwordRule")}</p>
+              <FieldError>{pfe.new_password}</FieldError>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2" data-field="confirm_password">
               <Label htmlFor="sec-confirmPassword">{t("account.confirmPassword")}</Label>
               <PasswordInput
                 id="sec-confirmPassword"
+                aria-invalid={!!pfe.confirm_password}
                 value={confirmPassword}
                 onChange={(e) => {
                   setConfirmPassword(e.target.value);
@@ -312,6 +327,7 @@ export function SecurityForm() {
                 placeholder={t("account.confirmPasswordPlaceholder")}
                 autoComplete="new-password"
               />
+              <FieldError>{pfe.confirm_password}</FieldError>
             </div>
             {/* 保留当前设备登录（默认勾选；取消 = 全部会话含本机强制下线） */}
             <label className="flex items-center gap-2.5 text-sm cursor-pointer select-none">

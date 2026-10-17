@@ -43,6 +43,8 @@ import QrCode from "@/assets/icons/action/qr-code.svg";
 import { QRCodeSVG } from "qrcode.react";
 import { cn } from "@/lib/utils";
 import { utcToLocalInput, localInputToUtcIso } from "@/lib/utils";
+import { useServerFieldErrors } from "@/lib/hooks/useServerFieldErrors";
+import { FieldError } from "@/components/ui/field-error";
 
 /** 从 "+86 138xxxx" 拆出区号与号码 */
 function parsePhone(phone: string): { dial: string; number: string } {
@@ -53,6 +55,11 @@ function parsePhone(phone: string): { dial: string; number: string } {
 
 const PAGE_KEY = "profile";
 
+/** 后端请求体字段名（data-field 对位，与 1001 data.errors[].field 一致） */
+type ProfileField =
+  | "display_name" | "real_name" | "student_id" | "phone"
+  | "gender" | "birthday" | "bio";
+
 export function ProfileForm() {
   const { t, locale } = useI18n();
   const { registerDirty } = useDirtyGuard();
@@ -60,6 +67,8 @@ export function ProfileForm() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const fieldErrors = useServerFieldErrors<ProfileField>({ fallback: t("admin.profile.saveError") });
+  const fe = fieldErrors.errors;
   const [success, setSuccess] = useState(false);
 
   const [profile, setProfile] = useState<AdminUser | null>(null);
@@ -240,7 +249,7 @@ export function ProfileForm() {
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("admin.profile.saveError"));
+      setError(fieldErrors.capture(err));
     } finally {
       setSaving(false);
     }
@@ -284,41 +293,47 @@ export function ProfileForm() {
           <CardDescription>{t("profile.personalInfoHint")}</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSave} className="space-y-5" noValidate>
+          <form {...fieldErrors.rootProps} onSubmit={handleSave} className="space-y-5" noValidate>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
+              <div className="space-y-2" data-field="display_name">
                 <Label htmlFor="pf-displayName">{t("admin.profile.displayName")}</Label>
                 <Input
                   id="pf-displayName"
+                  aria-invalid={!!fe.display_name}
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                   placeholder={t("admin.profile.displayNamePlaceholder")}
                 />
+                <FieldError>{fe.display_name}</FieldError>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2" data-field="real_name">
                 <Label htmlFor="pf-realName">{t("admin.profile.realName")}</Label>
                 <Input
                   id="pf-realName"
+                  aria-invalid={!!fe.real_name}
                   value={realName}
                   onChange={(e) => setRealName(e.target.value)}
                   placeholder={t("admin.profile.realNamePlaceholder")}
                 />
+                <FieldError>{fe.real_name}</FieldError>
               </div>
               {/* Module D：学号仅学校身份已验证用户可见（社会成员完全隐藏） */}
               {profile?.identity_school_verified && (
-                <div className="space-y-2">
+                <div className="space-y-2" data-field="student_id">
                   <Label htmlFor="pf-studentId">{t("admin.profile.studentId")}</Label>
                   <Input
                     id="pf-studentId"
+                    aria-invalid={!!fe.student_id}
                     value={studentId}
                     onChange={(e) => setStudentId(e.target.value.replace(/\D/g, "").slice(0, 11))}
                     inputMode="numeric"
                     maxLength={11}
                     placeholder={t("admin.profile.studentIdPlaceholder")}
                   />
+                  <FieldError>{fe.student_id}</FieldError>
                 </div>
               )}
-              <div className="space-y-2">
+              <div className="space-y-2" data-field="phone">
                 <Label htmlFor="pf-phone">{t("admin.profile.phone")}</Label>
                 <div className="flex gap-2">
                   <div className="w-36 shrink-0">
@@ -332,6 +347,7 @@ export function ProfileForm() {
                   </div>
                   <Input
                     id="pf-phone"
+                    aria-invalid={!!fe.phone}
                     type="tel"
                     className="flex-1"
                     value={phoneBody}
@@ -339,6 +355,7 @@ export function ProfileForm() {
                     placeholder={t("setting.profile.phonePlaceholder")}
                   />
                 </div>
+                <FieldError>{fe.phone}</FieldError>
               </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="pf-email">{t("admin.profile.email")}</Label>
@@ -353,10 +370,11 @@ export function ProfileForm() {
                 </p>
               </div>
               {/* 规格 §4.1：性别 / 生日 / 个性签名 */}
-              <div className="space-y-2">
+              <div className="space-y-2" data-field="gender">
                 <Label htmlFor="pf-gender">{t("setting.profile.gender")}</Label>
                 <select
                   id="pf-gender"
+                  aria-invalid={!!fe.gender}
                   value={gender}
                   onChange={(e) => setGender(e.target.value)}
                   className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
@@ -366,26 +384,31 @@ export function ProfileForm() {
                   <option value="female">{t("setting.profile.genderFemale")}</option>
                   <option value="hidden">{t("setting.profile.genderHidden")}</option>
                 </select>
+                <FieldError>{fe.gender}</FieldError>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2" data-field="birthday">
                 <Label htmlFor="pf-birthday">{t("setting.profile.birthday")}</Label>
                 <Input
                   id="pf-birthday"
+                  aria-invalid={!!fe.birthday}
                   type="date"
                   value={birthday ? birthday.slice(0, 10) : ""}
                   onChange={(e) => setBirthday(e.target.value ? `${e.target.value}T00:00` : "")}
                   placeholder={t("setting.profile.birthdayPlaceholder")}
                 />
+                <FieldError>{fe.birthday}</FieldError>
               </div>
-              <div className="space-y-2 sm:col-span-2">
+              <div className="space-y-2 sm:col-span-2" data-field="bio">
                 <Label htmlFor="pf-bio">{t("setting.profile.bio")}</Label>
                 <Input
                   id="pf-bio"
+                  aria-invalid={!!fe.bio}
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
                   placeholder={t("setting.profile.bioPlaceholder")}
                   maxLength={140}
                 />
+                <FieldError>{fe.bio}</FieldError>
               </div>
               {/* 徽章预览：仅展示，不可编辑；维护入口在后台用户详情页 */}
               <div className="space-y-2 sm:col-span-2">

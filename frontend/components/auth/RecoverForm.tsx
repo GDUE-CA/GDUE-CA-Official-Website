@@ -24,6 +24,8 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { fetchSecurityQuestions, recoverViaSecurityQuestions } from "@/lib/api/auth";
 import type { SecurityQuestionOutItem, SecurityAnswerItem } from "@/types/api";
+import { useServerFieldErrors } from "@/lib/hooks/useServerFieldErrors";
+import { FieldError } from "@/components/ui/field-error";
 
 export function RecoverForm() {
   const { t } = useI18n();
@@ -36,6 +38,9 @@ export function RecoverForm() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  // 第 2 步行内错误：字段名对齐后端（答案为数组路径 answers.{下标}.answer）
+  const recoverFields = useServerFieldErrors({ fallback: t("auth.recover.fail") });
+  const rfe = recoverFields.errors;
   const [loading, setLoading] = useState(false);
 
   /** 渲染问题文本：预设用 i18n key 翻译，自定义直接显示原文 */
@@ -64,23 +69,19 @@ export function RecoverForm() {
 
   async function handleSubmitRecover() {
     setError(null);
-    if (!newPassword) {
-      setError(t("auth.recover.passwordRequired"));
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setError(t("auth.recover.passwordMismatch"));
-      return;
-    }
     const answerItems: SecurityAnswerItem[] = questions.map((q) => ({
       position: q.position,
       answer: (answers[q.position] ?? "").trim(),
     }));
-    const empty = answerItems.find((a) => !a.answer);
-    if (empty) {
-      setError(t("auth.recover.answerAll"));
-      return;
+    const localErrors: Record<string, string> = {};
+    answerItems.forEach((a, i) => {
+      if (!a.answer) localErrors[`answers.${i}.answer`] = t("auth.recover.answerAll");
+    });
+    if (!newPassword) localErrors.new_password = t("auth.recover.passwordRequired");
+    else if (newPassword !== confirmPassword) {
+      localErrors.confirm_password = t("auth.recover.passwordMismatch");
     }
+    if (recoverFields.set(localErrors)) return;
     setLoading(true);
     try {
       await recoverViaSecurityQuestions({
@@ -92,7 +93,7 @@ export function RecoverForm() {
       // 恢复成功：跳登录页，后端已置 must_change_password=True
       router.replace(lp("/login"));
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("auth.recover.fail"));
+      setError(recoverFields.capture(e));
     } finally {
       setLoading(false);
     }
@@ -138,12 +139,13 @@ export function RecoverForm() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
           className="space-y-4"
+          {...recoverFields.rootProps}
         >
           <div className="rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
             {t("auth.recover.account")}: <span className="font-medium text-foreground">{username}</span>
           </div>
-          {questions.map((q) => (
-            <div key={q.position} className="space-y-2">
+          {questions.map((q, i) => (
+            <div key={q.position} className="space-y-2" data-field={`answers.${i}.answer`}>
               <Label className="text-sm font-medium">
                 {t("auth.securityQuestions.question")} {q.position}
               </Label>
@@ -157,26 +159,32 @@ export function RecoverForm() {
                 autoComplete="off"
                 type="text"
                 maxLength={256}
+                aria-invalid={!!rfe[`answers.${i}.answer`]}
               />
+              <FieldError>{rfe[`answers.${i}.answer`]}</FieldError>
             </div>
           ))}
-          <div className="space-y-2">
+          <div className="space-y-2" data-field="new_password">
             <Label htmlFor="recover-new-password">{t("auth.recover.newPassword")}</Label>
             <PasswordInput
               id="recover-new-password"
+              aria-invalid={!!rfe.new_password}
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               autoComplete="new-password"
             />
+            <FieldError>{rfe.new_password}</FieldError>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2" data-field="confirm_password">
             <Label htmlFor="recover-confirm">{t("auth.recover.confirmPassword")}</Label>
             <PasswordInput
               id="recover-confirm"
+              aria-invalid={!!rfe.confirm_password}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               autoComplete="new-password"
             />
+            <FieldError>{rfe.confirm_password}</FieldError>
           </div>
           {error && (
             <p className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md">

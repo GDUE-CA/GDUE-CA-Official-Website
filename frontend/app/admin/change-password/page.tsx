@@ -27,6 +27,12 @@ import { changePassword } from "@/lib/api/auth";
 import { getSession, isAdminRole } from "@/lib/auth";
 import { meetsPasswordPolicy } from "@/lib/passwordPolicy";
 import { PasswordInput } from "@/components/ui/password-input";
+import { useServerFieldErrors } from "@/lib/hooks/useServerFieldErrors";
+import { FieldError } from "@/components/ui/field-error";
+
+/** 后端请求体字段名（data-field 对位，与 1001 data.errors[].field 一致） */
+type ChangePasswordField =
+  | "old_password" | "new_password" | "confirm_password";
 
 export default function ChangePasswordPage() {
   const { t } = useI18n();
@@ -37,6 +43,8 @@ export default function ChangePasswordPage() {
   const [confirmPwd, setConfirmPwd] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const fieldErrors = useServerFieldErrors<ChangePasswordField>({ fallback: t("admin.changePassword.error") });
+  const fe = fieldErrors.errors;
   const [success, setSuccess] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -58,8 +66,7 @@ export default function ChangePasswordPage() {
       const target = isAdminRole(getSession()?.role) ? lp("/admin/dashboard") : lp("/setting/profile");
       setTimeout(() => router.replace(target), 1500);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : t("admin.changePassword.error");
-      setError(msg);
+      setError(fieldErrors.capture(err));
     } finally {
       setLoading(false);
     }
@@ -88,39 +95,45 @@ export default function ChangePasswordPage() {
                 <p className="text-lg font-medium">{t("admin.changePassword.success")}</p>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-                <div className="space-y-2">
+              <form {...fieldErrors.rootProps} onSubmit={handleSubmit} className="space-y-4" noValidate>
+                <div className="space-y-2" data-field="old_password">
                   <Label htmlFor="old">{t("admin.changePassword.oldPassword")}</Label>
                   <PasswordInput
                     id="old"
+                    aria-invalid={!!fe.old_password}
                     autoComplete="current-password"
                     placeholder={t("admin.changePassword.oldPasswordPlaceholder")}
                     value={oldPwd}
                     onChange={(e) => setOldPwd(e.target.value)}
                     required
                   />
+                  <FieldError>{fe.old_password}</FieldError>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2" data-field="new_password">
                   <Label htmlFor="new">{t("admin.changePassword.newPassword")}</Label>
                   <PasswordInput
                     id="new"
+                    aria-invalid={!!fe.new_password}
                     autoComplete="new-password"
                     placeholder={t("admin.changePassword.newPasswordPlaceholder")}
                     value={newPwd}
                     onChange={(e) => setNewPwd(e.target.value)}
                     required
                   />
+                  <FieldError>{fe.new_password}</FieldError>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2" data-field="confirm_password">
                   <Label htmlFor="confirm">{t("admin.changePassword.confirmPassword")}</Label>
                   <PasswordInput
                     id="confirm"
+                    aria-invalid={!!fe.confirm_password}
                     autoComplete="new-password"
                     placeholder={t("admin.changePassword.confirmPlaceholder")}
                     value={confirmPwd}
                     onChange={(e) => setConfirmPwd(e.target.value)}
                     required
                   />
+                  <FieldError>{fe.confirm_password}</FieldError>
                 </div>
 
                 {error && (
