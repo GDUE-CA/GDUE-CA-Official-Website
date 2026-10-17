@@ -2909,6 +2909,17 @@
         "title": "Title",
         "content": "Content"
       }
+    },
+    "page": {
+      "title": "Something went wrong",
+      "unexpected": "An unexpected error occurred. Please try again later.",
+      "hint": "If you report this issue, please include the ID below so we can trace it.",
+      "requestId": "Request ID",
+      "digest": "Error digest",
+      "copy": "Copy",
+      "copied": "Copied",
+      "retry": "Try again",
+      "home": "Back to home"
     }
   },
   "memoPage": {
