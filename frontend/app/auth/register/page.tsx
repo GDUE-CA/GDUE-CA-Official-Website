@@ -33,6 +33,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { register } from "@/lib/api/auth";
+import { applyServerErrors } from "@/lib/api/formErrors";
 import { getSession } from "@/lib/auth";
 import { SecurityQuestionsForm } from "@/components/auth/SecurityQuestionsForm";
 import type { SecurityQuestionItem } from "@/types/api";
@@ -112,6 +113,8 @@ export default function AuthRegisterPage() {
   const {
     register: registerField,
     handleSubmit,
+    setError,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
@@ -171,7 +174,11 @@ export default function AuthRegisterPage() {
       // P0：注册成功跳转登录页
       router.replace(lp("/login"));
     } catch (err) {
-      setServerError(err instanceof Error ? err.message : t("auth.register.error"));
+      // 字段名与后端一致（username / email …）直接标到输入框；
+      // 「两次输入的密码不一致」这类模型级错误、安全问题错误进横幅
+      setServerError(
+        applyServerErrors(err, { setError, getValues }, { fallback: t("auth.register.error") }),
+      );
     }
   }
 

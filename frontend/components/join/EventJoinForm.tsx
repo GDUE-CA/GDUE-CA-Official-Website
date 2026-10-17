@@ -7,7 +7,7 @@
  * - 手机号按所选区号本地规范校验
  */
 import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { motion, AnimatePresence } from "framer-motion";
@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/select";
 import { listActivities } from "@/lib/api/activities";
 import { submitRegistration } from "@/lib/api/register";
+import { applyServerErrors } from "@/lib/api/formErrors";
 import { ReceiptPanel } from "@/components/shared/ReceiptPanel";
 import type { Activity } from "@/types/api";
 import { COUNTRY_OPTIONS, PHONE_RULES } from "./phoneRules";
@@ -92,7 +93,9 @@ export function EventJoinForm() {
     handleSubmit,
     reset,
     setValue,
-    watch,
+    setError,
+    getValues,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -109,8 +112,9 @@ export function EventJoinForm() {
     },
   });
 
-  const activityValue = watch("activityId");
-  const phoneCcValue = watch("phoneCc");
+  // useWatch 订阅单字段（watch() 返回的函数无法被 React Compiler 记忆化）
+  const activityValue = useWatch({ control, name: "activityId" });
+  const phoneCcValue = useWatch({ control, name: "phoneCc" });
 
   /** 表单提交 */
   async function onSubmit(data: FormValues) {
@@ -129,8 +133,12 @@ export function EventJoinForm() {
       setReceiptCode(resp.receipt_code);
       setSubmitted(true);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : t("join.form.errors.submitError");
-      setSubmitError(msg);
+      // 后端字段错误（student_id → studentId 等）标到对应输入框，其余进横幅
+      setSubmitError(
+        applyServerErrors(err, { setError, getValues }, {
+          fallback: t("join.form.errors.submitError"),
+        }),
+      );
     }
   }
 
