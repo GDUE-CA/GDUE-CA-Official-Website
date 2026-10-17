@@ -192,10 +192,9 @@ class RegisterRequest(BaseModel):
 
 
 class RegisterOut(BaseModel):
-    id: int
+    """自助注册结果（不回内部用户 id；角色恒为 member，无需回传）。"""
     username: str
     display_name: str | None = None
-    role: Role
 
 
 class UserCreate(BaseModel):

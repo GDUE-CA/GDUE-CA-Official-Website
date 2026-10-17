@@ -7,6 +7,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
+from app.schemas.common import UTCDatetime
+
 import re
 
 STUDENT_ID_PATTERN = re.compile(r"^\d{11}$")
@@ -75,14 +77,29 @@ class SchoolVerifyApplicationOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class MySchoolVerifyOut(BaseModel):
+    """本人视角的申请记录（最小化：不含主键 / user_id / 内部外键 id / 附件地址 / 账号信息）。"""
+    student_id: str
+    college_name: str | None = None
+    major_name: str | None = None
+    grade_year: int | None = None
+    class_display_name: str | None = None
+    status: str
+    admin_remark: str | None
+    created_at: UTCDatetime
+    reviewed_at: UTCDatetime | None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class SchoolVerifyStatusOut(BaseModel):
     """当前用户的学校验证状态（个人设置页）。"""
     identity_school_verified: bool
     # none / pending / approved / rejected（以最近一次申请为准）
     status: str
-    latest: SchoolVerifyApplicationOut | None = None
+    latest: MySchoolVerifyOut | None = None
     # 全部申请历史（含驳回记录）
-    history: list[SchoolVerifyApplicationOut] = []
+    history: list[MySchoolVerifyOut] = []
 
 
 class SchoolVerifyReviewRequest(BaseModel):
