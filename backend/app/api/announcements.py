@@ -34,7 +34,7 @@ from app.schemas.announcement import (
     AnnouncementUpdate,
 )
 from app.utils.crud import apply_eq, apply_search, paginate
-from app.utils.translator import translate_obj_fields
+from app.utils.translator import pretranslate, translate_obj_fields
 
 # 公开接口（无鉴权）
 public_router = APIRouter(prefix="/api/announcements", tags=["announcements-public"])
@@ -60,7 +60,7 @@ def _is_in_effect(a: Announcement, now: datetime) -> bool:
 @public_router.get("", response_model=list[AnnouncementPublicOut])
 async def list_public_announcements(
     category: Literal["homepage", "home"] | None = Query(default=None),
-    lang: str | None = Query(default=None, max_length=16, description="显示语言；传入时标题/内容自动翻译（缓存加速，失败回退原文）"),
+    lang: str | None = Query(default=None, max_length=16, description="显示语言；zh-* 返回中文版，其他返回英文版（译文存库，失败回退原文）"),
     db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """前端公开接口：自动过滤【时间生效中 + 已启用】，按 priority 降序。"""
@@ -94,7 +94,7 @@ async def list_public_announcements(
 @public_router.get("/{aid}", response_model=AnnouncementPublicOut)
 async def get_public_announcement(
     aid: int,
-    lang: str | None = Query(default=None, max_length=16, description="显示语言；传入时标题/内容自动翻译（缓存加速，失败回退原文）"),
+    lang: str | None = Query(default=None, max_length=16, description="显示语言；zh-* 返回中文版，其他返回英文版（译文存库，失败回退原文）"),
     db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """前端公告详情页：仅返回【时间生效中 + 已启用】的公告；过期/草稿一律 404。"""
@@ -163,6 +163,8 @@ async def admin_create_announcement(
         created_by=ctx_uid(user),
     )
     db.add(a)
+    # 保存即预翻译（中→英 / 英→中）入库，公开接口读取直接命中；失败不影响保存
+    await pretranslate(db, [a.title, a.content])
     _log(db, user, "announcement.create", None, get_client_ip(request))
     await db.commit()
     await db.refresh(a)
@@ -194,6 +196,8 @@ async def admin_update_announcement(
     for k in ("title", "content", "link", "start_at", "end_at", "enabled", "priority"):
         if k in data:
             setattr(a, k, data[k])
+    if "title" in data or "content" in data:
+        await pretranslate(db, [a.title, a.content])
     _log(db, user, "announcement.update", f"announcement:{aid}",
          get_client_ip(request))
     await db.commit()

@@ -122,6 +122,12 @@ class Settings(BaseSettings):
     # 数据库写操作审计（db_traces / db_change_logs）保留期限（天），定时维护任务每小时清理
     DB_TRACE_RETENTION_DAYS: int = 30
 
+    # ---- 内容翻译（DeepL）：CMS 内容只维护中 / 英两个版本，中文原文译英文、英文原文译中文 ----
+    # 留空则不翻译（一律展示原文）；Free 版 key 以 ":fx" 结尾，自动走 api-free.deepl.com
+    DEEPL_API_KEY: str = ""
+    # 自定义接口地址（一般无需配置，留空按 key 类型自动选择）
+    DEEPL_API_URL: str = ""
+
     @property
     def break_glass_enabled(self) -> bool:
         return self.SUPER_ADMIN_ENABLED.strip().lower() == "true"
