@@ -362,7 +362,7 @@ function fillMeta(){$("m-ip").textContent=ip||"—";var box=$("m-reason");box.in
   $("m-time").textContent=new Date().toISOString().replace("T"," ").slice(0,19)+" UTC";}
 function post(body){return fetch(C.verifyPath,{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}).then(function(r){if(!r.ok)throw new Error(String(r.status));});}
 function enter(el){state(el,t.success,"ok",true);setTimeout(function(){location.replace(location.href);},300);}
-function solve(){var salt=C.pow.salt+":",bits=C.pow.bits,n=0;return new Promise(function(resolve){(function step(){var end=n+5000;for(;n<end;n++){if(lz(sha256(salt+n))>=bits)return resolve(n);}setTimeout(step,0);})();});}
+function solve(){var salt=C.pow.salt+":",bits=C.pow.bits,n=0;return new Promise(function(resolve){(function step(){var end=Date.now()+50;do{for(var k=0;k<1000;k++,n++){if(lz(sha256(salt+n))>=bits)return resolve(n);}}while(Date.now()<end);setTimeout(step,0);})();});}
 function runPow(el){state(el,t.computing,"",true);solve().then(function(n){return post({mode:"pow",challenge:C.pow,nonce:n});}).then(function(){enter(el);},function(){state(el,t.failed,"err");});}
 function turnstile(){var el=$("s-challenge");$("widget").hidden=false;state(el,t.loading,"",true);
   window.onTurnstileLoad=function(){state(el,"","");window.turnstile.render("#ts",{sitekey:C.siteKey,action:C.action,language:C.tsLang,theme:"auto",

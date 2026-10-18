@@ -85,7 +85,7 @@ export function getRiskGuardConfig(): RiskGuardConfig {
     previewBotUa: listEnv("RISK_PREVIEW_BOT_UA"),
     turnstileSiteKey: process.env.TURNSTILE_SITE_KEY ?? "",
     turnstileSecretKey: process.env.TURNSTILE_SECRET_KEY ?? "",
-    powDifficulty: intEnv("RISK_POW_DIFFICULTY", 16, 8, 24),
+    powDifficulty: intEnv("RISK_POW_DIFFICULTY", 20, 8, 24),
     passTtlSeconds: intEnv("RISK_PASS_TTL_HOURS", 12, 1) * 3600,
     passSecret: process.env.RISK_PASS_SECRET ?? "",
     contactEmail: process.env.RISK_CONTACT_EMAIL ?? "",
