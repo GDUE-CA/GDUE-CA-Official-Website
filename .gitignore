@@ -50,3 +50,6 @@ Thumbs.db
 _e2e_/
 _e2e_tmp.db
 backend/scripts/_*.py
+
+.idea
+.idea/**
