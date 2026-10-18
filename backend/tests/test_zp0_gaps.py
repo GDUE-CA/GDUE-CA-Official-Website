@@ -14,7 +14,7 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from tests.conftest import ADMIN_EMAIL, STRONG_ADMIN_PASSWORD, csrf, make_client
+from tests.conftest import ADMIN_EMAIL, STRONG_ADMIN_PASSWORD, csrf, make_client, register_member
 
 MEMBER_PWD = "Gd#Ca-Member!1"
 
@@ -41,7 +41,7 @@ def _admin_client(app) -> tuple[TestClient, dict]:
     if res.json()["must_change_password"]:
         r = client.post("/api/auth/change-password", headers=headers, json={
             "old_password": STRONG_ADMIN_PASSWORD,
-            "new_password": STRONG_ADMIN_PASSWORD + "2",
+            "new_password": STRONG_ADMIN_PASSWORD + "2", "confirm_password": STRONG_ADMIN_PASSWORD + "2",
         })
         assert r.status_code == 200, r.text
     return client, headers
@@ -51,12 +51,7 @@ def _member_client(app, username: str) -> tuple[TestClient, dict]:
     client = make_client(app)
     with client:
         pass
-    res = client.post("/api/auth/register", json={
-        "username": username,
-        "display_name": username,
-        "password": MEMBER_PWD,
-        "confirm_password": MEMBER_PWD,
-    }, headers=csrf(client))
+    res = register_member(client, username, MEMBER_PWD)
     assert res.status_code in (201, 400), res.text  # 400 = 重复注册（可复跑）
     res = client.post("/api/auth/login", json={
         "username": username, "password": MEMBER_PWD,
