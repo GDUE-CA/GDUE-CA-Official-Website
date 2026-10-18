@@ -3,7 +3,7 @@
 /**
  * 操作日志（/admin/audit-logs）
  * 只读检索：action 前缀筛选 + 关键词搜索 + 目标/用户/日期筛选 + 分页 + CSV 导出，
- * trace_id 一键复制（审计不可修改/删除）。
+ * request_id 一键复制（拿去日志里 grep）；trace_id 打开数据库写入审计弹窗（审计不可修改/删除）。
  * 对应后端 /api/admin/audit-logs。
  */
 import { useCallback, useEffect, useState } from "react";
@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { adminExportAuditLogs, adminListAuditLogs, type AuditLogFilters } from "@/lib/api/auditLogs";
 import { FormattedUserActionTime } from "@/components/shared/FormattedUserActionTime";
+import { DbTraceDialog } from "@/components/admin/audit/DbTraceDialog";
 import type { AuditLogInfo } from "@/types/api";
 
 /** 常用动作前缀快捷筛选（动作字符串本身即数据，不做翻译） */
@@ -39,6 +40,7 @@ export function AuditLogsManager() {
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [copiedId, setCopiedId] = useState<number | null>(null);
+  const [openTrace, setOpenTrace] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   /** 当前筛选（列表与导出共用） */
@@ -96,11 +98,11 @@ export function AuditLogsManager() {
     }
   }
 
-  /** trace_id 一键复制（拿完整 id 去日志里 grep） */
-  async function copyTrace(r: AuditLogInfo) {
-    if (!r.trace_id) return;
+  /** request_id 一键复制（拿完整 id 去日志里 grep） */
+  async function copyRequestId(r: AuditLogInfo) {
+    if (!r.request_id) return;
     try {
-      await navigator.clipboard.writeText(r.trace_id);
+      await navigator.clipboard.writeText(r.request_id);
       setCopiedId(r.id);
       setTimeout(() => setCopiedId((v) => (v === r.id ? null : v)), 1500);
     } catch {
@@ -233,6 +235,7 @@ export function AuditLogsManager() {
                   <th className="py-2 pr-3">{t("admin.auditLogs.action")}</th>
                   <th className="py-2 pr-3">{t("admin.auditLogs.detail")}</th>
                   <th className="py-2 pr-3">{t("admin.auditLogs.ip")}</th>
+                  <th className="py-2 pr-3">{t("admin.auditLogs.requestId")}</th>
                   <th className="py-2">{t("admin.auditLogs.trace")}</th>
                 </tr>
               </thead>
@@ -250,12 +253,13 @@ export function AuditLogsManager() {
                       {r.detail || r.target || "—"}
                     </td>
                     <td className="py-2 pr-3 font-mono text-xs">{r.ip || "—"}</td>
-                    <td className="py-2">
-                      {r.trace_id ? (
+                    <td className="py-2 pr-3">
+                      {r.request_id ? (
                         <button
                           type="button"
-                          onClick={() => copyTrace(r)}
-                          title={r.trace_id}
+                          onClick={() => copyRequestId(r)}
+                          title={r.request_id}
+                          aria-label={`${t("admin.auditLogs.copy")} ${r.request_id}`}
                           className="inline-flex items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
                         >
                           {copiedId === r.id ? (
@@ -263,6 +267,20 @@ export function AuditLogsManager() {
                           ) : (
                             <Copy className="h-3.5 w-3.5" />
                           )}
+                          {r.request_id.slice(0, 12)}
+                        </button>
+                      ) : (
+                        <span className="font-mono text-xs text-muted-foreground">—</span>
+                      )}
+                    </td>
+                    <td className="py-2">
+                      {r.trace_id ? (
+                        <button
+                          type="button"
+                          onClick={() => setOpenTrace(r.trace_id)}
+                          title={t("admin.auditLogs.traceHint")}
+                          className="font-mono text-xs underline decoration-dotted underline-offset-2 hover:text-foreground transition-colors"
+                        >
                           {r.trace_id.slice(0, 12)}
                         </button>
                       ) : (
@@ -276,6 +294,8 @@ export function AuditLogsManager() {
           </CardContent>
         </Card>
       )}
+
+      <DbTraceDialog traceId={openTrace} onClose={() => setOpenTrace(null)} />
 
       {/* 分页 */}
       {totalPages > 1 && (

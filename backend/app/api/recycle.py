@@ -56,7 +56,7 @@ def _days_left(deleted_at: datetime | None) -> int | None:
 @router.get("")
 async def list_recycle(
     user: dict = Depends(require_role(Role.EDITOR)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """回收站列表：用户 + 活动两类软删除资源统一返回。"""
     users = (await db.execute(
@@ -114,7 +114,7 @@ async def restore_recycle_item(
     rid: int,
     request: Request,
     user: dict = Depends(require_role(Role.EDITOR)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """恢复软删除资源：is_deleted 置回 False，重新可用。"""
     now = _now()
@@ -150,7 +150,7 @@ async def purge_recycle_item(
     rid: int,
     request: Request,
     user: dict = Depends(require_role(Role.EDITOR)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """永久物理删除（管理员手动提前清除；正常流程由定时任务 30 天后自动执行）。"""
     if rtype == "user":

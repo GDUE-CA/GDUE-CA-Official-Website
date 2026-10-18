@@ -28,7 +28,7 @@ class BatchRequest(BaseModel):
 async def batch_translate(
     req: BatchRequest,
     user: dict = Depends(require_role(Role.EDITOR)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """批量翻译：返回 {translations: {key: {text, source_lang, translated}}}。
 

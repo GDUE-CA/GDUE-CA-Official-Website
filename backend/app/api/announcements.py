@@ -61,7 +61,7 @@ def _is_in_effect(a: Announcement, now: datetime) -> bool:
 async def list_public_announcements(
     category: Literal["homepage", "home"] | None = Query(default=None),
     lang: str | None = Query(default=None, max_length=16, description="显示语言；传入时标题/内容自动翻译（缓存加速，失败回退原文）"),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """前端公开接口：自动过滤【时间生效中 + 已启用】，按 priority 降序。"""
     now = datetime.now(timezone.utc)
@@ -95,7 +95,7 @@ async def list_public_announcements(
 async def get_public_announcement(
     aid: int,
     lang: str | None = Query(default=None, max_length=16, description="显示语言；传入时标题/内容自动翻译（缓存加速，失败回退原文）"),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """前端公告详情页：仅返回【时间生效中 + 已启用】的公告；过期/草稿一律 404。"""
     a = await db.get(Announcement, aid)
@@ -120,7 +120,7 @@ async def admin_list_announcements(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     user: dict = Depends(require_permission("announcements", "view")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     stmt = select(Announcement)
     if category:
@@ -138,7 +138,7 @@ async def admin_list_announcements(
 async def admin_get_announcement(
     aid: int,
     user: dict = Depends(require_permission("announcements", "view")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     a = await db.get(Announcement, aid)
     if not a:
@@ -152,7 +152,7 @@ async def admin_create_announcement(
     req: AnnouncementCreate,
     request: Request,
     user: dict = Depends(require_permission("announcements", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     # 生效时间窗校验：start_at 必须早于 end_at
     if req.start_at and req.end_at and req.start_at >= req.end_at:
@@ -176,7 +176,7 @@ async def admin_update_announcement(
     req: AnnouncementUpdate,
     request: Request,
     user: dict = Depends(require_permission("announcements", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     a = await db.get(Announcement, aid)
     if not a:
@@ -207,7 +207,7 @@ async def admin_delete_announcement(
     aid: int,
     request: Request,
     user: dict = Depends(require_permission("announcements", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     a = await db.get(Announcement, aid)
     if not a:
@@ -335,7 +335,7 @@ async def admin_upload_announcement_attachment(
     request: Request,
     file: UploadFile = File(...),
     user: dict = Depends(require_permission("announcements", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """公告附件上传：视频/音频/PDF/Office 文档，≤50MB，扩展名+魔数双重白名单校验。"""
     a = await db.get(Announcement, aid)
@@ -407,7 +407,7 @@ async def admin_delete_announcement_attachment(
     att_id: int,
     request: Request,
     user: dict = Depends(require_permission("announcements", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """删除公告附件：同时移除落盘文件。"""
     att = await db.get(AnnouncementAttachment, att_id)

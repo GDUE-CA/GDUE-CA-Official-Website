@@ -156,7 +156,7 @@ async def _kv_incr_with_ttl(kv, key: str, ttl: int) -> int:
 @router.get("/status", response_model=EmailChangeStatusOut)
 async def email_change_status(
     user: dict = _READ_DEP,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     _reject_break_glass(user)
     u = await _load_user(db, ctx_uid(user))
@@ -201,7 +201,7 @@ async def normal_send_codes(
     req: EmailChangeSendCodesRequest,
     request: Request,
     user: dict = _WRITE_DEP,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """一次接口同时向旧邮箱 + 新邮箱各发一份验证码（确认持有旧邮箱 + 控制新邮箱）。"""
     _reject_break_glass(user)
@@ -248,7 +248,7 @@ async def normal_confirm(
     req: EmailChangeNormalConfirmRequest,
     request: Request,
     user: dict = _WRITE_DEP,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """旧码 + 新码 + 当前登录密码三项全部通过才换绑；不撤销任何登录会话。"""
     _reject_break_glass(user)
@@ -307,7 +307,7 @@ async def lost_old_verify(
     req: EmailChangeLostOldVerifyRequest,
     request: Request,
     user: dict = _WRITE_DEP,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """四项核验必须全部匹配数据库记录；任一不匹配统一模糊拒绝（不暴露哪个字段错）。"""
     _reject_break_glass(user)
@@ -358,7 +358,7 @@ async def lost_old_send_code(
     req: EmailChangeLostOldSendCodeRequest,
     request: Request,
     user: dict = _WRITE_DEP,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """核验通过后仅向新邮箱发码（统一模糊前置：无通行令牌一律按核验未通过处理）。"""
     _reject_break_glass(user)
@@ -400,7 +400,7 @@ async def lost_old_confirm(
     req: EmailChangeLostOldConfirmRequest,
     request: Request,
     user: dict = _WRITE_DEP,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """新邮箱验证码通过即换绑；通行令牌一次性消费；保留全部登录会话。"""
     _reject_break_glass(user)
@@ -452,7 +452,7 @@ async def submit_manual_request(
     req: EmailChangeManualRequestRequest,
     request: Request,
     user: dict = _WRITE_DEP,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """提交更改绑定邮箱人工申请（pending 期间自助入口全部禁用，由本前置锁强制）。"""
     _reject_break_glass(user)
@@ -485,7 +485,7 @@ async def submit_manual_request(
 async def list_email_change_requests(
     status_filter: EmailChangeStatus | None = None,
     user: dict = Depends(require_permission("review.emails", "view")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     stmt = (
         select(EmailChangeRequest, User.username)
@@ -507,7 +507,7 @@ async def approve_email_change_request(
     request_id: int,
     request: Request,
     user: dict = Depends(require_permission("review.emails", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """同意：仅打一次性豁免标记，绝不直接改邮箱；最终换绑由用户本人确认提交。"""
     row = await db.get(EmailChangeRequest, request_id)
@@ -547,7 +547,7 @@ async def reject_email_change_request(
     req: EmailChangeRejectRequest,
     request: Request,
     user: dict = Depends(require_permission("review.emails", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """驳回：理由必填非空；用户端展示理由并解除自助禁用。"""
     reason = str(req.reason).strip()
@@ -589,7 +589,7 @@ async def exempt_confirm(
     req: EmailChangeExemptConfirmRequest,
     request: Request,
     user: dict = _WRITE_DEP,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """跳过全部身份校验：仅凭一次性豁免标记换绑；成功瞬间同事务清除标记。"""
     _reject_break_glass(user)

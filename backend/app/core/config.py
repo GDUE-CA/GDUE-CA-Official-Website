@@ -119,6 +119,8 @@ class Settings(BaseSettings):
     # V0.5.5 §4：站内邮件大附件保存期限（天）。到期定时任务只删除磁盘附件文件，
     # 邮件正文完整保留；邮件系统落地后将附件记录清理接入 maintenance 清理钩子
     MAIL_ATTACHMENT_RETENTION_DAYS: int = 7
+    # 数据库写操作审计（db_traces / db_change_logs）保留期限（天），定时维护任务每小时清理
+    DB_TRACE_RETENTION_DAYS: int = 30
 
     @property
     def break_glass_enabled(self) -> bool:

@@ -47,7 +47,7 @@ async def _get_or_404(db: AsyncSession, theme_id: int) -> Theme:
 # ==================== 公开接口 ====================
 
 @public_router.get("")
-async def list_public_themes(db: AsyncSession = Depends(get_db)):
+async def list_public_themes(db: AsyncSession = Depends(get_db, scope="function")):
     """已启用主题列表：sort_order 升序 + id 升序（前台主题选择器 / ThemeProvider 消费）。"""
     rows = (await db.execute(
         select(Theme)
@@ -62,7 +62,7 @@ async def list_public_themes(db: AsyncSession = Depends(get_db)):
 @admin_router.get("")
 async def admin_list_themes(
     user: dict = Depends(require_permission("themes", "view")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """全部未删除主题（含停用），sort_order 升序 + id 升序。"""
     rows = (await db.execute(
@@ -78,7 +78,7 @@ async def admin_create_theme(
     req: ThemeCreate,
     request: Request,
     user: dict = Depends(require_permission("themes", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     # key 全局唯一（含软删行：DB 唯一约束仍占用）
     exists = (await db.execute(
@@ -109,7 +109,7 @@ async def admin_update_theme(
     req: ThemeUpdate,
     request: Request,
     user: dict = Depends(require_permission("themes", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     t = await _get_or_404(db, theme_id)
     data = req.model_dump(exclude_unset=True)
@@ -132,7 +132,7 @@ async def admin_delete_theme(
     theme_id: int,
     request: Request,
     user: dict = Depends(require_permission("themes", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     t = await _get_or_404(db, theme_id)
     if t.key in _BUILTIN_KEYS:

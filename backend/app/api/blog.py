@@ -177,7 +177,7 @@ def _metric_out(p: BlogPost) -> dict:
 @public_router.get("/tags", response_model=list[BlogTagOut])
 async def list_public_tags(
     lang: str | None = Query(default=None, max_length=16, description="显示语言；传入时标签名自动翻译"),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """公开标签列表（前端按标签筛选文章）。"""
     await _auto_publish_scheduled(db)
@@ -195,7 +195,7 @@ async def list_public_posts(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=10, ge=1, le=50),
     lang: str | None = Query(default=None, max_length=16, description="显示语言；传入时标题/摘要自动翻译（缓存加速，失败回退原文）"),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """公开已发布文章列表：published_at 降序，支持标签筛选 + 标题/摘要搜索。
 
@@ -219,7 +219,7 @@ async def list_public_posts(
 async def get_public_post(
     slug: str,
     lang: str | None = Query(default=None, max_length=16, description="显示语言；传入时标题/摘要自动翻译"),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """公开单篇文章（含消毒 HTML）；非已发布状态一律 404。
 
@@ -240,7 +240,7 @@ async def get_public_post(
 @public_router.post("/{slug}/share", response_model=BlogMetricOut)
 async def share_post(
     slug: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """分享计数：无鉴权，每次调用 share_count += 1。
 
@@ -258,7 +258,7 @@ async def share_post(
 async def like_post(
     slug: str,
     user: dict | None = Depends(get_optional_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """点赞：需登录，like_count += 1。"""
     if not user:
@@ -274,7 +274,7 @@ async def like_post(
 async def unlike_post(
     slug: str,
     user: dict | None = Depends(get_optional_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """取消点赞：需登录，like_count = max(0, -1)。"""
     if not user:
@@ -290,7 +290,7 @@ async def unlike_post(
 async def favourite_post(
     slug: str,
     user: dict | None = Depends(get_optional_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """收藏：需登录，favourite_count += 1。"""
     if not user:
@@ -306,7 +306,7 @@ async def favourite_post(
 async def unfavourite_post(
     slug: str,
     user: dict | None = Depends(get_optional_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """取消收藏：需登录，favourite_count = max(0, -1)。"""
     if not user:
@@ -328,7 +328,7 @@ async def admin_list_posts(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     user: dict = Depends(require_permission("blog", "view")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     await _auto_publish_scheduled(db)
     stmt = select(BlogPost)
@@ -348,7 +348,7 @@ async def admin_list_posts(
 async def admin_list_tags(
     q: str | None = Query(default=None, max_length=64),
     user: dict = Depends(require_permission("blog_tags", "view")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     stmt = select(BlogTag)
     stmt = apply_search(stmt, [BlogTag.name], q)
@@ -361,7 +361,7 @@ async def admin_list_tags(
 async def admin_get_post(
     post_id: int,
     user: dict = Depends(require_permission("blog", "view")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     p = await db.get(BlogPost, post_id)
     if not p:
@@ -376,7 +376,7 @@ async def admin_create_post(
     req: BlogPostCreate,
     request: Request,
     user: dict = Depends(require_permission("blog", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     tags = await _load_tags_or_400(db, req.tag_ids)
     if req.slug:
@@ -418,7 +418,7 @@ async def admin_update_post(
     req: BlogPostUpdate,
     request: Request,
     user: dict = Depends(require_permission("blog", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     p = await db.get(BlogPost, post_id)
     if not p:
@@ -469,7 +469,7 @@ async def admin_delete_post(
     post_id: int,
     request: Request,
     user: dict = Depends(require_permission("blog", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     p = await db.get(BlogPost, post_id)
     if not p:
@@ -490,7 +490,7 @@ async def admin_create_tag(
     req: BlogTagCreate,
     request: Request,
     user: dict = Depends(require_permission("blog_tags", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     exists = (await db.execute(
         select(BlogTag).where(BlogTag.name == req.name)
@@ -522,7 +522,7 @@ async def admin_update_tag(
     req: BlogTagUpdate,
     request: Request,
     user: dict = Depends(require_permission("blog_tags", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     t = await db.get(BlogTag, tag_id)
     if not t:
@@ -555,7 +555,7 @@ async def admin_delete_tag(
     tag_id: int,
     request: Request,
     user: dict = Depends(require_permission("blog_tags", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     t = await db.get(BlogTag, tag_id)
     if not t:
@@ -608,7 +608,7 @@ async def admin_upload_blog_image(
     request: Request,
     file: UploadFile = File(...),
     user: dict = Depends(require_permission("blog", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """博客内嵌图片/封面上传：jpg/png/webp，≤5MB，仅无损压缩至 ≤ 原体积 80%。"""
     data = await file.read(BLOG_IMAGE_MAX_SIZE + 1)

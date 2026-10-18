@@ -80,7 +80,7 @@ def _compress_avatar(data: bytes, fmt: str) -> tuple[bytes, str, str]:
 @public_router.get("", response_model=list[MemberOut])
 async def list_public_members(
     term: Literal["current", "former"] | None = Query(default=None),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """前端公开：按 display_order 升序，过滤归档项。"""
     stmt = select(Member).where(Member.archived.is_(False))
@@ -100,7 +100,7 @@ async def admin_list_members(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     user: dict = Depends(require_permission("members", "view")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     stmt = select(Member)
     if term:
@@ -214,7 +214,7 @@ async def admin_import_members(
     file: UploadFile = File(...),
     mode: Literal["skip", "update"] = Form(default="skip"),
     user: dict = Depends(require_permission("members", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """Excel 批量导入成员：按姓名去重。
 
@@ -340,7 +340,7 @@ async def admin_batch_update_members(
     body: MemberBatchUpdate,
     request: Request,
     user: dict = Depends(require_permission("members", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """批量勾选修改届别与职务：两项至少指定一项，为空的那项不改动。"""
     if body.term is None and body.role_title is None:
@@ -365,7 +365,7 @@ async def admin_batch_update_members(
 async def admin_get_member(
     mid: int,
     user: dict = Depends(require_permission("members", "view")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     m = await db.get(Member, mid)
     if not m:
@@ -379,7 +379,7 @@ async def admin_create_member(
     req: MemberCreate,
     request: Request,
     user: dict = Depends(require_permission("members", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     m = Member(
         name=req.name,
@@ -412,7 +412,7 @@ async def admin_update_member(
     req: MemberUpdate,
     request: Request,
     user: dict = Depends(require_permission("members", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     m = await db.get(Member, mid)
     if not m:
@@ -438,7 +438,7 @@ async def admin_delete_member(
     mid: int,
     request: Request,
     user: dict = Depends(require_permission("members", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     m = await db.get(Member, mid)
     if not m:
@@ -462,7 +462,7 @@ async def admin_upload_member_avatar(
     request: Request,
     file: UploadFile = File(...),
     user: dict = Depends(require_permission("members", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """成员头像上传：jpg/png/webp，最大 5MB，自动压缩到最长边 512px。
 

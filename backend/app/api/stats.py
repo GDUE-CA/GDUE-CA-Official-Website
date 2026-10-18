@@ -48,7 +48,7 @@ class ActivityLiveStatOut(BaseModel):
 @router.get("/activities")
 async def activity_statistics(
     user: dict = Depends(require_permission("stats", "view")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """全部活动的报名统计快照（活动结束后自动生成的那份）。"""
     rows = (await db.execute(
@@ -77,7 +77,7 @@ def _status_sum(status: RegistrationStatus):
 @router.get("/activities/live", response_model=list[ActivityLiveStatOut])
 async def activity_live_statistics(
     user: dict = Depends(require_permission("stats", "view")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """全部活动的实时报名计数（LEFT JOIN：无报名的活动也出现，便于进行中活动盯数）。"""
     rows = (await db.execute(
@@ -157,7 +157,7 @@ async def _grouped(db: AsyncSession, column) -> list[RecruitmentGroupStat]:
 @router.get("/recruitment")
 async def recruitment_statistics(
     user: dict = Depends(require_permission("stats", "view")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """招新（社团报名）统计：按意向部门 / 学院 / 状态聚合。"""
     is_club = Registration.registration_type == RegistrationType.CLUB

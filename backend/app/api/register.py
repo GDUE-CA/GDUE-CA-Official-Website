@@ -48,7 +48,7 @@ async def submit_for_activity(
     activity_id: int,
     req: RegistrationCreate,
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     activity = await db.get(Activity, activity_id)
     if not activity:
@@ -99,7 +99,7 @@ async def list_registrations(
     page: int = 1,
     per_page: int = 50,
     user: dict = Depends(require_permission("review.registrations", "view")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     stmt = select(Registration)
     if activity_id:
@@ -135,7 +135,7 @@ async def batch_update_registrations(
     body: RegistrationBatchUpdate,
     request: Request = Request,
     user: dict = Depends(require_permission("review.registrations", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     if not body.ids:
         raise HTTPException(status_code=400, detail="未选择任何记录")
@@ -169,7 +169,7 @@ async def update_registration_status(
     remark: str | None = Query(default=None, max_length=1000),
     request: Request = Request,
     user: dict = Depends(require_permission("review.registrations", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     reg = await db.get(Registration, reg_id)
     if not reg:
@@ -196,7 +196,7 @@ async def export_registrations(
     fmt: Literal["csv", "xlsx"] = "xlsx",
     request: Request = Request,
     user: dict = Depends(require_permission("review.registrations", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     # 必须指定 activity_id 或 registration_type=club
     if activity_id:
@@ -245,7 +245,7 @@ async def manual_create_registration(
     req: ManualRegistrationCreate,
     request: Request,
     user: dict = Depends(require_permission("review.registrations", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """管理员手动新增报名名单：不校验报名时间窗与人数上限，status 默认 approved。
 

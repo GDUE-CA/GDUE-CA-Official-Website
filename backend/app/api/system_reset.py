@@ -38,7 +38,7 @@ async def submit_system_reset(
     body: SystemResetRequest,
     request: Request,
     user: dict = Depends(require_permission("system_reset", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """提交系统重置：立刻返回 task_id，后台按 备份→清空→清理→下线 顺序执行。"""
     # 第二道确认（第一道在前端 UI）：文本必须逐字匹配

@@ -48,7 +48,7 @@ def _is_in_effect(r: RecruitmentInfo, now: datetime) -> bool:
 # ---------- 公开：招新信息列表 ----------
 @public_router.get("", response_model=list[RecruitmentPublicOut])
 async def list_public_recruitment(
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """公开：仅返回已启用 + 时间生效中的招新信息。"""
     now_naive = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -70,7 +70,7 @@ async def admin_list_recruitment_infos(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     user: dict = Depends(require_permission("recruitment", "view")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     stmt = select(RecruitmentInfo)
     if enabled is not None:
@@ -85,7 +85,7 @@ async def admin_list_recruitment_infos(
 async def admin_get_recruitment_info(
     rid: int,
     user: dict = Depends(require_permission("recruitment", "view")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     r = await db.get(RecruitmentInfo, rid)
     if not r:
@@ -99,7 +99,7 @@ async def admin_create_recruitment_info(
     req: RecruitmentInfoCreate,
     request: Request,
     user: dict = Depends(require_permission("recruitment", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     if req.start_at and req.end_at and req.start_at >= req.end_at:
         raise HTTPException(status_code=400, detail="开始时间必须早于结束时间")
@@ -118,7 +118,7 @@ async def admin_update_recruitment_info(
     req: RecruitmentInfoUpdate,
     request: Request,
     user: dict = Depends(require_permission("recruitment", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     r = await db.get(RecruitmentInfo, rid)
     if not r:
@@ -142,7 +142,7 @@ async def admin_delete_recruitment_info(
     rid: int,
     request: Request,
     user: dict = Depends(require_permission("recruitment", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     r = await db.get(RecruitmentInfo, rid)
     if not r:
@@ -161,7 +161,7 @@ async def admin_list_club_registrations(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     user: dict = Depends(require_permission("recruitment", "view")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     stmt = select(Registration).where(Registration.registration_type == RegistrationType.CLUB)
     if status_filter:
@@ -181,7 +181,7 @@ async def admin_export_club_registrations(
     position: str | None = Query(default=None, max_length=64),
     q: str | None = Query(default=None, max_length=64),
     user: dict = Depends(require_permission("recruitment", "view")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     stmt = select(Registration).where(Registration.registration_type == RegistrationType.CLUB)
     if status_filter:

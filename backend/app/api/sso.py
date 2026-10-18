@@ -108,7 +108,7 @@ async def authorize(
     redirect_uri: str,
     state: str | None = None,
     scope: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """SSO 授权端点：需站内登录态（浏览器 Cookie）。
 
@@ -158,7 +158,7 @@ async def token_endpoint(
     code: str = Form(...),
     client_id: str = Form(...),
     client_secret: str = Form(...),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """授权码换 access_token：client_secret bcrypt 校验 + 授权码一次性防重放。"""
     if grant_type != "authorization_code":
@@ -186,7 +186,7 @@ async def token_endpoint(
 # ==================== 用户信息端点 ====================
 
 @public_router.get("/userinfo", response_model=SsoUserInfo)
-async def userinfo(request: Request, db: AsyncSession = Depends(get_db)):
+async def userinfo(request: Request, db: AsyncSession = Depends(get_db, scope="function")):
     """Bearer access_token → 用户最小信息。"""
     auth = request.headers.get("authorization", "")
     if not auth.startswith("Bearer "):
@@ -206,7 +206,7 @@ async def userinfo(request: Request, db: AsyncSession = Depends(get_db)):
 @admin_router.get("/clients", response_model=list[SsoClientOut])
 async def list_clients(
     user: dict = Depends(require_permission("sso", "view")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     rows = (await db.execute(
         select(SsoClient).order_by(SsoClient.created_at.desc())
@@ -219,7 +219,7 @@ async def create_client(
     req: SsoClientCreate,
     request: Request,
     user: dict = Depends(require_permission("sso", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """创建受信应用：client_id 自动生成，client_secret 明文仅本次返回。"""
     client_id = "gd_" + py_secrets.token_urlsafe(12)
@@ -245,7 +245,7 @@ async def update_client(
     req: SsoClientUpdate,
     request: Request,
     user: dict = Depends(require_permission("sso", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     c = await db.get(SsoClient, client_row_id)
     if not c:
@@ -270,7 +270,7 @@ async def reset_client_secret(
     client_row_id: int,
     request: Request,
     user: dict = Depends(require_permission("sso", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """重置 client_secret：明文仅本次返回。"""
     c = await db.get(SsoClient, client_row_id)
@@ -290,7 +290,7 @@ async def delete_client(
     client_row_id: int,
     request: Request,
     user: dict = Depends(require_permission("sso", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     c = await db.get(SsoClient, client_row_id)
     if not c:

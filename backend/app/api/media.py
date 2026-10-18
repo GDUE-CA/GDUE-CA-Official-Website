@@ -73,7 +73,7 @@ async def list_media(
     category: str | None = None,
     q: str | None = None,
     user: dict = Depends(require_permission("media", "view")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """文件资源分页列表：分类筛选 + 文件名/原始名搜索。"""
     stmt = select(MediaFile).order_by(MediaFile.created_at.desc(), MediaFile.id.desc())
@@ -103,7 +103,7 @@ async def upload_media(
     file: UploadFile = File(...),
     category: str = Form("misc"),
     user: dict = Depends(require_permission("media", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """上传通用文件资源（图片 / 文档 / 压缩包），写入 media_files 记录。"""
     try:
@@ -158,7 +158,7 @@ async def delete_media(
     media_id: int,
     request: Request,
     user: dict = Depends(require_permission("media", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """删除文件资源：同时移除物理文件（引用由使用者自行保证）。"""
     m = await db.get(MediaFile, media_id)

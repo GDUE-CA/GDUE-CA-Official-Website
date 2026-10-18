@@ -75,7 +75,7 @@ def _out(row: UserRecoveryCode) -> RecoveryCodeOut:
 async def generate_recovery_code(
     request: Request,
     user: dict = _WRITE_DEP,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """生成一次性恢复码：明文仅此响应返回一次，此后服务端只存哈希无法还原。"""
     _reject_break_glass(user)
@@ -93,7 +93,7 @@ async def generate_recovery_code(
 @router.get("/recovery-codes", response_model=list[RecoveryCodeOut])
 async def list_recovery_codes(
     user: dict = _WRITE_DEP,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """本账号全部恢复码元数据（含已使用 / 已作废，前端分状态展示）。"""
     _reject_break_glass(user)
@@ -110,7 +110,7 @@ async def revoke_recovery_code(
     code_id: int,
     request: Request,
     user: dict = _WRITE_DEP,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """手动作废：仅本人可作废；已使用的码不可再作废（状态已终态）。"""
     _reject_break_glass(user)
@@ -136,7 +136,7 @@ async def revoke_recovery_code(
 async def reset_password_with_recovery_code(
     req: RecoveryResetRequest,
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """恢复码找回账号：一次性核销 + 重置密码 + 全部会话强制下线。
 

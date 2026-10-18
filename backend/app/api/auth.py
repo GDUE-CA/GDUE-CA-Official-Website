@@ -224,7 +224,7 @@ async def get_csrf_token(request: Request, response: Response):
 async def register_send_code(
     req: RegisterSendCodeRequest,
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """注册第一步：向待注册邮箱发送 6 位验证码。
 
@@ -279,7 +279,7 @@ async def register_send_code(
 )
 async def register_check_username(
     username: str = Query(min_length=2, max_length=64),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """注册第二步：用户名占用实时检查（available=True 表示可用）。"""
     dup = (await db.execute(
@@ -315,7 +315,7 @@ async def _consume_register_code(db: AsyncSession, email: str, code: str) -> Non
 async def register(
     req: RegisterRequest,
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     # 系统初始化门禁：未完成初始化向导时关闭公开注册
     ss = await db.get(SystemSetting, 1)
@@ -376,7 +376,7 @@ async def login(
     req: LoginRequest,
     request: Request,
     response: Response,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """登录：Break-Glass 应急账号与普通账号双轨。
 
@@ -584,7 +584,7 @@ async def login(
 
 # ---------- 退出登录 ----------
 @router.post("/logout")
-async def logout(request: Request, response: Response, db: AsyncSession = Depends(get_db)):
+async def logout(request: Request, response: Response, db: AsyncSession = Depends(get_db, scope="function")):
     """撤销当前会话并清除 Cookie；登录态已失效时也能安全调用。
 
     Break-Glass 会话：删除 KV 会话条目并写审计（操作者 [BREAK_GLASS_ESCAPE]）。
@@ -624,7 +624,7 @@ async def heartbeat(user: dict = Depends(require_role(Role.MEMBER, allow_pending
 @router.get("/sessions", response_model=list[LoginSessionOut])
 async def list_sessions(
     user: dict = Depends(require_role(Role.MEMBER, allow_unverified_realname=True)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     _reject_break_glass(user)
     result = await db.execute(
@@ -649,7 +649,7 @@ async def revoke_session(
     session_row_id: int,
     request: Request,
     user: dict = Depends(require_role(Role.MEMBER, allow_unverified_realname=True)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     _reject_break_glass(user)
     result = await db.execute(
@@ -677,7 +677,7 @@ async def revoke_session(
 async def revoke_other_sessions(
     request: Request,
     user: dict = Depends(require_role(Role.MEMBER, allow_unverified_realname=True)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """一键下线全部其他设备：撤销当前会话之外该用户的全部未撤销会话。"""
     _reject_break_glass(user)
@@ -704,7 +704,7 @@ async def revoke_all_sessions(
     request: Request,
     response: Response,
     user: dict = Depends(require_role(Role.MEMBER, allow_unverified_realname=True)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """销毁当前用户的全部会话（含当前会话），并清除登录 Cookie。
 
@@ -736,7 +736,7 @@ async def revoke_all_sessions(
 @router.get("/me", response_model=UserOut)
 async def me(
     user: dict = Depends(require_role(Role.MEMBER, allow_pending_password_change=True, allow_unverified_realname=True)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     # Break-Glass：合成响应（永不查 users 表、不存在任何虚拟库行）
     if user.get("break_glass"):
@@ -778,7 +778,7 @@ def _sniff_image(data: bytes) -> str | None:
 @router.get("/profile", response_model=UserOut)
 async def get_profile(
     user: dict = Depends(require_role(Role.MEMBER, allow_pending_password_change=True, allow_unverified_realname=True)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """获取当前用户完整资料。"""
     _reject_break_glass(user)
@@ -794,7 +794,7 @@ async def update_profile(
     req: ProfileUpdate,
     request: Request,
     user: dict = Depends(require_role(Role.MEMBER, allow_unverified_realname=True)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """更新个人资料：显示名称、真实姓名、手机号、学号。"""
     _reject_break_glass(user)
@@ -974,7 +974,7 @@ async def upload_avatar(
     request: Request,
     file: UploadFile = File(...),
     user: dict = Depends(require_role(Role.MEMBER, allow_unverified_realname=True)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """上传头像（jpg/png/webp，原始文件最大 15MB）；按文件内容识别类型，拒绝伪装文件；
     统一 80% 质量压缩后存储，压缩结果仍超过 5MB 才拒绝。"""
@@ -1018,7 +1018,7 @@ async def upload_avatar(
 async def reset_avatar(
     request: Request,
     user: dict = Depends(require_role(Role.MEMBER, allow_unverified_realname=True)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """恢复默认头像：清空 avatar_url 并删除旧头像文件。"""
     _reject_break_glass(user)
@@ -1041,7 +1041,7 @@ async def upload_banner(
     request: Request,
     file: UploadFile = File(...),
     user: dict = Depends(require_role(Role.MEMBER, allow_unverified_realname=True)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """上传个人主页封面（jpg/png/webp，原始最大 15MB）；与头像同一套
     魔数识别 + 80% 压缩；压缩后仍超 5MB 拒绝。旧封面文件同步清理。"""
@@ -1084,7 +1084,7 @@ async def upload_banner(
 async def reset_banner(
     request: Request,
     user: dict = Depends(require_role(Role.MEMBER, allow_unverified_realname=True)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """恢复默认封面：清空 profile_banner 并删除旧封面文件（纯色设置不受影响）。"""
     _reject_break_glass(user)
@@ -1108,7 +1108,7 @@ async def change_password(
     request: Request,
     response: Response,
     user: dict = Depends(require_role(Role.MEMBER, allow_pending_password_change=True, allow_unverified_realname=True)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """已登录改密（个人设置）：强制旧密码，不提供邮箱验证码绕过入口。
 
@@ -1172,7 +1172,7 @@ async def list_users(
     page: int | None = Query(default=None, ge=1, description="传入时分页返回 {items,total,page,page_size}；缺省返回全量列表（兼容）"),
     page_size: int = Query(default=20, ge=1, le=200),
     user: dict = Depends(require_permission("users", "view")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """账号列表：q 模糊匹配显示名称/真实姓名/学号/邮箱，支持角色与启用状态筛选。
 
@@ -1205,7 +1205,7 @@ async def list_users(
 async def get_user_detail(
     user_id: int,
     user: dict = Depends(require_permission("users", "view")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """用户详情（P0：GET /api/admin/users/{id} 语义；回收站中的账号同样可查）。"""
     u = await db.get(User, user_id)
@@ -1219,7 +1219,7 @@ async def create_user(
     req: UserCreate,
     request: Request,
     user: dict = Depends(require_role(Role.SUPER_ADMIN)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     # 查重
     existing = await db.execute(
@@ -1252,7 +1252,7 @@ async def delete_user(
     user_id: int,
     request: Request,
     user: dict = Depends(require_role(Role.SUPER_ADMIN)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """软删除账号：送入内容回收站，定时任务 30 天后物理清除。
 
@@ -1278,7 +1278,7 @@ async def update_user(
     req: UserUpdate,
     request: Request,
     user: dict = Depends(require_role(Role.MEMBER, allow_unverified_realname=True)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """更新账号信息：自己可改基础资料，super_admin 额外可改 role/is_active/permission_overrides。"""
     is_self = ctx_uid(user) == user_id
@@ -1362,7 +1362,7 @@ async def batch_update_users(
     body: UsersBatchUpdate,
     request: Request,
     user: dict = Depends(require_role(Role.SUPER_ADMIN)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """批量启停账号：仅 super_admin；不能包含自己；停用即撤销其会话并审计。"""
     me = ctx_uid(user)
@@ -1398,7 +1398,7 @@ async def require_break_glass(user: dict = Depends(require_role(Role.SUPER_ADMIN
 async def purge_admin_accounts(
     request: Request,
     user: dict = Depends(require_break_glass),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """灾难修复特权（仅 Break-Glass）：清空数据库内全部 admin / super_admin 业务账号。
 
@@ -1437,7 +1437,7 @@ async def admin_reset_user_password(
     user_id: int,
     request: Request,
     user: dict = Depends(require_role(Role.SUPER_ADMIN)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """超级管理员重置任意账号密码：生成临时密码一次性返回，账号强制下次登录改密。"""
     u = await db.get(User, user_id)
@@ -1464,7 +1464,7 @@ async def admin_reset_user_password(
 async def submit_forgot_password(
     req: ForgotPasswordRequest,
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """访客提交忘记密码申请，管理员审核后手动联系处理。"""
     reset_req = PasswordResetRequest(
@@ -1496,7 +1496,7 @@ def _placeholder_email(email: str) -> bool:
 async def send_forgot_password_code(
     req: ForgotPasswordSendCodeRequest,
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """发送忘记密码验证码到绑定邮箱（未登录找回密码专用通道）。
 
@@ -1559,7 +1559,7 @@ async def send_forgot_password_code(
 async def reset_password_with_code(
     req: ForgotPasswordResetRequest,
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """邮箱验证码重置密码：校验验证码 + 强密码策略 + 二次确认（schema 层）。
 
@@ -1612,7 +1612,7 @@ async def reset_password_with_code(
 async def list_password_resets(
     status_filter: PasswordResetStatus | None = None,
     user: dict = Depends(require_permission("review.resets", "view")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     stmt = select(PasswordResetRequest)
     if status_filter:
@@ -1630,7 +1630,7 @@ async def handle_password_reset(
     req: PasswordResetHandleRequest,
     request: Request,
     user: dict = Depends(require_permission("review.resets", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     reset_req = await db.get(PasswordResetRequest, reset_id)
     if not reset_req:
@@ -1656,7 +1656,7 @@ async def batch_handle_password_resets(
     req: PasswordResetBatchRequest,
     request: Request,
     user: dict = Depends(require_permission("review.resets", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     if not req.ids:
         raise HTTPException(status_code=400, detail="未选择任何申请")
@@ -1700,7 +1700,7 @@ _FAKE_SECURITY_QUESTIONS = [
 @router.get("/security-questions/presets")
 async def list_preset_security_questions(
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """返回启用中的预设问题列表（公开，前端下拉用）。
 
@@ -1728,7 +1728,7 @@ async def list_preset_security_questions(
 )
 async def get_security_questions(
     username: str = Query(..., max_length=128),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """返回指定用户 3 个安全问题（不含答案）。
 
@@ -1764,7 +1764,7 @@ async def get_security_questions(
 async def recover_via_security_questions(
     req: RecoverRequest,
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """安全问题恢复账号：答对 3 个中 2 个即重置密码 + 撤会话 + must_change_password=True。
 
@@ -1826,7 +1826,7 @@ async def setup_security_questions(
     req: SecurityQuestionsSetupRequest,
     request: Request,
     user: dict = Depends(require_role(Role.MEMBER)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """设置 / 补设自己的 3 个安全问题（登录态，需当前密码确认）。
 
@@ -1866,7 +1866,7 @@ async def update_security_questions(
     req: SecurityQuestionsSetupRequest,
     request: Request,
     user: dict = Depends(require_role(Role.MEMBER)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """修改自己的 3 个安全问题（需当前密码确认，等价 setup，走 PUT 语义）。"""
     return await setup_security_questions(req, request, user, db)

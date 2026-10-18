@@ -5,7 +5,7 @@
         "code":        0,       # 0=成功；>0=业务错误码（见 bizcode.BizCode）
         "message":     "",      # 成功为空；错误为 {key: i18n_key, params?: {...}}；仅展示，禁止参与业务判断
         "data":        ...,     # 业务载荷；错误时通常为 None
-        "request_id":  "..."    # 与响应头 X-Request-Id / X-Trace-Id 同值
+        "request_id":  "..."    # 与响应头 X-Request-Id 同值
     }
 
 过渡期（`Settings.RESPONSE_WRAPPER_MODE == "dual"`）：
@@ -28,7 +28,7 @@ from fastapi.responses import JSONResponse
 
 from app.core.bizcode import BizCode, get_meta, http_status_for, to_i18n_msg
 from app.core.config import get_settings
-from app.core.log import current_trace_id
+from app.core.log import current_request_id as _ctx_request_id
 
 
 def _json_default(obj: Any) -> Any:
@@ -46,7 +46,7 @@ def _json_default(obj: Any) -> Any:
 
 def _request_id() -> str:
     """当前请求的 request_id；未在请求上下文时返回 "-"（如启动期）。"""
-    rid = current_trace_id()
+    rid = _ctx_request_id()
     return rid if rid and rid != "-" else ""
 
 
@@ -106,7 +106,7 @@ class BizException(Exception):
 class EnvelopeJSONResponse(JSONResponse):
     """序列化时自动注入 request_id / 设置 X-Request-Id 响应头。
 
-    - `render()`：仅在 `request_id` 字段为空时，从 `trace_id_var` contextvar 拿；
+    - `render()`：仅在 `request_id` 字段为空时，从 `request_id_var` contextvar 拿；
       若已被调用方（如 exception_handler）显式设置（解决跨 task contextvar 失效），则不覆盖。
     - `init_headers()`：从 contextvar 设 `X-Request-Id`；若显式传入 header 则保留。
     """
@@ -129,7 +129,6 @@ class EnvelopeJSONResponse(JSONResponse):
         super().init_headers(headers)
         rid = _request_id()
         if rid:
-            # 与 trace.py 中 TRACE_HEADER 同值；新增 X-Request-Id 兼容规范要求
             self.headers.setdefault("X-Request-Id", rid)
 
 

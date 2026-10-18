@@ -30,7 +30,7 @@ async def list_background_tasks(
     include_dismissed: bool = Query(False),
     limit: int = Query(20, ge=1, le=100),
     user: dict = Depends(require_role(Role.EDITOR)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """后台任务列表（新的在前）；默认仅返回用户尚未手动关闭的任务。"""
     stmt = select(BackgroundTask)
@@ -48,7 +48,7 @@ async def list_background_tasks(
 async def get_background_task(
     task_id: str,
     user: dict = Depends(require_role(Role.EDITOR)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """单任务完整信息（前端 800ms 轮询；进入终态后前端停止轮询）。"""
     row = await db.get(BackgroundTask, task_id)
@@ -61,7 +61,7 @@ async def get_background_task(
 async def dismiss_background_task(
     task_id: str,
     user: dict = Depends(require_role(Role.EDITOR)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """用户手动关闭任务通知（幂等）；关闭后从通知中心/悬浮弹窗消失，记录仍保留。"""
     from datetime import datetime, timezone

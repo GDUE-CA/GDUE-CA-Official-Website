@@ -59,7 +59,7 @@ def _default_modules_for(role: Role) -> dict[str, list[str]]:
 @router.get("", response_model=RolesOverviewOut)
 async def get_roles_overview(
     user: dict = Depends(require_permission("roles", "view")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """角色定义 + 各角色有效账号数 + 权限模块清单（页面骨架数据）。"""
     rows = (await db.execute(
@@ -84,7 +84,7 @@ async def get_roles_overview(
 @router.get("/overrides", response_model=list[OverrideUserOut])
 async def list_override_users(
     user: dict = Depends(require_permission("roles", "view")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """列出所有配置了权限覆盖矩阵的账号（软删除账号除外）。"""
     rows = (await db.execute(

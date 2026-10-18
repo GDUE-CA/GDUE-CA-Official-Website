@@ -96,7 +96,7 @@ def _uid(user) -> int:
 @router.get("", response_model=NotificationListOut)
 async def list_my_notifications(
     user: dict = Depends(require_role(Role.MEMBER)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """后端过滤：仅返回【生效中、未过期、已启用】的信息通知，附已读状态与未读数。
 
@@ -161,7 +161,7 @@ async def list_my_notifications(
 async def mark_notification_read(
     nid: int,
     user: dict = Depends(require_role(Role.MEMBER)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """单条通知标记为已读（幂等）：已存在记录直接返回最新未读数。"""
     a = await db.get(Announcement, nid)
@@ -186,7 +186,7 @@ async def mark_notification_read(
 async def mark_message_read(
     mid: int,
     user: dict = Depends(require_role(Role.MEMBER)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """单条站内私信标记为已读（幂等，仅本人私信可操作）。"""
     msg = await db.get(UserMessage, mid)
@@ -202,7 +202,7 @@ async def mark_message_read(
 @router.post("/read-all", response_model=MarkReadOut)
 async def mark_all_notifications_read(
     user: dict = Depends(require_role(Role.MEMBER)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """把当前所有【生效中且已启用】的通知 + 全部站内私信一次性标记为已读（幂等）。"""
     uid = _uid(user)

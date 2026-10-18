@@ -63,7 +63,7 @@ async def _get_or_create_display(db: AsyncSession, uid: int) -> UserDisplayPrefe
 @router.get("/display", response_model=None)
 async def get_display_preference(
     user: dict = Depends(require_role(Role.MEMBER, allow_unverified_realname=True)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     uid = await _current_user_id(user)
     row = await db.get(UserDisplayPreference, uid)
@@ -76,7 +76,7 @@ async def get_display_preference(
 async def update_display_preference(
     body: DisplayPreferenceUpdate,
     user: dict = Depends(require_role(Role.MEMBER, allow_unverified_realname=True)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     uid = await _current_user_id(user)
     row = await _get_or_create_display(db, uid)
@@ -122,7 +122,7 @@ async def _get_or_create_notify(db: AsyncSession, uid: int) -> UserNotificationP
 @router.get("/notifications", response_model=None)
 async def get_notification_preference(
     user: dict = Depends(require_role(Role.MEMBER, allow_unverified_realname=True)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     uid = await _current_user_id(user)
     row = await db.get(UserNotificationPreference, uid)
@@ -139,7 +139,7 @@ async def get_notification_preference(
 async def update_notification_preference(
     body: NotificationPreferenceUpdate,
     user: dict = Depends(require_role(Role.MEMBER, allow_unverified_realname=True)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     uid = await _current_user_id(user)
     row = await _get_or_create_notify(db, uid)
@@ -172,7 +172,7 @@ async def _get_blocked_rows(db: AsyncSession, uid: int) -> list[tuple[UserBlock,
 @router.get("/blocks", response_model=None)
 async def list_blocks(
     user: dict = Depends(require_role(Role.MEMBER, allow_unverified_realname=True)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     uid = await _current_user_id(user)
     rows = await _get_blocked_rows(db, uid)
@@ -193,7 +193,7 @@ async def list_blocks(
 async def search_block_targets(
     q: str = Query(min_length=1, max_length=64),
     user: dict = Depends(require_role(Role.MEMBER, allow_unverified_realname=True)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """按用户名 / 昵称搜索可拉黑用户（排除自己、已拉黑、已删除）。"""
     uid = await _current_user_id(user)
@@ -228,7 +228,7 @@ async def search_block_targets(
 async def create_block(
     body: BlockCreate,
     user: dict = Depends(require_role(Role.MEMBER, allow_unverified_realname=True)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     uid = await _current_user_id(user)
     if body.user_id is None and not body.username:
@@ -263,7 +263,7 @@ async def create_block(
 async def delete_block(
     blocked_id: int,
     user: dict = Depends(require_role(Role.MEMBER, allow_unverified_realname=True)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     uid = await _current_user_id(user)
     row = (
@@ -285,7 +285,7 @@ async def delete_block(
 @router.get("/oauth-grants", response_model=None)
 async def list_oauth_grants(
     user: dict = Depends(require_role(Role.MEMBER, allow_unverified_realname=True)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     uid = await _current_user_id(user)
     rows = (
@@ -309,7 +309,7 @@ async def revoke_oauth_grant(
     grant_id: int,
     request: Request,
     user: dict = Depends(require_role(Role.MEMBER, allow_unverified_realname=True)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """撤销第三方授权绑定（敏感操作：写审计日志，只增不改不删）。"""
     uid = await _current_user_id(user)

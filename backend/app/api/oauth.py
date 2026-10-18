@@ -225,7 +225,7 @@ async def _fetch_bearer_profile(endpoint: str, token: str) -> dict:
 # ==================== 公开接口 ====================
 
 @public_router.get("/channels", response_model=list[ChannelBrief])
-async def list_public_channels(db: AsyncSession = Depends(get_db)):
+async def list_public_channels(db: AsyncSession = Depends(get_db, scope="function")):
     """公开渠道开关（登录页按此显隐第三方按钮），不返回任何凭据。"""
     rows = (await db.execute(select(LoginChannel))).scalars().all()
     enabled = {r.provider.value for r in rows if r.enabled}
@@ -236,7 +236,7 @@ async def list_public_channels(db: AsyncSession = Depends(get_db)):
 @public_router.get("/{provider}/login", dependencies=[Depends(rate_limit("oauth_login", limit=30, window_seconds=60))])
 async def oauth_login(
     provider: str, request: Request, next: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """发起第三方授权：302 到授权页，state 为签名 JWT（10 分钟）。"""
     p = _provider_or_400(provider)
@@ -323,7 +323,7 @@ async def _bind_or_redirect(
 @public_router.get("/{provider}/callback", dependencies=[Depends(rate_limit("oauth_cb", limit=40, window_seconds=60))])
 async def oauth_callback(
     provider: str, request: Request, code: str | None = None, state: str | None = None,
-    error: str | None = None, db: AsyncSession = Depends(get_db),
+    error: str | None = None, db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """GitHub / Microsoft / Google 授权回调。"""
     p = _provider_or_400(provider)
@@ -371,7 +371,7 @@ async def oauth_callback(
 
 @public_router.post("/{provider}/callback", dependencies=[Depends(rate_limit("oauth_cb", limit=40, window_seconds=60))])
 async def oauth_callback_apple(
-    provider: str, request: Request, db: AsyncSession = Depends(get_db),
+    provider: str, request: Request, db: AsyncSession = Depends(get_db, scope="function"),
     code: str | None = Form(default=None), id_token: str | None = Form(default=None),
     state: str | None = Form(default=None), user: str | None = Form(default=None),
 ):
@@ -425,7 +425,7 @@ async def complete_profile(
     req: CompleteProfileRequest,
     request: Request,
     response: Response,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """第三方首次登录补资料：创建 member 账号并绑定（用户名手动自定义）。"""
     payload = _verify_signed(request.cookies.get(PENDING_COOKIE), "oauth_pending")
@@ -514,7 +514,7 @@ def _channel_out(ch: LoginChannel | None) -> ChannelOut:
 @admin_router.get("/channels", response_model=list[ChannelOut])
 async def list_channels(
     user: dict = Depends(require_permission("oauth", "view")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """4 渠道配置列表（secret 脱敏）。"""
     rows = {r.provider.value: r for r in (
@@ -529,7 +529,7 @@ async def update_channel(
     req: ChannelUpdate,
     request: Request,
     user: dict = Depends(require_permission("oauth", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """更新渠道配置：开关 / client_id / secret（重新加密）/ redirect_uri。"""
     p = _provider_or_400(provider)

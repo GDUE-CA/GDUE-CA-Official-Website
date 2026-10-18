@@ -1,10 +1,11 @@
 /**
  * AuditLogs API - 对应后端 app/api/audit.py
  *
- * 操作日志只读查询：分页 + action 前缀筛选 + 关键词搜索 + 日期/用户/目标筛选 + CSV 导出。
+ * 操作日志只读查询：分页 + action 前缀筛选 + 关键词搜索 + 日期/用户/目标筛选 + CSV 导出；
+ * 数据库写操作审计：按 trace id 查看该次写入的全部行级变更。
  */
 import { apiFetch, secureFetch } from "./client";
-import type { AuditLogInfo, Paginated } from "@/types/api";
+import type { AuditLogInfo, DbTraceDetail, Paginated } from "@/types/api";
 
 export interface AuditLogFilters {
   action?: string;
@@ -13,6 +14,8 @@ export interface AuditLogFilters {
   target?: string;
   date_from?: string;
   date_to?: string;
+  request_id?: string;
+  trace_id?: string;
 }
 
 function buildQuery(params: AuditLogFilters & { page?: number; page_size?: number }): string {
@@ -23,6 +26,8 @@ function buildQuery(params: AuditLogFilters & { page?: number; page_size?: numbe
   if (params.target) qs.set("target", params.target);
   if (params.date_from) qs.set("date_from", params.date_from);
   if (params.date_to) qs.set("date_to", params.date_to);
+  if (params.request_id) qs.set("request_id", params.request_id);
+  if (params.trace_id) qs.set("trace_id", params.trace_id);
   if (params.page) qs.set("page", String(params.page));
   if (params.page_size) qs.set("page_size", String(params.page_size));
   return qs.toString();
@@ -39,6 +44,11 @@ export function adminListAuditLogs(
   return apiFetch<Paginated<AuditLogInfo>>(
     `/api/admin/audit-logs${query ? `?${query}` : ""}`
   );
+}
+
+/** 管理：数据库写操作 trace 详情（发起上下文 + 行级变更 + 同事务操作日志） */
+export function adminGetDbTrace(traceId: string) {
+  return apiFetch<DbTraceDetail>(`/api/admin/db-traces/${encodeURIComponent(traceId)}`);
 }
 
 /** 管理：操作日志 CSV 导出（与列表同一套筛选，上限 2000 行） */

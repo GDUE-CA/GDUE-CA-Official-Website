@@ -100,7 +100,7 @@ class OverviewOut(BaseModel):
 @router.get("/overview", response_model=OverviewOut)
 async def get_overview(
     user: Annotated[dict, Depends(require_permission("dashboard", "view"))],
-    db: Annotated[AsyncSession, Depends(get_db)],
+    db: Annotated[AsyncSession, Depends(get_db, scope="function")],
 ):
     """仪表盘待办聚合：SQL COUNT 直查，不拉全量列表。"""
     activities_total = (await db.execute(
@@ -133,7 +133,7 @@ async def get_overview(
 @router.get("/access", response_model=AccessStatsOut)
 async def get_access_stats(
     user: Annotated[dict, Depends(require_permission("dashboard", "view"))],
-    db: Annotated[AsyncSession, Depends(get_db)],
+    db: Annotated[AsyncSession, Depends(get_db, scope="function")],
 ):
     """聚合后台操作与游客表单提交的 IP 来源统计（概览页访问来源卡片）。"""
     # 三个来源分别按 IP 聚合：次数 + 最近时间

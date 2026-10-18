@@ -79,7 +79,7 @@ class SystemInitRequest(BaseModel):
 
 
 @router.get("/status")
-async def get_init_status(db: AsyncSession = Depends(get_db)):
+async def get_init_status(db: AsyncSession = Depends(get_db, scope="function")):
     """公开接口：返回系统初始化状态（前端据此决定是否跳转向导）。"""
     ss = await db.get(SystemSetting, 1)
     if not ss:
@@ -97,7 +97,7 @@ async def get_init_status(db: AsyncSession = Depends(get_db)):
 async def verify_bg_password(
     req: BGPasswordVerifyRequest,
     user: dict = Depends(require_break_glass),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """步骤1校验：Break-Glass 新密码是否符合应急账号强密码策略（前端实时调用）。"""
     if req.password != req.confirm_password:
@@ -113,7 +113,7 @@ async def generate_bg_password_hash(
     req: BGPasswordHashRequest,
     request: Request,
     user: dict = Depends(require_break_glass),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """步骤1生成：校验通过后输出 bcrypt 哈希供运维复制。
 
@@ -142,7 +142,7 @@ async def initialize_system(
     request: Request,
     response: Response,
     user: dict = Depends(require_break_glass),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """步骤4确认提交：原子事务写入全部初始化数据 + 自动登出 Break-Glass。
 

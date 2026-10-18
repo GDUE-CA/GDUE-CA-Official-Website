@@ -45,7 +45,7 @@ admin_router = APIRouter(prefix="/api/admin/sys", tags=["sys-data-admin"])
 # ============================================================
 @public_router.get("/college/list", response_model=list[SysCollegeOut])
 async def list_public_colleges(
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     _: dict | None = Depends(get_optional_user),
 ):
     """获取全部启用的学院。"""
@@ -59,7 +59,7 @@ async def list_public_colleges(
 
 @public_router.get("/grade/list", response_model=list[SysGradeOut])
 async def list_public_grades(
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     _: dict | None = Depends(get_optional_user),
 ):
     """获取全部启用的年级。"""
@@ -74,7 +74,7 @@ async def list_public_grades(
 @public_router.get("/major/list", response_model=list[SysMajorOut])
 async def list_public_majors(
     college_id: int = Query(...),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     _: dict | None = Depends(get_optional_user),
 ):
     """根据学院 ID 获取该学院下启用的专业。"""
@@ -94,7 +94,7 @@ async def list_public_classes(
     college_id: int = Query(...),
     grade_id: int = Query(...),
     major_id: int = Query(...),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     _: dict | None = Depends(get_optional_user),
 ):
     """获取对应班级（学校身份验证页面使用；三条件联动过滤）。"""
@@ -136,7 +136,7 @@ async def _validate_major_college(db: AsyncSession, college_id: int):
 # ---------- 学院 ----------
 @admin_router.get("/college/list", response_model=list[SysCollegeAdminOut])
 async def admin_list_colleges(
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     user: dict = Depends(require_permission("settings", "view")),
 ):
     """后台学院列表（含禁用条目）。"""
@@ -150,7 +150,7 @@ async def admin_list_colleges(
 async def admin_create_college(
     req: SysCollegeCreate,
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     user: dict = Depends(require_permission("settings", "manage")),
 ):
     row = SysCollege(**req.model_dump())
@@ -166,7 +166,7 @@ async def admin_update_college(
     item_id: int,
     req: SysCollegeUpdate,
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     user: dict = Depends(require_permission("settings", "manage")),
 ):
     row = await _get_or_404(db, SysCollege, item_id)
@@ -183,7 +183,7 @@ async def admin_toggle_college(
     item_id: int,
     req: SysEnabledRequest,
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     user: dict = Depends(require_permission("settings", "manage")),
 ):
     row = await _get_or_404(db, SysCollege, item_id)
@@ -198,7 +198,7 @@ async def admin_toggle_college(
 async def admin_sort_colleges(
     req: SysSortRequest,
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     user: dict = Depends(require_permission("settings", "manage")),
 ):
     for i, rid in enumerate(req.ids):
@@ -216,7 +216,7 @@ async def admin_sort_colleges(
 # ---------- 年级 ----------
 @admin_router.get("/grade/list", response_model=list[SysGradeAdminOut])
 async def admin_list_grades(
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     user: dict = Depends(require_permission("settings", "view")),
 ):
     rows = (await db.execute(
@@ -229,7 +229,7 @@ async def admin_list_grades(
 async def admin_create_grade(
     req: SysGradeCreate,
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     user: dict = Depends(require_permission("settings", "manage")),
 ):
     row = SysGrade(**req.model_dump())
@@ -245,7 +245,7 @@ async def admin_update_grade(
     item_id: int,
     req: SysGradeUpdate,
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     user: dict = Depends(require_permission("settings", "manage")),
 ):
     row = await _get_or_404(db, SysGrade, item_id)
@@ -262,7 +262,7 @@ async def admin_toggle_grade(
     item_id: int,
     req: SysEnabledRequest,
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     user: dict = Depends(require_permission("settings", "manage")),
 ):
     row = await _get_or_404(db, SysGrade, item_id)
@@ -277,7 +277,7 @@ async def admin_toggle_grade(
 async def admin_sort_grades(
     req: SysSortRequest,
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     user: dict = Depends(require_permission("settings", "manage")),
 ):
     for i, rid in enumerate(req.ids):
@@ -296,7 +296,7 @@ async def admin_sort_grades(
 @admin_router.get("/major/list", response_model=list[SysMajorAdminOut])
 async def admin_list_majors(
     college_id: int | None = Query(default=None),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     user: dict = Depends(require_permission("settings", "view")),
 ):
     stmt = select(SysMajor)
@@ -312,7 +312,7 @@ async def admin_list_majors(
 async def admin_create_major(
     req: SysMajorCreate,
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     user: dict = Depends(require_permission("settings", "manage")),
 ):
     await _validate_major_college(db, req.college_id)
@@ -329,7 +329,7 @@ async def admin_update_major(
     item_id: int,
     req: SysMajorUpdate,
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     user: dict = Depends(require_permission("settings", "manage")),
 ):
     row = await _get_or_404(db, SysMajor, item_id)
@@ -349,7 +349,7 @@ async def admin_toggle_major(
     item_id: int,
     req: SysEnabledRequest,
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     user: dict = Depends(require_permission("settings", "manage")),
 ):
     row = await _get_or_404(db, SysMajor, item_id)
@@ -364,7 +364,7 @@ async def admin_toggle_major(
 async def admin_sort_majors(
     req: SysSortRequest,
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     user: dict = Depends(require_permission("settings", "manage")),
 ):
     for i, rid in enumerate(req.ids):
@@ -385,7 +385,7 @@ async def admin_list_classes(
     college_id: int | None = Query(default=None),
     grade_id: int | None = Query(default=None),
     major_id: int | None = Query(default=None),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     user: dict = Depends(require_permission("settings", "view")),
 ):
     stmt = select(SysClass)
@@ -405,7 +405,7 @@ async def admin_list_classes(
 async def admin_create_class(
     req: SysClassCreate,
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     user: dict = Depends(require_permission("settings", "manage")),
 ):
     row = SysClass(**req.model_dump())
@@ -421,7 +421,7 @@ async def admin_update_class(
     item_id: int,
     req: SysClassUpdate,
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     user: dict = Depends(require_permission("settings", "manage")),
 ):
     row = await _get_or_404(db, SysClass, item_id)
@@ -438,7 +438,7 @@ async def admin_toggle_class(
     item_id: int,
     req: SysEnabledRequest,
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     user: dict = Depends(require_permission("settings", "manage")),
 ):
     row = await _get_or_404(db, SysClass, item_id)
@@ -453,7 +453,7 @@ async def admin_toggle_class(
 async def admin_sort_classes(
     req: SysSortRequest,
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     user: dict = Depends(require_permission("settings", "manage")),
 ):
     for i, rid in enumerate(req.ids):

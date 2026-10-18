@@ -6,7 +6,7 @@
 # =============================================================================
 set -Eeuo pipefail
 
-log() { echo "$(date +%Y-%m-%dT%H:%M:%S.%3N%:z) INFO  [trace=-] entrypoint | $*"; }
+log() { echo "$(date +%Y-%m-%dT%H:%M:%S.%3N%:z) INFO  [req=-] entrypoint | $*"; }
 
 # ---- 持久化数据目录：数据库、上传文件、JWT 密钥、初始管理员口令、备份 ----
 mkdir -p /data/uploads/avatars /data/backups /tmp/nginx

@@ -9,6 +9,7 @@ from sqlalchemy import (
     Enum as SAEnum,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -17,7 +18,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
-from app.core.log import current_trace_id
+from app.core.log import current_request_id, current_trace_id
 
 
 def utcnow() -> datetime:
@@ -565,16 +566,59 @@ class AuditLog(Base):
     target: Mapped[str | None] = mapped_column(String(64), nullable=True)   # 如 "activity:5"
     detail: Mapped[str | None] = mapped_column(Text, nullable=True)
     ip: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    # 产生该审计记录的请求 traceId，可据此在应用日志中检索完整请求链路
+    # 产生该审计记录的请求 request id，可据此在应用日志中检索完整请求链路
+    request_id: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, index=True, default=lambda: _request_id_or_none()
+    )
+    # 同一事务的数据库写操作 trace id（与 db_traces 一一对应，可查看该次写入的全部行级变更）
     trace_id: Mapped[str | None] = mapped_column(
-        String(64), nullable=True, index=True, default=lambda: _trace_or_none()
+        String(64), nullable=True, index=True, default=lambda: current_trace_id()
     )
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
 
 
-def _trace_or_none() -> str | None:
-    tid = current_trace_id()
-    return None if tid == "-" else tid
+def _request_id_or_none() -> str | None:
+    rid = current_request_id()
+    return None if rid == "-" else rid
+
+
+# ---------- 数据库写操作审计（trace id 与写事务一一对应，见 app.core.db_trace） ----------
+class DbTrace(Base):
+    """一次数据库写操作的上下文：哪个请求 / 谁 / 从哪里发起。
+
+    user_id 不设外键：审计记录须在用户被物理删除后仍然保留。
+    """
+    __tablename__ = "db_traces"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    trace_id: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    request_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    # request（HTTP 请求）/ background（后台任务、定时任务、启动初始化）
+    source: Mapped[str] = mapped_column(String(16), default="request")
+    user_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    actor: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    method: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    path: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    ip: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
+
+
+class DbChangeLog(Base):
+    """行级变更：insert 记新值，update 记 [旧值, 新值]，delete 记旧值；敏感字段脱敏。
+
+    bulk_update / bulk_delete（ORM 批量语句）无法逐行展开，记录语句与条件。
+    """
+    __tablename__ = "db_change_logs"
+    __table_args__ = (Index("ix_db_change_logs_table_row", "table_name", "row_pk"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    trace_id: Mapped[str] = mapped_column(String(64), index=True)
+    table_name: Mapped[str] = mapped_column(String(64))
+    row_pk: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    op: Mapped[str] = mapped_column(String(16))
+    changes: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    # 保留期清理按 created_at 删除
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
 
 
 # ---------- 网络配置变更历史（最近 5 次） ----------
