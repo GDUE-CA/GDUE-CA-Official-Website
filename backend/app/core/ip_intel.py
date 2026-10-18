@@ -3,6 +3,10 @@
 数据源：风控服务 GET {IP_INFO_API_URL}/{ip}（ipinfo / iplocate / maxmind / qqwry 多源），
 国家代码取值优先级 ipinfo.country → maxmind.country.iso_code → iplocate.country_code；
 纯真库（qqwry）的中文国家 / 省 / 市 / area 原样透出，前端优先展示（只有 qqwry 时「中国」→ CN）。
+同时解析双语属地 location_zh / location_en，供 resolve_location_full 在本地库查不到时补全
+（评论 / 登录会话的 IP 属地；本地 ip2region 只支持 IPv4）：
+- 中文：qqwry（国内到市级）→ maxmind names.zh-CN → 按国家代码查中文国名
+- 英文：ipsb country + region → maxmind names.en
 
 限流约束：风控源站按 IP 限速（limit_req burst=10 nodelay），超限后 CDN WAF 还会临时封禁本机出口，
 因此：
@@ -21,19 +25,22 @@ from ipaddress import ip_address
 import httpx
 
 from app.core.config import get_settings
-from app.core.ip_location import resolve_country_code
+from app.core.ip_location import format_maxmind, join_en, join_zh, resolve_country_code, resolve_location
 from app.core.kv import get_kv
+from app.data.geo_data import get_country
 
 logger = logging.getLogger("gdueca.ip_intel")
 
 # 结构变化时递增版本号，使旧缓存失效
-_CACHE_PREFIX = "ipintel:v2:"
+_CACHE_PREFIX = "ipintel:v3:"
 _BREAKER_KEY = "ipintel:breaker"
 _CACHE_TTL_OK = 7 * 86400
 _CACHE_TTL_FAIL = 600
 _BREAKER_TTL = 600
 _MAX_FETCH_PER_BATCH = 8  # 低于源站 burst=10，留余量
 _TIMEOUT_SECONDS = 4
+# 请求链路内（发表评论 / 登录）同步补全属地时的超时：宁可留空也不拖慢请求
+_INLINE_TIMEOUT_SECONDS = 1.5
 
 
 @dataclass
@@ -45,6 +52,8 @@ class IpIntel:
     org: str | None = None
     # 纯真库：{"country", "province", "city", "area"}，均为中文原文，可能为空串
     qqwry: dict[str, str] | None = None
+    location_zh: str | None = None
+    location_en: str | None = None
     source: str = "local"
 
 
@@ -57,7 +66,8 @@ def _is_public(ip: str) -> bool:
 
 
 def _local(ip: str) -> IpIntel:
-    return IpIntel(country_code=resolve_country_code(ip), source="local")
+    zh, en = resolve_location(ip)
+    return IpIntel(country_code=resolve_country_code(ip), location_zh=zh, location_en=en, source="local")
 
 
 def _parse_qqwry(raw: object) -> dict[str, str] | None:
@@ -76,6 +86,26 @@ def _parse_qqwry(raw: object) -> dict[str, str] | None:
         "area": text(raw.get("area")),
     }
     return out if any(out.values()) else None
+
+
+def _parse_location(
+    results: dict, qqwry: dict[str, str] | None, country: str | None,
+) -> tuple[str | None, str | None]:
+    """多源结果 → (中文属地, 英文属地)，规则见模块文档。"""
+    mm_zh, mm_en = format_maxmind(results.get("maxmind") if isinstance(results.get("maxmind"), dict) else None)
+    known = get_country(country) if country else None
+
+    zh = (join_zh(qqwry["country"], qqwry["province"], qqwry["city"]) if qqwry else None) or mm_zh
+    if not zh and known:
+        zh = known.name_zh
+
+    ipsb = results.get("ipsb") if isinstance(results.get("ipsb"), dict) else {}
+    ipsb_country = ipsb.get("country") if isinstance(ipsb.get("country"), str) else None
+    ipsb_region = ipsb.get("region") if isinstance(ipsb.get("region"), str) else None
+    en = (join_en(ipsb_country, ipsb_region) if ipsb_region else None) or mm_en or join_en(ipsb_country, None)
+    if not en and known:
+        en = known.name_en
+    return zh, en
 
 
 def _parse(body: dict) -> IpIntel | None:
@@ -106,11 +136,15 @@ def _parse(body: dict) -> IpIntel | None:
         or iplocate.get("org")
         or maxmind.get("autonomous_system_organization")
     )
+    country = country.upper() if country else None
+    zh, en = _parse_location(results, qqwry, country)
     return IpIntel(
-        country_code=country.upper() if country else None,
+        country_code=country,
         asn=asn,
         org=org if isinstance(org, str) else None,
         qqwry=qqwry,
+        location_zh=zh,
+        location_en=en,
         source="remote",
     )
 
@@ -132,7 +166,7 @@ async def _fetch(client: httpx.AsyncClient, base: str, ip: str) -> IpIntel | Non
     return _parse(body)
 
 
-async def lookup_many(ips: list[str]) -> dict[str, IpIntel]:
+async def lookup_many(ips: list[str], timeout: float = _TIMEOUT_SECONDS) -> dict[str, IpIntel]:
     """批量查询 IP 情报：缓存命中直接用，未命中按配额串行请求，其余降级本地库。"""
     out: dict[str, IpIntel] = {}
     kv = get_kv()
@@ -162,7 +196,7 @@ async def lookup_many(ips: list[str]) -> dict[str, IpIntel]:
         pass
 
     if budget and pending:
-        async with httpx.AsyncClient(timeout=_TIMEOUT_SECONDS) as client:
+        async with httpx.AsyncClient(timeout=timeout) as client:
             for ip in pending[:budget]:
                 try:
                     intel = await _fetch(client, base, ip)
@@ -189,3 +223,21 @@ async def _safe_set(kv, key: str, value: str, ttl: int) -> None:
         await kv.setex(key, ttl, value)
     except Exception:
         pass
+
+
+async def resolve_location_full(ip: str | None) -> tuple[str | None, str | None]:
+    """IP → (location_zh, location_en)：先查本地库，任一侧缺失再用远程情报补全。
+
+    远程查询受缓存 / 熔断 / 短超时约束，失败时保留本地结果，绝不抛异常。
+    """
+    zh, en = resolve_location(ip)
+    if zh and en:
+        return zh, en
+    ip = (ip or "").split(",")[0].strip()
+    if not _is_public(ip):
+        return zh, en
+    try:
+        intel = (await lookup_many([ip], timeout=_INLINE_TIMEOUT_SECONDS))[ip]
+    except Exception:
+        return zh, en
+    return zh or intel.location_zh, en or intel.location_en

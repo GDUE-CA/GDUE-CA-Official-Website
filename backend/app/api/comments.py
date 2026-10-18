@@ -15,7 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import ctx_uid, log_action
-from app.core.ip_location import resolve_location
+from app.core.ip_intel import resolve_location_full
 from app.core.middleware import get_client_ip
 from app.core.permissions import require_permission
 from app.core.security import get_optional_user
@@ -155,7 +155,7 @@ async def create_public_comment(
         raise HTTPException(status_code=403, detail="评论功能已关闭")
     ip = get_client_ip(request)
     _check_comment_rate(ip)
-    zh, en = resolve_location(ip)
+    zh, en = await resolve_location_full(ip)
     author: User | None = None
     if viewer and not viewer.get("break_glass") and viewer.get("user_id"):
         author = await db.get(User, int(viewer["user_id"]))
