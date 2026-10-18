@@ -23,7 +23,7 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
           port: ${{ secrets.SSH_PORT || 22 }}
-          script_stop: true
+          command_timeout: 7m
           script: |
             set -eu
 
@@ -42,11 +42,11 @@ jobs:
             echo "==> Reload systemd"
             sudo -n systemctl daemon-reload
 
-            echo "==> Restart frontend and backend"
+            echo "==> Restart services"
             sudo -n systemctl restart gdueca-frontend gdueca-backend
 
-            echo "==> Check service status"
-            sudo -n systemctl is-active gdueca-frontend
-            sudo -n systemctl is-active gdueca-backend
+            echo "==> Verify services"
+            sudo -n systemctl is-active --quiet gdueca-frontend
+            sudo -n systemctl is-active --quiet gdueca-backend
 
-            echo "==> Deployment completed successfully"
+            echo "==> Deployment successful"
