@@ -12,12 +12,13 @@ import type {
   MemberTerm,
   MemberUpdate,
   Paginated,
+  MemberPublic,
 } from "@/types/api";
 
 /** 公开：成员列表（按 display_order 升序，过滤归档） */
 export function listPublicMembers(term?: MemberTerm) {
   const qs = term ? `?term=${term}` : "";
-  return apiFetch<Member[]>(`/api/members${qs}`);
+  return apiFetch<MemberPublic[]>(`/api/members${qs}`);
 }
 
 /** 管理：分页列表 */

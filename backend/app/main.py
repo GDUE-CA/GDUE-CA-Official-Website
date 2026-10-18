@@ -40,6 +40,7 @@ from app.db.models import (
     User,
 )
 from app.db.session import async_session, engine
+from app.utils.receipt import gen_receipt_code
 
 settings = get_settings()
 # 统一日志格式（含 traceId）：get_settings() 首次加载时已初始化；
@@ -201,6 +202,8 @@ async def _migrate_columns(conn):
             ("handled_action", "VARCHAR(32) NULL"),
             ("submit_ip", "VARCHAR(64) NULL"),
         ],
+        # 社团报名回执码（v0.5.0 切换到 club_apply_records 时遗漏，导致报名者无回执码）
+        "club_apply_records": [("receipt_code", "VARCHAR(20) NULL")],
         # 博客展示用作者名（历史迁移内容无系统账号）+ 4 项统计指标
         "blog_posts": [
             ("author_name", "VARCHAR(64) NULL"),
@@ -213,6 +216,9 @@ async def _migrate_columns(conn):
         "comments": [
             ("is_deleted", "BOOLEAN DEFAULT 0"),
             ("is_hidden", "BOOLEAN DEFAULT 0"),
+            # 评论区改版：登录用户关联账号（头像 / 主页链接）+ 设备类别
+            ("user_id", "INTEGER NULL REFERENCES users(id)"),
+            ("device", "VARCHAR(16) NULL"),
         ],
         # 随手笔记：分享计数
         "memos": [
@@ -318,6 +324,41 @@ async def _migrate_columns(conn):
     await conn.execute(text(
         "CREATE UNIQUE INDEX IF NOT EXISTS ix_activities_slug ON activities (slug) WHERE slug IS NOT NULL"
     ))
+    # 评论关联账号索引（ADD COLUMN 不会建索引）
+    await conn.execute(text(
+        "CREATE INDEX IF NOT EXISTS ix_comments_user_id ON comments (user_id)"
+    ))
+    # 社团报名回执码：ADD COLUMN 不能带 UNIQUE，单独建唯一索引后回填存量记录
+    await conn.execute(text(
+        "CREATE UNIQUE INDEX IF NOT EXISTS ix_club_apply_records_receipt_code "
+        "ON club_apply_records (receipt_code)"
+    ))
+    await _backfill_club_apply_receipts(conn)
+
+
+async def _backfill_club_apply_receipts(conn) -> None:
+    """为缺少回执码的存量社团报名补发回执码（与 registrations 跨表查重）。"""
+    from sqlalchemy import text
+
+    missing = (await conn.execute(text(
+        "SELECT id FROM club_apply_records WHERE receipt_code IS NULL"
+    ))).scalars().all()
+    if not missing:
+        return
+    taken = set((await conn.execute(text(
+        "SELECT receipt_code FROM registrations UNION SELECT receipt_code FROM club_apply_records "
+        "WHERE receipt_code IS NOT NULL"
+    ))).scalars().all())
+    for rid in missing:
+        code = gen_receipt_code()
+        while code in taken:
+            code = gen_receipt_code()
+        taken.add(code)
+        await conn.execute(
+            text("UPDATE club_apply_records SET receipt_code = :c WHERE id = :i"),
+            {"c": code, "i": rid},
+        )
+    logger.info("已为 %d 条社团报名补发回执码", len(missing))
 
 
 async def _init_db():

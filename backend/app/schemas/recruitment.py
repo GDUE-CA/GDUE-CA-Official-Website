@@ -25,6 +25,18 @@ class RecruitmentInfoUpdate(BaseModel):
     enabled: bool | None = None
 
 
+class RecruitmentPublicOut(BaseModel):
+    """前台招新信息（公开接口只返回已启用条目，enabled / created_at 不输出）。"""
+    id: int
+    title: str
+    content: str
+    target_dept: str | None
+    start_at: UTCDatetime | None
+    end_at: UTCDatetime | None
+
+    model_config = {"from_attributes": True}
+
+
 class RecruitmentInfoOut(BaseModel):
     id: int
     title: str

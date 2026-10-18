@@ -12,8 +12,7 @@ from pydantic import BaseModel
 
 
 class UserProfileOut(BaseModel):
-    """用户公开个人主页信息（隐私过滤后）。"""
-    id: int
+    """用户公开个人主页信息（隐私过滤后；不含内部用户 id，前台一律以 username 寻址）。"""
     username: str
     display_name: str
     avatar_url: str | None = None

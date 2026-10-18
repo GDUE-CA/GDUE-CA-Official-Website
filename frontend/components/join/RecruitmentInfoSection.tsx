@@ -12,9 +12,9 @@ import { FormattedUserActionTime } from "@/components/shared/FormattedUserAction
 import { SectionHeading } from "@/components/shared/SectionHeading";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import type { RecruitmentInfo } from "@/types/api";
+import type { RecruitmentPublic } from "@/types/api";
 
-function RecruitmentCard({ info }: { info: RecruitmentInfo }) {
+function RecruitmentCard({ info }: { info: RecruitmentPublic }) {
   return (
     <Card>
       <CardContent className="p-6 space-y-3">
@@ -37,7 +37,7 @@ function RecruitmentCard({ info }: { info: RecruitmentInfo }) {
 
 export function RecruitmentInfoSection() {
   const { t } = useI18n();
-  const [items, setItems] = useState<RecruitmentInfo[] | null>(null);
+  const [items, setItems] = useState<RecruitmentPublic[] | null>(null);
 
   useEffect(() => {
     let cancelled = false;

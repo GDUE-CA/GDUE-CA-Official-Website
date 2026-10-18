@@ -363,7 +363,7 @@ async def register(
         ))
     _log(db, u.id, "user.register", f"user:{u.id}", get_client_ip(request))
     await db.commit()
-    return RegisterOut(id=u.id, username=u.username, display_name=u.display_name, role=Role.MEMBER)
+    return RegisterOut(username=u.username, display_name=u.display_name)
 
 
 # ---------- 登录 ----------

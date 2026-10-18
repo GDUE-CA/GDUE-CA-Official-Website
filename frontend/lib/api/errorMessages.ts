@@ -13,7 +13,7 @@
  */
 
 import type { I18nMsg } from "@/types/response";
-import { BizCode, getI18nKey, getI18nParams } from "@/types/response";
+import { BizCode, BizCodeMessageKey, getI18nKey, getI18nParams } from "@/types/response";
 
 /** 字段错误原因（与后端 FieldReason 枚举一一对应） */
 export type FieldReason =
@@ -41,6 +41,11 @@ type Dict = Record<string, unknown>;
 
 let activeMessages: Dict | null = null;
 
+/** 当前是否已注入字典（错误页据此决定是否自行加载） */
+export function hasErrorMessages(): boolean {
+  return activeMessages !== null;
+}
+
 /** I18nProvider 注入当前语言字典（多 Provider 时以最后挂载者为准，同页 locale 一致） */
 export function setErrorMessages(messages: unknown): void {
   activeMessages = messages && typeof messages === "object" ? (messages as Dict) : null;
@@ -54,6 +59,15 @@ const FALLBACK: Record<string, string> = {
   "error.validation.fallback": "请求失败，请稍后重试",
   "error.validation.requestId": "（错误编号：{id}）",
   "error.validation.reason.invalid": "取值无效",
+  "error.page.title": "出错了",
+  "error.page.unexpected": "页面出现了意外错误，请稍后重试",
+  "error.page.hint": "如需反馈问题，请附上以下编号，便于我们定位",
+  "error.page.requestId": "请求编号",
+  "error.page.digest": "错误摘要",
+  "error.page.copy": "复制",
+  "error.page.copied": "已复制",
+  "error.page.retry": "重试",
+  "error.page.home": "返回首页",
 };
 
 function interpolate(text: string, vars?: Record<string, unknown>): string {
@@ -64,7 +78,7 @@ function interpolate(text: string, vars?: Record<string, unknown>): string {
 }
 
 /** 查字典；缺失返回 null（调用方决定兜底，绝不回传 key 本身） */
-function tr(key: string, vars?: Record<string, unknown>): string | null {
+export function tr(key: string, vars?: Record<string, unknown>): string | null {
   let node: unknown = activeMessages;
   for (const part of key.split(".")) {
     if (node && typeof node === "object" && part in (node as Dict)) {
@@ -140,4 +154,41 @@ export function formatEnvelopeError(
   }
   const key = getI18nKey(message);
   return (key && tr(key, getI18nParams(message) ?? undefined)) || fallbackText();
+}
+
+/* ---------- 错误页：ApiError 跨 RSC 边界传递 ---------- */
+
+/**
+ * 服务端组件抛出的错误到浏览器时 message 会被 Next.js 抹掉，只剩 digest；
+ * Next.js 会保留错误上已有的 digest，因此 ApiError 自带编码后的 digest，
+ * 错误页解码即可展示具体原因与 request id（均为前端本就可见的信息）。
+ */
+const API_DIGEST_PREFIX = "GDUECA_API";
+const REQUEST_ID_RE = /^[A-Za-z0-9-]{1,64}$/;
+
+export function encodeApiErrorDigest(code: number, status: number, requestId: string | null): string {
+  return [API_DIGEST_PREFIX, code, status, requestId ?? ""].join(";");
+}
+
+export interface DecodedApiDigest {
+  code: number;
+  status: number;
+  requestId: string | null;
+}
+
+export function decodeApiErrorDigest(digest: string | undefined): DecodedApiDigest | null {
+  if (!digest?.startsWith(API_DIGEST_PREFIX + ";")) return null;
+  const [, code, status, rid] = digest.split(";");
+  const c = Number(code);
+  const s = Number(status);
+  if (!Number.isInteger(c) || !Number.isInteger(s)) return null;
+  return { code: c, status: s, requestId: rid && REQUEST_ID_RE.test(rid) ? rid : null };
+}
+
+/** 无 detail 时按业务码 / HTTP 状态取通用文案（错误页用） */
+export function messageForCode(code: number, status: number): string {
+  const key =
+    BizCodeMessageKey[code] ??
+    (status === 404 ? "error.not_found" : status >= 500 ? "error.internal" : null);
+  return (key && tr(key)) || fallbackText();
 }

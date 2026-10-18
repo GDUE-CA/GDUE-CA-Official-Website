@@ -14,6 +14,7 @@
 import type { ApiResponse, BizCodeType } from "@/types/response";
 import { BizCode, getI18nKey, getI18nParams, isApiResponse } from "@/types/response";
 import {
+  encodeApiErrorDigest,
   extractFieldErrors,
   formatEnvelopeError,
   networkErrorText,
@@ -67,6 +68,11 @@ export class ApiError extends Error {
   i18nParams: Record<string, unknown> | null;
   /** 1001 校验失败的字段级错误（其他错误为空数组） */
   fieldErrors: FieldError[];
+  /**
+   * 供 Next.js 错误页使用：服务端组件抛错时 message 会被抹掉，Next 会保留已有 digest，
+   * 错误页据此解码出业务码与 request id（见 errorMessages.encodeApiErrorDigest）
+   */
+  digest: string;
 
   constructor(
     status: number,
@@ -82,6 +88,7 @@ export class ApiError extends Error {
     this.i18nKey = null;
     this.i18nParams = null;
     this.fieldErrors = [];
+    this.digest = encodeApiErrorDigest(this.code, status, traceId);
   }
 
   /** 新壳错误工厂：根据 ApiResponse 构造带 i18n 协议的 ApiError */
@@ -101,6 +108,7 @@ export class ApiError extends Error {
       status,
       err.requestId,
     );
+    err.digest = encodeApiErrorDigest(err.code, status, err.requestId);
     return err;
   }
 }

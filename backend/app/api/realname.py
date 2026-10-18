@@ -22,6 +22,7 @@ from app.db.models import AuditLog, RealnameRequest, RealnameStatus, User
 from app.db.session import get_db
 from app.schemas.realname import (
     RealnameReject,
+    MyRealnameRequestOut,
     RealnameRequestOut,
     RealnameStatusOut,
     RealnameSubmit,
@@ -78,11 +79,11 @@ async def my_realname_status(
     return RealnameStatusOut(
         verified=u.realname_verified,
         verified_at=u.realname_verified_at,
-        latest=RealnameRequestOut.model_validate(latest).model_dump(mode="json") if latest else None,
+        latest=MyRealnameRequestOut.model_validate(latest) if latest else None,
     )
 
 
-@router.post("/submit", response_model=RealnameRequestOut, status_code=201)
+@router.post("/submit", response_model=MyRealnameRequestOut, status_code=201)
 async def submit_realname(
     req: RealnameSubmit,
     request: Request,
@@ -115,7 +116,7 @@ async def submit_realname(
     _log(db, uid, "realname.submit", None, get_client_ip(request))
     await db.commit()
     await db.refresh(r)
-    return await _out(db, r)
+    return MyRealnameRequestOut.model_validate(r)
 
 
 @router.post("/evidence")

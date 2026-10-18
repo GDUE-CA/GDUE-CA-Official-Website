@@ -82,7 +82,7 @@ def test_business_404_new_shell(app):
 
 def test_validation_error_new_shell(app):
     client = make_client(app)
-    r = client.post("/api/registrations/club", headers=csrf(client), json={"name": "张三"})
+    r = client.post("/api/registrations/for/999999", headers=csrf(client), json={"name": "张三"})
     assert r.status_code == 422
     body = r.json()
     assert body["code"] == 1001

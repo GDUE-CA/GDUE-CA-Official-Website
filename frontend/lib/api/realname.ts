@@ -11,6 +11,7 @@ import type {
   RealnameStatus,
   RealnameStatusOut,
   RealnameSubmit,
+  MyRealnameRequest,
 } from "@/types/api";
 
 /* ---------- 用户接口 ---------- */
@@ -22,7 +23,7 @@ export function getRealnameStatus() {
 
 /** 用户：提交实名申请（待审核中重复提交后端 400） */
 export function submitRealname(payload: RealnameSubmit) {
-  return apiFetch<RealnameRequest>("/api/realname/submit", {
+  return apiFetch<MyRealnameRequest>("/api/realname/submit", {
     method: "POST",
     body: JSON.stringify(payload),
   });

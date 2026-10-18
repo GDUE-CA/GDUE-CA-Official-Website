@@ -47,6 +47,27 @@ export const BizCode = {
 
 export type BizCodeType = (typeof BizCode)[keyof typeof BizCode];
 
+/** 业务码 → 通用错误文案 i18n key（与后端 bizcode._BIZCODE_REGISTRY 同步，契约测试校验） */
+export const BizCodeMessageKey: Record<number, string> = {
+  1001: "error.validation_failed",
+  1002: "error.unauthorized",
+  1003: "error.forbidden",
+  1004: "error.not_found",
+  1005: "error.conflict",
+  1006: "error.banned_ip",
+  1007: "error.rate_limited",
+  1008: "error.csrf_failed",
+  1009: "error.payload_too_large",
+  1010: "error.bad_request",
+  1011: "error.unsupported_media_type",
+  1012: "error.account_locked",
+  1013: "error.login_blocked",
+  1014: "error.system_not_initialized",
+  5000: "error.internal",
+  5001: "error.upstream_failure",
+  5002: "error.maintenance",
+};
+
 /** 判定一个对象是否符合新壳形态（apiFetch 用） */
 export function isApiResponse(value: unknown): value is ApiResponse {
   return (

@@ -21,14 +21,6 @@ export function submitRegistration(activityId: number, payload: RegistrationCrea
   });
 }
 
-/** 社团报名（意向部门入会）：POST /api/registrations/club */
-export function submitClubRegistration(payload: RegistrationCreate) {
-  return apiFetch<SubmitReceipt>("/api/registrations/club", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-}
-
 export function listRegistrations(params?: {
   activity_id?: number;
   status?: RegistrationStatus;

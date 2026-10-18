@@ -96,7 +96,6 @@ def _public_profile(u: User, viewer_ctx: dict | None, badges: list[dict],
                     school_info: dict | None = None) -> dict:
     """构建公开个人主页信息（隐私过滤 + 地区永久公开 + real_name/school_info 受控）。"""
     profile = {
-        "id": u.id,
         "username": u.username,
         "display_name": u.display_name or u.username,
         "avatar_url": u.avatar_url,

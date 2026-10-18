@@ -161,7 +161,6 @@ async def list_memos_by_tag(
             "has_image": has_img,
             "first_image_url": first_img,
             "author": (MemoAuthorBrief(
-                id=memo.author.id,
                 username=memo.author.username,
                 avatar_url=memo.author.avatar_url,
             ).model_dump(mode="json") if memo.author else None),

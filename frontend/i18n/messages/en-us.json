@@ -626,10 +626,24 @@
     "contentPlaceholder": "Write a comment...",
     "submitBtn": "Post comment",
     "submitOk": "Comment posted",
-    "formHint": "Only your name and location (country/province) are shown. Posting implies agreement with the Terms of Use",
+    "formHint": "Your name, IP location (country/province) and device type are shown publicly. Posting implies agreement with the Terms of Use",
     "closed": "Comments are closed",
     "locLocal": "Local",
-    "locIntranet": "Campus network"
+    "locIntranet": "Campus network",
+    "postAs": "Posting as {name}",
+    "charCount": "{n}/1000",
+    "shortcut": "⌘/Ctrl + Enter to post",
+    "ipLocation": "IP location",
+    "anonymous": "Guest",
+    "device": {
+      "iphone": "iPhone",
+      "ipad": "iPad",
+      "android": "Android",
+      "windows": "Windows",
+      "macos": "macOS",
+      "linux": "Linux",
+      "other": "Other device"
+    }
   },
   "contact": {
     "title": "Contact Us",
@@ -1366,7 +1380,7 @@
       "title": "Review Centre",
       "noAccess": "No review modules available. Contact an administrator for access.",
       "tabs": {
-        "registrations": "Registrations",
+        "registrations": "Event registrations",
         "bugs": "Bug Reports",
         "resets": "Password Resets"
       },
@@ -1710,7 +1724,7 @@
       "filterType": "Filter by Type",
       "filterStatus": "Filter by Status",
       "typeActivity": "Activity",
-      "typeClub": "Club",
+      "typeClub": "Club (legacy)",
       "colType": "Type",
       "export": "Export",
       "exportCsv": "Export CSV",
@@ -2909,6 +2923,17 @@
         "title": "Title",
         "content": "Content"
       }
+    },
+    "page": {
+      "title": "Something went wrong",
+      "unexpected": "An unexpected error occurred. Please try again later.",
+      "hint": "If you report this issue, please include the ID below so we can trace it.",
+      "requestId": "Request ID",
+      "digest": "Error digest",
+      "copy": "Copy",
+      "copied": "Copied",
+      "retry": "Try again",
+      "home": "Back to home"
     }
   },
   "memoPage": {

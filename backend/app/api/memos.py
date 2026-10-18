@@ -85,7 +85,6 @@ def _author_dict(user: User | None, badges_map: dict[int, list[dict]] | None = N
     if not user:
         return None
     return {
-        "id": user.id,
         "username": user.username,
         "display_name": user.display_name or user.username,
         "avatar_url": user.avatar_url,

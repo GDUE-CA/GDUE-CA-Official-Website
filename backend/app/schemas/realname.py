@@ -36,8 +36,18 @@ class RealnameReject(BaseModel):
     note: str = Field(min_length=1, max_length=500)
 
 
+class MyRealnameRequestOut(BaseModel):
+    """本人视角的实名申请（最小化：不含主键 / user_id / 回显的证件信息与材料地址）。"""
+    model_config = {"from_attributes": True}
+
+    status: str
+    note: str | None = None
+    submitted_at: UTCDatetime
+    reviewed_at: UTCDatetime | None = None
+
+
 class RealnameStatusOut(BaseModel):
     """用户端实名状态：当前账号实名状态 + 最近一次申请。"""
     verified: bool
     verified_at: UTCDatetime | None = None
-    latest: RealnameRequestOut | None = None
+    latest: MyRealnameRequestOut | None = None
