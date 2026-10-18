@@ -204,6 +204,16 @@ SMTP_PASSWORD=                       # 授权码 / 密码
 SMTP_FROM=                           # 发件人地址；留空时取 SMTP_USERNAME
 SMTP_FROM_NAME=GDUE-CA
 SMTP_USE_SSL=true                    # true = SSL 直连（465）；false = STARTTLS（587）
+
+# 发信通道：smtp（默认）/ graph（Microsoft Graph sendMail，走 HTTPS 443；
+# Exchange Online 已停用 SMTP 基本认证、或云主机封禁出站 SMTP 端口时使用）
+# graph 需在 Entra ID 注册应用：Mail.Send 应用程序权限 + 管理员同意，
+# 并用 RBAC for Applications 限定只能以 GRAPH_SENDER 发信
+MAIL_PROVIDER=smtp
+GRAPH_TENANT_ID=
+GRAPH_CLIENT_ID=
+GRAPH_CLIENT_SECRET=
+GRAPH_SENDER=                        # 发件邮箱；留空时取 SMTP_FROM
 ```
 
 ### 前端（`frontend/.env.local`，完整以 `frontend/.env.example` 为准）

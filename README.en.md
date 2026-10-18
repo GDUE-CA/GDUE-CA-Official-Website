@@ -207,6 +207,16 @@ SMTP_PASSWORD=                       # authorization code / password
 SMTP_FROM=                           # sender address; defaults to SMTP_USERNAME when empty
 SMTP_FROM_NAME=GDUE-CA
 SMTP_USE_SSL=true                    # true = direct SSL (465); false = STARTTLS (587)
+
+# Mail transport: smtp (default) / graph (Microsoft Graph sendMail over HTTPS 443;
+# use when Exchange Online has retired SMTP basic auth or the host blocks outbound SMTP ports)
+# graph needs an Entra ID app with the Mail.Send application permission + admin consent,
+# scoped with RBAC for Applications so it can only send as GRAPH_SENDER
+MAIL_PROVIDER=smtp
+GRAPH_TENANT_ID=
+GRAPH_CLIENT_ID=
+GRAPH_CLIENT_SECRET=
+GRAPH_SENDER=                        # sender mailbox; defaults to SMTP_FROM when empty
 ```
 
 ### Frontend (`frontend/.env.local`; see `frontend/.env.example` for the full set)
