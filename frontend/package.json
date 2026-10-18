@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -H 0.0.0.0",
+    "prebuild": "node scripts/check-i18n-keys.mjs",
     "build": "next build",
     "start": "next start -H 127.0.0.1",
     "lint": "eslint"

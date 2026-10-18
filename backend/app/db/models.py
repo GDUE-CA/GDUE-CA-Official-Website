@@ -1704,7 +1704,7 @@ class ClubApplyStatus(str, Enum):
 
 
 class ClubApplyRecord(Base):
-    """社团报名记录表（账号内报名；区别于公开表单的 Registration）。
+    """社团报名记录表（账号内报名 + V0.5.9 起访客免注册报名；区别于公开表单的 Registration）。
 
     - ID 字段（college_id/major_id）用于后端合法性校验；
     - 同时保留文本字段（college/major/class）用于报表导出；
@@ -1719,7 +1719,10 @@ class ClubApplyRecord(Base):
     receipt_code: Mapped[str | None] = mapped_column(
         String(20), unique=True, index=True, nullable=True
     )
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    # V0.5.9 需求5：访客免注册报名无账号，user_id 可空（NULL = 访客提交）
+    user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id"), index=True, nullable=True
+    )
     real_name: Mapped[str] = mapped_column(String(64))
     phone: Mapped[str] = mapped_column(String(32))
     email: Mapped[str | None] = mapped_column(String(128), nullable=True)
@@ -1749,3 +1752,21 @@ class ClubApplyRecord(Base):
     )
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
     reviewed_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
+
+
+class ClubDepartment(Base):
+    """报名意向部门选项（V0.6.0 Issue6：从前端硬编码改为后台动态维护）。
+
+    - 报名记录 departments 仅存提交时的文本快照，改名/删除不影响历史报名；
+    - name_zh / name_en 双语：前端按 locale 选择展示（其他语言回落英文）；
+    - 停用后前端不再展示，已提交记录不受影响。
+    """
+    __tablename__ = "club_departments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name_zh: Mapped[str] = mapped_column(String(64))
+    name_en: Mapped[str] = mapped_column(String(64))
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)

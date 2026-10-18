@@ -85,7 +85,12 @@ async def get_settings_admin(
     user: dict = Depends(require_permission("settings", "view")),
     db: AsyncSession = Depends(get_db, scope="function"),
 ):
-    return await _get_or_create_settings(db)
+    from app.core.mailer import is_configured as _mailer_is_configured
+    rec = await _get_or_create_settings(db)
+    out = SystemSettingOut.model_validate(rec)
+    # V0.5.9：SMTP 通道配置状态（服务端计算字段，驱动后台警告横幅）
+    out.mail_channel_configured = _mailer_is_configured()
+    return out
 
 
 # ---------- 修改（需 admin） ----------

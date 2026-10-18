@@ -35,7 +35,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { submitClubApply } from "@/lib/api/clubApply";
+import { submitClubApply, sendClubApplyGuestCode, submitClubApplyGuest, listClubDepartments } from "@/lib/api/clubApply";
+import { fetchMe } from "@/lib/api/auth";
 import { ReceiptPanel } from "@/components/shared/ReceiptPanel";
 import { ApiError } from "@/lib/api/client";
 import { useServerFieldErrors } from "@/lib/hooks/useServerFieldErrors";
@@ -46,16 +47,21 @@ import type { SysCollege, SysMajor } from "@/types/api";
 import { COUNTRY_OPTIONS, PHONE_RULES } from "./phoneRules";
 import { cn } from "@/lib/utils";
 
-const DEPARTMENTS = [
-  { value: "activity", labelKey: "join.positions.activity" },
-  { value: "office", labelKey: "join.positions.office" },
-  { value: "liaison", labelKey: "join.positions.liaison" },
-  { value: "publicity", labelKey: "join.positions.publicity" },
-  { value: "finance", labelKey: "join.positions.finance" },
+/** 意向部门选项：从 /api/club-apply/departments 动态加载（V0.6.0 Issue6）；
+ *  接口失败时回落到与后端 seed 一致的内置列表兜底 */
+const FALLBACK_DEPARTMENTS = [
+  { id: -1, name_zh: "活动部", name_en: "Events Department" },
+  { id: -2, name_zh: "办公部", name_en: "Office" },
+  { id: -3, name_zh: "联络部", name_en: "Liaison Department" },
+  { id: -4, name_zh: "宣传部", name_en: "Publicity Department" },
+  { id: -5, name_zh: "财务部", name_en: "Finance Department" },
 ];
 
 const STUDENT_ID_RE = /^\d{11}$/;
 const CLASS_SUFFIX_RE = /^[A-Z]$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/** 访客验证码重发冷却（秒）：与后端同邮箱重发间隔对齐 */
+const RESEND_COOLDOWN_SECONDS = 60;
 
 /** 后端 ClubApplyIn 字段名（data-field 对位用；前端预校验与后端错误共用） */
 type ClubField =
@@ -63,7 +69,7 @@ type ClubField =
   | "class_suffix" | "phone" | "email" | "departments" | "intro";
 
 export function ClubJoinForm() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [submitted, setSubmitted] = useState(false);
   const [receiptCode, setReceiptCode] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -78,7 +84,9 @@ export function ClubJoinForm() {
   const [phoneCc, setPhoneCc] = useState("+86");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [email, setEmail] = useState("");
-  const [departments, setDepartments] = useState<string[]>([]);
+  // 意向部门：选中选项 id（提交时解析为当前 locale 显示名，与历史文本快照语义一致）
+  const [deptOptions, setDeptOptions] = useState<{ id: number; label: string }[]>([]);
+  const [deptIds, setDeptIds] = useState<number[]>([]);
   const [intro, setIntro] = useState("");
 
   // 本校在读学生必填
@@ -90,6 +98,71 @@ export function ClubJoinForm() {
   const [enrollYear, setEnrollYear] = useState("");
   const [classSuffix, setClassSuffix] = useState("");
 
+  // 登录态：null = 检测中；false = 访客（免注册邮箱验证报名）
+  const [loggedIn, setLoggedIn] = useState<boolean | null>(null);
+
+  // 访客邮箱验证区块
+  const [guestEmail, setGuestEmail] = useState("");
+  const [guestCode, setGuestCode] = useState("");
+  const [codeSent, setCodeSent] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+  const [sendingCode, setSendingCode] = useState(false);
+  const [codeTip, setCodeTip] = useState<string | null>(null);
+  const [guestBlockError, setGuestBlockError] = useState<string | null>(null);
+
+  // 挂载时检测登录态（fetchMe 成功即已登录；失败视为访客）
+  useEffect(() => {
+    let alive = true;
+    fetchMe()
+      .then(() => { if (alive) setLoggedIn(true); })
+      .catch(() => { if (alive) setLoggedIn(false); });
+    return () => { alive = false; };
+  }, []);
+
+  // 访客验证码冷却倒计时
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setTimeout(() => setCooldown((s) => s - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [cooldown]);
+
+  /** 访客：发送邮箱验证码（ok:false 时展示 message，不进入倒计时） */
+  async function handleSendGuestCode() {
+    const addr = guestEmail.trim();
+    if (!addr || !EMAIL_RE.test(addr)) {
+      setGuestBlockError(t("join.guest.emailInvalid"));
+      return;
+    }
+    setSendingCode(true);
+    setGuestBlockError(null);
+    try {
+      const res = await sendClubApplyGuestCode(addr);
+      if (!res.ok) {
+        setGuestBlockError(res.message || t("join.guest.sendFailed"));
+        return;
+      }
+      setCodeSent(true);
+      setCodeTip(res.message || t("join.guest.codeSentTip"));
+      setCooldown(RESEND_COOLDOWN_SECONDS);
+    } catch (err) {
+      setGuestBlockError(err instanceof Error ? err.message : t("join.guest.sendFailed"));
+    } finally {
+      setSendingCode(false);
+    }
+  }
+
+  /** 更换邮箱后验证码状态重置 */
+  function handleGuestEmailChange(v: string) {
+    setGuestEmail(v);
+    setGuestBlockError(null);
+    if (codeSent) {
+      setCodeSent(false);
+      setGuestCode("");
+      setCodeTip(null);
+      setCooldown(0);
+    }
+  }
+
   // 学院列表（挂载时拉取一次；卸载后丢弃过期结果）
   useEffect(() => {
     let alive = true;
@@ -98,6 +171,18 @@ export function ClubJoinForm() {
       .catch(() => { if (alive) setColleges([]); });
     return () => { alive = false; };
   }, []);
+
+  // 意向部门选项（V0.6.0 Issue6 动态加载；失败回落内置列表）；zh 系语言用中文名，其余用英文名
+  const isZhLocale = locale.startsWith("zh");
+  useEffect(() => {
+    let alive = true;
+    const mapOpts = (list: { id: number; name_zh: string; name_en: string }[]) =>
+      list.map((d) => ({ id: d.id, label: isZhLocale ? d.name_zh : d.name_en }));
+    listClubDepartments()
+      .then((res) => { if (alive) setDeptOptions(mapOpts(res.departments)); })
+      .catch(() => { if (alive) setDeptOptions(mapOpts(FALLBACK_DEPARTMENTS)); });
+    return () => { alive = false; };
+  }, [isZhLocale]);
 
   // 专业联动
   function handleCollegeChange(v: string) {
@@ -119,9 +204,9 @@ export function ClubJoinForm() {
     return `${y.slice(2)}${majorName}${classSuffix.toUpperCase()}`;
   }, [enrollYear, majorId, majors, classSuffix]);
 
-  function toggleDepartment(value: string) {
-    setDepartments((prev) =>
-      prev.includes(value) ? prev.filter((d) => d !== value) : [...prev, value]
+  function toggleDepartment(id: number) {
+    setDeptIds((prev) =>
+      prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]
     );
     fieldErrors.clear("departments");
   }
@@ -130,6 +215,11 @@ export function ClubJoinForm() {
     e.preventDefault();
     setSubmitError(null);
     fieldErrors.clear();
+
+    // 选中意向部门解析为显示名（提交文本快照，与历史记录语义一致）
+    const selectedDepartments = deptIds
+      .map((id) => deptOptions.find((o) => o.id === id)?.label)
+      .filter((v): v is string => Boolean(v));
 
     // 前端预校验（仅体验提示；后端为最终校验）：一次收集全部错误，行内展示
     const digits = phoneNumber.replace(/\s/g, "");
@@ -152,33 +242,63 @@ export function ClubJoinForm() {
     if (!digits || (rule ? !rule.test(digits) : !/^\d{6,15}$/.test(digits))) {
       localErrors.phone = t("join.form.errors.phoneInvalid");
     }
-    if (departments.length === 0) {
+    if (selectedDepartments.length === 0) {
       localErrors.departments = t("join.form.errors.positionRequired");
     }
+    // 访客：邮箱 + 验证码前端预校验（行内标到访客区块的 email 字段）
+    if (!loggedIn) {
+      if (!guestEmail.trim() || !EMAIL_RE.test(guestEmail.trim())) {
+        localErrors.email = t("join.guest.emailInvalid");
+      }
+    }
     if (fieldErrors.set(localErrors)) return;
+    if (!loggedIn) {
+      if (!codeSent) {
+        setGuestBlockError(t("join.guest.sendCodeFirst"));
+        return;
+      }
+      if (!/^\d{6}$/.test(guestCode.trim())) {
+        setGuestBlockError(t("join.guest.codeRequired"));
+        return;
+      }
+    }
 
     setSubmitting(true);
     try {
-      const receipt = await submitClubApply({
-        real_name: realName.trim(),
-        phone,
-        email: email.trim() || null,
-        applicant_type: "school",
-        departments: departments,
-        intro: intro.trim() || null,
-        student_id: studentId.trim(),
-        college_id: Number(collegeId),
-        major_id: Number(majorId),
-        enroll_year: Number(enrollYear.trim()),
-        class_suffix: classSuffix.trim().toUpperCase() || null,
-      });
+      const receipt = loggedIn
+        ? await submitClubApply({
+            real_name: realName.trim(),
+            phone,
+            email: email.trim() || null,
+            applicant_type: "school",
+            departments: selectedDepartments,
+            intro: intro.trim() || null,
+            student_id: studentId.trim(),
+            college_id: Number(collegeId),
+            major_id: Number(majorId),
+            enroll_year: Number(enrollYear.trim()),
+            class_suffix: classSuffix.trim().toUpperCase() || null,
+          })
+        : await submitClubApplyGuest({
+            email: guestEmail.trim(),
+            code: guestCode.trim(),
+            real_name: realName.trim(),
+            phone,
+            departments: selectedDepartments,
+            intro: intro.trim() || null,
+            student_id: studentId.trim(),
+            college_id: Number(collegeId),
+            major_id: Number(majorId),
+            enroll_year: Number(enrollYear.trim()),
+            class_suffix: classSuffix.trim().toUpperCase() || null,
+          });
       setReceiptCode(receipt.receipt_code);
       setSubmitted(true);
     } catch (err) {
       if (err instanceof ApiError && err.code === BizCode.Unauthorized) {
         setSubmitError(t("join.form.loginRequired"));
       } else {
-        // 字段级错误标到对应输入框，其余进横幅
+        // 字段级错误标到对应输入框，其余进横幅（访客 409/400 亦走此）
         setSubmitError(fieldErrors.capture(err));
       }
     } finally {
@@ -194,7 +314,7 @@ export function ClubJoinForm() {
     setRealName("");
     setPhoneNumber("");
     setEmail("");
-    setDepartments([]);
+    setDeptIds([]);
     setIntro("");
     setStudentId("");
     setCollegeId("");
@@ -202,6 +322,12 @@ export function ClubJoinForm() {
     setMajors([]);
     setEnrollYear("");
     setClassSuffix("");
+    setGuestEmail("");
+    setGuestCode("");
+    setCodeSent(false);
+    setCooldown(0);
+    setCodeTip(null);
+    setGuestBlockError(null);
   }
 
   const phonePlaceholder = phoneCc === "+86"
@@ -219,6 +345,12 @@ export function ClubJoinForm() {
         <CardDescription>{t("register.clubDesc")}</CardDescription>
       </CardHeader>
       <CardContent>
+        {loggedIn === null ? (
+          // 登录态检测中：避免访客区块闪现
+          <div className="flex justify-center py-16">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
         <AnimatePresence mode="wait">
           {submitted ? (
             <motion.div
@@ -259,6 +391,74 @@ export function ClubJoinForm() {
               className="space-y-5"
               noValidate
             >
+              {/* 访客邮箱验证区块（免注册报名）：已登录时不渲染 */}
+              {!loggedIn && (
+                <div className="space-y-4 rounded-lg border border-border bg-muted/30 p-4">
+                  <div className="space-y-1">
+                    <h4 className="text-sm font-semibold">{t("join.guest.sectionTitle")}</h4>
+                    <p className="text-xs text-muted-foreground">{t("join.guest.hint")}</p>
+                  </div>
+                  <div className="space-y-2" data-field="email">
+                    <Label htmlFor="cj-guest-email">{t("join.guest.email")}</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="cj-guest-email"
+                        type="email"
+                        autoComplete="email"
+                        value={guestEmail}
+                        onChange={(e) => handleGuestEmailChange(e.target.value)}
+                        aria-invalid={!!fe.email}
+                        placeholder={t("join.guest.emailPlaceholder")}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="shrink-0"
+                        disabled={sendingCode || cooldown > 0}
+                        onClick={handleSendGuestCode}
+                      >
+                        {sendingCode ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : cooldown > 0 ? (
+                          t("join.guest.resendIn", { seconds: cooldown })
+                        ) : codeSent ? (
+                          t("join.guest.resend")
+                        ) : (
+                          t("join.guest.sendCode")
+                        )}
+                      </Button>
+                    </div>
+                    <FieldError>{fe.email}</FieldError>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="cj-guest-code">{t("join.guest.code")}</Label>
+                    <Input
+                      id="cj-guest-code"
+                      inputMode="numeric"
+                      maxLength={6}
+                      autoComplete="one-time-code"
+                      value={guestCode}
+                      onChange={(e) => {
+                        setGuestCode(e.target.value.replace(/\D/g, ""));
+                        setGuestBlockError(null);
+                      }}
+                      placeholder={t("join.guest.codePlaceholder")}
+                    />
+                    <p className="text-xs text-muted-foreground">{t("join.guest.codeHint")}</p>
+                  </div>
+                  {codeTip && (
+                    <p className="text-sm text-muted-foreground bg-muted/60 px-3 py-2 rounded-md">
+                      {codeTip}
+                    </p>
+                  )}
+                  {guestBlockError && (
+                    <p className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md">
+                      {guestBlockError}
+                    </p>
+                  )}
+                </div>
+              )}
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div className="space-y-2" data-field="real_name">
                   <Label htmlFor="cj-name">{t("join.form.name")}</Label>
@@ -396,37 +596,40 @@ export function ClubJoinForm() {
                 <FieldError>{fe.phone}</FieldError>
               </div>
 
-              <div className="space-y-2" data-field="email">
-                <Label htmlFor="cj-email">{t("join.form.email")}</Label>
-                <Input
-                  id="cj-email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  aria-invalid={!!fe.email}
-                  placeholder={t("join.form.emailPlaceholder")}
-                />
-                <FieldError>{fe.email}</FieldError>
-              </div>
+              {/* 选填邮箱仅登录用户可见；访客的邮箱在顶部验证区块 */}
+              {loggedIn && (
+                <div className="space-y-2" data-field="email">
+                  <Label htmlFor="cj-email">{t("join.form.email")}</Label>
+                  <Input
+                    id="cj-email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    aria-invalid={!!fe.email}
+                    placeholder={t("join.form.emailPlaceholder")}
+                  />
+                  <FieldError>{fe.email}</FieldError>
+                </div>
+              )}
 
-              {/* 意向部门（多选） */}
+              {/* 意向部门（多选，V0.6.0 Issue6 动态选项） */}
               <div className="space-y-2" data-field="departments">
                 <Label>{t("register.selectPosition")}</Label>
                 <div className="flex flex-wrap gap-2">
-                  {DEPARTMENTS.map((d) => (
+                  {deptOptions.map((d) => (
                     <button
-                      key={d.value}
+                      key={d.id}
                       type="button"
-                      onClick={() => toggleDepartment(t(d.labelKey))}
+                      onClick={() => toggleDepartment(d.id)}
                       className={cn(
                         "rounded-full border px-3 py-1.5 text-sm transition-colors",
-                        departments.includes(t(d.labelKey))
+                        deptIds.includes(d.id)
                           ? "border-primary bg-primary text-primary-foreground"
                           : "border-border hover:bg-muted"
                       )}
-                      aria-pressed={departments.includes(t(d.labelKey))}
+                      aria-pressed={deptIds.includes(d.id)}
                     >
-                      {t(d.labelKey)}
+                      {d.label}
                     </button>
                   ))}
                 </div>
@@ -457,12 +660,13 @@ export function ClubJoinForm() {
                 {submitting ? (
                   <><Loader2 className="h-4 w-4 animate-spin" />{t("join.form.submitting")}</>
                 ) : (
-                  <><Send className="h-4 w-4" />{t("join.form.submit")}</>
+                  <><Send className="h-4 w-4" />{loggedIn ? t("join.form.submit") : t("join.guest.submit")}</>
                 )}
               </Button>
             </motion.form>
           )}
         </AnimatePresence>
+        )}
       </CardContent>
     </Card>
   );

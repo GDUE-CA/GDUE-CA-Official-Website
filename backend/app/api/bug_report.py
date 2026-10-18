@@ -1,5 +1,6 @@
 """Bug 反馈接口：访客提交 + 管理员查看 / 批量处理。"""
 from datetime import datetime, timezone
+import logging
 import secrets
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -8,6 +9,8 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import ctx_uid, log_action
+from app.core.background_tasks import launch
+from app.core.mailer import send_email
 from app.core.middleware import get_client_ip
 from app.core.permissions import require_permission
 from app.core.rate_limit import rate_limit
@@ -16,6 +19,8 @@ from app.db.session import get_db
 from app.schemas.bug import BugReportCreate, BugReportOut
 from app.schemas.common import SubmitReceiptOut
 from app.utils.translator import detect_lang
+
+logger = logging.getLogger("gdueca")
 
 router = APIRouter(prefix="/api/bugs", tags=["bugs"])
 
@@ -50,6 +55,40 @@ class BugBatchUpdate(BaseModel):
     resolved: bool
 
 
+def _launch_bug_receipt_email(to: str, receipt_code: str) -> None:
+    """V0.5.9 需求6：提交成功回执邮件（后台异步，不阻塞接口）。"""
+    body = (
+        "您好：\n\n"
+        "你的反馈已提交成功，感谢你的反馈！\n"
+        f"工单编号：{receipt_code}\n"
+        "我们会尽快处理；处理期间可通过查询页凭回执码查看进度。\n"
+    )
+
+    async def _notify() -> None:
+        sent = await send_email(to, "GDUE-CA 反馈提交成功", body)
+        if not sent:
+            logger.warning("Bug 反馈回执邮件未成功投递（仅限开发环境排查）邮箱=%s", to)
+
+    launch(_notify())
+
+
+def _launch_bug_status_email(to: str, receipt_code: str, resolved: bool) -> None:
+    """V0.5.9 需求6：工单状态变更通知邮件（后台异步，不阻塞接口）。"""
+    body = (
+        "您好：\n\n"
+        "你反馈的工单状态已更新。\n"
+        f"工单编号：{receipt_code}\n"
+        f"最新状态：{'已解决' if resolved else '待处理'}\n"
+    )
+
+    async def _notify() -> None:
+        sent = await send_email(to, "GDUE-CA 反馈工单状态更新", body)
+        if not sent:
+            logger.warning("Bug 工单状态邮件未成功投递（仅限开发环境排查）邮箱=%s", to)
+
+    launch(_notify())
+
+
 # ---------- 访客提交 ----------
 @router.post(
     "",
@@ -71,6 +110,10 @@ async def submit_bug(
     db.add(bug)
     await db.flush()
     _log(db, None, "bug.submit", f"bug:{bug.id}", bug.submit_ip)
+    await db.commit()
+    # V0.5.9 需求6：commit 后异步发送回执邮件（contact_email 非空才发，不阻塞接口）
+    if bug.contact_email:
+        _launch_bug_receipt_email(bug.contact_email, bug.receipt_code)
     return SubmitReceiptOut(receipt_code=bug.receipt_code, submitted_at=bug.created_at)
 
 
@@ -116,6 +159,10 @@ async def mark_bug_resolved(
     bug.resolved = resolved
     _log(db, user, "bug.resolve" if resolved else "bug.reopen",
          f"bug:{bug_id}", get_client_ip(request))
+    await db.commit()
+    # V0.5.9 需求6：状态变更 commit 后异步通知提交人（contact_email 非空才发）
+    if bug.contact_email:
+        _launch_bug_status_email(bug.contact_email, bug.receipt_code, resolved)
     return {"ok": True}
 
 
@@ -138,4 +185,9 @@ async def batch_update_bugs(
     _log(db, user,
          "bug.batch_resolve" if body.resolved else "bug.batch_reopen",
          ",".join(str(i) for i in body.ids), get_client_ip(request))
+    await db.commit()
+    # V0.5.9 需求6：状态变更 commit 后异步通知各提交人（contact_email 非空才发）
+    for bug in bugs:
+        if bug.contact_email:
+            _launch_bug_status_email(bug.contact_email, bug.receipt_code, body.resolved)
     return {"updated": len(bugs)}

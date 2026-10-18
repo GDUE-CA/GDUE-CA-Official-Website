@@ -55,6 +55,32 @@ export async function login(payload: LoginRequest): Promise<LoginResponse> {
   });
 }
 
+/**
+ * 登录二次验证提交（V0.6.0 Issue7）：POST /api/auth/login/2fa/verify
+ * 密码已通过、待邮箱验证码核验；成功后建立会话并返回与 login 相同的响应。
+ */
+export async function login2FAVerify(payload: {
+  username?: string;
+  email?: string;
+  code: string;
+  remember_device: boolean;
+}): Promise<LoginResponse> {
+  const fp = await getFingerprint().catch(() => "err:00000000");
+  return apiFetch<LoginResponse>("/api/auth/login/2fa/verify", {
+    method: "POST",
+    body: JSON.stringify(payload),
+    headers: { [FINGERPRINT_HEADER]: fp },
+  });
+}
+
+/** 登录二次验证码重发（60s 冷却由后端控制）：POST /api/auth/login/2fa/resend */
+export function login2FAResend(payload: { username?: string; email?: string }) {
+  return apiFetch<{ ok: boolean; message: string }>("/api/auth/login/2fa/resend", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 /** 公开注册（P0：后端强制 member 角色，注册页不含任何角色控件） */
 export function register(payload: RegisterRequest) {
   return apiFetch<RegisterResponse>("/api/auth/register", {

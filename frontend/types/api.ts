@@ -34,6 +34,10 @@ export interface LoginResponse {
   must_setup: boolean;
   /** 安全问题补设标记：true 时强制跳 /auth/setup-security-questions 补设 3 个问题 */
   must_set_security_questions: boolean;
+  /** V0.6.0 Issue7：true 表示密码已通过但触发陌生 IP/设备邮箱二次验证（无会话 Cookie） */
+  requires_2fa?: boolean;
+  /** 验证码发送目标邮箱（打码显示，如 ab***@example.com） */
+  email_masked?: string | null;
 }
 
 /** 单个安全问题项（注册 / 补设 / 修改共用） */
@@ -875,6 +879,8 @@ export interface SystemSettings {
   club_checkin_open: boolean;
   /** V0.5.5 §3.3：邮件收发模块就绪开关（false 时导航置灰 + 页面黄色警告横幅） */
   mail_system_ready: boolean;
+  /** V0.5.9：SMTP/邮件通道环境变量是否已配置（false 时后台系统设置页展示警告横幅） */
+  mail_channel_configured: boolean;
   /** 本地化系统全局默认（用户字段 NULL 时回退此处） */
   sys_default_locale: string | null;
   sys_default_timezone: string | null;
@@ -2355,4 +2361,34 @@ export interface ClubApplySubmit {
 export interface ClubApplyReviewRequest {
   action: "accept" | "reject";
   admin_note?: string | null;
+}
+
+/** 访客社团报名：发送邮箱验证码响应（ok:false = 冷却未到/限流/邮箱非法，message 直接展示） */
+export interface ClubApplyGuestSendCodeResult {
+  ok: boolean;
+  message: string;
+}
+
+/** 报名意向部门选项（V0.6.0 Issue6 动态化；GET /api/club-apply/departments） */
+export interface ClubDepartment {
+  id: number;
+  name_zh: string;
+  name_en: string;
+  enabled: boolean;
+  sort_order: number;
+}
+
+/** 访客社团报名提交（免注册：邮箱 + 6 位验证码 + 与登录报名一致的主体字段） */
+export interface ClubApplyGuestSubmit {
+  email: string;
+  code: string;
+  real_name: string;
+  phone: string;
+  student_id: string;
+  college_id: number;
+  major_id: number;
+  enroll_year: number;
+  class_suffix?: string | null;
+  departments: string[];
+  intro?: string | null;
 }

@@ -285,6 +285,11 @@
       "joinDesc": "Fill out the recruitment form",
       "blogTitle": "Tech Blog",
       "blogDesc": "Read member tech sharing articles"
+    },
+    "announcementsPreview": {
+      "title": "Latest Announcements",
+      "viewAll": "View all",
+      "empty": "No announcements yet"
     }
   },
   "about": {
@@ -545,7 +550,7 @@
     "filterRecruitment": "Recruitment",
     "filterWorkshop": "Workshops",
     "countUnit": "events",
-    "totalPrefix": "",
+    "totalPrefix": "Total",
     "totalSuffix": "participants in total",
     "sortByDate": "Newest first",
     "dateColumn": "Date",
@@ -654,6 +659,24 @@
         "positionRequired": "Please select a department",
         "introductionMin": "Introduction must be at least 10 characters"
       }
+    },
+    "guest": {
+      "sectionTitle": "Email Verification",
+      "hint": "No account needed — verify your email to apply",
+      "email": "Email",
+      "emailPlaceholder": "name@example.com",
+      "sendCode": "Send code",
+      "resend": "Resend",
+      "resendIn": "Resend ({seconds}s)",
+      "code": "Verification code",
+      "codePlaceholder": "6-digit code",
+      "codeHint": "Enter the 6-digit code sent to your email",
+      "emailInvalid": "Please enter a valid email address",
+      "sendCodeFirst": "Please request an email verification code first",
+      "codeRequired": "Please enter the 6-digit verification code",
+      "codeSentTip": "Code sent — please check your inbox",
+      "sendFailed": "Failed to send the code. Please try again later",
+      "submit": "Submit application"
     }
   },
   "register": {
@@ -692,7 +715,21 @@
     "formHint": "Only your name and location (country/province) are shown. Posting implies agreement with the Terms of Use",
     "closed": "Comments are closed",
     "locLocal": "Local",
-    "locIntranet": "Campus network"
+    "locIntranet": "Campus network",
+    "postAs": "Post as {name}",
+    "charCount": "{n}/1000",
+    "shortcut": "Cmd/Ctrl + Enter to send",
+    "ipLocation": "IP location",
+    "anonymous": "Guest",
+    "device": {
+      "iphone": "iPhone",
+      "ipad": "iPad",
+      "android": "Android",
+      "windows": "Windows",
+      "macos": "macOS",
+      "linux": "Linux",
+      "other": "Other device"
+    }
   },
   "contact": {
     "title": "Contact Us",
@@ -864,6 +901,20 @@
       "uploadError": "Avatar upload failed",
       "tooLarge": "Image exceeds the 5MB limit. Please compress it and try again.",
       "typeError": "Only JPG / PNG / WEBP images are supported"
+    },
+    "banner": {
+      "title": "Profile banner",
+      "desc": "Shown at the top of your profile page. Upload a cover image; without one a solid colour is used, and with neither set the system default background applies.",
+      "upload": "Upload cover",
+      "reset": "Remove cover image",
+      "success": "Banner settings saved",
+      "resetSuccess": "Cover image removed; reverted to solid colour background",
+      "uploadError": "Failed to upload cover",
+      "tooLarge": "Image exceeds the 15MB limit; please compress and retry",
+      "colorLabel": "Banner solid colour",
+      "colorHint": "Applies when no cover image is set; enter a #RGB or #RRGGBB hex value, or leave empty for the system default.",
+      "colorDefault": "Restore default colour",
+      "colorInvalid": "Please enter a valid hex colour (#RGB or #RRGGBB)"
     },
     "profile": {
       "title": "Basic Details",
@@ -1105,6 +1156,69 @@
       "none": "Not linked",
       "changeSoon": "Changing your email requires verification codes and will become available in a later release."
     },
+    "emailChange": {
+      "title": "Change Bound Email",
+      "desc": "Identity verification is required first: via old-email codes, self-service identity checks, or admin manual review.",
+      "current": "Current",
+      "none": "No valid email bound",
+      "newEmail": "New email address",
+      "newEmailPlaceholder": "Enter the new email to bind",
+      "currentPassword": "Current password",
+      "oldCode": "Code sent to old email",
+      "newCode": "Code sent to new email",
+      "studentId": "Student ID",
+      "phone": "Bound phone number",
+      "realName": "Real name",
+      "remark": "Request note (why the old email is unavailable)",
+      "remarkPlaceholder": "Explain why the old email is unavailable, e.g. deactivated after graduation, mailbox inaccessible",
+      "uidLabel": "Current account UID",
+      "usernameLabel": "Current username",
+      "submit": "Confirm & submit",
+      "sendCodes": "Send codes",
+      "backToStep1": "Back",
+      "sentHint": "Two codes were sent to your old email and the new email ({new}); valid for 15 minutes.",
+      "changeSuccess": "Email changed successfully. All devices stay signed in.",
+      "confirmSendTitle": "Confirm sending codes",
+      "confirmSendBody": "A 6-digit code will be sent to both your old email ({old}) and the new email ({new}). Continue?",
+      "confirmChangeTitle": "Confirm email change",
+      "confirmChangeBody": "The bound email will change from [{old}] to [{new}] immediately after submission. Please double-check. Continue?",
+      "lostOld": {
+        "entry": "Old email can't receive codes? Click here",
+        "back": "Back to normal flow",
+        "hint": "All four items must match your account records (current password, student ID, phone number, real name); any single mismatch rejects this verification.",
+        "verify": "Verify identity",
+        "verifyGuidance": "You cannot complete all identity checks. Please submit a [manual email-change request] for admin review.",
+        "gotoManual": "Submit manual email-change request",
+        "confirmSendTitle": "Confirm sending code",
+        "confirmSendBody": "Identity verified. A 6-digit code will be sent to the new email ({new}). Continue?"
+      },
+      "manual": {
+        "entry": "Submit a manual email-change request",
+        "submitLabel": "Submit request",
+        "confirmTitle": "Confirm manual email-change request",
+        "confirmBody": "⚠️ Confirm submitting a manual email-change request. It will be reviewed by an admin; you cannot change your email yourself until the review completes. The request cannot be withdrawn once submitted. Continue?",
+        "submitted": "Request submitted, pending admin review"
+      },
+      "pending": {
+        "title": "Email-change request under review",
+        "target": "Requested new email",
+        "hint": "Pending admin review. All self-service email-change entries are disabled until the review completes.",
+        "disabled": "Self-service change disabled while under review"
+      },
+      "rejected": {
+        "title": "Your manual email-change request was rejected",
+        "reason": "Reason",
+        "canRetry": "You can retry self-service verification or submit another request."
+      },
+      "exempt": {
+        "title": "Manual-review exemption mode",
+        "warning": "An admin approved your email-change request. This mode skips all identity checks (old email, password, student ID, phone); the change completes only when you submit here. This permit is one-time and expires immediately after success.",
+        "prefill": "Admin-approved email",
+        "confirmTitle": "⚠️ Manual-review exemption mode",
+        "confirmBody": "⚠️ Manual-review exemption mode\nYour bound email will be updated to: {new}\nIt takes effect once submitted. Please double-check. Continue?",
+        "success": "Email changed successfully"
+      }
+    },
     "oauth": {
       "title": "Authorized apps",
       "hint": "Manage third-party apps you have authorized. Once revoked, that account can no longer be used to sign in here",
@@ -1199,83 +1313,6 @@
     },
     "hints": {
       "appearanceInstant": "Theme and language changes apply instantly — no need to save"
-    },
-    "banner": {
-      "title": "Profile banner",
-      "desc": "Shown at the top of your profile page. Upload a cover image; without one a solid colour is used, and with neither set the system default background applies.",
-      "upload": "Upload cover",
-      "reset": "Remove cover image",
-      "success": "Banner settings saved",
-      "resetSuccess": "Cover image removed; reverted to solid colour background",
-      "uploadError": "Failed to upload cover",
-      "tooLarge": "Image exceeds the 15MB limit; please compress and retry",
-      "colorLabel": "Banner solid colour",
-      "colorHint": "Applies when no cover image is set; enter a #RGB or #RRGGBB hex value, or leave empty for the system default.",
-      "colorDefault": "Restore default colour",
-      "colorInvalid": "Please enter a valid hex colour (#RGB or #RRGGBB)"
-    },
-    "emailChange": {
-      "title": "Change Bound Email",
-      "desc": "Identity verification is required first: via old-email codes, self-service identity checks, or admin manual review.",
-      "current": "Current",
-      "none": "No valid email bound",
-      "newEmail": "New email address",
-      "newEmailPlaceholder": "Enter the new email to bind",
-      "currentPassword": "Current password",
-      "oldCode": "Code sent to old email",
-      "newCode": "Code sent to new email",
-      "studentId": "Student ID",
-      "phone": "Bound phone number",
-      "realName": "Real name",
-      "remark": "Request note (why the old email is unavailable)",
-      "remarkPlaceholder": "Explain why the old email is unavailable, e.g. deactivated after graduation, mailbox inaccessible",
-      "uidLabel": "Current account UID",
-      "usernameLabel": "Current username",
-      "submit": "Confirm & submit",
-      "sendCodes": "Send codes",
-      "backToStep1": "Back",
-      "sentHint": "Two codes were sent to your old email and the new email ({new}); valid for 15 minutes.",
-      "changeSuccess": "Email changed successfully. All devices stay signed in.",
-      "confirmSendTitle": "Confirm sending codes",
-      "confirmSendBody": "A 6-digit code will be sent to both your old email ({old}) and the new email ({new}). Continue?",
-      "confirmChangeTitle": "Confirm email change",
-      "confirmChangeBody": "The bound email will change from [{old}] to [{new}] immediately after submission. Please double-check. Continue?",
-      "lostOld": {
-        "entry": "Old email can't receive codes? Click here",
-        "back": "Back to normal flow",
-        "hint": "All four items must match your account records (current password, student ID, phone number, real name); any single mismatch rejects this verification.",
-        "verify": "Verify identity",
-        "verifyGuidance": "You cannot complete all identity checks. Please submit a [manual email-change request] for admin review.",
-        "gotoManual": "Submit manual email-change request",
-        "confirmSendTitle": "Confirm sending code",
-        "confirmSendBody": "Identity verified. A 6-digit code will be sent to the new email ({new}). Continue?"
-      },
-      "manual": {
-        "entry": "Submit a manual email-change request",
-        "submitLabel": "Submit request",
-        "confirmTitle": "Confirm manual email-change request",
-        "confirmBody": "⚠️ Confirm submitting a manual email-change request. It will be reviewed by an admin; you cannot change your email yourself until the review completes. The request cannot be withdrawn once submitted. Continue?",
-        "submitted": "Request submitted, pending admin review"
-      },
-      "pending": {
-        "title": "Email-change request under review",
-        "target": "Requested new email",
-        "hint": "Pending admin review. All self-service email-change entries are disabled until the review completes.",
-        "disabled": "Self-service change disabled while under review"
-      },
-      "rejected": {
-        "title": "Your manual email-change request was rejected",
-        "reason": "Reason",
-        "canRetry": "You can retry self-service verification or submit another request."
-      },
-      "exempt": {
-        "title": "Manual-review exemption mode",
-        "warning": "An admin approved your email-change request. This mode skips all identity checks (old email, password, student ID, phone); the change completes only when you submit here. This permit is one-time and expires immediately after success.",
-        "prefill": "Admin-approved email",
-        "confirmTitle": "⚠️ Manual-review exemption mode",
-        "confirmBody": "⚠️ Manual-review exemption mode\nYour bound email will be updated to: {new}\nIt takes effect once submitted. Please double-check. Continue?",
-        "success": "Email changed successfully"
-      }
     }
   },
   "admin": {
@@ -1306,7 +1343,19 @@
       "choiceTitle": "Login Successful",
       "choiceSubtitle": "You have administrator privileges. Choose where to go.",
       "choiceAdmin": "Enter Admin Dashboard",
-      "choiceHome": "Go to Website Home"
+      "choiceHome": "Go to Website Home",
+      "2fa": {
+        "title": "Two-step verification",
+        "subtitle": "We detected a new device or network. A 6-digit code has been sent to your email address. Enter it to finish signing in.",
+        "subtitleWithEmail": "A code has been sent to {email}. Enter it to finish signing in.",
+        "codeLabel": "Email verification code",
+        "codePlaceholder": "6-digit code",
+        "verify": "Verify and sign in",
+        "verifying": "Verifying…",
+        "resend": "Resend code",
+        "resending": "Sending…",
+        "back": "Back to sign in"
+      }
     },
     "breakGlass": {
       "bannerWarning": "⚠️ You are using a Break-Glass emergency account with full privileges. Proceed with caution.",
@@ -1436,6 +1485,37 @@
       "statuses": {
         "pending": "Pending",
         "handled": "Handled",
+        "rejected": "Rejected"
+      }
+    },
+    "emailChange": {
+      "title": "Manual Account Requests",
+      "desc": "Email-change manual requests: after approval the user must complete the final confirmation in account settings; admins never change the email directly.",
+      "filterPending": "Pending",
+      "filterAll": "All",
+      "empty": "No requests",
+      "colOldEmail": "Current email",
+      "colNewEmail": "Requested new email",
+      "colRemark": "Note",
+      "colCreatedAt": "Submitted",
+      "colIp": "Client IP",
+      "colFingerprint": "Fingerprint",
+      "approve": "Approve",
+      "reject": "Reject",
+      "rejectReason": "Reject reason",
+      "rejectReasonPlaceholder": "Reason required (shown to the requester)",
+      "reviewedAt": "Reviewed at",
+      "approveConfirm": {
+        "title": "Approve email-change request",
+        "body": "Approve \"{name}\"'s email-change request (target: {email})?\nApproval only grants a one-time permit; the user must complete the final step in account settings. The email is not changed by the admin."
+      },
+      "rejectConfirm": {
+        "title": "Reject email-change request",
+        "body": "Reject \"{name}\"'s request? A reason is required and will be shown to the requester."
+      },
+      "statuses": {
+        "pending": "Pending",
+        "approved": "Approved",
         "rejected": "Rejected"
       }
     },
@@ -1632,12 +1712,14 @@
     "nav": {
       "dashboard": "Overview",
       "users": "User Management",
+      "reviewCenter": "Review Centre",
       "users.list": "User List",
       "users.roles": "Role Management",
       "users.members": "Member Roster",
       "users.realname": "Real-name Review",
       "users.review": "Review Centre",
-      "reviewCenter": "Review Centre",
+      "users.emailChange": "Email-change requests",
+      "users.schoolVerify": "School Verification",
       "content": "Content Management",
       "content.blog": "Blog Management",
       "content.memo": "Moments Management",
@@ -1668,9 +1750,7 @@
       "config.sso": "SSO Trusted Apps",
       "audit": "Logs & Audit",
       "mailpush": "Email & Push",
-      "mailpush.tooltip": "The email service is not yet configured for domain and DNS. Please complete the Cloudflare Email Routing and server mail setup before enabling this module",
-      "users.emailChange": "Email-change requests",
-      "users.schoolVerify": "School Verification"
+      "mailpush.tooltip": "The email service is not yet configured for domain and DNS. Please complete the Cloudflare Email Routing and server mail setup before enabling this module"
     },
     "mailpush": {
       "title": "Email & Push",
@@ -1679,32 +1759,6 @@
       "emptyHint": "After completing the domain, MX records and Cloudflare Email Routing setup, an admin can enable the email service in System Settings and this module will take effect automatically.",
       "ready": "The email service is ready",
       "readyHint": "Email sending/receiving and push entries will be available in a future release."
-    },
-    "rolesPage": {
-      "title": "Role Management",
-      "subtitle": "Roles are built-in and cannot be added or deleted; view each role's default permission matrix and member distribution here, and manage per-account module-level permission overrides.",
-      "roleDefsTitle": "Role Definitions & Default Permissions",
-      "memberCount": "{count} members",
-      "matrixTitle": "Default Permission Matrix",
-      "matrixHint": "\"Manage\" inherently includes \"View\"; super_admin always has all permissions. Account-level overrides are managed separately below.",
-      "colModule": "Permission Module",
-      "actionManage": "Manage",
-      "actionView": "View",
-      "actionNone": "—",
-      "overridesTitle": "Accounts with Overrides",
-      "overridesDesc": "The following accounts have module-level permission overrides; the override matrix fully replaces the default actions of the account's role.",
-      "colUser": "Account",
-      "colRole": "Role",
-      "colModules": "Overridden Modules",
-      "colStatus": "Status",
-      "edit": "Edit Permissions",
-      "emptyOverrides": "No accounts with permission overrides. Open an account's details in the user list to configure custom permissions for it.",
-      "statusActive": "Active",
-      "statusDisabled": "Disabled",
-      "manageHint": "Only super admins can modify account permission overrides; you are in read-only view.",
-      "goUsers": "Go to User List",
-      "loadError": "Failed to load role data, please try again later",
-      "moduleCount": "{count} modules"
     },
     "sysdata": {
       "title": "College & Major Data",
@@ -1782,7 +1836,22 @@
       "departments": "Preferred departments",
       "intro": "Self introduction",
       "adminNote": "Note",
-      "total": "{total} records in total"
+      "total": "{total} records in total",
+      "dept": {
+        "manage": "Manage Options",
+        "title": "Department Options Management",
+        "desc": "Manage the department options on the application form; past applications keep the text submitted at the time and are unaffected by renames or deletions.",
+        "nameZh": "Chinese name",
+        "nameEn": "English name",
+        "add": "Add Option",
+        "addButton": "Add",
+        "edit": "Edit",
+        "delete": "Delete",
+        "deleteConfirm": "Delete \"{name}\"? Past applications are not affected.",
+        "empty": "No options yet. Add one below.",
+        "enable": "Enable",
+        "disable": "Disable"
+      }
     },
     "profile": {
       "title": "Profile",
@@ -1967,6 +2036,88 @@
         "resolved": "Resolved"
       }
     },
+    "projects": {
+      "title": "Project Showcase Management",
+      "desc": "Project showcase CMS: tech-stack tags, screenshot uploads, draft/publish/archive",
+      "newTitle": "New Project",
+      "editTitle": "Edit Project",
+      "newBtn": "New Project",
+      "editBtn": "Edit",
+      "deleteBtn": "Delete",
+      "saveBtn": "Save",
+      "backToList": "Back to projects",
+      "colTitle": "Projects",
+      "colStatus": "Status",
+      "colTech": "Tech Stack",
+      "colYear": "Year",
+      "colLeader": "Lead",
+      "colUpdatedAt": "Updated",
+      "colActions": "Actions",
+      "colSlug": "Slug (URL)",
+      "colDesc": "Short description",
+      "colContent": "Project details (Markdown)",
+      "colDemo": "Demo URL",
+      "colScreenshots": "Screenshots",
+      "filterAllStatus": "All statuses",
+      "searchPlaceholder": "Search title / description",
+      "empty": "No projects yet",
+      "statusDraft": "Draft",
+      "statusPublished": "Published",
+      "statusArchived": "Archived",
+      "deleteConfirm": "Delete this project? This cannot be undone.",
+      "deleted": "Project deleted",
+      "metaTitle": "Project Info",
+      "publishTitle": "Publishing",
+      "slugPlaceholder": "Leave empty to auto-generate",
+      "descPlaceholder": "One-line summary shown in list views",
+      "techPlaceholder": "Type a tech and press Enter",
+      "techAdd": "Add tech",
+      "techRemove": "Remove",
+      "uploadScreenshot": "Upload screenshot",
+      "removeScreenshot": "Remove screenshot",
+      "contentHint": "Markdown supported; shown on the public project detail page",
+      "errTitleRequired": "Please enter the project title",
+      "errContentRequired": "Please enter the project details",
+      "errYearInvalid": "Year must be an integer between 1900 and 3000",
+      "updatedAt": "Updated",
+      "invalidId": "Invalid project ID"
+    },
+    "themes": {
+      "title": "UI Theme Management",
+      "desc": "Theme variable pack CRUD: layout skeleton, light/dark CSS variables, enable & ordering; import JSON to add seasonal themes",
+      "newTitle": "New Theme",
+      "editTitle": "Edit Theme",
+      "newBtn": "New Theme",
+      "importBtn": "Import JSON",
+      "editBtn": "Edit",
+      "deleteBtn": "Delete",
+      "colKey": "Key",
+      "colName": "Theme",
+      "colLayout": "Layout",
+      "colEnabled": "Status",
+      "colSort": "Order",
+      "colActions": "Actions",
+      "empty": "No themes yet",
+      "builtin": "Built-in",
+      "fieldKey": "Theme Key",
+      "fieldName": "Display Name",
+      "fieldLayout": "Layout Skeleton",
+      "fieldCssVars": "Light CSS Variables (JSON)",
+      "fieldDarkVars": "Dark CSS Variables (JSON, leave empty to inherit base dark)",
+      "fieldEnabled": "Enable this theme",
+      "fieldSort": "Order (smaller comes first)",
+      "layoutMicrosoft": "Microsoft (two-column)",
+      "layoutApple": "Apple (three-column)",
+      "keyPlaceholder": "Starts with a lowercase letter; digits and hyphens allowed",
+      "cssVarsHint": "Keys must be CSS variable names starting with --, e.g. {\"--radius\": \"1rem\"}",
+      "deleteConfirm": "Delete theme \"{name}\"? Users who selected it will fall back to the default theme.",
+      "deleted": "Theme deleted",
+      "saved": "Theme saved",
+      "errKeyInvalid": "Invalid key format: must start with a lowercase letter, contain only lowercase letters/digits/hyphens, max 32 characters",
+      "errNameRequired": "Please enter a display name",
+      "errJsonInvalid": "CSS variables JSON is invalid (must be an object)",
+      "errImportInvalid": "The imported file is not a valid theme JSON"
+    },
     "settings": {
       "title": "System Settings",
       "ipBlacklistMovedTitle": "IP Blacklist",
@@ -1979,6 +2130,8 @@
       "removeDomain": "Remove",
       "saved": "Settings saved",
       "saveError": "Failed to save, please try again later",
+      "mailNotConfigured": "Mail channel (SMTP) is not configured",
+      "mailNotConfiguredDesc": "Verification codes, application review notifications and feedback receipts will not be delivered. Please complete SMTP_HOST / SMTP_USERNAME / SMTP_PASSWORD etc. in the server .env file and restart the backend.",
       "clubCheckin": "Club Registration Check-in",
       "clubCheckinDesc": "When open, approved club applicants can check in with their receipt code",
       "systemTimezone": "System Timezone",
@@ -2094,16 +2247,16 @@
       "permDefaultView": "Role default: view",
       "permDefaultNone": "Role default: none",
       "permSave": "Save permissions",
+      "batchEnable": "Enable selected",
+      "batchDisable": "Disable selected",
+      "batchSelected": "{count} accounts selected",
+      "batchDisableConfirm": "Disable the selected {count} accounts? Their sessions will be revoked immediately",
       "roles": {
         "super_admin": "Super Admin",
         "admin": "Admin",
         "editor": "Editor",
         "member": "Member"
       },
-      "batchEnable": "Enable selected",
-      "batchDisable": "Disable selected",
-      "batchSelected": "{count} accounts selected",
-      "batchDisableConfirm": "Disable the selected {count} accounts? Their sessions will be revoked immediately",
       "detailBtn": "Details",
       "detail": {
         "back": "Back to user list",
@@ -2151,9 +2304,35 @@
         "audit_logs": "Audit Logs",
         "memo": "Moments",
         "badges": "Badge management",
-        "security_questions": "Security Questions",
-        "roles": "Role Management"
+        "roles": "Role Management",
+        "security_questions": "Security Questions"
       }
+    },
+    "rolesPage": {
+      "title": "Role Management",
+      "subtitle": "Roles are built-in and cannot be added or deleted; view each role's default permission matrix and member distribution here, and manage per-account module-level permission overrides.",
+      "roleDefsTitle": "Role Definitions & Default Permissions",
+      "memberCount": "{count} members",
+      "matrixTitle": "Default Permission Matrix",
+      "matrixHint": "\"Manage\" inherently includes \"View\"; super_admin always has all permissions. Account-level overrides are managed separately below.",
+      "colModule": "Permission Module",
+      "actionManage": "Manage",
+      "actionView": "View",
+      "actionNone": "—",
+      "overridesTitle": "Accounts with Overrides",
+      "overridesDesc": "The following accounts have module-level permission overrides; the override matrix fully replaces the default actions of the account's role.",
+      "colUser": "Account",
+      "colRole": "Role",
+      "colModules": "Overridden Modules",
+      "colStatus": "Status",
+      "edit": "Edit Permissions",
+      "emptyOverrides": "No accounts with permission overrides. Open an account's details in the user list to configure custom permissions for it.",
+      "statusActive": "Active",
+      "statusDisabled": "Disabled",
+      "manageHint": "Only super admins can modify account permission overrides; you are in read-only view.",
+      "goUsers": "Go to User List",
+      "loadError": "Failed to load role data, please try again later",
+      "moduleCount": "{count} modules"
     },
     "systemReset": {
       "title": "System Reset (Dangerous Operation)",
@@ -2280,88 +2459,6 @@
       "attachmentNeedSave": "Save the announcement to upload attachments",
       "attachmentDeleteConfirm": "Delete this attachment?",
       "attachmentUploading": "Uploading…"
-    },
-    "projects": {
-      "title": "Project Showcase Management",
-      "desc": "Project showcase CMS: tech-stack tags, screenshot uploads, draft/publish/archive",
-      "newTitle": "New Project",
-      "editTitle": "Edit Project",
-      "newBtn": "New Project",
-      "editBtn": "Edit",
-      "deleteBtn": "Delete",
-      "saveBtn": "Save",
-      "backToList": "Back to projects",
-      "colTitle": "Projects",
-      "colStatus": "Status",
-      "colTech": "Tech Stack",
-      "colYear": "Year",
-      "colLeader": "Lead",
-      "colUpdatedAt": "Updated",
-      "colActions": "Actions",
-      "colSlug": "Slug (URL)",
-      "colDesc": "Short description",
-      "colContent": "Project details (Markdown)",
-      "colDemo": "Demo URL",
-      "colScreenshots": "Screenshots",
-      "filterAllStatus": "All statuses",
-      "searchPlaceholder": "Search title / description",
-      "empty": "No projects yet",
-      "statusDraft": "Draft",
-      "statusPublished": "Published",
-      "statusArchived": "Archived",
-      "deleteConfirm": "Delete this project? This cannot be undone.",
-      "deleted": "Project deleted",
-      "metaTitle": "Project Info",
-      "publishTitle": "Publishing",
-      "slugPlaceholder": "Leave empty to auto-generate",
-      "descPlaceholder": "One-line summary shown in list views",
-      "techPlaceholder": "Type a tech and press Enter",
-      "techAdd": "Add tech",
-      "techRemove": "Remove",
-      "uploadScreenshot": "Upload screenshot",
-      "removeScreenshot": "Remove screenshot",
-      "contentHint": "Markdown supported; shown on the public project detail page",
-      "errTitleRequired": "Please enter the project title",
-      "errContentRequired": "Please enter the project details",
-      "errYearInvalid": "Year must be an integer between 1900 and 3000",
-      "updatedAt": "Updated",
-      "invalidId": "Invalid project ID"
-    },
-    "themes": {
-      "title": "UI Theme Management",
-      "desc": "Theme variable pack CRUD: layout skeleton, light/dark CSS variables, enable & ordering; import JSON to add seasonal themes",
-      "newTitle": "New Theme",
-      "editTitle": "Edit Theme",
-      "newBtn": "New Theme",
-      "importBtn": "Import JSON",
-      "editBtn": "Edit",
-      "deleteBtn": "Delete",
-      "colKey": "Key",
-      "colName": "Theme",
-      "colLayout": "Layout",
-      "colEnabled": "Status",
-      "colSort": "Order",
-      "colActions": "Actions",
-      "empty": "No themes yet",
-      "builtin": "Built-in",
-      "fieldKey": "Theme Key",
-      "fieldName": "Display Name",
-      "fieldLayout": "Layout Skeleton",
-      "fieldCssVars": "Light CSS Variables (JSON)",
-      "fieldDarkVars": "Dark CSS Variables (JSON, leave empty to inherit base dark)",
-      "fieldEnabled": "Enable this theme",
-      "fieldSort": "Order (smaller comes first)",
-      "layoutMicrosoft": "Microsoft (two-column)",
-      "layoutApple": "Apple (three-column)",
-      "keyPlaceholder": "Starts with a lowercase letter; digits and hyphens allowed",
-      "cssVarsHint": "Keys must be CSS variable names starting with --, e.g. {\"--radius\": \"1rem\"}",
-      "deleteConfirm": "Delete theme \"{name}\"? Users who selected it will fall back to the default theme.",
-      "deleted": "Theme deleted",
-      "saved": "Theme saved",
-      "errKeyInvalid": "Invalid key format: must start with a lowercase letter, contain only lowercase letters/digits/hyphens, max 32 characters",
-      "errNameRequired": "Please enter a display name",
-      "errJsonInvalid": "CSS variables JSON is invalid (must be an object)",
-      "errImportInvalid": "The imported file is not a valid theme JSON"
     },
     "blog": {
       "title": "Blog Management",
@@ -2761,37 +2858,6 @@
         "btn": "Manage"
       }
     },
-    "emailChange": {
-      "title": "Manual Account Requests",
-      "desc": "Email-change manual requests: after approval the user must complete the final confirmation in account settings; admins never change the email directly.",
-      "filterPending": "Pending",
-      "filterAll": "All",
-      "empty": "No requests",
-      "colOldEmail": "Current email",
-      "colNewEmail": "Requested new email",
-      "colRemark": "Note",
-      "colCreatedAt": "Submitted",
-      "colIp": "Client IP",
-      "colFingerprint": "Fingerprint",
-      "approve": "Approve",
-      "reject": "Reject",
-      "rejectReason": "Reject reason",
-      "rejectReasonPlaceholder": "Reason required (shown to the requester)",
-      "reviewedAt": "Reviewed at",
-      "approveConfirm": {
-        "title": "Approve email-change request",
-        "body": "Approve \"{name}\"'s email-change request (target: {email})?\nApproval only grants a one-time permit; the user must complete the final step in account settings. The email is not changed by the admin."
-      },
-      "rejectConfirm": {
-        "title": "Reject email-change request",
-        "body": "Reject \"{name}\"'s request? A reason is required and will be shown to the requester."
-      },
-      "statuses": {
-        "pending": "Pending",
-        "approved": "Approved",
-        "rejected": "Rejected"
-      }
-    },
     "badges": {
       "title": "User badge management",
       "limit": "Up to {limit} custom badges",
@@ -3082,6 +3148,22 @@
     "maintenance": "System under maintenance",
     "login_blocked": "Invalid username or password",
     "system_not_initialized": "System is not initialised. Please log in with the break-glass account to complete the initialisation wizard.",
+    "memo": {
+      "createFailed": "Failed to create moment",
+      "updateFailed": "Failed to update moment",
+      "deleteFailed": "Failed to delete moment",
+      "rateLimited": "Publishing too frequently, please try later",
+      "notFound": "Moment not found",
+      "forbidden": "Not authorized to operate this moment",
+      "privateForbidden": "This moment is private; cannot like/favourite",
+      "shareOnlyPublic": "Only public moments can generate share links",
+      "versionNotFound": "Version not found",
+      "tagNotFound": "Tag not found",
+      "invalidDate": "Date must be YYYY-MM-DD",
+      "rssMaintenance": "RSS is not yet implemented",
+      "webdavMaintenance": "WebDAV is not yet implemented",
+      "importMaintenance": "Moments backup import is not yet implemented"
+    },
     "validation": {
       "generic": "Invalid submission: {reason}",
       "withField": "{field} {reason}",
@@ -3111,21 +3193,16 @@
         "content": "Content"
       }
     },
-    "memo": {
-      "createFailed": "Failed to create moment",
-      "updateFailed": "Failed to update moment",
-      "deleteFailed": "Failed to delete moment",
-      "rateLimited": "Publishing too frequently, please try later",
-      "notFound": "Moment not found",
-      "forbidden": "Not authorized to operate this moment",
-      "privateForbidden": "This moment is private; cannot like/favourite",
-      "shareOnlyPublic": "Only public moments can generate share links",
-      "versionNotFound": "Version not found",
-      "tagNotFound": "Tag not found",
-      "invalidDate": "Date must be YYYY-MM-DD",
-      "rssMaintenance": "RSS is not yet implemented",
-      "webdavMaintenance": "WebDAV is not yet implemented",
-      "importMaintenance": "Moments backup import is not yet implemented"
+    "page": {
+      "title": "Something went wrong",
+      "unexpected": "An unexpected error occurred. Please try again later",
+      "hint": "If you would like to report this issue, please include the following ID",
+      "requestId": "Request ID",
+      "digest": "Error digest",
+      "copy": "Copy",
+      "copied": "Copied",
+      "retry": "Retry",
+      "home": "Back to home"
     }
   },
   "memoPage": {

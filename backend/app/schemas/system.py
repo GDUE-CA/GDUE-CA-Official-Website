@@ -53,6 +53,9 @@ class SystemSettingOut(BaseModel):
     session_idle_timeout_minutes: int = 30
     # 邮件收发模块就绪开关（V0.5.5 §3.3）
     mail_system_ready: bool = False
+    # V0.5.9：SMTP / 邮件通道环境变量是否已配置（服务端计算，非 DB 字段）；
+    # false 时后台「系统设置」页展示警告横幅（验证码 / 通知邮件将无法投递）
+    mail_channel_configured: bool = False
 
     model_config = {"from_attributes": True}
 

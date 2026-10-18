@@ -69,7 +69,7 @@ from app.db.models import (
     UserSecurityQuestion,
     UserRole,
 )
-from app.db.session import get_db
+from app.db.session import async_session, get_db
 from app.utils.crud import paginate
 from app.core.kv import get_kv
 from app.core.mailer import is_configured as mailer_configured, send_email
@@ -82,6 +82,8 @@ from app.schemas.auth import (
     ForgotPasswordSendCodeRequest,
     LoginRequest,
     LoginResponse,
+    Login2FAVerifyRequest,
+    Login2FAResendRequest,
     LoginSessionOut,
     PasswordResetHandleRequest,
     PasswordResetOut,
@@ -230,13 +232,28 @@ async def register_send_code(
 
     V0.5.8：邮箱占用是本步的显式校验项（向导需提示用户换邮箱），
     因此「邮箱已被使用」直接明确返回，不做模糊化处理。
-    验证码 KV 存 SHA-256（TTL/重发间隔/尝试上限复用全局邮件验证码配置），
-    SMTP 未配置时仅打服务端日志（开发兜底，绝不经响应回传）。
+    V0.5.9：
+    - 同一邮箱 60 秒最多发送 1 次（冷却未到返回 ok:false，不再误报 ok:true）；
+    - 同一 IP 1 分钟最多 3 次（KV/Redis 计数，多 worker 共享）；
+    - 验证码有效期固定 5 分钟（EMAIL_CODE_TTL_SECONDS=300）。
+    V0.6.0（Issue5）：邮件改为同步投递并等待结果，发送失败明确返回 ok:false；
+    冷却键与验证码仅在发送成功后写入，失败不锁重发。
+    验证码 KV 存 SHA-256，SMTP 未配置视为发送失败（绝不经响应回传验证码）。
     """
-    client_ip = get_client_ip(request)
+    client_ip = get_client_ip(request) or "unknown"
     email = str(req.email).strip()
+    kv = get_kv()
+
+    # 同一 IP 1 分钟最多 3 次（写入 KV/Redis；键首次创建时挂 60 秒过期）
+    ip_key = f"regcode:ip:{client_ip}"
+    ip_hits = await kv.incrby(ip_key, 1)
+    if ip_hits == 1:
+        await kv.expire(ip_key, 60)
+    if ip_hits > 3:
+        return {"ok": False, "message": "请求过于频繁，请稍后再试"}
+
     if _placeholder_email(email):
-        raise HTTPException(status_code=400, detail="请输入有效的邮箱地址")
+        return {"ok": False, "message": "请输入有效的邮箱地址"}
     dup = (await db.execute(
         select(User).where(User.email == email)
     )).scalar_one_or_none()
@@ -244,32 +261,36 @@ async def register_send_code(
         raise HTTPException(status_code=400, detail="邮箱已被使用")
 
     ehash = _email_hash(email)
-    kv = get_kv()
     sent_key = f"regcode:sent:{ehash}"
     code_key = f"regcode:code:{ehash}"
     att_key = f"regcode:att:{ehash}"
+    # 同一邮箱 60 秒最多 1 次：冷却未到明确 ok:false
     if await kv.exists(sent_key):
-        return {"ok": True, "message": "验证码发送间隔未到，请稍后查收"}
-    await kv.set(sent_key, "1", ttl_seconds=settings.EMAIL_CODE_RESEND_INTERVAL_SECONDS)
+        return {"ok": False, "message": "验证码发送间隔未到，请稍后再试"}
 
     code = f"{secrets.randbelow(1000000):06d}"
-    await kv.setex(code_key, settings.EMAIL_CODE_TTL_SECONDS,
-                   hashlib.sha256(code.encode()).hexdigest())
-    await kv.setex(att_key, settings.EMAIL_CODE_TTL_SECONDS, "0")
     body = (
         "您正在注册 GDUE-CA 账号。\n\n"
         f"验证码：{code}\n"
         f"{max(settings.EMAIL_CODE_TTL_SECONDS // 60, 1)} 分钟内有效，"
         "请勿泄露给他人。若非本人操作，请忽略本邮件。\n"
     )
+
+    # 同步投递并等待结果（mailer 内部已捕获全部异常，失败仅返回 False）
     sent = await send_email(email, "GDUE-CA 注册验证码", body)
+    async with async_session() as s:
+        _log(s, None, "register.code_sent",
+             f"email_hash:{ehash[:12]} sent:{sent} smtp:{mailer_configured()}", client_ip)
+        await s.commit()
     if not sent:
-        logger.warning(
-            "注册验证码未成功投递（SMTP未配置或失败，仅限开发环境排查）邮箱=%s 验证码=%s",
-            email, code)
-    _log(db, None, "register.code_sent",
-         f"email_hash:{ehash[:12]} sent:{sent} smtp:{mailer_configured()}", client_ip)
-    await db.commit()
+        logger.warning("注册验证码发送失败（SMTP未配置或投递失败）邮箱=%s", email)
+        return {"ok": False, "message": "邮件发送失败，请稍后重试"}
+
+    # 发送成功才写冷却与验证码：失败不锁重发
+    await kv.set(sent_key, "1", ttl_seconds=settings.EMAIL_CODE_RESEND_INTERVAL_SECONDS)
+    await kv.setex(code_key, settings.EMAIL_CODE_TTL_SECONDS,
+                   hashlib.sha256(code.encode()).hexdigest())
+    await kv.setex(att_key, settings.EMAIL_CODE_TTL_SECONDS, "0")
     return {"ok": True, "message": "验证码已发送，请查收"}
 
 
@@ -364,6 +385,160 @@ async def register(
     _log(db, u.id, "user.register", f"user:{u.id}", get_client_ip(request))
     await db.commit()
     return RegisterOut(username=u.username, display_name=u.display_name)
+
+
+# ---------- V0.6.0 Issue7：陌生 IP/设备邮箱二次验证（2FA）辅助 ----------
+# 设备信任键 TTL：30 天硬顶（与「记住此设备」周期一致）
+LOGIN_2FA_TRUST_TTL_SECONDS = 30 * 86400
+# 单个验证码最大尝试次数，超过即作废（须重新走登录流程获取新码）
+LOGIN_2FA_MAX_ATTEMPTS = 5
+
+
+def _login2fa_trust_key(uid: str, fingerprint: str | None, client_ip: str | None) -> str:
+    """设备信任键：uid + (浏览器指纹|IP) 摘要；指纹/IP 任一变化即视为陌生环境。"""
+    digest = hashlib.sha256(f"{fingerprint or '-'}|{client_ip or '-'}".encode()).hexdigest()[:32]
+    return f"login2fa:trusted:{uid}:{digest}"
+
+
+def _mask_email(email: str) -> str:
+    """邮箱打码（2FA 提示用）：保留前 1-2 位与域名，如 ab***@example.com。"""
+    local, _, domain = email.partition("@")
+    if len(local) <= 2:
+        return f"{local[:1]}*@{domain}"
+    return f"{local[:2]}***@{domain}"
+
+
+async def _send_login2fa_code(uid: str, email: str, kv) -> bool:
+    """生成 6 位登录二次验证码并同步投递邮件；成功才写 KV（验证码只存 SHA-256）。
+
+    KV：login2fa:code:{uid}=sha256(码)、login2fa:att:{uid}=尝试计数、
+    login2fa:sent:{uid}=重发冷却标记（EMAIL_CODE_RESEND_INTERVAL_SECONDS）。
+    """
+    code = f"{secrets.randbelow(1000000):06d}"
+    body = (
+        "检测到您的 GDUE-CA 账号正在通过新设备或新网络环境登录。\n\n"
+        f"登录验证码：{code}\n"
+        f"{max(settings.EMAIL_CODE_TTL_SECONDS // 60, 1)} 分钟内有效。\n"
+        "若非本人操作，请立即修改密码并检查账号安全。\n"
+    )
+    sent = await send_email(email, "GDUE-CA 登录二次验证", body)
+    if not sent:
+        return False
+    ttl = settings.EMAIL_CODE_TTL_SECONDS
+    await kv.setex(f"login2fa:code:{uid}", ttl, hashlib.sha256(code.encode()).hexdigest())
+    await kv.setex(f"login2fa:att:{uid}", ttl, "0")
+    await kv.set(f"login2fa:sent:{uid}", "1",
+                 ttl_seconds=settings.EMAIL_CODE_RESEND_INTERVAL_SECONDS)
+    return True
+
+
+async def _login2fa_challenge(
+    db: AsyncSession, user: User, fingerprint: str | None, client_ip: str | None,
+) -> LoginResponse | Response:
+    """陌生 IP/设备 2FA 门禁（密码校验通过后调用）。
+
+    返回值：
+    - None：设备已信任（30 天内同指纹+IP 登录过）或账号无绑定邮箱（如实审计后放行），
+      调用方继续建立会话；
+    - LoginResponse(requires_2fa=True)：已下发邮箱验证码挑战，会话未建立；
+    - Response（fail JSON）：验证码投递失败，按登录失败统一拒绝（原因仅入审计）。
+    """
+    uid = str(user.id)
+    kv = get_kv()
+    if await kv.exists(_login2fa_trust_key(uid, fingerprint, client_ip)):
+        return None
+    user_email = (user.email or "").strip()
+    if not user_email:
+        log_action(db, user.id, "login2fa.skipped_no_email", None, client_ip)
+        return None
+    if not await kv.exists(f"login2fa:code:{uid}"):
+        # 无有效验证码才发新码；同步投递失败按登录失败处理，不泄露 SMTP 状态
+        sent = await _send_login2fa_code(uid, user_email, kv)
+        if not sent:
+            log_action(db, user.id, "login2fa.send_failed", None, client_ip)
+            return fail(BizCode.LOGIN_BLOCKED, params=_LOGIN_DENIED)
+    log_action(db, user.id, "login2fa.challenge",
+               f"ip:{client_ip} fp:{(fingerprint or '-')[:16]}", client_ip)
+    return LoginResponse(
+        role=Role(user.role.value),
+        csrf_token="",  # 会话未建立，空占位；verify 成功后下发真实令牌
+        username=user.username,
+        requires_2fa=True,
+        email_masked=_mask_email(user_email),
+    )
+
+
+async def _create_session_response(
+    *,
+    db: AsyncSession,
+    request: Request,
+    response: Response,
+    user: User,
+    remember_device: bool,
+    client_ip: str,
+    ua: str,
+    fingerprint: str | None,
+    now,
+    ss: "SystemSetting | None",
+) -> LoginResponse:
+    """登录会话建立（login 与 2FA verify 共用）：阶梯计数清零 + LoginSession 落库
+    + 会话 Cookie/CSRF 下发 + 审计。调用方须已完成全部安全校验。"""
+    uid = str(user.id)
+    dims = {"ip": client_ip, "fp": fingerprint}
+    # 仅本账号成功才清零本账号两套维度的计数与惩罚阶段
+    await bf_reset(NORMAL_POLICY, uid, dims)
+    user.last_login_at = now
+
+    # 记住此设备 → 硬顶 30 天；否则沿用 JWT_EXPIRE_HOURS
+    if remember_device:
+        expires_delta = timedelta(days=REMEMBER_DEVICE_DAYS)
+    else:
+        expires_delta = timedelta(hours=settings.JWT_EXPIRE_HOURS)
+
+    # 创建登录会话记录（设备 / IP / 登录地点 / UA）
+    global_timeout_minutes = ss.session_idle_timeout_minutes if ss else 30
+
+    device_name, device_model = parse_user_agent(ua)
+    loc_zh, loc_en = await resolve_location_full(client_ip)
+    sid = uuid.uuid4().hex
+    db.add(LoginSession(
+        user_id=user.id,
+        session_id=sid,
+        device_name=device_name[:128],
+        device_model=device_model[:128],
+        user_agent=ua[:512],
+        ip=client_ip,
+        location_zh=loc_zh[:128] if loc_zh else None,
+        location_en=loc_en[:128] if loc_en else None,
+        remember_device=remember_device,
+        login_at=now,
+        last_active_at=now,
+        # 非记住设备：expires_at = now + 全局配置空闲超时（分钟）
+        # 记住设备：expires_at = now + 30天硬顶
+        expires_at=now + (timedelta(days=REMEMBER_DEVICE_DAYS) if remember_device else timedelta(minutes=global_timeout_minutes)),
+    ))
+    token = create_access_token(str(user.id), Role(user.role.value), sid, expires_delta)
+    response.set_cookie(
+        SESSION_COOKIE,
+        token,
+        max_age=int(expires_delta.total_seconds()) if remember_device else None,
+        httponly=True,
+        secure=cookie_secure(request),
+        samesite="strict",
+        path="/",
+    )
+    # 登录后轮换 CSRF 令牌，防止会话固定
+    csrf_token = new_csrf_token()
+    set_csrf_cookie(response, request, csrf_token)
+    _log(db, user.id, "login", f"session:{sid[:8]} device:{device_model}", client_ip)
+    return LoginResponse(
+        role=Role(user.role.value),
+        csrf_token=csrf_token,
+        username=user.username,
+        must_change_password=user.must_change_password,
+        realname_verified=user.realname_verified,
+        must_set_security_questions=user.must_set_security_questions,
+    )
 
 
 # ---------- 登录 ----------
@@ -526,60 +701,148 @@ async def login(
         await db.commit()
         return fail(BizCode.LOGIN_BLOCKED, params=_SOURCE_DENIED)
 
-    # 登录成功：仅本账号成功才清零本账号两套维度的计数与惩罚阶段
-    await bf_reset(NORMAL_POLICY, uid, dims)
-    user.last_login_at = now
+    # ---- V0.6.0 Issue7：陌生 IP/设备邮箱二次验证（Break-Glass 分支不经过此处） ----
+    challenge = await _login2fa_challenge(db, user, fingerprint, client_ip)
+    if challenge is not None:
+        return challenge
 
-    # 记住此设备 → 硬顶 30 天；否则沿用 JWT_EXPIRE_HOURS
-    if req.remember_device:
-        expires_delta = timedelta(days=REMEMBER_DEVICE_DAYS)
-    else:
-        expires_delta = timedelta(hours=settings.JWT_EXPIRE_HOURS)
-
-    # 创建登录会话记录（设备 / IP / 登录地点 / UA）
-    global_timeout_minutes = ss.session_idle_timeout_minutes if ss else 30
-
-    device_name, device_model = parse_user_agent(ua)
-    loc_zh, loc_en = await resolve_location_full(client_ip)
-    sid = uuid.uuid4().hex
-    db.add(LoginSession(
-        user_id=user.id,
-        session_id=sid,
-        device_name=device_name[:128],
-        device_model=device_model[:128],
-        user_agent=ua[:512],
-        ip=client_ip,
-        location_zh=loc_zh[:128] if loc_zh else None,
-        location_en=loc_en[:128] if loc_en else None,
-        remember_device=req.remember_device,
-        login_at=now,
-        last_active_at=now,
-        # 非记住设备：expires_at = now + 全局配置空闲超时（分钟）
-        # 记住设备：expires_at = now + 30天硬顶
-        expires_at=now + (timedelta(days=REMEMBER_DEVICE_DAYS) if req.remember_device else timedelta(minutes=global_timeout_minutes)),
-    ))
-    token = create_access_token(str(user.id), Role(user.role.value), sid, expires_delta)
-    response.set_cookie(
-        SESSION_COOKIE,
-        token,
-        max_age=int(expires_delta.total_seconds()) if req.remember_device else None,
-        httponly=True,
-        secure=cookie_secure(request),
-        samesite="strict",
-        path="/",
+    return await _create_session_response(
+        db=db, request=request, response=response, user=user,
+        remember_device=req.remember_device, client_ip=client_ip, ua=ua,
+        fingerprint=fingerprint, now=now, ss=ss,
     )
-    # 登录后轮换 CSRF 令牌，防止会话固定
-    csrf_token = new_csrf_token()
-    set_csrf_cookie(response, request, csrf_token)
-    _log(db, user.id, "login", f"session:{sid[:8]} device:{device_model}", client_ip)
-    return LoginResponse(
-        role=Role(user.role.value),
-        csrf_token=csrf_token,
-        username=user.username,
-        must_change_password=user.must_change_password,
-        realname_verified=user.realname_verified,
-        must_set_security_questions=user.must_set_security_questions,
+
+
+# ---------- 登录二次验证（V0.6.0 Issue7） ----------
+@router.post(
+    "/login/2fa/verify",
+    response_model=LoginResponse,
+    dependencies=[Depends(rate_limit("login2fa-verify", limit=10, window_seconds=60))],
+)
+async def login_2fa_verify(
+    req: Login2FAVerifyRequest,
+    request: Request,
+    response: Response,
+    db: AsyncSession = Depends(get_db, scope="function"),
+):
+    """登录二次验证：校验邮箱验证码，通过后建立会话并写 30 天设备信任键。
+
+    仅接受密码校验通过后下发的验证码（验证码本身即邮箱所有权证明）。
+    验证码错误 / 过期 / 无挑战 / 尝试超限一律返回 LOGIN_BLOCKED（401，
+    「用户名或密码错误」），不区分具体原因，避免信息泄露。
+    """
+    if not req.username and not req.email:
+        raise HTTPException(status_code=400, detail="必须提供 username 或 email")
+    client_ip = get_client_ip(request)
+    fingerprint = (request.headers.get("x-browser-fingerprint") or "").strip()[:128] or None
+    ua = request.headers.get("user-agent", "") or ""
+    now = _now()
+    account_hint = (req.username or str(req.email) or "")[:64]
+
+    # 来源校验与 /login 同策略（此端点仅服务普通账号，无 BG 豁免场景）
+    if not origin_allowed(request):
+        log_action(db, None, "login2fa.verify_origin_blocked", f"account:{account_hint}", client_ip)
+        await db.commit()
+        return fail(BizCode.CSRF_FAILED, params=_SOURCE_DENIED)
+
+    user = (await db.execute(
+        select(User).where(or_(User.username == req.username, User.email == req.email))
+    )).scalar_one_or_none()
+    if not user or user.is_deleted or not user.is_active:
+        log_action(db, None, "login2fa.verify_fail",
+                   f"account:{account_hint} reason:no_account", client_ip)
+        await db.commit()
+        return fail(BizCode.LOGIN_BLOCKED, params=_LOGIN_DENIED)
+
+    uid = str(user.id)
+    kv = get_kv()
+    code_key = f"login2fa:code:{uid}"
+    att_key = f"login2fa:att:{uid}"
+    raw = await kv.get(code_key)
+    if not raw:
+        log_action(db, user.id, "login2fa.verify_fail",
+                   f"account:{account_hint} reason:no_challenge", client_ip)
+        await db.commit()
+        return fail(BizCode.LOGIN_BLOCKED, params=_LOGIN_DENIED)
+
+    attempts = await kv.incrby(att_key, 1)
+    if attempts > LOGIN_2FA_MAX_ATTEMPTS:
+        await kv.delete(code_key, att_key)
+        log_action(db, user.id, "login2fa.verify_fail",
+                   f"account:{account_hint} reason:attempts_exhausted", client_ip)
+        await db.commit()
+        return fail(BizCode.LOGIN_BLOCKED, params=_LOGIN_DENIED)
+
+    if hashlib.sha256(req.code.encode()).hexdigest() != raw:
+        log_action(db, user.id, "login2fa.verify_fail",
+                   f"account:{account_hint} reason:code attempts:{attempts}", client_ip)
+        await db.commit()
+        return fail(BizCode.LOGIN_BLOCKED, params=_LOGIN_DENIED)
+
+    # 通过：核销验证码 + 写 30 天设备信任键 + 建立会话
+    await kv.delete(code_key, att_key)
+    await kv.set(
+        _login2fa_trust_key(uid, fingerprint, client_ip), "1",
+        ttl_seconds=LOGIN_2FA_TRUST_TTL_SECONDS,
     )
+    log_action(db, user.id, "login2fa.verify_ok",
+               f"ip:{client_ip} fp:{(fingerprint or '-')[:16]}", client_ip)
+    ss = await db.get(SystemSetting, 1)
+    return await _create_session_response(
+        db=db, request=request, response=response, user=user,
+        remember_device=req.remember_device, client_ip=client_ip, ua=ua,
+        fingerprint=fingerprint, now=now, ss=ss,
+    )
+
+
+@router.post(
+    "/login/2fa/resend",
+    dependencies=[Depends(rate_limit("login2fa-resend", limit=3, window_seconds=60))],
+)
+async def login_2fa_resend(
+    req: Login2FAResendRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db, scope="function"),
+):
+    """重发登录二次验证码：60 秒冷却；无活跃挑战 / 账号异常时模糊拒绝。"""
+    if not req.username and not req.email:
+        raise HTTPException(status_code=400, detail="必须提供 username 或 email")
+    client_ip = get_client_ip(request)
+    account_hint = (req.username or str(req.email) or "")[:64]
+    if not origin_allowed(request):
+        log_action(db, None, "login2fa.resend_origin_blocked", f"account:{account_hint}", client_ip)
+        await db.commit()
+        return {"ok": False, "message": "请求来源不合法"}
+
+    user = (await db.execute(
+        select(User).where(or_(User.username == req.username, User.email == req.email))
+    )).scalar_one_or_none()
+    user_email = (user.email or "").strip() if user else ""
+    if not user or user.is_deleted or not user.is_active or not user_email:
+        # 模糊返回，避免借本端点探测账号是否存在 / 是否绑定邮箱
+        log_action(db, user.id if user else None, "login2fa.resend_fail",
+                   f"account:{account_hint}", client_ip)
+        await db.commit()
+        return {"ok": False, "message": "发送失败，请稍后重试"}
+
+    uid = str(user.id)
+    kv = get_kv()
+    if not await kv.exists(f"login2fa:code:{uid}"):
+        # 无待验证挑战（未走密码步骤 / 已过期）：不重发
+        log_action(db, user.id, "login2fa.resend_fail",
+                   f"account:{account_hint} reason:no_challenge", client_ip)
+        await db.commit()
+        return {"ok": False, "message": "发送失败，请稍后重试"}
+    if await kv.exists(f"login2fa:sent:{uid}"):
+        return {"ok": False, "message": "验证码发送间隔未到，请稍后再试"}
+
+    sent = await _send_login2fa_code(uid, user_email, kv)
+    if not sent:
+        log_action(db, user.id, "login2fa.resend_send_failed", None, client_ip)
+        await db.commit()
+        return {"ok": False, "message": "邮件发送失败，请稍后重试"}
+    log_action(db, user.id, "login2fa.resend_ok", None, client_ip)
+    return {"ok": True, "message": "验证码已重新发送，请查收"}
 
 
 # ---------- 退出登录 ----------

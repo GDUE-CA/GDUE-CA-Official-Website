@@ -12,7 +12,7 @@ logger = logging.getLogger("gdueca.config")
 
 # 项目版本号（全站唯一真值源）：升级版本只改这一处，
 # 前端对应常量 app 端 lib/version.ts 的 APP_VERSION，两者必须保持一致。
-PROJECT_VERSION = "v0.5.0"
+PROJECT_VERSION = "v0.6.0"
 
 # 已知的弱 / 示例 JWT 密钥：命中时自动生成随机密钥，禁止用于签名
 _WEAK_JWT_SECRETS = {
@@ -110,8 +110,8 @@ class Settings(BaseSettings):
     GRAPH_CLIENT_SECRET: str = ""
     # 发件邮箱（Exchange Online 中真实存在的邮箱 / 共享邮箱）；留空时取 SMTP_FROM
     GRAPH_SENDER: str = ""
-    # 忘记密码验证码：有效期（秒）+ 单码最大验证尝试次数 + 同邮箱重发间隔（秒）
-    EMAIL_CODE_TTL_SECONDS: int = 600
+    # 邮箱验证码：有效期固定 5 分钟 + 单码最大验证尝试次数 + 同邮箱重发间隔（秒）
+    EMAIL_CODE_TTL_SECONDS: int = 300
     EMAIL_CODE_MAX_ATTEMPTS: int = 5
     EMAIL_CODE_RESEND_INTERVAL_SECONDS: int = 60
     # 更换绑定邮箱验证码：有效期 15 分钟（需求规定）；尝试次数 / 重发间隔复用上面三项

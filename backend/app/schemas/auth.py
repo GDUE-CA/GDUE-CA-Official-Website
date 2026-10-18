@@ -28,9 +28,15 @@ class LoginRequest(BaseModel):
 
 
 class LoginResponse(BaseModel):
-    """登录成功：凭据通过 HttpOnly Cookie 下发，响应体不返回 token。"""
+    """登录成功：凭据通过 HttpOnly Cookie 下发，响应体不返回 token。
+
+    V0.6.0 Issue7：requires_2fa=True 表示密码校验已通过但触发了陌生 IP/设备
+    邮箱二次验证，本响应不含会话 Cookie，前端须引导用户提交验证码走
+    /api/auth/login/2fa/verify 完成登录。
+    """
     role: Role
-    # 登录后轮换的 CSRF 令牌（防会话固定），前端用于后续写请求的 X-CSRF-Token 头
+    # 登录后轮换的 CSRF 令牌（防会话固定），前端用于后续写请求的 X-CSRF-Token 头；
+    # requires_2fa=True 时为空串占位（会话尚未建立）
     csrf_token: str
     username: str
     must_change_password: bool = False
@@ -42,6 +48,32 @@ class LoginResponse(BaseModel):
     must_setup: bool = False
     # 安全问题补设标记（存量用户默认 True，下次登录强制补设 3 个安全问题）
     must_set_security_questions: bool = False
+    # —— V0.6.0 Issue7：陌生 IP/设备邮箱二次验证 ——
+    requires_2fa: bool = False
+    # 验证码发送目标邮箱（打码显示，如 ab***@example.com）
+    email_masked: str | None = None
+
+
+class Login2FAVerifyRequest(BaseModel):
+    """登录二次验证：用户名/邮箱 + 6 位邮箱验证码（与 LoginRequest 的身份字段一致）。"""
+    username: str | None = Field(default=None, max_length=128)
+    email: LooseEmail | None = None
+    code: str
+    remember_device: bool = False
+
+    @field_validator("code")
+    @classmethod
+    def _code(cls, v: str) -> str:
+        v = (v or "").strip()
+        if not v.isdigit() or len(v) != 6:
+            raise ValueError("验证码为 6 位数字")
+        return v
+
+
+class Login2FAResendRequest(BaseModel):
+    """登录二次验证码重发：身份字段与 LoginRequest 一致。"""
+    username: str | None = Field(default=None, max_length=128)
+    email: LooseEmail | None = None
 
 
 # ---------- 登录会话（设备管理） ----------

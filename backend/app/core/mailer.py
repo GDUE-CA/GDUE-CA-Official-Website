@@ -47,6 +47,11 @@ def _provider() -> str:
     return get_settings().MAIL_PROVIDER.strip().lower() or "smtp"
 
 
+def current_provider() -> str:
+    """当前发信通道名（smtp / graph），供启动告警与后台状态展示使用。"""
+    return _provider()
+
+
 def _graph_sender() -> str:
     s = get_settings()
     return (s.GRAPH_SENDER or s.SMTP_FROM).strip()

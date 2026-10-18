@@ -285,6 +285,11 @@
       "joinDesc": "在线填写招新报名表",
       "blogTitle": "技术博客",
       "blogDesc": "阅读成员技术分享文章"
+    },
+    "announcementsPreview": {
+      "title": "最新公告",
+      "viewAll": "查看全部",
+      "empty": "暂无公告"
     }
   },
   "about": {
@@ -654,6 +659,24 @@
         "positionRequired": "请选择意向部门",
         "introductionMin": "自我介绍至少需要 10 个字符"
       }
+    },
+    "guest": {
+      "sectionTitle": "邮箱验证",
+      "hint": "无需注册账号，验证邮箱即可报名",
+      "email": "邮箱",
+      "emailPlaceholder": "name@example.com",
+      "sendCode": "发送验证码",
+      "resend": "重新发送",
+      "resendIn": "重新发送（{seconds}s）",
+      "code": "验证码",
+      "codePlaceholder": "6 位验证码",
+      "codeHint": "请输入邮箱收到的 6 位数字验证码",
+      "emailInvalid": "请输入有效的邮箱地址",
+      "sendCodeFirst": "请先获取邮箱验证码",
+      "codeRequired": "请输入 6 位数字验证码",
+      "codeSentTip": "验证码已发送，请查收邮件",
+      "sendFailed": "验证码发送失败，请稍后重试",
+      "submit": "提交报名"
     }
   },
   "register": {
@@ -1320,7 +1343,19 @@
       "choiceTitle": "登录成功",
       "choiceSubtitle": "您拥有管理员权限，请选择进入入口",
       "choiceAdmin": "进入管理后台",
-      "choiceHome": "进入官网首页"
+      "choiceHome": "进入官网首页",
+      "2fa": {
+        "title": "二次验证",
+        "subtitle": "检测到陌生设备或网络，我们已向您的绑定邮箱发送 6 位验证码，请输入以完成登录。",
+        "subtitleWithEmail": "验证码已发送至 {email}，请输入以完成登录。",
+        "codeLabel": "邮箱验证码",
+        "codePlaceholder": "6 位数字",
+        "verify": "验证并登录",
+        "verifying": "验证中…",
+        "resend": "重新发送",
+        "resending": "发送中…",
+        "back": "返回重新登录"
+      }
     },
     "breakGlass": {
       "bannerWarning": "⚠️ 当前为 Break-Glass 应急账号，拥有最高权限，请谨慎操作",
@@ -1801,7 +1836,22 @@
       "departments": "意向部门",
       "intro": "自我介绍",
       "adminNote": "备注",
-      "total": "共 {total} 条记录"
+      "total": "共 {total} 条记录",
+      "dept": {
+        "manage": "选项管理",
+        "title": "意向部门选项管理",
+        "desc": "维护报名表单的意向部门选项；历史报名记录保存提交时的文本，不受改名或删除影响。",
+        "nameZh": "中文名称",
+        "nameEn": "英文名称",
+        "add": "新增选项",
+        "addButton": "新增",
+        "edit": "编辑",
+        "delete": "删除",
+        "deleteConfirm": "确定删除「{name}」？历史报名记录不受影响。",
+        "empty": "暂无选项，请在下方新增。",
+        "enable": "启用",
+        "disable": "停用"
+      }
     },
     "profile": {
       "title": "个人资料",
@@ -2080,6 +2130,8 @@
       "removeDomain": "移除",
       "saved": "设置已保存",
       "saveError": "保存失败，请稍后重试",
+      "mailNotConfigured": "邮件通道（SMTP）未配置",
+      "mailNotConfiguredDesc": "注册验证码、报名审核通知、反馈回执等邮件将无法投递。请在服务器 .env 中补齐 SMTP_HOST / SMTP_USERNAME / SMTP_PASSWORD 等配置后重启后端。",
       "clubCheckin": "社团报名签到",
       "clubCheckinDesc": "开放后，审核通过的社团报名可凭回执码在查询页签到",
       "systemTimezone": "系统时区",

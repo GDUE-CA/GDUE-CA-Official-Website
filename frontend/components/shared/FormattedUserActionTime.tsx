@@ -11,6 +11,7 @@
  * 接收的 utcIso 必须是后端输出的带大写 Z 的 UTC ISO-8601 字符串。
  */
 import { useEffectiveTimezone } from "@/lib/hooks/useEffectiveTimezone";
+import { getServerNow } from "@/lib/serverTime";
 
 const FORMAT: Intl.DateTimeFormatOptions = {
   year: "numeric",
@@ -67,7 +68,8 @@ export function FormattedUserActionTime({
   return (
     <time
       dateTime={utcIso}
-      title={relativeLabel(date, new Date())}
+      // V0.6.0 Issue10：相对时间以服务器基准时间为「现在」（防客户端时钟偏差）
+      title={relativeLabel(date, getServerNow())}
       className={className}
     >
       {formatted}

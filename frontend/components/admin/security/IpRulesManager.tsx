@@ -17,6 +17,7 @@ import ShieldAlert from "@/assets/icons/status/shield-alert.svg";
 import Clock from "@/assets/icons/status/clock.svg";
 import UserCircle from "@/assets/icons/user/user-circle.svg";
 import { useI18n } from "@/i18n/provider";
+import { serverNowMs } from "@/lib/serverTime";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -369,7 +370,8 @@ function RuleRow({
   onDelete: () => void;
   t: (k: string) => string;
 }) {
-  const now = Date.now();
+  // V0.6.0 Issue10：过期判断/剩余时间以服务器基准时间为「现在」（防客户端时钟偏差）
+  const now = serverNowMs();
   const exp = rule.expires_at ? new Date(rule.expires_at).getTime() : null;
   const expired = exp !== null && now >= exp;
   const remainSec = exp !== null ? Math.max(0, Math.floor((exp - now) / 1000)) : null;

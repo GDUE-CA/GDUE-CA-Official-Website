@@ -8,10 +8,10 @@
  *   存储与缓存 / 授权管理 / 数据管理 / 关于本站
  * 管理员末尾额外显示「系统管理」分组（普通用户隐藏），子项跳转 /admin 后台。
  *
- * 布局规则（v0.5.2 阶段 2：桌面端界面学 /admin，用户决策定稿）：
- * - 桌面端：Admin 式单侧边栏（一级分组点击垂直展开二级子项下拉，绝不新开第二列）+ 右侧内容区；
+ * 布局规则（v0.5.2 阶段 2 定稿；v0.6.0 需求1 移动端改为抽屉）：
+ * - 桌面端（md+）：Admin 式单侧边栏（一级分组点击垂直展开二级子项下拉，绝不新开第二列）+ 右侧内容区；
  *   Microsoft / Apple 两种风格主题仅视觉差异
- * - 移动端：iOS 式层级跳转（一级列表 → 二级列表 → 内容；单子项分组点击直接进内容），保持不变
+ * - 移动端（<md）：内容区直出，菜单经顶部汉堡按钮打开左侧抽屉（与 /admin 同款动画与配色）
  * - Tab 切换经 useDirtyGuard().guardNavigate 接管：有未保存修改时弹确认框
  */
 import { useState, useEffect } from "react";
@@ -43,8 +43,9 @@ import UserCog from "@/assets/icons/user/user-cog.svg";
 import FileText from "@/assets/icons/status/file-text.svg";
 import ScrollText from "@/assets/icons/status/scroll-text.svg";
 import Megaphone from "@/assets/icons/status/megaphone.svg";
-import ChevronLeft from "@/assets/icons/navigation/chevron-left.svg";
 import ChevronRight from "@/assets/icons/navigation/chevron-right.svg";
+import MenuIcon from "@/assets/icons/navigation/menu.svg";
+import XIcon from "@/assets/icons/action/x.svg";
 import ExternalLink from "@/assets/icons/navigation/external-link.svg";
 import type { IconComponent } from "@/types/icons";
 import { useI18n } from "@/i18n/provider";
@@ -188,15 +189,12 @@ export function SettingShell({ children }: { children: React.ReactNode }) {
   const [expandedGroupKey, setExpandedGroupKey] = useState<string | null>(
     findActiveGroupKey()
   );
-  // 移动端堆栈层级：0=一级列表，1=某分组的二级列表
-  const [mobileLevel, setMobileLevel] = useState<0 | 1>(0);
-  const [mobileGroupKey, setMobileGroupKey] = useState(findActiveGroupKey());
+  // V0.6.0 需求1：移动端抽屉菜单开关（与 /admin 同款交互）
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
-  // pathname 变化（进入内容页）→ 同步展开分组 + 重置移动堆栈
+  // pathname 变化（进入内容页）→ 同步展开分组
   useEffect(() => {
-    const key = findActiveGroupKey();
-    setExpandedGroupKey(key);
-    setMobileLevel(0);
+    setExpandedGroupKey(findActiveGroupKey());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
@@ -209,40 +207,17 @@ export function SettingShell({ children }: { children: React.ReactNode }) {
       e.preventDefault();
       return;
     }
-    if (pathname === item.href) return;
+    if (pathname === item.href) {
+      // 移动端抽屉内点击当前页：仅关闭抽屉
+      setMobileNavOpen(false);
+      return;
+    }
     e.preventDefault();
-    guardNavigate(() => router.push(item.href));
+    guardNavigate(() => {
+      setMobileNavOpen(false);
+      router.push(item.href);
+    });
   }
-
-  /** 移动端点击一级分组：单子项直接进内容页；多子项推入二级列表 */
-  function handleMobileGroup(g: (typeof groups)[number]) {
-    if (g.items.length === 1) {
-      const first = g.items[0];
-      if (!first.disabled && !isActive(first.href)) {
-        guardNavigate(() => router.push(first.href));
-      }
-    } else {
-      setMobileGroupKey(g.key);
-      setMobileLevel(1);
-    }
-  }
-
-  /** 移动端内容页返回：多子项分组回二级列表，其余回一级列表 */
-  function handleMobileBackFromContent() {
-    const g = groups.find((grp) => grp.items.some((it) => isActive(it.href)));
-    if (g && g.items.length > 1) {
-      setMobileGroupKey(g.key);
-      setMobileLevel(1);
-    } else {
-      setMobileLevel(0);
-      router.push(lp("/setting"));
-    }
-  }
-
-  /** 移动端是否在内容页（pathname 匹配某子项） */
-  const inContentPage = groups.some((g) =>
-    g.items.some((it) => isActive(it.href))
-  );
 
   const apple = layout === "apple";
 
@@ -374,9 +349,20 @@ export function SettingShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-background">
       {/* 顶部细条 */}
       <header className="h-12 flex items-center justify-between px-4 border-b border-border">
-        <Link href={homeHref} aria-label={t("nav.home")}>
-          <BrandMark />
-        </Link>
+        <div className="flex items-center gap-1.5">
+          {/* 移动端汉堡按钮：打开抽屉菜单（V0.6.0 需求1，与 /admin 同款） */}
+          <button
+            type="button"
+            onClick={() => setMobileNavOpen(true)}
+            aria-label={t("nav.settings")}
+            className="md:hidden inline-flex h-9 w-9 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors"
+          >
+            <MenuIcon className="h-5 w-5" />
+          </button>
+          <Link href={homeHref} aria-label={t("nav.home")}>
+            <BrandMark />
+          </Link>
+        </div>
         <Link
           href={homeHref}
           className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -384,6 +370,44 @@ export function SettingShell({ children }: { children: React.ReactNode }) {
           {t("admin.login.backToSite")}
         </Link>
       </header>
+
+      {/* 移动端抽屉菜单（V0.6.0 需求1：与 /admin 同款动画与配色；桌面端隐藏） */}
+      <AnimatePresence>
+        {mobileNavOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="md:hidden fixed inset-0 z-40 bg-black/50"
+              onClick={() => setMobileNavOpen(false)}
+            />
+            <motion.aside
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ type: "spring", damping: 30, stiffness: 300 }}
+              className="md:hidden fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] bg-sidebar border-r border-border flex flex-col"
+              aria-label={t("nav.settings")}
+            >
+              <div className="h-12 flex items-center justify-between px-4 border-b border-border shrink-0">
+                <BrandMark />
+                <button
+                  type="button"
+                  onClick={() => setMobileNavOpen(false)}
+                  aria-label={t("common.close")}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                >
+                  <XIcon className="h-5 w-5" />
+                </button>
+              </div>
+              <nav className="flex-1 py-3 px-3 overflow-y-auto">
+                <div className="space-y-0.5">{groups.map(renderDesktopGroup)}</div>
+              </nav>
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* ============ 桌面端（md+）：Admin 式单侧边栏（二级菜单内嵌下拉）+ 右侧内容区 ============ */}
       <div className="hidden md:flex min-h-[calc(100vh-3rem)]">
@@ -412,131 +436,15 @@ export function SettingShell({ children }: { children: React.ReactNode }) {
         </main>
       </div>
 
-      {/* ============ 移动端（<md）iOS 堆栈 ============ */}
-      <div className="md:hidden min-h-[calc(100vh-3rem)] relative overflow-hidden">
-        {/* 内容页：pathname 匹配某子项时显示 */}
-        {inContentPage && (
-          <div className="flex flex-col h-[calc(100vh-3rem)]">
-            {/* 内容页顶部返回条 */}
-            <div className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur flex items-center px-2 h-11">
-              <button
-                type="button"
-                onClick={handleMobileBackFromContent}
-                className="inline-flex items-center gap-1 text-sm text-primary hover:underline px-2 py-1 max-w-[70%]"
-              >
-                <ChevronLeft className="h-4 w-4 shrink-0" />
-                <span className="truncate">
-                  {t(
-                    groups.find((grp) => grp.items.some((it) => isActive(it.href)))?.key ??
-                      "nav.settings"
-                  )}
-                </span>
-              </button>
-            </div>
-            <main className="flex-1 overflow-y-auto p-4">
-              {children}
-              {/* 项目版本号（页面底部） */}
-              <p className="mt-10 pb-4 text-center text-xs text-muted-foreground/70 font-mono">
-                {APP_VERSION}
-              </p>
-            </main>
-          </div>
-        )}
-
-        {/* 堆栈导航：未在内容页时显示一级/二级列表 */}
-        {!inContentPage && (
-          <div className="relative h-[calc(100vh-3rem)] overflow-hidden">
-            <AnimatePresence initial={false}>
-              {mobileLevel === 0 ? (
-                <motion.nav
-                  key="level0"
-                  initial={{ x: 0 }}
-                  animate={{ x: 0 }}
-                  exit={{ x: "-100%" }}
-                  transition={{ type: "tween", duration: 0.25, ease: "easeInOut" }}
-                  className="absolute inset-0 overflow-y-auto p-2"
-                  aria-label={t("nav.settings")}
-                >
-                  {groups.map((g, idx) => (
-                    <button
-                      key={g.key}
-                      type="button"
-                      onClick={() => handleMobileGroup(g)}
-                      className={cn(
-                        "flex items-center gap-3 w-full px-3 py-3 hover:bg-muted transition-colors text-left border-b border-border/50",
-                        g.adminOnly &&
-                          idx > 0 &&
-                          !groups[idx - 1]?.adminOnly &&
-                          "mt-4 pt-5 border-t-2 border-border/60"
-                      )}
-                    >
-                      <g.icon className="h-5 w-5 shrink-0 text-muted-foreground" />
-                      <span className="flex-1 font-medium text-foreground">{t(g.key)}</span>
-                      {g.items.length === 1 && g.items[0]?.disabled ? (
-                        <span className="text-[10px] text-muted-foreground rounded bg-muted px-1.5 py-0.5">
-                          {t("setting.soonBadge")}
-                        </span>
-                      ) : (
-                        <ChevronLeft className="h-4 w-4 rotate-180 text-muted-foreground" />
-                      )}
-                    </button>
-                  ))}
-                </motion.nav>
-              ) : (
-                <motion.nav
-                  key="level1"
-                  initial={{ x: "100%" }}
-                  animate={{ x: 0 }}
-                  exit={{ x: "100%" }}
-                  transition={{ type: "tween", duration: 0.25, ease: "easeInOut" }}
-                  className="absolute inset-0 overflow-y-auto p-2"
-                >
-                  <button
-                    type="button"
-                    onClick={() => setMobileLevel(0)}
-                    className="inline-flex items-center gap-1 text-sm text-primary hover:underline px-2 py-2 mb-2"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                    {t("nav.settings")}
-                  </button>
-                  <div className="px-3 pb-1 text-xs font-medium text-muted-foreground/80">
-                    {t(mobileGroupKey)}
-                  </div>
-                  {(groups.find((g) => g.key === mobileGroupKey)?.items ?? []).map((item) =>
-                    item.disabled ? (
-                      <span
-                        key={item.href}
-                        aria-disabled
-                        className="flex items-center gap-3 w-full px-3 py-3 opacity-45 border-b border-border/50"
-                      >
-                        <item.icon className="h-5 w-5 shrink-0 text-muted-foreground" />
-                        <span className="flex-1 text-muted-foreground">{t(item.key)}</span>
-                        <span className="text-[10px] rounded bg-muted px-1.5 py-0.5">
-                          {t("setting.soonBadge")}
-                        </span>
-                      </span>
-                    ) : (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        onClick={(e) => handleNavClick(e, item)}
-                        className="flex items-center gap-3 w-full px-3 py-3 rounded-md hover:bg-muted transition-colors border-b border-border/50"
-                      >
-                        <item.icon className="h-5 w-5 shrink-0 text-muted-foreground" />
-                        <span className="flex-1 text-foreground">{t(item.key)}</span>
-                        {item.external ? (
-                          <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
-                        ) : (
-                          <ChevronLeft className="h-4 w-4 rotate-180 text-muted-foreground" />
-                        )}
-                      </Link>
-                    )
-                  )}
-                </motion.nav>
-              )}
-            </AnimatePresence>
-          </div>
-        )}
+      {/* ============ 移动端（<md）：内容区直出，菜单经顶部汉堡抽屉访问（V0.6.0 需求1） ============ */}
+      <div className="md:hidden min-h-[calc(100vh-3rem)]">
+        <main className="p-4">
+          <div className="max-w-2xl mx-auto">{children}</div>
+          {/* 项目版本号（页面底部） */}
+          <p className="mt-10 pb-4 text-center text-xs text-muted-foreground/70 font-mono">
+            {APP_VERSION}
+          </p>
+        </main>
       </div>
     </div>
   );

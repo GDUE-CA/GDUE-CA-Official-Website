@@ -12,9 +12,17 @@ import type {
   ClubApplyReviewRequest,
   ClubApplySubmit,
   ClubApplyStatus,
+  ClubApplyGuestSendCodeResult,
+  ClubApplyGuestSubmit,
+  ClubDepartment,
 } from "@/types/api";
 
 /* ---------- 用户接口 ---------- */
+
+/** 意向部门选项（V0.6.0 Issue6 动态化；仅启用项，按 sort_order 排序） */
+export function listClubDepartments() {
+  return apiFetch<{ departments: ClubDepartment[] }>("/api/club-apply/departments");
+}
 
 /** 当前用户自己的报名进度（含历史；最小化字段） */
 export function listMyClubApplies() {
@@ -24,6 +32,24 @@ export function listMyClubApplies() {
 /** 提交社团报名（限流 10 次/10 分钟；审核中重复提交后端 409）；成功返回回执码 */
 export function submitClubApply(payload: ClubApplySubmit) {
   return apiFetch<SubmitReceipt>("/api/club-apply", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+/* ---------- 访客免注册报名（公开接口） ---------- */
+
+/** 访客报名：向邮箱发送 6 位验证码（ok:false 时 message 为冷却未到/限流/邮箱非法原因，直接展示） */
+export function sendClubApplyGuestCode(email: string) {
+  return apiFetch<ClubApplyGuestSendCodeResult>("/api/club-apply/public/send-code", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+}
+
+/** 访客报名提交（201 返回回执码；409 = 已有 pending；400 = 验证码无效或已过期） */
+export function submitClubApplyGuest(payload: ClubApplyGuestSubmit) {
+  return apiFetch<SubmitReceipt>("/api/club-apply/public/submit", {
     method: "POST",
     body: JSON.stringify(payload),
   });
@@ -78,4 +104,46 @@ export async function adminExportClubApplies(
   a.download = `club_apply_records.${format}`;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+/* ---------- 意向部门选项管理（V0.6.0 Issue6；recruitment 权限） ---------- */
+
+/** 选项全量列表（含停用），按 sort_order 排序 */
+export function adminListClubDepartments() {
+  return apiFetch<{ departments: ClubDepartment[] }>(
+    "/api/admin/club-apply/departments"
+  );
+}
+
+export interface ClubDepartmentPayload {
+  name_zh: string;
+  name_en: string;
+  enabled?: boolean;
+  sort_order?: number;
+}
+
+/** 新增选项 */
+export function adminCreateClubDepartment(payload: ClubDepartmentPayload) {
+  return apiFetch<ClubDepartment>("/api/admin/club-apply/departments", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+/** 编辑选项（部分更新） */
+export function adminUpdateClubDepartment(
+  deptId: number,
+  payload: Partial<ClubDepartmentPayload>
+) {
+  return apiFetch<ClubDepartment>(`/api/admin/club-apply/departments/${deptId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+/** 删除选项（历史报名存文本快照，不受影响） */
+export function adminDeleteClubDepartment(deptId: number) {
+  return apiFetch<void>(`/api/admin/club-apply/departments/${deptId}`, {
+    method: "DELETE",
+  });
 }

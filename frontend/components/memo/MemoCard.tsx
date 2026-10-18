@@ -29,6 +29,7 @@ import {
   toggleLike, toggleFavorite, deleteMemo, archiveMemo, unarchiveMemo,
 } from "@/lib/api/memos";
 import { isLogged } from "@/lib/auth";
+import { serverNowMs } from "@/lib/serverTime";
 import type { MemoBriefOut, MemoOut } from "@/types/api";
 import { useRouter } from "next/navigation";
 
@@ -50,7 +51,8 @@ function visibilityIcon(v: string) {
 
 function timeAgo(iso: string): string {
   const d = new Date(iso);
-  const diff = (Date.now() - d.getTime()) / 1000;
+  // V0.6.0 Issue10：以服务器基准时间为「现在」，避免客户端时钟偏差导致相对时间错误
+  const diff = (serverNowMs() - d.getTime()) / 1000;
   if (diff < 60) return `${Math.floor(diff)}s`;
   if (diff < 3600) return `${Math.floor(diff / 60)}m`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h`;

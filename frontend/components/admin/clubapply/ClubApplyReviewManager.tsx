@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Check from "@/assets/icons/action/check.svg";
 import Download from "@/assets/icons/action/download.svg";
+import ListPlus from "@/assets/icons/action/plus.svg";
 import Loader2 from "@/assets/icons/status/loader-2.svg";
 import RefreshCw from "@/assets/icons/action/refresh-cw.svg";
 import Search from "@/assets/icons/action/search.svg";
@@ -32,9 +33,13 @@ import {
   adminExportClubApplies,
   adminListClubApplies,
   adminReviewClubApply,
+  adminListClubDepartments,
+  adminCreateClubDepartment,
+  adminUpdateClubDepartment,
+  adminDeleteClubDepartment,
 } from "@/lib/api/clubApply";
 import { FormattedUserActionTime } from "@/components/shared/FormattedUserActionTime";
-import type { ClubApplyRecord, ClubApplyStatus } from "@/types/api";
+import type { ClubApplyRecord, ClubApplyStatus, ClubDepartment } from "@/types/api";
 
 const STATUS_FILTERS: (ClubApplyStatus | "all")[] = ["pending", "accept", "reject", "all"];
 const PAGE_SIZE = 20;
@@ -61,6 +66,18 @@ export function ClubApplyReviewManager() {
   const [rejectTarget, setRejectTarget] = useState<ClubApplyRecord | null>(null);
   const [rejectNote, setRejectNote] = useState("");
   const [exporting, setExporting] = useState(false);
+
+  // 意向部门选项管理弹窗（V0.6.0 Issue6）
+  const [deptOpen, setDeptOpen] = useState(false);
+  const [depts, setDepts] = useState<ClubDepartment[]>([]);
+  const [deptLoading, setDeptLoading] = useState(false);
+  const [deptBusy, setDeptBusy] = useState(false);
+  const [deptError, setDeptError] = useState<string | null>(null);
+  const [newDeptZh, setNewDeptZh] = useState("");
+  const [newDeptEn, setNewDeptEn] = useState("");
+  const [editingDeptId, setEditingDeptId] = useState<number | null>(null);
+  const [editDeptZh, setEditDeptZh] = useState("");
+  const [editDeptEn, setEditDeptEn] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -140,6 +157,92 @@ export function ClubApplyReviewManager() {
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
+  /* ---------- 意向部门选项管理（V0.6.0 Issue6） ---------- */
+
+  const loadDepts = useCallback(async () => {
+    setDeptLoading(true);
+    setDeptError(null);
+    try {
+      const res = await adminListClubDepartments();
+      setDepts(res.departments);
+    } catch (err) {
+      setDeptError(err instanceof Error ? err.message : t("common.error"));
+    } finally {
+      setDeptLoading(false);
+    }
+  }, [t]);
+
+  async function handleCreateDept() {
+    setDeptBusy(true);
+    setDeptError(null);
+    try {
+      const nextSort = depts.reduce((m, d) => Math.max(m, d.sort_order), -1) + 1;
+      await adminCreateClubDepartment({
+        name_zh: newDeptZh.trim(),
+        name_en: newDeptEn.trim(),
+        enabled: true,
+        sort_order: nextSort,
+      });
+      setNewDeptZh("");
+      setNewDeptEn("");
+      await loadDepts();
+    } catch (err) {
+      setDeptError(err instanceof Error ? err.message : t("common.error"));
+    } finally {
+      setDeptBusy(false);
+    }
+  }
+
+  function startEditDept(d: ClubDepartment) {
+    setEditingDeptId(d.id);
+    setEditDeptZh(d.name_zh);
+    setEditDeptEn(d.name_en);
+  }
+
+  async function handleSaveDept(d: ClubDepartment) {
+    setDeptBusy(true);
+    setDeptError(null);
+    try {
+      await adminUpdateClubDepartment(d.id, {
+        name_zh: editDeptZh.trim(),
+        name_en: editDeptEn.trim(),
+      });
+      setEditingDeptId(null);
+      await loadDepts();
+    } catch (err) {
+      setDeptError(err instanceof Error ? err.message : t("common.error"));
+    } finally {
+      setDeptBusy(false);
+    }
+  }
+
+  async function handleToggleDept(d: ClubDepartment) {
+    setDeptBusy(true);
+    setDeptError(null);
+    try {
+      await adminUpdateClubDepartment(d.id, { enabled: !d.enabled });
+      await loadDepts();
+    } catch (err) {
+      setDeptError(err instanceof Error ? err.message : t("common.error"));
+    } finally {
+      setDeptBusy(false);
+    }
+  }
+
+  async function handleDeleteDept(d: ClubDepartment) {
+    if (!window.confirm(t("admin.clubApply.dept.deleteConfirm", { name: d.name_zh }))) return;
+    setDeptBusy(true);
+    setDeptError(null);
+    try {
+      await adminDeleteClubDepartment(d.id);
+      await loadDepts();
+    } catch (err) {
+      setDeptError(err instanceof Error ? err.message : t("common.error"));
+    } finally {
+      setDeptBusy(false);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -148,6 +251,10 @@ export function ClubApplyReviewManager() {
           <p className="text-sm text-muted-foreground">{t("admin.clubApply.subtitle")}</p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => setDeptOpen(true)}>
+            <ListPlus className="h-4 w-4" />
+            {t("admin.clubApply.dept.manage")}
+          </Button>
           <Button variant="outline" size="sm" disabled={exporting} onClick={() => handleExport("csv")}>
             <Download className="h-4 w-4" />
             CSV
@@ -341,6 +448,145 @@ export function ClubApplyReviewManager() {
               <Button variant="destructive" onClick={handleReject} disabled={busyId !== null}>
                 {t("admin.clubApply.rejectConfirm")}
               </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* 意向部门选项管理弹窗（V0.6.0 Issue6） */}
+      <Dialog
+        open={deptOpen}
+        onOpenChange={(o) => {
+          setDeptOpen(o);
+          setEditingDeptId(null);
+          if (o) loadDepts();
+        }}
+      >
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>{t("admin.clubApply.dept.title")}</DialogTitle>
+            <DialogDescription>{t("admin.clubApply.dept.desc")}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {deptError && (
+              <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                {deptError}
+              </p>
+            )}
+            <div className="max-h-72 space-y-2 overflow-y-auto">
+              {deptLoading ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : depts.length === 0 ? (
+                <p className="py-8 text-center text-sm text-muted-foreground">
+                  {t("admin.clubApply.dept.empty")}
+                </p>
+              ) : (
+                depts.map((d) => (
+                  <div key={d.id} className="rounded-md border p-2.5 text-sm">
+                    {editingDeptId === d.id ? (
+                      <div className="space-y-2">
+                        <div className="grid grid-cols-2 gap-2">
+                          <Input
+                            value={editDeptZh}
+                            onChange={(e) => setEditDeptZh(e.target.value)}
+                            maxLength={64}
+                            placeholder={t("admin.clubApply.dept.nameZh")}
+                            aria-label={t("admin.clubApply.dept.nameZh")}
+                          />
+                          <Input
+                            value={editDeptEn}
+                            onChange={(e) => setEditDeptEn(e.target.value)}
+                            maxLength={64}
+                            placeholder={t("admin.clubApply.dept.nameEn")}
+                            aria-label={t("admin.clubApply.dept.nameEn")}
+                          />
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={deptBusy}
+                            onClick={() => setEditingDeptId(null)}
+                          >
+                            {t("common.cancel")}
+                          </Button>
+                          <Button
+                            size="sm"
+                            disabled={deptBusy || !editDeptZh.trim() || !editDeptEn.trim()}
+                            onClick={() => handleSaveDept(d)}
+                          >
+                            {t("common.save")}
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="truncate font-medium">
+                            {d.name_zh}
+                            <span className="ml-1 text-xs font-normal text-muted-foreground">
+                              / {d.name_en}
+                            </span>
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+                          <Badge variant={d.enabled ? "secondary" : "outline"}>
+                            {d.enabled ? t("common.enabled") : t("common.disabled")}
+                          </Badge>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={deptBusy}
+                            onClick={() => handleToggleDept(d)}
+                          >
+                            {d.enabled
+                              ? t("admin.clubApply.dept.disable")
+                              : t("admin.clubApply.dept.enable")}
+                          </Button>
+                          <Button variant="outline" size="sm" disabled={deptBusy} onClick={() => startEditDept(d)}>
+                            {t("admin.clubApply.dept.edit")}
+                          </Button>
+                          <Button variant="destructive" size="sm" disabled={deptBusy} onClick={() => handleDeleteDept(d)}>
+                            {t("admin.clubApply.dept.delete")}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+            {/* 新增选项 */}
+            <div className="space-y-2 border-t pt-3">
+              <p className="text-sm font-medium">{t("admin.clubApply.dept.add")}</p>
+              <div className="grid grid-cols-2 gap-2">
+                <Input
+                  value={newDeptZh}
+                  onChange={(e) => setNewDeptZh(e.target.value)}
+                  maxLength={64}
+                  placeholder={t("admin.clubApply.dept.nameZh")}
+                  aria-label={t("admin.clubApply.dept.nameZh")}
+                />
+                <Input
+                  value={newDeptEn}
+                  onChange={(e) => setNewDeptEn(e.target.value)}
+                  maxLength={64}
+                  placeholder={t("admin.clubApply.dept.nameEn")}
+                  aria-label={t("admin.clubApply.dept.nameEn")}
+                />
+              </div>
+              <div className="flex justify-end">
+                <Button
+                  size="sm"
+                  disabled={deptBusy || !newDeptZh.trim() || !newDeptEn.trim()}
+                  onClick={handleCreateDept}
+                >
+                  {deptBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ListPlus className="h-4 w-4" />}
+                  {t("admin.clubApply.dept.addButton")}
+                </Button>
+              </div>
             </div>
           </div>
         </DialogContent>

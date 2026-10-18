@@ -2,23 +2,22 @@
 
 /**
  * /admin/review - 统一审核中心
- * 报名审核 / Bug 反馈 / 重置密码 / 找回账号人工审核 按 Tab 分类展示；
- * Tab 状态持久化到 searchParams（?tab=）支持深链；按有效权限显隐 Tab
+ * 报名审核 / Bug 反馈 / 重置密码 / 找回账号人工审核；
+ * 左侧侧边菜单为唯一导航入口（?tab= 深链直达），按有效权限显隐面板
  */
 import { Suspense, useMemo } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useI18n } from "@/i18n/provider";
-import { ReviewShell, type ReviewTabKey } from "@/components/admin/review/ReviewShell";
 import { RegistrationsTab } from "@/components/admin/review/RegistrationsTab";
 import { BugsTab } from "@/components/admin/review/BugsTab";
 import { PasswordResetsTab } from "@/components/admin/review/PasswordResetsTab";
 import { RecoveryReviewsTab } from "@/components/admin/review/RecoveryReviewsTab";
 import { useEffectivePermissions } from "@/lib/permissions";
 
+type ReviewTabKey = "registrations" | "bugs" | "resets" | "recovery";
+
 function ReviewPageInner() {
   const { t } = useI18n();
-  const router = useRouter();
-  const pathname = usePathname();
   const search = useSearchParams();
   const { ready, can } = useEffectivePermissions();
 
@@ -37,11 +36,6 @@ function ReviewPageInner() {
       : allowedTabs[0] ?? null
     : null;
 
-  /** 切换 Tab：写回 searchParams 持久化（深链可分享） */
-  function switchTab(key: ReviewTabKey) {
-    router.replace(`${pathname}?tab=${key}`, { scroll: false });
-  }
-
   if (!ready) {
     return <div className="text-muted-foreground">{t("common.loading")}</div>;
   }
@@ -53,17 +47,13 @@ function ReviewPageInner() {
   }
 
   return (
-    <ReviewShell
-      title={t("admin.review.title")}
-      active={active}
-      onChange={switchTab}
-      tabs={allowedTabs.map((key) => ({ key, label: t(`admin.review.tabs.${key}`) }))}
-    >
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold">{t("admin.review.title")}</h1>
       {active === "registrations" && <RegistrationsTab />}
       {active === "bugs" && <BugsTab />}
       {active === "resets" && <PasswordResetsTab />}
       {active === "recovery" && <RecoveryReviewsTab />}
-    </ReviewShell>
+    </div>
   );
 }
 

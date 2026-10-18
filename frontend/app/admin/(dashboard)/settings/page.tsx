@@ -58,6 +58,9 @@ export default function SettingsPage() {
   const [sessionTimeout, setSessionTimeout] = useState(30);
   const SESSION_TIMEOUT_OPTIONS = [1, 2, 5, 10, 15, 20, 30, 60, 120];
 
+  // V0.5.9：SMTP/邮件通道配置状态（false 时页面顶部展示警告横幅）
+  const [mailChannelConfigured, setMailChannelConfigured] = useState(true);
+
   // 数据库导出（后台异步任务：提交即返回，进度在悬浮窗/通知中心查看）
   const [exporting, setExporting] = useState(false);
   const [exportSubmitted, setExportSubmitted] = useState(false);
@@ -95,6 +98,7 @@ export default function SettingsPage() {
       setClubCheckinOpen(!!s.club_checkin_open);
       setSystemTimezone(s.sys_default_timezone ?? "Asia/Shanghai");
       setSessionTimeout(s.session_idle_timeout_minutes ?? 30);
+      setMailChannelConfigured(s.mail_channel_configured !== false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Load failed");
     } finally {
@@ -154,6 +158,19 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">{t("admin.settings.title")}</h1>
+
+      {/* V0.5.9：SMTP/邮件通道未配置警告横幅（验证码 / 通知邮件无法投递） */}
+      {!mailChannelConfigured && (
+        <div
+          role="alert"
+          className="flex items-start gap-3 rounded-lg border border-yellow-500/40 bg-yellow-400/15 px-4 py-3 text-sm text-yellow-800 dark:text-yellow-200"
+        >
+          <span className="font-medium">{t("admin.settings.mailNotConfigured")}</span>
+          <span className="text-yellow-700/90 dark:text-yellow-200/80">
+            {t("admin.settings.mailNotConfiguredDesc")}
+          </span>
+        </div>
+      )}
 
       <Card>
         <CardHeader>

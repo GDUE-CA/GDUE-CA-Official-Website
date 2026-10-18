@@ -115,6 +115,11 @@ export function RegisterWizard() {
     setServerError(null);
     try {
       const res = await sendRegisterCode(addr);
+      // V0.5.9：冷却未到 / 限流 / 邮箱非法时后端返回 ok:false（HTTP 200），按错误展示
+      if (!res.ok) {
+        setServerError(res.message || t("auth.register.error"));
+        return;
+      }
       setCodeSent(true);
       setCodeTip(res.message || t("auth.register.wizard.codeSentTip"));
       setCooldown(RESEND_COOLDOWN_SECONDS);

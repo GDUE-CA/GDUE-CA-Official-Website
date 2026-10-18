@@ -32,7 +32,12 @@ CSRF_EXEMPT_PATHS = {"/api/sso/token"}
 # 登录路径：Origin/Referer 来源校验不在中间件执行（此时尚不知用户名，无法区分
 # Break-Glass 应急账号豁免），下沉到 login 接口内部按账号类型执行；
 # CSRF 双提交令牌校验对登录请求仍然生效。
-LOGIN_ORIGIN_DEFERRED_PATHS = {"/api/auth/login"}
+# V0.6.0 Issue7：登录二次验证两步接口同策略（来源校验下沉到接口内执行）。
+LOGIN_ORIGIN_DEFERRED_PATHS = {
+    "/api/auth/login",
+    "/api/auth/login/2fa/verify",
+    "/api/auth/login/2fa/resend",
+}
 
 
 def new_csrf_token() -> str:

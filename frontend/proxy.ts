@@ -180,16 +180,16 @@ function detectLocale(request: NextRequest): Locale {
       .split(",")
       .map((l) => l.trim().split(";")[0].toLowerCase());
     for (const l of langs) {
-      // 中文变体（粤语独立判断：繁体地区 → zh-yue-tw，其余 → zh-yue-cn）
+      // 中文变体（粤语无独立站点语言：繁体地区 → zh-hk，其余 → zh-cn）
       if (l.startsWith("zh")) {
         if (l.includes("yue")) {
           return l.includes("hk") || l.includes("mo") || l.includes("tw") || l.includes("hant")
-            ? "zh-yue-tw"
-            : "zh-yue-cn";
+            ? "zh-hk"
+            : "zh-cn";
         }
         if (l.includes("tw") || l.includes("hk") || l.includes("hant")) return "zh-hk";
         if (l.includes("mo")) return "zh-mo";
-        if (l.includes("sg")) return "zh-cn-sg";
+        // 新加坡等地中文变体统一归入简体
         return "zh-cn";
       }
       if (l.startsWith("ja")) return "ja-jp";
@@ -197,11 +197,8 @@ function detectLocale(request: NextRequest): Locale {
       if (l.startsWith("es")) return "es-es";
       if (l.startsWith("fr")) return "fr-fr";
       if (l.startsWith("de")) return "de-de";
-      if (l.startsWith("ru")) return "ru-ru";
-      if (l.startsWith("pt")) return "pt-br";
-      if (l.startsWith("ar")) return "ar-sa";
-      if (l.startsWith("hi")) return "hi-in";
-      if (l.startsWith("tr")) return "tr-tr";
+      if (l.startsWith("pt")) return "pt-pt";
+      // 未提供站点语言的语种（ru/ar/hi/tr 等）：不匹配，继续尝试下一语言
       if (l.startsWith("it")) return "it-it";
       if (l.startsWith("en")) {
         // 英式英语 → en-gb；其余英语变体统一归入 en-us

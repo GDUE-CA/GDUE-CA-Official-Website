@@ -27,10 +27,7 @@ export const supportedLocales = locales;
 
 /** 变体回退映射：变体缺失词条时回退到父语言（链式解析，终态语言按分组兜底 zh-cn / en-gb） */
 export const localeFallbackMap: Partial<Record<Locale, Locale>> = {
-  "zh-cn-sg": "zh-cn",
   "zh-mo": "zh-hk",
-  "zh-yue-cn": "zh-cn",
-  "zh-yue-tw": "zh-hk",
   "en-us": "en-gb",
 };
 

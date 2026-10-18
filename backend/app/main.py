@@ -1,5 +1,6 @@
 """FastAPI 入口：应用创建、路由注册、安全中间件、启动时初始化超级管理员。"""
 import asyncio
+import faulthandler
 import logging
 import os
 import time
@@ -32,6 +33,7 @@ from app.db.models import (
     ActivityEnrol,
     ActivityStatus,
     Base,
+    ClubDepartment,
     IpRule,
     IpRuleType,
     SystemSetting,
@@ -46,6 +48,8 @@ settings = get_settings()
 # 统一日志格式（含 traceId）：get_settings() 首次加载时已初始化；
 # 以 `uvicorn app.main:app` / gunicorn 启动时 uvicorn 会先套用自己的日志配置，这里再覆盖一次
 setup_logging(settings.LOG_LEVEL, settings.LOG_FORMAT)
+# V0.6.0 Issue11：段错误/致命信号时把全部线程栈转储到 stderr（低配 VPS 排查卡死/崩溃必备）
+faulthandler.enable()
 logger = logging.getLogger("gdueca")
 
 # ---------- 启动时：建表 + 轻量列迁移 + 初始化超级管理员 ----------
@@ -97,6 +101,56 @@ async def _rebuild_users_student_id_nullable(conn):
     for stmt in idx_ddls:
         await conn.execute(text(stmt))
     logger.info("users.student_id 已迁移为可空（整表重建，%d 列）", len(infos))
+
+
+async def _rebuild_club_apply_user_id_nullable(conn):
+    """club_apply_records.user_id 由 NOT NULL 改为可空（V0.5.9 需求5：访客免注册报名无账号）。
+
+    SQLite 不支持 ALTER COLUMN，需整表重建（与 _rebuild_users_student_id_nullable
+    同一套 12-step 流程）：按 sqlite_master 原始 DDL 复制建 club_apply_records_new
+    （仅补丁 user_id 可空）→ 原样复制数据 → DROP 旧表 → RENAME 回原表名 → 重建原索引。
+    receipt_code 的 UNIQUE 约束写在表 DDL 内随复制保留，ix_* 索引由索引 DDL 重建。
+    """
+    import re
+
+    from sqlalchemy import text
+
+    if conn.dialect.name != "sqlite":
+        return  # 仅 SQLite 需要整表重建；PostgreSQL 由 create_all 按新模型建表
+    rows = await conn.execute(text("PRAGMA table_info(club_apply_records)"))
+    infos = rows.fetchall()
+    if not infos:
+        return  # 全新库：create_all 已按新模型建表（user_id 本就可空）
+    uid = next((c for c in infos if c[1] == "user_id"), None)
+    if uid is None or uid[3] == 0:
+        return  # 列不存在或已可空
+
+    ddl = (await conn.execute(text(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='club_apply_records'"
+    ))).scalar_one()
+    new_ddl = ddl.replace(
+        "CREATE TABLE club_apply_records", "CREATE TABLE club_apply_records_new", 1)
+    patched = re.sub(
+        r'(?P<col>"?user_id"?)\s+INTEGER\s+NOT\s+NULL',
+        r"\g<col> INTEGER",
+        new_ddl,
+        count=1,
+    )
+    if patched == new_ddl:
+        logger.warning("club_apply_records 重建迁移：未能定位 user_id NOT NULL 定义，跳过")
+        return
+    # 先取出旧表索引 DDL（DROP TABLE 会连索引一起删除；RENAME 后可直接复用）
+    idx_ddls = [r[0] for r in (await conn.execute(text(
+        "SELECT sql FROM sqlite_master WHERE type='index' AND tbl_name='club_apply_records' "
+        "AND sql IS NOT NULL"
+    ))).fetchall()]
+    await conn.execute(text(patched))
+    await conn.execute(text("INSERT INTO club_apply_records_new SELECT * FROM club_apply_records"))
+    await conn.execute(text("DROP TABLE club_apply_records"))
+    await conn.execute(text("ALTER TABLE club_apply_records_new RENAME TO club_apply_records"))
+    for stmt in idx_ddls:
+        await conn.execute(text(stmt))
+    logger.info("club_apply_records.user_id 已迁移为可空（整表重建，%d 列）", len(infos))
 
 
 async def _split_audit_request_id(conn) -> None:
@@ -392,6 +446,7 @@ async def _init_db():
         await conn.run_sync(Base.metadata.create_all)
         # 必须先于 _migrate_columns：重建基于原始 DDL（INSERT SELECT * 要求列数一致）
         await _rebuild_users_student_id_nullable(conn)
+        await _rebuild_club_apply_user_id_nullable(conn)
         await _migrate_columns(conn)
 
     # 预置系统设置记录
@@ -480,6 +535,24 @@ async def _init_db():
                     sort_order=idx,
                 ))
             logger.info("已 seed %d 条内置安全问题预设题库", len(BUILTIN_PRESET_QUESTIONS))
+        await s.commit()
+
+        # V0.6.0 Issue6 预置意向部门选项：仅当表为空时 seed 5 个内置部门
+        # （管理员后台可增删改；历史报名存文本快照不受后续改名/删除影响）
+        dept_count = (await s.execute(
+            select(func.count()).select_from(ClubDepartment)
+        )).scalar_one()
+        if dept_count == 0:
+            builtin_departments = [
+                dict(name_zh="活动部", name_en="Events Department", sort_order=0),
+                dict(name_zh="办公部", name_en="Office", sort_order=1),
+                dict(name_zh="联络部", name_en="Liaison Department", sort_order=2),
+                dict(name_zh="宣传部", name_en="Publicity Department", sort_order=3),
+                dict(name_zh="财务部", name_en="Finance Department", sort_order=4),
+            ]
+            for spec in builtin_departments:
+                s.add(ClubDepartment(enabled=True, **spec))
+            logger.info("已 seed %d 个内置意向部门选项", len(builtin_departments))
         await s.commit()
 
 
@@ -589,6 +662,17 @@ async def _maintenance_loop() -> None:
 async def lifespan(app: FastAPI):
     # Break-Glass 启动硬性校验：凭据只允许来自环境变量，缺失/非法直接崩溃退出
     _validate_break_glass_env()
+    # V0.5.9：SMTP / 邮件通道环境变量完整性校验——未配置时输出明确告警日志
+    # （验证码、回执、审核通知等邮件将无法投递；后台「系统设置」页同步展示警告横幅）
+    from app.core.mailer import is_configured as _mailer_is_configured, current_provider as _mail_provider
+    if not _mailer_is_configured():
+        logger.warning(
+            "邮件通道未配置（provider=%s）：SMTP_HOST 等环境变量缺失，"
+            "注册验证码 / 报名审核通知 / Bug 反馈回执等邮件将无法投递。"
+            "请在 .env 补齐 SMTP_HOST / SMTP_PORT / SMTP_USERNAME / SMTP_PASSWORD / SMTP_FROM "
+            "（或改用 MAIL_PROVIDER=graph 并配置 GRAPH_* 凭据）后重启服务。",
+            _mail_provider(),
+        )
     await _init_db()
     # 上次进程遗留的 pending/running 后台任务 → 标记为 failed（中断）
     from app.core.background_tasks import recover_interrupted
