@@ -316,6 +316,8 @@ export interface GatePageInput {
   turnstileSiteKey: string;
   /** 仅在未配置 Turnstile 时下发 */
   pow: PowChallenge | null;
+  /** 题目签发后最短提交间隔（秒）；解得快时前端补足等待，避免被服务端拒绝 */
+  powMinSeconds: number;
   passHours: number;
   contactEmail: string;
   contactUrl: string;
@@ -335,7 +337,8 @@ function jsonForScript(value: unknown): string {
  *   check()       带 aud / nonce 请求风控接口（不带 Cookie），按结果分流
  *   submitToken() 干净：把签名令牌原样交给本站验签，服务端可改判（next: challenge / blocked）
  *   challenge()   风险 / 检测失败：Turnstile，未配置则工作量证明
- *   runPow()      纯 JS SHA-256 求解工作量证明（HTTP 局域网访问时 crypto.subtle 不可用）
+ *   runPow()      纯 JS SHA-256 逐题求解工作量证明（HTTP 局域网访问时 crypto.subtle 不可用），
+ *                 不足最短耗时则补足等待（自脚本启动计时，约等于题目签发时刻，另留 0.5 秒余量）
  *   blocked()   IDC + 代理：拒绝页，生成带诊断信息的 mailto
  */
 const CLIENT_SCRIPT = `
@@ -362,8 +365,10 @@ function fillMeta(){$("m-ip").textContent=ip||"—";var box=$("m-reason");box.in
   $("m-time").textContent=new Date().toISOString().replace("T"," ").slice(0,19)+" UTC";}
 function post(body){return fetch(C.verifyPath,{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}).then(function(r){if(!r.ok)throw new Error(String(r.status));});}
 function enter(el){state(el,t.success,"ok",true);setTimeout(function(){location.replace(location.href);},300);}
-function solve(){var salt=C.pow.salt+":",bits=C.pow.bits,n=0;return new Promise(function(resolve){(function step(){var end=Date.now()+50;do{for(var k=0;k<1000;k++,n++){if(lz(sha256(salt+n))>=bits)return resolve(n);}}while(Date.now()<end);setTimeout(step,0);})();});}
-function runPow(el){state(el,t.computing,"",true);solve().then(function(n){return post({mode:"pow",challenge:C.pow,nonce:n});}).then(function(){enter(el);},function(){state(el,t.failed,"err");});}
+var started=Date.now();
+function solve(){var bits=C.pow.bits,count=C.pow.count,out=[],i=0,n=0,salt=C.pow.salt+":0:";return new Promise(function(resolve){(function step(){var end=Date.now()+50;do{for(var k=0;k<1000;k++,n++){if(lz(sha256(salt+n))>=bits){out.push(n);if(++i>=count)return resolve(out);salt=C.pow.salt+":"+i+":";n=-1;}}}while(Date.now()<end);setTimeout(step,0);})();});}
+function dwell(v){var left=C.powMinMs+500-(Date.now()-started);return left>0?new Promise(function(r){setTimeout(function(){r(v);},left);}):v;}
+function runPow(el){state(el,t.computing,"",true);solve().then(dwell).then(function(ns){return post({mode:"pow",challenge:C.pow,nonces:ns});}).then(function(){enter(el);},function(){state(el,t.failed,"err");});}
 function turnstile(){var el=$("s-challenge");$("widget").hidden=false;state(el,t.loading,"",true);
   window.onTurnstileLoad=function(){state(el,"","");window.turnstile.render("#ts",{sitekey:C.siteKey,action:C.action,language:C.tsLang,theme:"auto",
     callback:function(token){state(el,t.verifying,"",true);post({mode:"turnstile",token:token}).then(function(){enter(el);},function(){state(el,t.failed,"err");window.turnstile.reset("#ts");});},
@@ -403,6 +408,7 @@ export function renderGatePage(input: GatePageInput): string {
     action: TURNSTILE_ACTION,
     tsLang: t.tsLang,
     pow: input.pow,
+    powMinMs: input.powMinSeconds * 1000,
     verifyPath: VERIFY_PATH,
     nonce: input.nonce,
     requestId: input.requestId,

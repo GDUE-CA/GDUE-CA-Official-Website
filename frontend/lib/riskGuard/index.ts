@@ -74,6 +74,7 @@ export async function riskGuard(request: NextRequest, ctx: GuardContext): Promis
     riskNonce: issueNonce(ipScope(ip), cfg),
     turnstileSiteKey: turnstile ? cfg.turnstileSiteKey : "",
     pow: turnstile ? null : issuePowChallenge(ipScope(ip), cfg),
+    powMinSeconds: cfg.powMinSeconds,
     passHours: cfg.passTtlSeconds / 3600,
     contactEmail: cfg.contactEmail,
     contactUrl: cfg.contactUrl,
@@ -124,7 +125,7 @@ function isSameOrigin(request: NextRequest): boolean {
  * POST /__risk/verify：校验后签发通行 Cookie
  *   { mode: "token", token }          风控接口签名令牌；判定为风险时返回 next 指示前端下一步
  *   { mode: "turnstile", token }      Turnstile 令牌
- *   { mode: "pow", challenge, nonce } 工作量证明（仅在未配置 Turnstile 时接受，避免攻击者选择更便宜的路径）
+ *   { mode: "pow", challenge, nonces } 工作量证明（每道子题一个 nonce；仅在未配置 Turnstile 时接受，避免攻击者选择更便宜的路径）
  */
 export async function handleVerify(request: NextRequest, ctx: GuardContext): Promise<NextResponse> {
   const cfg = getRiskGuardConfig();
@@ -152,7 +153,7 @@ export async function handleVerify(request: NextRequest, ctx: GuardContext): Pro
     if (isRisky || isIdc || isProxy) return json({ ok: false, next: "challenge" }, 403);
     passed = true;
   } else if (body?.mode === "pow" && !turnstile) {
-    passed = verifyPow(body.challenge, body.nonce, scope, cfg);
+    passed = verifyPow(body.challenge, body.nonces, scope, cfg);
   } else if (body?.mode === "turnstile" && turnstile) {
     const token = typeof body.token === "string" ? body.token : "";
     passed = token.length > 0 && token.length <= 2048 && (await verifyTurnstile(token, ip, cfg, requestId));

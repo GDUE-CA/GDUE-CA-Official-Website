@@ -60,8 +60,12 @@ export interface RiskGuardConfig {
   previewBotUa: string[];
   turnstileSiteKey: string;
   turnstileSecretKey: string;
-  /** 工作量证明难度（SHA-256 前导零位数），每 +1 计算量翻倍；仅在未配置 Turnstile 时用于人机验证 */
+  /** 工作量证明总难度（总计算量约 2^bits 次 SHA-256），每 +1 翻倍；仅在未配置 Turnstile 时用于人机验证 */
   powDifficulty: number;
+  /** 总计算量拆成的子题数（降低耗时波动）；每题难度 = 总难度 - log2(子题数) */
+  powPuzzles: number;
+  /** 题目签发后最短多少秒才接受提交：与算力无关，限制每次通过的最短耗时 */
+  powMinSeconds: number;
   /** 通过检测后的免检时长（秒） */
   passTtlSeconds: number;
   /** 通行凭证 / nonce / PoW 题目签名密钥；未配置时由 Turnstile 密钥派生 */
@@ -86,6 +90,8 @@ export function getRiskGuardConfig(): RiskGuardConfig {
     turnstileSiteKey: process.env.TURNSTILE_SITE_KEY ?? "",
     turnstileSecretKey: process.env.TURNSTILE_SECRET_KEY ?? "",
     powDifficulty: intEnv("RISK_POW_DIFFICULTY", 20, 8, 24),
+    powPuzzles: intEnv("RISK_POW_PUZZLES", 4, 1, 16),
+    powMinSeconds: intEnv("RISK_POW_MIN_SECONDS", 3, 0, 30),
     passTtlSeconds: intEnv("RISK_PASS_TTL_HOURS", 12, 1) * 3600,
     passSecret: process.env.RISK_PASS_SECRET ?? "",
     contactEmail: process.env.RISK_CONTACT_EMAIL ?? "",
