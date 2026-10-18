@@ -35,7 +35,7 @@ from app.core.audit import ctx_uid, log_action
 from app.core.config import get_settings
 from app.core.csrf import CSRF_COOKIE, SESSION_COOKIE, cookie_secure, new_csrf_token, set_csrf_cookie
 from app.core.crypto import decrypt_secret, encrypt_secret, mask_secret
-from app.core.ip_location import resolve_location
+from app.core.ip_intel import resolve_location_full
 from app.core.middleware import get_client_ip
 from app.core.permissions import require_permission
 from app.core.rate_limit import rate_limit
@@ -285,7 +285,7 @@ async def _bind_or_redirect(
         now = _now()
         ua = request.headers.get("user-agent", "") or ""
         device_name, device_model = parse_user_agent(ua)
-        loc_zh, loc_en = resolve_location(client_ip)
+        loc_zh, loc_en = await resolve_location_full(client_ip)
         expires_delta = timedelta(hours=settings.JWT_EXPIRE_HOURS)
         sid = uuid.uuid4().hex
         db.add(LoginSession(
@@ -469,7 +469,7 @@ async def complete_profile(
     # 建登录会话（与密码登录一致）
     ua = request.headers.get("user-agent", "") or ""
     device_name, device_model = parse_user_agent(ua)
-    loc_zh, loc_en = resolve_location(client_ip)
+    loc_zh, loc_en = await resolve_location_full(client_ip)
     expires_delta = timedelta(hours=settings.JWT_EXPIRE_HOURS)
     sid = uuid.uuid4().hex
     db.add(LoginSession(

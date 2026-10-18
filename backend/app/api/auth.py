@@ -40,7 +40,7 @@ from app.core.csrf import (
     origin_allowed,
     set_csrf_cookie,
 )
-from app.core.ip_location import resolve_location
+from app.core.ip_intel import resolve_location_full
 from app.core.middleware import get_client_ip
 from app.core.password_policy import check_password_strength
 from app.core.permissions import PERMISSION_MODULES, require_permission
@@ -540,7 +540,7 @@ async def login(
     global_timeout_minutes = ss.session_idle_timeout_minutes if ss else 30
 
     device_name, device_model = parse_user_agent(ua)
-    loc_zh, loc_en = resolve_location(client_ip)
+    loc_zh, loc_en = await resolve_location_full(client_ip)
     sid = uuid.uuid4().hex
     db.add(LoginSession(
         user_id=user.id,

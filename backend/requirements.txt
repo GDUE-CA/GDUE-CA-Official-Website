@@ -16,3 +16,4 @@ nh3>=0.2.0
 markdown-it-py>=3.0.0
 Pillow>=10.0.0
 redis>=5.0.0
+maxminddb>=2.6.0

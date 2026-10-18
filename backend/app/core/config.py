@@ -99,6 +99,17 @@ class Settings(BaseSettings):
     SMTP_FROM_NAME: str = "GDUE-CA"  # 发件人显示名
     # True = SSL 直连（465）；False = STARTTLS（587）
     SMTP_USE_SSL: bool = True
+
+    # ---- 发信通道：smtp（默认）/ graph（Microsoft Graph sendMail，走 HTTPS 443） ----
+    # graph 适用于 Exchange Online 停用 SMTP 基本认证、或云主机封禁出站 SMTP 端口的场景；
+    # 需在 Entra ID 注册应用并授予 Mail.Send「应用程序权限」+ 管理员同意，
+    # 强烈建议用 RBAC for Applications / Application Access Policy 限定只能以 GRAPH_SENDER 发信。
+    MAIL_PROVIDER: str = "smtp"
+    GRAPH_TENANT_ID: str = ""
+    GRAPH_CLIENT_ID: str = ""
+    GRAPH_CLIENT_SECRET: str = ""
+    # 发件邮箱（Exchange Online 中真实存在的邮箱 / 共享邮箱）；留空时取 SMTP_FROM
+    GRAPH_SENDER: str = ""
     # 忘记密码验证码：有效期（秒）+ 单码最大验证尝试次数 + 同邮箱重发间隔（秒）
     EMAIL_CODE_TTL_SECONDS: int = 600
     EMAIL_CODE_MAX_ATTEMPTS: int = 5
