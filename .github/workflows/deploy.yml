@@ -1,0 +1,52 @@
+name: Deploy GDUECA
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: gdueca-production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to Ubuntu Server
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script_stop: true
+          script: |
+            set -eu
+
+            cd /home/ubuntu/GDUE-CA-Official-Website
+
+            echo "==> Pull latest code"
+            git pull --ff-only origin main
+
+            echo "==> Install frontend dependencies"
+            cd frontend
+            /home/ubuntu/.bun/bin/bun install --frozen-lockfile
+
+            echo "==> Build frontend"
+            /home/ubuntu/.bun/bin/bun run build
+
+            echo "==> Reload systemd"
+            sudo -n systemctl daemon-reload
+
+            echo "==> Restart frontend and backend"
+            sudo -n systemctl restart gdueca-frontend gdueca-backend
+
+            echo "==> Check service status"
+            sudo -n systemctl is-active gdueca-frontend
+            sudo -n systemctl is-active gdueca-backend
+
+            echo "==> Deployment completed successfully"
