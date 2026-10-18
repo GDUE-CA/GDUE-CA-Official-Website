@@ -135,6 +135,8 @@ export default function LoginPage() {
   const [verifying2FA, setVerifying2FA] = useState(false);
   const [resending, setResending] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
+  // 本次登录沿用了冷却期内刚发出的验证码（未新发邮件），提示用户查收先前那封
+  const [codeReused, setCodeReused] = useState(false);
 
   useEffect(() => {
     setReturnTarget(parseReturnTarget());
@@ -248,7 +250,9 @@ export default function LoginPage() {
       if (res.requires_2fa) {
         setEmailMasked(res.email_masked ?? null);
         setCode2FA("");
-        setResendCooldown(60);
+        // 倒计时以后端实际发送时刻为准：新发 → 完整冷却；沿用旧码 → 剩余冷却
+        setResendCooldown(Math.max(0, res.resend_after ?? 0));
+        setCodeReused(res.code_sent === false);
         setPending2FA(true);
         return;
       }
@@ -294,15 +298,16 @@ export default function LoginPage() {
     }
   }
 
-  /** 重发验证码（后端 60s 冷却，前端倒计时同步） */
+  /** 重发验证码：倒计时以后端返回的 resend_after 为准（发送成功才进入完整冷却） */
   async function handle2FAResend() {
     if (resendCooldown > 0 || resending) return;
     setResending(true);
     setError(null);
     try {
       const res = await login2FAResend({ username });
+      setResendCooldown(Math.max(0, res.resend_after ?? 0));
       if (res.ok) {
-        setResendCooldown(60);
+        setCodeReused(false);
       } else {
         setError(res.message || t("admin.login.error"));
       }
@@ -319,6 +324,8 @@ export default function LoginPage() {
     setPending2FA(false);
     setCode2FA("");
     setEmailMasked(null);
+    setCodeReused(false);
+    setResendCooldown(0);
     setError(null);
     setFirstBanWarning(false);
   }
@@ -397,7 +404,7 @@ export default function LoginPage() {
             <CardDescription>
               {pending2FA
                 ? emailMasked
-                  ? t("admin.login.2fa.subtitleWithEmail", { email: emailMasked })
+                  ? t(codeReused ? "admin.login.2fa.subtitleReused" : "admin.login.2fa.subtitleWithEmail", { email: emailMasked })
                   : t("admin.login.2fa.subtitle")
                 : t("admin.login.subtitle")}
             </CardDescription>

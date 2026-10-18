@@ -75,7 +75,7 @@ export async function login2FAVerify(payload: {
 
 /** 登录二次验证码重发（60s 冷却由后端控制）：POST /api/auth/login/2fa/resend */
 export function login2FAResend(payload: { username?: string; email?: string }) {
-  return apiFetch<{ ok: boolean; message: string }>("/api/auth/login/2fa/resend", {
+  return apiFetch<{ ok: boolean; message: string; resend_after?: number }>("/api/auth/login/2fa/resend", {
     method: "POST",
     body: JSON.stringify(payload),
   });

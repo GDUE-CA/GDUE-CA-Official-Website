@@ -144,6 +144,26 @@ def register_member(client, username: str, password: str, email: str | None = No
     })
 
 
+def pytest_configure(config):
+    config.addinivalue_line("markers", "login2fa: 走真实的陌生设备邮箱二次验证（默认用例跳过该门禁）")
+
+
+@pytest.fixture(autouse=True)
+def _skip_login2fa(request, monkeypatch):
+    """测试环境无邮件通道，2FA 发码必然失败、登录一律被拒：默认把设备视为已信任。
+
+    需要验证 2FA 本身的用例标记 @pytest.mark.login2fa，走真实门禁。
+    """
+    if request.node.get_closest_marker("login2fa"):
+        return
+    from app.api import auth
+
+    async def _trusted(*args, **kwargs):
+        return None
+
+    monkeypatch.setattr(auth, "_login2fa_challenge", _trusted)
+
+
 @pytest.fixture(autouse=True)
 def _reset_rate_limit():
     from app.core import rate_limit

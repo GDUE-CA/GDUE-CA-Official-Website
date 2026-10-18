@@ -1320,6 +1320,7 @@
         "title": "Zweistufige Verifizierung",
         "subtitle": "Wir haben ein neues Gerät oder Netzwerk erkannt. Ein 6-stelliger Code wurde an Ihre E-Mail-Adresse gesendet. Geben Sie ihn ein, um die Anmeldung abzuschließen.",
         "subtitleWithEmail": "Ein Code wurde an {email} gesendet. Geben Sie ihn ein, um die Anmeldung abzuschließen.",
+        "subtitleReused": "Ein Code wurde gerade an {email} gesendet und ist noch gültig. Bitte prüfen Sie Ihr Postfach und geben Sie ihn ein.",
         "codeLabel": "E-Mail-Bestätigungscode",
         "codePlaceholder": "6-stelliger Code",
         "verify": "Verifizieren und anmelden",

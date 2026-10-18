@@ -38,6 +38,10 @@ export interface LoginResponse {
   requires_2fa?: boolean;
   /** 验证码发送目标邮箱（打码显示，如 ab***@example.com） */
   email_masked?: string | null;
+  /** 本次登录是否新发了验证码；false = 重发冷却内沿用刚发出的验证码 */
+  code_sent?: boolean | null;
+  /** 距离可重发还剩多少秒（后端权威值，前端据此倒计时） */
+  resend_after?: number | null;
 }
 
 /** 单个安全问题项（注册 / 补设 / 修改共用） */

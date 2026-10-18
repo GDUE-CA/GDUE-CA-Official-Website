@@ -1348,6 +1348,7 @@
         "title": "Two-step verification",
         "subtitle": "We detected a new device or network. A 6-digit code has been sent to your email address. Enter it to finish signing in.",
         "subtitleWithEmail": "A code has been sent to {email}. Enter it to finish signing in.",
+        "subtitleReused": "A code was just sent to {email} and is still valid. Please check your inbox and enter it.",
         "codeLabel": "Email verification code",
         "codePlaceholder": "6-digit code",
         "verify": "Verify and sign in",

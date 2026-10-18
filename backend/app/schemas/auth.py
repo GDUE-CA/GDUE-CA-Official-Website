@@ -52,6 +52,10 @@ class LoginResponse(BaseModel):
     requires_2fa: bool = False
     # 验证码发送目标邮箱（打码显示，如 ab***@example.com）
     email_masked: str | None = None
+    # 本次登录是否新发了验证码（False = 重发冷却内沿用刚发出的验证码）
+    code_sent: bool | None = None
+    # 距离可重发还剩多少秒：前端按此值开始倒计时
+    resend_after: int | None = None
 
 
 class Login2FAVerifyRequest(BaseModel):
