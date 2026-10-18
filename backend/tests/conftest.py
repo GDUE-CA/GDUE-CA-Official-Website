@@ -1,4 +1,4 @@
-"""测试夹具：隔离的临时工作目录 + SQLite 数据库，每个测试模块一个应用实例。"""
+"""测试夹具：隔离的临时工作目录 + SQLite 数据库（可用 TEST_DATABASE_URL 换成 PostgreSQL），每个测试模块一个应用实例。"""
 import os
 import sys
 import tempfile
@@ -20,7 +20,10 @@ BG_PASSWORD = "BreakGlass#2026!Xq"
 # 若 env 设置晚于首个 import（如某测试文件模块级 import app.*），engine 会绑到默认库 assoc.db。
 _WORK_DIR = tempfile.mkdtemp(prefix="gdueca-test-")
 os.environ.update({
-    "DATABASE_URL": f"sqlite+aiosqlite:///{Path(_WORK_DIR) / 'test.db'}",
+    # TEST_DATABASE_URL 可指向一个空的 PostgreSQL 库验证兼容性，例如
+    # TEST_DATABASE_URL=postgresql+asyncpg://user@127.0.0.1:5432/gdueca_test pytest
+    "DATABASE_URL": os.environ.get("TEST_DATABASE_URL")
+    or f"sqlite+aiosqlite:///{Path(_WORK_DIR) / 'test.db'}",
     "CORS_ORIGINS": "",
     # Break-Glass：凭据仅经环境变量注入（与生产同路径）
     "SUPER_ADMIN_USERNAME": BG_USERNAME,
@@ -30,6 +33,18 @@ os.environ.update({
     "SUPER_ADMIN_ENABLED": "true",
 })
 os.chdir(_WORK_DIR)
+
+# PostgreSQL：每个测试模块的 TestClient 各有一个 event loop，asyncpg 连接绑定创建它的 loop，
+# 共享 engine 的连接池跨模块复用会报 "attached to a different loop"。测试时改用 NullPool
+# （生产单一 loop 不受影响）；须在 app.db.session 被 import 之前替换。
+if os.environ["DATABASE_URL"].startswith("postgresql"):
+    import sqlalchemy.ext.asyncio as _sa_asyncio
+    from sqlalchemy.pool import NullPool
+
+    _create_async_engine = _sa_asyncio.create_async_engine
+    _sa_asyncio.create_async_engine = lambda url, **kw: _create_async_engine(
+        url, **{**kw, "poolclass": NullPool}
+    )
 
 
 @pytest.fixture(scope="session")
