@@ -1,6 +1,7 @@
 """数据库会话与引擎。"""
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from app.core import db_trace  # noqa: F401 —— 注册数据库写操作审计事件
 from app.core.config import get_settings
 
 settings = get_settings()

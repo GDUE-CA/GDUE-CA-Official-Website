@@ -15,8 +15,9 @@
 **关于 request_id 透传**：
 Starlette 的 ServerErrorMiddleware 把 user exception_handler 跑在一个 new task
 （`anyio.from_thread.BlockingPortal._call_func`）里，与 trace_middleware 的
-contextvars 不互通。因此 handler 不能直接读 `trace_id_var`；改读
-`request.state.trace_id`（由 trace_middleware 在 `request.state` 上挂载）。
+contextvars 不互通。因此 handler 不能直接读 `request_id_var`；改读
+`request.state.request_id`（由 trace_middleware 在 `request.state` 上挂载）。
+异常路径不下发 X-Trace-Id：写操作 trace id 仅在事务提交成功后由 trace_middleware 下发。
 """
 import logging
 from http import HTTPStatus
@@ -27,17 +28,17 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.bizcode import BizCode, get_meta
 from app.core.responses import BizException, EnvelopeJSONResponse, fail
-from app.core.log import trace_id_var
-from app.core.trace import REQUEST_ID_HEADER, TRACE_HEADER
+from app.core.log import request_id_var
+from app.core.trace import REQUEST_ID_HEADER
 from app.core.validation_errors import describe_for_log, sanitize_validation_errors
 
 logger = logging.getLogger("gdueca.error")
 
 
 def _request_id_from_state(request: Request) -> str | None:
-    """从 request.state 读取 trace_middleware 挂载的 trace_id。
+    """从 request.state 读取 trace_middleware 挂载的 request_id。
     没有时返回 None（不强行占位，避免日志假阳性）。"""
-    return getattr(request.state, "trace_id", None)
+    return getattr(request.state, "request_id", None)
 
 
 def _envelope_with_request_id(
@@ -48,7 +49,7 @@ def _envelope_with_request_id(
 ) -> EnvelopeJSONResponse:
     """构造带 request_id 的 EnvelopeJSONResponse（解决跨 task 的 contextvar 失效）。
 
-    body.request_id 与响应头 X-Request-Id / X-Trace-Id 三处同值——
+    body.request_id 与响应头 X-Request-Id 同值——
     异常路径下 trace_middleware 来不及挂响应头，这里直接补上，保证 500 也有迹可循。
     extra_headers：HTTPException 携带的自定义响应头原样透传（前端守卫依赖）。
     """
@@ -56,7 +57,6 @@ def _envelope_with_request_id(
     headers: dict[str, str] = dict(extra_headers) if extra_headers else {}
     if rid:
         body["request_id"] = rid
-        headers.setdefault(TRACE_HEADER, rid)
         headers.setdefault(REQUEST_ID_HEADER, rid)
     return EnvelopeJSONResponse(content=body, status_code=http_status, headers=headers or None)
 
@@ -122,16 +122,16 @@ def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(Exception)
     async def _unhandled_handler(request: Request, exc: Exception):
         rid = _request_id_from_state(request)
-        # 新 task 里 contextvar 是空的：先 seed，保证这条错误日志的 trace 与响应的 request_id 一致
-        token = trace_id_var.set(rid) if rid else None
+        # 新 task 里 contextvar 是空的：先 seed，保证这条错误日志的 request id 与响应的 request_id 一致
+        token = request_id_var.set(rid) if rid else None
         try:
             logger.exception(
-                "未捕获异常：%s %s trace=%s",
+                "未捕获异常：%s %s req=%s",
                 request.method, request.url.path, rid or "-",
             )
         finally:
             if token is not None:
-                trace_id_var.reset(token)
+                request_id_var.reset(token)
         body = {"code": BizCode.INTERNAL_ERROR,
                 "message": {"key": "error.internal"},
                 "data": None,

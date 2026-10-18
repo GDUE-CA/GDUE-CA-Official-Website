@@ -2701,7 +2701,30 @@
       "targetPlaceholder": "Target prefix, e.g. activity:5",
       "userIdPlaceholder": "User ID",
       "dateFrom": "From",
-      "dateTo": "To"
+      "dateTo": "To",
+      "requestId": "Request ID",
+      "traceHint": "Database write audit: view every row-level change of this write",
+      "copy": "Copy",
+      "dbTrace": {
+        "title": "Database write audit",
+        "source": "Source",
+        "sourceRequest": "HTTP request",
+        "sourceBackground": "Background task",
+        "operator": "Operator",
+        "anonymous": "Anonymous",
+        "endpoint": "Endpoint",
+        "changes": "Row-level changes",
+        "relatedLogs": "Audit logs in the same transaction",
+        "noChanges": "No row-level changes",
+        "masked": "*** marks redacted fields (passwords / secrets / tokens); only the fact of the change is recorded",
+        "op": {
+          "insert": "Insert",
+          "update": "Update",
+          "delete": "Delete",
+          "bulk_update": "Bulk update",
+          "bulk_delete": "Bulk delete"
+        }
+      }
     },
     "stats": {
       "common": {

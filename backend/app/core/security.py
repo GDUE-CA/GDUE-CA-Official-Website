@@ -10,6 +10,8 @@ from jose import JWTError, jwt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import db_trace
+from app.core.audit import BREAK_GLASS_ACTOR
 from app.core.config import get_settings
 from app.core.csrf import SESSION_COOKIE
 from app.core.middleware import get_client_ip
@@ -225,6 +227,7 @@ async def _authenticate(request: Request, db: AsyncSession) -> tuple[dict, objec
         sess = await bg_session_get(jti)
         if not sess:
             raise HTTPException(status_code=401, detail="登录会话已失效，请重新登录")
+        db_trace.bind_actor(None, BREAK_GLASS_ACTOR)
         if not await is_admin_network(request, db):
             raise HTTPException(status_code=403, detail="请求来源不合法")
         return {
@@ -240,6 +243,8 @@ async def _authenticate(request: Request, db: AsyncSession) -> tuple[dict, objec
     now = datetime.now(UTC).replace(tzinfo=None)
     if not sess or sess.revoked or now > sess.expires_at or str(sess.user_id) != str(sub):
         raise HTTPException(status_code=401, detail="登录会话已失效，请重新登录")
+    # 先于本请求任何写库绑定操作者（空闲超时吊销会话也是写操作）
+    db_trace.bind_actor(sess.user_id)
 
     # 空闲超时：记住设备 → 30天硬顶；非记住设备 → 读取全局管理员配置（动态生效）
     from app.db.models import SystemSetting

@@ -99,6 +99,26 @@ async def _rebuild_users_student_id_nullable(conn):
     logger.info("users.student_id 已迁移为可空（整表重建，%d 列）", len(infos))
 
 
+async def _split_audit_request_id(conn) -> None:
+    """audit_logs 拆分 request_id / trace_id（SQLite 与 PostgreSQL 通用，仅执行一次）。
+
+    旧库的 trace_id 实为请求 id；新语义下 trace_id 只表示数据库写操作 trace（对应 db_traces）。
+    仅在 request_id 列尚不存在时（即首次升级）搬迁历史值，避免误搬新产生的后台写操作 trace。
+    """
+    from sqlalchemy import inspect as sa_inspect
+    from sqlalchemy import text
+
+    cols = await conn.run_sync(lambda c: {col["name"] for col in sa_inspect(c).get_columns("audit_logs")})
+    if "request_id" in cols:
+        return
+    await conn.execute(text("ALTER TABLE audit_logs ADD COLUMN request_id VARCHAR(64) NULL"))
+    await conn.execute(text("UPDATE audit_logs SET request_id = trace_id, trace_id = NULL"))
+    await conn.execute(text(
+        "CREATE INDEX IF NOT EXISTS ix_audit_logs_request_id ON audit_logs (request_id)"
+    ))
+    logger.info("audit_logs 已拆分 request_id（历史 trace_id 迁入 request_id）")
+
+
 async def _migrate_columns(conn):
     """SQLite 轻量迁移：为已有表补缺失列（create_all 不会给旧表加列）。"""
     from sqlalchemy import text
@@ -266,6 +286,7 @@ async def _migrate_columns(conn):
             ("mail_system_ready", "BOOLEAN DEFAULT 0"),
         ],
     }
+    await _split_audit_request_id(conn)
     if conn.dialect.name == "postgresql":
         # PostgreSQL 原生 ENUM 需显式追加新角色值
         await conn.execute(text("ALTER TYPE userrole ADD VALUE IF NOT EXISTS 'MEMBER'"))
@@ -491,11 +512,19 @@ def _cleanup_expired_mail_attachments() -> int:
 
 async def _run_maintenance() -> None:
     """①软删除超期（30 天）记录物理清除；②自动归档开关开启时归档过期活动；
-    ③邮件大附件超期磁盘清理（V0.5.5 §4）。"""
+    ③邮件大附件超期磁盘清理（V0.5.5 §4）；④数据库写操作审计超过保留期清理。"""
+    from app.core import db_trace
+    from app.core.config import get_settings
+
     _cleanup_expired_mail_attachments()
     now = datetime.now(timezone.utc).replace(tzinfo=None)
     threshold = now - timedelta(days=RETENTION_DAYS)
     async with async_session() as s:
+        # 0) 写操作审计保留期清理（审计表自身不产生审计）
+        trace_days = get_settings().DB_TRACE_RETENTION_DAYS
+        purged_traces = await db_trace.purge_expired(s, now - timedelta(days=trace_days))
+        if purged_traces:
+            logger.info("定时任务：已清理 %d 条超过 %d 天的数据库写操作审计", purged_traces, trace_days)
         # 1) 已取消（软删）的报名记录超期清除
         await s.execute(sa_delete(ActivityEnrol).where(
             ActivityEnrol.is_deleted.is_(True), ActivityEnrol.created_at < threshold))
@@ -709,6 +738,7 @@ app.include_router(admin_stats.router)
 app.include_router(stats.router)
 app.include_router(media.router)
 app.include_router(audit.router)
+app.include_router(audit.db_trace_router)
 app.include_router(audit.bg_router)
 app.include_router(recycle.router)
 app.include_router(security.router)

@@ -356,7 +356,7 @@ A single image contains Nginx (exposed on `:8080`) + Next.js (`127.0.0.1:3000`) 
 
 ```bash
 docker compose up -d --build        # Visit http://<server-IP>:8080
-docker compose logs -f              # Nginx / frontend / backend unified log format, linked by trace
+docker compose logs -f              # Nginx / frontend / backend unified log format, linked by request id (req=)
 ```
 
 - **Persistence**: the database, uploaded files, and `.jwt_secret` all live in the named volume `gdueca-data` (`/data` in the container); you can also place the backend `.env` at `/data/.env`.

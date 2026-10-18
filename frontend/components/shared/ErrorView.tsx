@@ -3,7 +3,7 @@
 /**
  * 错误页主体（app/error.tsx 与 app/global-error.tsx 共用）
  *
- * 展示：错误原因（已本地化）+ 请求编号（request id，与后端 X-Request-Id / X-Trace-Id 同值）
+ * 展示：错误原因（已本地化）+ 请求编号（request id，与后端 X-Request-Id 同值）
  * 或 Next.js 错误摘要（非 API 错误），并提供复制、重试、返回首页。
  *
  * 原因来源：

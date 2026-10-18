@@ -2746,7 +2746,30 @@
       "targetPlaceholder": "目标前缀，如 activity:5",
       "userIdPlaceholder": "用户 ID",
       "dateFrom": "开始日期",
-      "dateTo": "结束日期"
+      "dateTo": "结束日期",
+      "requestId": "请求 ID",
+      "traceHint": "数据库写入审计：查看本次写入的全部行级变更",
+      "copy": "复制",
+      "dbTrace": {
+        "title": "数据库写入审计",
+        "source": "来源",
+        "sourceRequest": "HTTP 请求",
+        "sourceBackground": "后台任务",
+        "operator": "操作者",
+        "anonymous": "匿名",
+        "endpoint": "接口",
+        "changes": "行级变更",
+        "relatedLogs": "同事务操作日志",
+        "noChanges": "无行级变更",
+        "masked": "*** 为脱敏字段（密码 / 密钥 / 令牌等），仅记录发生了变更",
+        "op": {
+          "insert": "新增",
+          "update": "修改",
+          "delete": "删除",
+          "bulk_update": "批量修改",
+          "bulk_delete": "批量删除"
+        }
+      }
     },
     "stats": {
       "common": {

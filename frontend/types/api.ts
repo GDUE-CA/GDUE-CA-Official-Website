@@ -1342,8 +1342,47 @@ export interface AuditLogInfo {
   target: string | null;
   detail: string | null;
   ip: string | null;
+  /** 请求 id（每个请求都有，用于检索应用日志） */
+  request_id: string | null;
+  /** 数据库写操作 trace id（与 db_traces 一一对应；无写操作为 null） */
   trace_id: string | null;
   created_at: string;
+}
+
+/** 数据库写操作 trace：发起上下文（GET /api/admin/db-traces/{trace_id}） */
+export interface DbTraceInfo {
+  trace_id: string;
+  request_id: string | null;
+  /** request（HTTP 请求）/ background（后台任务 / 定时任务） */
+  source: "request" | "background";
+  user_id: number | null;
+  username: string | null;
+  actor: string | null;
+  method: string | null;
+  path: string | null;
+  ip: string | null;
+  created_at: string;
+}
+
+export type DbChangeOp = "insert" | "update" | "delete" | "bulk_update" | "bulk_delete";
+
+/**
+ * 行级变更：insert → {列: 新值}；update → {列: [旧值, 新值]}；delete → {列: 旧值}；
+ * bulk_* → {statement, params}。敏感列值为 "***"。
+ */
+export interface DbChangeInfo {
+  id: number;
+  table_name: string;
+  row_pk: string | null;
+  op: DbChangeOp;
+  changes: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface DbTraceDetail {
+  trace: DbTraceInfo;
+  changes: DbChangeInfo[];
+  audit_logs: AuditLogInfo[];
 }
 
 /* ---------- 数据统计（Phase 7） ---------- */

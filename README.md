@@ -353,7 +353,7 @@ chmod +x deploy/scripts/post_deploy.sh
 
 ```bash
 docker compose up -d --build        # 访问 http://<服务器IP>:8080
-docker compose logs -f              # Nginx / 前端 / 后端统一日志格式，按 trace 串联
+docker compose logs -f              # Nginx / 前端 / 后端统一日志格式，按 request id（req=）串联
 ```
 
 - **持久化**：数据库、上传文件、`.jwt_secret` 均位于命名卷 `gdueca-data`（容器内 `/data`）；也可把后端 `.env` 放到 `/data/.env`；

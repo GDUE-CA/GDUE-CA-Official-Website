@@ -53,7 +53,7 @@ export class ApiError extends Error {
   detail: unknown;
   /** 业务码；新壳错误为 BizCode.*；旧壳错误为 BizCode.Ok(0) */
   code: BizCodeType;
-  /** request_id（与后端响应体 request_id 字段、响应头 X-Request-Id、X-Trace-Id 同值） */
+  /** request_id（与后端响应体 request_id 字段、响应头 X-Request-Id 同值；X-Trace-Id 是写操作 trace，含义不同） */
   requestId: string | null;
   /** 向后兼容旧调用：等价于 requestId（deprecated） */
   get traceId(): string | null {
@@ -270,7 +270,7 @@ export async function apiFetch<T>(
 
   // 错误响应：双轨处理
   if (!res.ok) {
-    const requestId = res.headers.get("X-Request-Id") || res.headers.get("X-Trace-Id");
+    const requestId = res.headers.get("X-Request-Id");
     if (isApiResponse(body)) {
       throw ApiError.fromEnvelope(res.status, body, requestId);
     }
@@ -285,8 +285,7 @@ export async function apiFetch<T>(
   if (isApiResponse(body)) {
     if (body.code !== BizCode.Ok) {
       // 业务码非零但 HTTP 200（理论不应出现，兜底）
-      const requestId =
-        res.headers.get("X-Request-Id") || res.headers.get("X-Trace-Id");
+      const requestId = res.headers.get("X-Request-Id");
       throw ApiError.fromEnvelope(res.status, body, requestId);
     }
     return body.data as T;
