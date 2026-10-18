@@ -68,7 +68,7 @@ async def _out(db: AsyncSession, r: RealnameRequest) -> dict:
 @router.get("/status", response_model=RealnameStatusOut)
 async def my_realname_status(
     user: dict = Depends(require_role(Role.MEMBER, allow_unverified_realname=True)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """当前用户的实名状态 + 最近一次申请。"""
     u = await db.get(User, _uid(user))
@@ -88,7 +88,7 @@ async def submit_realname(
     req: RealnameSubmit,
     request: Request,
     user: dict = Depends(require_role(Role.MEMBER, allow_unverified_realname=True)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """提交实名申请；待审核期间不可重复提交；通过后无需再提交。"""
     uid = _uid(user)
@@ -124,7 +124,7 @@ async def upload_evidence(
     request: Request,
     file: UploadFile = File(...),
     user: dict = Depends(require_role(Role.MEMBER, allow_unverified_realname=True)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """上传实名凭证图片（学生证 / 校园卡照片）：≤5MB，仅 JPEG/PNG/WEBP。"""
     data = await file.read()
@@ -166,7 +166,7 @@ async def list_requests(
     status: str | None = None,
     q: str | None = None,
     user: dict = Depends(require_permission("realname", "view")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """实名申请列表：状态筛选（pending/approved/rejected）+ 用户名/学号/姓名搜索。"""
     stmt = select(RealnameRequest).order_by(
@@ -189,7 +189,7 @@ async def approve_request(
     request_id: int,
     request: Request,
     user: dict = Depends(require_permission("realname", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """通过实名申请：标记账号已实名并回写学号 / 真实姓名 / 手机号。"""
     r = await db.get(RealnameRequest, request_id)
@@ -220,7 +220,7 @@ async def reject_request(
     req: RealnameReject,
     request: Request,
     user: dict = Depends(require_permission("realname", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """拒绝实名申请（记录原因，用户可修改后重新提交）。"""
     r = await db.get(RealnameRequest, request_id)

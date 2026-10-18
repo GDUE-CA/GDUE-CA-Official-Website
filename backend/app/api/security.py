@@ -57,7 +57,7 @@ async def list_ip_rules(
     type: str | None = None,
     q: str | None = None,
     user: dict = Depends(require_permission("security", "view")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """列出 IP 规则；支持按 type=whitelist/blacklist 过滤、按 rule/label/reason 搜索。"""
     stmt = select(IpRule).order_by(IpRule.created_at.desc())
@@ -79,7 +79,7 @@ async def create_ip_rule(
     payload: IpRuleCreate,
     request: Request,
     user: dict = Depends(require_permission("security", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     try:
         rule_type = IpRuleType(payload.type)
@@ -117,7 +117,7 @@ async def delete_ip_rule(
     rule_id: int,
     request: Request,
     user: dict = Depends(require_permission("security", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     rec = await db.get(IpRule, rule_id)
     if not rec:
@@ -203,7 +203,7 @@ async def _trim_history(db: AsyncSession):
 @router.get("/network", response_model=NetworkConfigOut)
 async def get_network_config(
     user: dict = Depends(require_permission("security", "view")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     rec = await _get_or_create_settings(db)
     return rec
@@ -214,7 +214,7 @@ async def update_network_config(
     payload: NetworkConfigUpdate,
     request: Request,
     user: dict = Depends(require_permission("security", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     rec = await _get_or_create_settings(db)
     network_keys = {"network_port", "network_listen_ip", "network_domains"}
@@ -286,7 +286,7 @@ async def unban(
     dim_value: str,
     request: Request,
     user: dict = Depends(require_permission("security", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """手动解除封禁（含永久封禁）。"""
     p = _BAN_POLICIES.get(policy)
@@ -305,7 +305,7 @@ async def reset_ban_stage(
     req: BanResetRequest,
     request: Request,
     user: dict = Depends(require_permission("security", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """重置指定账号+维度的错误计数与惩罚阶段（不解除已生效封禁）。"""
     p = _BAN_POLICIES.get(req.policy)

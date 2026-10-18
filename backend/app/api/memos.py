@@ -209,7 +209,7 @@ async def _version_out_dict(v: MemoVersion, editor: User | None,
 @public_router.get("/shared/{share_slug}")
 async def get_shared_memo(
     share_slug: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """按 share_slug 匿名访问公开 Memo：仅 visibility=public 且未下架 / 未删除。"""
     m = (await db.execute(
@@ -241,7 +241,7 @@ async def public_timeline(
     ),
     has_image: bool | None = Query(default=None, description="筛选是否带图片附件"),
     user: dict | None = Depends(get_optional_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """公开时间线（倒序）；支持按档/搜索/是否带图过滤；当前用户视角过滤可见性。
 
@@ -316,7 +316,7 @@ async def public_timeline(
 async def public_memos_by_date(
     date: str,
     user: dict | None = Depends(get_optional_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """日历选择器：按指定日期（YYYY-MM-DD，UTC）取全部可见 Memo。
 
@@ -362,7 +362,7 @@ async def public_search(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=50),
     user: dict | None = Depends(get_optional_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """全文检索：当前阶段 SQL LIKE 占位，命中片段直接返回（前端按需高亮）。
 
@@ -423,7 +423,7 @@ async def my_memos(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=50),
     user: dict = Depends(require_role(Role.MEMBER)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """我的全部 Memo（含 private / member_only / public，已归档可选过滤）。"""
     from sqlalchemy import func
@@ -458,7 +458,7 @@ async def my_liked_memos(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=50),
     user: dict = Depends(require_role(Role.MEMBER)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """我点赞的全部 Memo（仍遵守可见性过滤）。"""
     from sqlalchemy import func
@@ -493,7 +493,7 @@ async def my_favorite_memos(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=50),
     user: dict = Depends(require_role(Role.MEMBER)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """我收藏的全部 Memo。"""
     from sqlalchemy import func
@@ -530,7 +530,7 @@ async def create_memo(
     req: MemoCreate,
     request: Request,
     user: dict = Depends(require_role(Role.MEMBER)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """创建 Memo：自动写入版本 1；标签懒创建；防灌水限流（每分钟 10 条）。"""
     uid = _uid(user)
@@ -605,7 +605,7 @@ async def update_memo(
     req: MemoUpdate,
     request: Request,
     user: dict = Depends(require_role(Role.MEMBER)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """编辑 Memo：content_md 变化 → 自动写新版本；可见性 / 标签 / 附件变更不计版本。"""
     uid = _uid(user)
@@ -660,7 +660,7 @@ async def delete_memo(
     memo_id: int,
     request: Request,
     user: dict = Depends(require_role(Role.MEMBER)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """软删除：写入 deleted_at（基线）；版本快照保留，关联数据随父级联清理（依赖 ORM cascade）。"""
     uid = _uid(user)
@@ -676,7 +676,7 @@ async def archive_memo(
     memo_id: int,
     request: Request,
     user: dict = Depends(require_role(Role.MEMBER)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """归档：archived=true；不在主时间线展示；归档页专门浏览；归档≠删除。"""
     uid = _uid(user)
@@ -699,7 +699,7 @@ async def unarchive_memo(
     memo_id: int,
     request: Request,
     user: dict = Depends(require_role(Role.MEMBER)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """取消归档。"""
     uid = _uid(user)
@@ -723,7 +723,7 @@ async def toggle_like(
     memo_id: int,
     request: Request,
     user: dict = Depends(require_role(Role.MEMBER)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """点赞 / 取消点赞（toggle）：命中即取消；未命中即新增。"""
     uid = _uid(user)
@@ -766,7 +766,7 @@ async def toggle_favorite(
     memo_id: int,
     request: Request,
     user: dict = Depends(require_role(Role.MEMBER)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """收藏 / 取消收藏（toggle）。"""
     uid = _uid(user)
@@ -809,7 +809,7 @@ async def toggle_favorite(
 async def list_memo_versions(
     memo_id: int,
     user: dict = Depends(require_role(Role.MEMBER)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """作者本人浏览 Memo 历史版本（不含正文，列表用）。"""
     uid = _uid(user)
@@ -831,7 +831,7 @@ async def get_memo_version(
     memo_id: int,
     version_no: int,
     user: dict = Depends(require_role(Role.MEMBER)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """查看指定版本号（含原文 content_md）。"""
     uid = _uid(user)
@@ -855,7 +855,7 @@ async def rollback_memo(
     req: MemoRollback,
     request: Request,
     user: dict = Depends(require_role(Role.MEMBER)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """回滚到指定版本：生成新版本（内容 = 旧版本），保留完整历史链。"""
     uid = _uid(user)
@@ -902,7 +902,7 @@ async def upload_memo_attachment(
     request: Request,
     file: UploadFile = File(...),
     user: dict = Depends(require_role(Role.MEMBER)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """Memo 附件上传：jpg/png/webp ≤5MB，仅无损压缩至 ≤ 原体积 80%。
 
@@ -953,7 +953,7 @@ async def create_share_link(
     memo_id: int,
     request: Request,
     user: dict = Depends(require_role(Role.MEMBER)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """生成 / 轮换公开分享 slug：仅 visibility=public 允许（member_only 不可匿名访问）。"""
     uid = _uid(user)
@@ -989,7 +989,7 @@ async def revoke_share_link(
     memo_id: int,
     request: Request,
     user: dict = Depends(require_role(Role.MEMBER)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """撤销公开分享链接。"""
     uid = _uid(user)
@@ -1007,7 +1007,7 @@ async def revoke_share_link(
 async def get_memo(
     memo_id: int,
     user: dict | None = Depends(get_optional_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """按 id 读取 Memo：可见性范围内可见。"""
     m = await _load_memo_or_404(db, memo_id)
@@ -1048,7 +1048,7 @@ async def get_memo(
 @public_router.post("/{memo_id}/share-count")
 async def share_memo(
     memo_id: int,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """分享计数：每次调用 share_count += 1。
 
@@ -1078,7 +1078,7 @@ async def admin_list_memos(
     admin_removed: bool | None = Query(default=None),
     archived: bool | None = Query(default=None),
     user: dict = Depends(require_permission("memo", "view")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """后台全量浏览：含已下架 / 已软删除；按作者 / 关键词 / 可见性 / 状态过滤。"""
     from sqlalchemy import func
@@ -1123,7 +1123,7 @@ async def admin_list_memos(
 async def admin_get_memo(
     memo_id: int,
     user: dict = Depends(require_permission("memo", "view")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """后台查看单条 Memo（含已下架 / 已删除）。"""
     m = (await db.execute(
@@ -1144,7 +1144,7 @@ async def admin_remove_memo(
     memo_id: int,
     request: Request,
     user: dict = Depends(require_permission("memo", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """后台下架：admin_removed=true；公开时间线 / 详情页不再可见；作者本人可继续编辑。
 
@@ -1177,7 +1177,7 @@ async def admin_restore_memo(
     memo_id: int,
     request: Request,
     user: dict = Depends(require_permission("memo", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """后台恢复：清除 admin_removed，回到正常展示状态。"""
     m = (await db.execute(

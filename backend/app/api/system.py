@@ -75,7 +75,7 @@ async def _get_or_create_settings(db: AsyncSession) -> SystemSetting:
 
 # ---------- 读取：公开接口仅返回站点展示信息 ----------
 @router.get("/settings", response_model=SystemSettingPublicOut)
-async def get_settings(db: AsyncSession = Depends(get_db)):
+async def get_settings(db: AsyncSession = Depends(get_db, scope="function")):
     return await _get_or_create_settings(db)
 
 
@@ -83,7 +83,7 @@ async def get_settings(db: AsyncSession = Depends(get_db)):
 @router.get("/settings/admin", response_model=SystemSettingOut)
 async def get_settings_admin(
     user: dict = Depends(require_permission("settings", "view")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     return await _get_or_create_settings(db)
 
@@ -94,7 +94,7 @@ async def update_settings(
     req: SystemSettingUpdate,
     request: Request,
     user: dict = Depends(require_permission("settings", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     rec = await _get_or_create_settings(db)
     # IANA 时区校验（如果本次请求包含 sys_default_timezone）
@@ -130,7 +130,7 @@ async def update_settings(
 @router.get("/network-config/history", response_model=list[NetworkConfigHistoryOut])
 async def get_network_config_history(
     user: dict = Depends(require_permission("settings", "view")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     rows = await db.execute(
         select(NetworkConfigHistory)
@@ -146,7 +146,7 @@ async def add_ip_to_blacklist(
     ip: str,
     request: Request,
     user: dict = Depends(require_permission("settings", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     import ipaddress
     ip = ip.strip()
@@ -167,7 +167,7 @@ async def remove_ip_from_blacklist(
     ip: str,
     request: Request,
     user: dict = Depends(require_permission("settings", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     rec = await _get_or_create_settings(db)
     rec.ip_blacklist = [x for x in rec.ip_blacklist if x != ip]
@@ -204,7 +204,7 @@ async def update_admin_trusted_ips(
     req: AdminTrustedIpsUpdate,
     request: Request,
     user: dict = Depends(require_permission("settings", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """保存管理员可信 IP 白名单（支持 IPv4 / IPv6 / 两种 CIDR 混合存放）。
 

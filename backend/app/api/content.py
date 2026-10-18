@@ -30,7 +30,7 @@ def _log(db: AsyncSession, ctx_or_uid, action: str, target: str | None, ip: str 
 @public_router.get("/{key}", response_model=ContentBlockOut)
 async def get_content_block(
     key: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """公开获取内容块；不存在时返回空 body_md（前端按空内容渲染）。"""
     row = (
@@ -49,7 +49,7 @@ async def upsert_content_block(
     req: ContentBlockUpdate,
     request: Request,
     user: dict = Depends(require_permission("content", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """首次写入则创建，已存在则更新；key 大小写敏感。"""
     # 限制 key 长度与字符集

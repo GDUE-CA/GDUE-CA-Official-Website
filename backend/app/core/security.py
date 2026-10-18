@@ -280,7 +280,7 @@ def require_role(
     实名验证（Phase 6）：未实名的管理员级账号（editor+/admin，super_admin 豁免）
     禁止访问后台业务接口，仅可浏览前台与提交实名材料（realname 接口显式放行）。
     """
-    async def _dep(request: Request, db: AsyncSession = Depends(get_db)) -> dict:
+    async def _dep(request: Request, db: AsyncSession = Depends(get_db, scope="function")) -> dict:
         ctx, user = await _authenticate(request, db)
         # Break-Glass：跳过角色 / 改密 / 实名全部校验，直接放行全部后台能力
         if ctx.get("break_glass"):
@@ -303,7 +303,7 @@ def require_role(
     return _dep
 
 
-async def get_optional_user(request: Request, db: AsyncSession = Depends(get_db)) -> dict | None:
+async def get_optional_user(request: Request, db: AsyncSession = Depends(get_db, scope="function")) -> dict | None:
     """可选登录态：未登录 / 登录失效时返回 None（用于公开接口的差异化输出）。"""
     if not _extract_token(request):
         return None

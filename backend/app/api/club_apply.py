@@ -93,7 +93,7 @@ async def _fill_users(db: AsyncSession, rows: list[ClubApplyRecord]) -> None:
 @router.get("/mine", response_model=list[MyClubApplyOut])
 async def list_my_applications(
     user: dict = Depends(require_role(Role.MEMBER)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """当前用户自己的报名记录（含历史）。"""
     _reject_break_glass(user)
@@ -124,7 +124,7 @@ async def submit_club_apply(
     req: ClubApplySubmit,
     request: Request,
     user: dict = Depends(require_role(Role.MEMBER)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """提交社团报名（pending；审核中禁止重复提交）。
 
@@ -199,7 +199,7 @@ async def admin_list_applies(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     user: dict = Depends(require_permission("recruitment", "view")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """社团报名审核队列。"""
     stmt = select(ClubApplyRecord)
@@ -238,7 +238,7 @@ async def review_club_apply(
     req: ClubApplyReviewRequest,
     request: Request,
     user: dict = Depends(require_permission("recruitment", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """接纳 / 拒绝报名（备注必填于拒绝时）；处理完成发送站内信通知申请人。
 
@@ -290,7 +290,7 @@ async def admin_export_applies(
     format: str = Query(default="csv", pattern="^(csv|xlsx)$"),
     status_filter: str | None = Query(default=None, alias="status"),
     user: dict = Depends(require_permission("recruitment", "view")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """报名数据导出（文本字段冗余存储即为本用途）。"""
     stmt = select(ClubApplyRecord)

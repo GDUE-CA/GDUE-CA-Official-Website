@@ -61,7 +61,7 @@ async def list_public_projects(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=50, ge=1, le=100),
     lang: str | None = Query(default=None, max_length=16, description="显示语言；传入时标题/短描述自动翻译（失败回退原文）"),
-    db = Depends(get_db),
+    db = Depends(get_db, scope="function"),
 ):
     """公开已发布项目列表：year 降序 + id 升序；技术栈/年份筛选 + 搜索。"""
     stmt = select(Project).where(Project.status == ProjectStatus.PUBLISHED)
@@ -85,7 +85,7 @@ async def list_public_projects(
 async def get_public_project(
     slug: str,
     lang: str | None = Query(default=None, max_length=16),
-    db = Depends(get_db),
+    db = Depends(get_db, scope="function"),
 ):
     """公开单个项目（含原始 Markdown 正文）；非已发布状态一律 404。"""
     p = (await db.execute(
@@ -108,7 +108,7 @@ async def admin_list_projects(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     user: dict = Depends(require_permission("projects", "view")),
-    db = Depends(get_db),
+    db = Depends(get_db, scope="function"),
 ):
     stmt = select(Project)
     if status:
@@ -126,7 +126,7 @@ async def admin_list_projects(
 async def admin_get_project(
     project_id: int,
     user: dict = Depends(require_permission("projects", "view")),
-    db = Depends(get_db),
+    db = Depends(get_db, scope="function"),
 ):
     p = await _get_or_404(db, project_id)
     return ok(data=ProjectOut.model_validate(p).model_dump(mode="json"))
@@ -137,7 +137,7 @@ async def admin_create_project(
     req: ProjectCreate,
     request: Request,
     user: dict = Depends(require_permission("projects", "manage")),
-    db = Depends(get_db),
+    db = Depends(get_db, scope="function"),
 ):
     if req.slug:
         await _ensure_slug_unique(db, req.slug)
@@ -173,7 +173,7 @@ async def admin_update_project(
     req: ProjectUpdate,
     request: Request,
     user: dict = Depends(require_permission("projects", "manage")),
-    db = Depends(get_db),
+    db = Depends(get_db, scope="function"),
 ):
     p = await _get_or_404(db, project_id)
     data = req.model_dump(exclude_unset=True)
@@ -200,7 +200,7 @@ async def admin_delete_project(
     project_id: int,
     request: Request,
     user: dict = Depends(require_permission("projects", "manage")),
-    db = Depends(get_db),
+    db = Depends(get_db, scope="function"),
 ):
     p = await _get_or_404(db, project_id)
     _log(db, user, "project.delete", f"project:{p.id}", get_client_ip(request))

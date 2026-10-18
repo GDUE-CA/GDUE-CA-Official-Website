@@ -241,7 +241,7 @@ def require_permission(module: str, action: str):
     覆盖矩阵存于 users.permission_overrides（JSON，仅 super_admin 可写），
     每次请求实时读取，权限变更即时生效。
     """
-    async def _dep(request: Request, db: AsyncSession = Depends(get_db)) -> dict:
+    async def _dep(request: Request, db: AsyncSession = Depends(get_db, scope="function")) -> dict:
         ctx, user = await _authenticate(request, db)
         # Break-Glass：绕过 RBAC 权限校验（含 must_change_password / 实名门槛）
         if ctx.get("break_glass"):

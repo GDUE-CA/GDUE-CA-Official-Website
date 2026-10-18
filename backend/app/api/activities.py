@@ -156,7 +156,7 @@ async def list_activities(
     category: str | None = Query(default=None, max_length=64),
     lang: str | None = Query(default=None, max_length=16, description="显示语言；传入时标题/短描述自动翻译（缓存加速，失败回退原文）"),
     user: dict | None = Depends(get_optional_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """archived 参数（P0 归档语义）：
     - exclude（默认）：过滤归档活动（普通前端活动列表）
@@ -217,7 +217,7 @@ async def get_activity(
     activity_id: int,
     lang: str | None = Query(default=None, max_length=16, description="显示语言；传入时标题/短描述自动翻译"),
     user: dict | None = Depends(get_optional_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     a = await db.get(Activity, activity_id)
     # 软删除活动对外不可见（回收站数据）；草稿仅后台可见；
@@ -258,7 +258,7 @@ async def create_activity(
     req: ActivityCreate,
     request: Request,
     user: dict = Depends(require_permission("activities", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     await _ensure_slug_free(db, req.slug)
     a = Activity(**req.model_dump(), created_by=ctx_uid(user),
@@ -276,7 +276,7 @@ async def update_activity(
     req: ActivityUpdate,
     request: Request,
     user: dict = Depends(require_permission("activities", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     a = await db.get(Activity, activity_id)
     if not a:
@@ -300,7 +300,7 @@ async def delete_activity(
     activity_id: int,
     request: Request,
     user: dict = Depends(require_role(Role.ADMIN)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """软删除活动：送入内容回收站，定时任务 30 天后物理清除（可在回收站恢复）。"""
     a = await db.get(Activity, activity_id)
@@ -322,7 +322,7 @@ async def enrol_activity(
     activity_id: int,
     request: Request,
     user: dict = Depends(require_role(Role.MEMBER)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """登录用户一键报名活动（user 与 admin 均可）。
 
@@ -375,7 +375,7 @@ async def cancel_enrol_activity(
     activity_id: int,
     request: Request,
     user: dict = Depends(require_role(Role.MEMBER)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """取消报名：报名记录软删除；归档活动强制拦截 403（历史记录保留）。"""
     a = await db.get(Activity, activity_id)
@@ -410,7 +410,7 @@ async def admin_list_activity_registrations(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     user: dict = Depends(require_permission("activities", "view")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     from app.utils.crud import apply_eq, apply_search
     a = await db.get(Activity, activity_id)
@@ -433,7 +433,7 @@ async def admin_finalize_activity(
     activity_id: int,
     request: Request,
     user: dict = Depends(require_permission("activities", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """已结束活动生成/刷新报名统计快照。
 
@@ -504,7 +504,7 @@ async def admin_finalize_activity(
 async def admin_get_activity_statistics(
     activity_id: int,
     user: dict = Depends(require_permission("activities", "view")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     a = await db.get(Activity, activity_id)
     if not a:
@@ -524,7 +524,7 @@ async def admin_export_activity_registrations(
     format: Literal["csv", "xlsx"] = Query(default="csv"),
     status_filter: Literal["pending", "approved", "rejected", "checked_in"] | None = Query(default=None),
     user: dict = Depends(require_permission("activities", "view")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     a = await db.get(Activity, activity_id)
     if not a:

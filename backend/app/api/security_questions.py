@@ -60,7 +60,7 @@ def _check_texts(question_zh: str, question_en: str) -> None:
 @router.get("/presets")
 async def list_presets(
     ctx: dict = Depends(require_permission("security_questions", "view")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """题库列表（含已停用），按 sort_order + id 排序，附使用量。"""
     rows = (await db.execute(
@@ -75,7 +75,7 @@ async def create_preset(
     req: PresetQuestionIn,
     request: Request,
     ctx: dict = Depends(require_permission("security_questions", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """新增预设题（管理员录入同样触发黑名单过滤）。"""
     _check_texts(req.question_zh, req.question_en)
@@ -99,7 +99,7 @@ async def update_preset(
     req: PresetQuestionUpdate,
     request: Request,
     ctx: dict = Depends(require_permission("security_questions", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """编辑预设题：改文本不影响老用户（用户侧存快照）；可启用 / 停用。"""
     q = await db.get(SecurityPresetQuestion, preset_id)
@@ -124,7 +124,7 @@ async def delete_preset(
     preset_id: int,
     request: Request,
     ctx: dict = Depends(require_permission("security_questions", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """删除预设题：已被用户使用的题禁止物理删除（400），仅可停用。"""
     q = await db.get(SecurityPresetQuestion, preset_id)

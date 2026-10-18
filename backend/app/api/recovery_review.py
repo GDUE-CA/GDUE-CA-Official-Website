@@ -91,7 +91,7 @@ async def _resolve_user(db: AsyncSession, account: str) -> User | None:
 )
 async def forgot_identify(
     req: ForgotIdentifyRequest,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """识别账号并返回分支路由所需信息。
 
@@ -124,7 +124,7 @@ async def forgot_identify(
 async def submit_manual_review(
     req: ManualReviewRequest,
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """提交人工审核找回账号工单（校内 / 社会外部双表单，分支3 强制入口）。"""
     client_ip = get_client_ip(request)
@@ -199,7 +199,7 @@ async def list_recovery_reviews(
     status_filter: PasswordResetStatus | None = None,
     kind: str | None = None,
     user: dict = Depends(require_permission("review.resets", "view")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """人工审核工单列表（含 legacy 工单；身份证仅脱敏输出）。"""
     stmt = (
@@ -231,7 +231,7 @@ async def approve_recovery_review(
     req: ManualReviewApproveRequest,
     request: Request,
     user: dict = Depends(require_permission("review.resets", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """审核通过：按动作执行（同事务），结果邮件通知联系邮箱。
 
@@ -296,7 +296,7 @@ async def reject_recovery_review(
     req: ManualReviewRejectRequest,
     request: Request,
     user: dict = Depends(require_permission("review.resets", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """驳回：理由必填，邮件通知联系邮箱。"""
     reason = req.reason.strip()

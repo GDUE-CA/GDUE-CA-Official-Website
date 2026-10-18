@@ -61,7 +61,7 @@ async def _active_count(db: AsyncSession, user_id: int) -> int:
 async def list_badges(
     user_id: int,
     ctx: dict = Depends(require_permission("badges", "view")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """徽章列表：系统徽章只读 key + 自定义徽章完整记录（含 inactive）。"""
     u = await _load_target(db, user_id)
@@ -83,7 +83,7 @@ async def create_badge(
     req: CustomBadgeIn,
     request: Request,
     ctx: dict = Depends(require_permission("badges", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """新增自定义徽章：active 已达 3 枚 → 409。"""
     await _load_target(db, user_id)
@@ -117,7 +117,7 @@ async def reorder_badges(
     req: BadgeReorderIn,
     request: Request,
     ctx: dict = Depends(require_permission("badges", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """整体排序：提交该用户全部自定义徽章 id 的目标顺序（防交换式并发脏写）。"""
     await _load_target(db, user_id)
@@ -142,7 +142,7 @@ async def update_badge(
     req: CustomBadgeUpdate,
     request: Request,
     ctx: dict = Depends(require_permission("badges", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """修改自定义徽章；is_active 由 False→True 时重新校验 3 枚上限。"""
     await _load_target(db, user_id)
@@ -177,7 +177,7 @@ async def delete_badge(
     badge_id: int,
     request: Request,
     ctx: dict = Depends(require_permission("badges", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """删除自定义徽章（装饰性数据，物理删除即可）。"""
     await _load_target(db, user_id)

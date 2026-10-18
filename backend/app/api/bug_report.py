@@ -60,7 +60,7 @@ class BugBatchUpdate(BaseModel):
 async def submit_bug(
     req: BugReportCreate,
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     bug = BugReport(
         receipt_code=await _unique_bug_receipt_code(db),
@@ -82,7 +82,7 @@ async def list_bugs(
     page: int = 1,
     per_page: int = 50,
     user: dict = Depends(require_permission("review.bugs", "view")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     stmt = select(BugReport)
     if keyword:
@@ -108,7 +108,7 @@ async def mark_bug_resolved(
     resolved: bool = True,
     request: Request = Request,
     user: dict = Depends(require_permission("review.bugs", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     bug = await db.get(BugReport, bug_id)
     if not bug:
@@ -125,7 +125,7 @@ async def batch_update_bugs(
     body: BugBatchUpdate,
     request: Request = Request,
     user: dict = Depends(require_permission("review.bugs", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     if not body.ids:
         raise HTTPException(status_code=400, detail="未选择任何记录")

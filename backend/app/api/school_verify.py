@@ -135,7 +135,7 @@ async def _fill_names(db: AsyncSession, rows: list[UserSchoolVerifyApplication])
 @router.get("", response_model=SchoolVerifyStatusOut)
 async def get_my_school_verify(
     user: dict = Depends(require_role(Role.MEMBER)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """当前用户学校验证状态：未提交 / 审核中 / 已通过 / 已驳回 + 全部申请历史。"""
     _reject_break_glass(user)
@@ -168,7 +168,7 @@ async def submit_school_verify(
     req: SchoolVerifySubmit,
     request: Request,
     user: dict = Depends(require_role(Role.MEMBER)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """提交学校身份验证申请（审核中禁止重复提交；已通过无需再提交）。"""
     _reject_break_glass(user)
@@ -228,7 +228,7 @@ async def admin_list_applications(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     user: dict = Depends(require_permission("review.school", "view")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """学校验证审核队列（可按状态/关键词过滤）。"""
     stmt = select(UserSchoolVerifyApplication)
@@ -264,7 +264,7 @@ async def review_application(
     req: SchoolVerifyReviewRequest,
     request: Request,
     user: dict = Depends(require_permission("review.school", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """审核学校验证申请：通过开启 identity_school_verified 并写学校外键；驳回不改用户主表。"""
     app_row = await db.get(UserSchoolVerifyApplication, application_id)

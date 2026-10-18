@@ -36,7 +36,7 @@ async def list_tags(
         description="按 scope 过滤（memo/document/activity）",
     ),
     limit: int = Query(default=200, ge=1, le=500),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """全站共享标签列表：仅返回未删除；按关联 memo 数倒序；匿名可访问。
 
@@ -75,7 +75,7 @@ async def list_tags(
 
 
 @router.get("/{slug}")
-async def get_tag_by_slug(slug: str, db: AsyncSession = Depends(get_db)):
+async def get_tag_by_slug(slug: str, db: AsyncSession = Depends(get_db, scope="function")):
     """单标签详情；按 slug 查找。"""
     t = (await db.execute(
         select(Tag).where(Tag.slug == slug, Tag.deleted_at.is_(None))
@@ -91,7 +91,7 @@ async def list_memos_by_tag(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=50),
     user: dict | None = Depends(get_optional_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """指定标签下的 Memo 时间线：仅返回公开可见 + 已登录用户可见 member_only + 自己可见 private。
 

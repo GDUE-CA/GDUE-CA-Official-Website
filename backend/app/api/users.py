@@ -155,7 +155,7 @@ async def _load_viewer(db: AsyncSession, viewer_ctx: dict | None) -> User | None
 @router.get("/{username}/profile", response_model=UserProfileOut)
 async def get_user_profile(
     username: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     viewer_ctx: dict | None = Depends(get_optional_user),
 ):
     """用户个人主页基本信息（隐私过滤后；real_name/school_info 按访问者身份+开关输出）。"""
@@ -222,7 +222,7 @@ def _viewer_user_id(user: dict) -> int:
 async def follow_user(
     username: str,
     user: dict = Depends(require_role(Role.MEMBER)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """关注用户（单向）。重复关注幂等返回；禁止自关。"""
     me_id = _viewer_user_id(user)
@@ -244,7 +244,7 @@ async def follow_user(
 async def unfollow_user(
     username: str,
     user: dict = Depends(require_role(Role.MEMBER)),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """取消关注（幂等：未关注时返回 ok=False 状态不变）。"""
     me_id = _viewer_user_id(user)
@@ -262,7 +262,7 @@ async def list_user_memos(
     username: str,
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=10, ge=1, le=50),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     viewer_ctx: dict | None = Depends(get_optional_user),
 ):
     """用户个人主页说说列表：按访问者身份过滤可见性（归档/下架/软删恒过滤）。
@@ -324,7 +324,7 @@ async def list_user_blog(
     username: str,
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=10, ge=1, le=50),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """用户个人主页公开博客列表：仅 status=published。"""
     u = await _load_user_or_404(db, username)

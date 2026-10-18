@@ -86,7 +86,7 @@ async def list_audit_logs(
     date_from: datetime | None = None,
     date_to: datetime | None = None,
     user: dict = Depends(require_permission("audit_logs", "view")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """操作日志分页列表：action 前缀筛选（如 login / activity.）+ 关键词搜索 + 日期/用户/目标筛选。"""
     stmt = select(AuditLog).order_by(AuditLog.created_at.desc(), AuditLog.id.desc())
@@ -118,7 +118,7 @@ async def export_audit_logs(
     date_from: datetime | None = None,
     date_to: datetime | None = None,
     user: dict = Depends(require_permission("audit_logs", "view")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """操作日志 CSV 导出：与列表同一套筛选，上限 2000 行（含用户名回填）。"""
     stmt = select(AuditLog).order_by(AuditLog.created_at.desc(), AuditLog.id.desc())
@@ -172,7 +172,7 @@ async def bg_confirm(
     req: BGConfirmRequest,
     request: Request,
     user: dict = Depends(require_break_glass),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """Break-Glass 高危操作确认/取消 → 审计日志（确认与取消均记录，无痕后门禁止）。"""
     log_action(

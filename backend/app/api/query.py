@@ -80,7 +80,7 @@ ReceiptCode = Path(pattern=r"^[A-Za-z0-9\-]{4,40}$")
     "/{receipt_code}",
     dependencies=[Depends(rate_limit("receipt.query", limit=30, window_seconds=60))],
 )
-async def query_receipt(receipt_code: str = ReceiptCode, db: AsyncSession = Depends(get_db)):
+async def query_receipt(receipt_code: str = ReceiptCode, db: AsyncSession = Depends(get_db, scope="function")):
     code = receipt_code.strip().upper()
 
     reg = (
@@ -109,7 +109,7 @@ async def query_receipt(receipt_code: str = ReceiptCode, db: AsyncSession = Depe
     "/{receipt_code}/checkin",
     dependencies=[Depends(rate_limit("receipt.checkin", limit=10, window_seconds=60))],
 )
-async def checkin_receipt(receipt_code: str = ReceiptCode, db: AsyncSession = Depends(get_db)):
+async def checkin_receipt(receipt_code: str = ReceiptCode, db: AsyncSession = Depends(get_db, scope="function")):
     code = receipt_code.strip().upper()
 
     reg = (

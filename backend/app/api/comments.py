@@ -118,7 +118,7 @@ async def list_public_comments(
     post_id: int,
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=10, ge=1, le=50),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """公开评论列表：仅 is_deleted=false AND is_hidden=false，按时间正序；allowed 表示当前是否可提交。"""
     post = await _published_post_or_404(db, post_id)
@@ -142,7 +142,7 @@ async def create_public_comment(
     post_id: int,
     req: CommentCreate,
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     viewer: dict | None = Depends(get_optional_user),
 ):
     """发表评论：双开关关闭时 403；内容为纯文本，前端转义渲染。
@@ -184,7 +184,7 @@ async def create_public_comment(
 @admin_router.get("/settings", response_model=CommentSettingsOut)
 async def admin_get_comment_settings(
     user: dict = Depends(require_permission("comments", "view")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """评论全局开关读取。"""
     s = await db.get(SystemSetting, 1)
@@ -196,7 +196,7 @@ async def admin_update_comment_settings(
     req: CommentSettingsUpdate,
     request: Request,
     user: dict = Depends(require_permission("comments", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """评论全局开关联动所有文章（文章级开关叠加生效）。"""
     s = await db.get(SystemSetting, 1)
@@ -219,7 +219,7 @@ async def admin_list_comments(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     user: dict = Depends(require_permission("comments", "view")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """后台评论列表：全部记录（含用户删/管理员屏蔽）+ 完整 IP + 属地 + 文章标题 + 状态标签。"""
     stmt = select(Comment)
@@ -264,7 +264,7 @@ async def admin_hide_comment(
     comment_id: int,
     request: Request,
     user: dict = Depends(require_permission("comments", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """管理员屏蔽：is_hidden=true（软删除，后台留存）。"""
     c = await db.get(Comment, comment_id)
@@ -284,7 +284,7 @@ async def admin_unhide_comment(
     comment_id: int,
     request: Request,
     user: dict = Depends(require_permission("comments", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """取消管理员屏蔽：is_hidden=false（不影响用户自删标记 is_deleted）。"""
     c = await db.get(Comment, comment_id)
@@ -304,7 +304,7 @@ async def admin_delete_comment(
     comment_id: int,
     request: Request,
     user: dict = Depends(require_permission("comments", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """管理员物理删除：确认后 DELETE 数据库行（不可逆）。"""
     c = await db.get(Comment, comment_id)

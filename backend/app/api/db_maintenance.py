@@ -58,7 +58,7 @@ def _resolve_export_file(filename: str):
 async def submit_db_export(
     request: Request,
     user: dict = Depends(require_permission("settings", "manage")),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     """提交一次完整数据库导出：立刻返回 task_id，后台异步执行。"""
     task = await create_task(
