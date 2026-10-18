@@ -8,7 +8,7 @@ from sqlalchemy import select
 
 from app.db.models import LoginSession, User
 from app.db.session import async_session
-from tests.conftest import STRONG_ADMIN_PASSWORD, csrf, make_client
+from tests.conftest import STRONG_ADMIN_PASSWORD, csrf, make_client, register_member
 from tests.test_security import _admin_client
 
 MEMBER_PASSWORD = "Mm#br-2025safePwd"
@@ -16,14 +16,8 @@ MEMBER_PASSWORD = "Mm#br-2025safePwd"
 
 def _register_member(client, tag: str):
     """公开注册一个 member 账号并登录，返回 (client, headers)。"""
-    r = client.post("/api/auth/register", headers=csrf(client), json={
-        "username": f"setter{tag}",
-        "display_name": f"设置测试{tag}",
-        "password": MEMBER_PASSWORD,
-        "confirm_password": MEMBER_PASSWORD,
-        "email": f"setter{tag}@gdue-ca.cn",
-        "phone": "+8613900000000",
-    })
+    r = register_member(client, f"setter{tag}", MEMBER_PASSWORD,
+                        display_name=f"设置测试{tag}", phone="+8613900000000")
     assert r.status_code in (201, 400), r.text
     r = client.post("/api/auth/login", headers=csrf(client), json={
         "username": f"setter{tag}", "password": MEMBER_PASSWORD,

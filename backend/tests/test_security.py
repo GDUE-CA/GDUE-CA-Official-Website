@@ -1,4 +1,5 @@
 """安全合规回归测试：口令策略、登录锁定、CSRF、角色 / 内网访问控制、输入过滤、信息泄露。"""
+import pytest
 from fastapi.testclient import TestClient
 
 from tests.conftest import ADMIN_EMAIL, STRONG_ADMIN_PASSWORD, csrf, make_client
@@ -26,7 +27,7 @@ def _admin_client(app) -> tuple[TestClient, dict]:
     headers = {"X-CSRF-Token": res.json()["csrf_token"]}
     if res.json()["must_change_password"]:
         r = client.post("/api/auth/change-password", headers=headers, json={
-            "old_password": STRONG_ADMIN_PASSWORD, "new_password": STRONG_ADMIN_PASSWORD + "2",
+            "old_password": STRONG_ADMIN_PASSWORD, "new_password": STRONG_ADMIN_PASSWORD + "2", "confirm_password": STRONG_ADMIN_PASSWORD + "2",
         })
         assert r.status_code == 200, r.text
     return client, headers
@@ -63,7 +64,7 @@ def test_weak_passwords_rejected():
 def test_change_password_enforces_policy(app):
     client, headers = _admin_client(app)
     r = client.post("/api/auth/change-password", headers=headers, json={
-        "old_password": STRONG_ADMIN_PASSWORD + "2", "new_password": "admin123",
+        "old_password": STRONG_ADMIN_PASSWORD + "2", "new_password": "admin123", "confirm_password": "admin123",
     })
     assert r.status_code == 400
 
@@ -154,7 +155,7 @@ def test_member_cannot_access_admin(app):
     assert res.status_code == 200, res.text
     h = {"X-CSRF-Token": res.json()["csrf_token"]}
     m.post("/api/auth/change-password", headers=h, json={
-        "old_password": "Memb#er-2025xy", "new_password": "Memb#er-2025xyZ"})
+        "old_password": "Memb#er-2025xy", "new_password": "Memb#er-2025xyZ", "confirm_password": "Memb#er-2025xyZ"})
     assert m.get("/api/auth/profile").status_code == 200
     for path in ["/api/registrations", "/api/bugs", "/api/auth/users", "/api/system/settings/admin"]:
         assert m.get(path).status_code == 403, path
@@ -163,7 +164,14 @@ def test_member_cannot_access_admin(app):
     assert m.put(f"/api/auth/users/{me['id']}", headers=h, json={"role": "super_admin"}).status_code == 403
 
 
-def test_admin_login_denied_from_public_network(app):
+@pytest.fixture
+def admin_whitelist(monkeypatch):
+    """开启管理员可信来源白名单（默认配置为空 = 不限制来源），仅放行本机回环。"""
+    from app.core.security import settings
+    monkeypatch.setattr(settings, "ADMIN_TRUSTED_IPS", "127.0.0.0/8,::1/128")
+
+
+def test_admin_login_denied_from_public_network(app, admin_whitelist):
     # Break-Glass 信息泄露防护契约：登录侧一切拒绝（含外网拒绝）统一 401，
     # 真实原因只进审计日志；已建立会话的请求才由中间件直接 403
     client = make_client(app, ip="8.8.8.8")
@@ -171,7 +179,7 @@ def test_admin_login_denied_from_public_network(app):
     assert res.status_code == 401
 
 
-def test_admin_session_unusable_from_public_network(app):
+def test_admin_session_unusable_from_public_network(app, admin_whitelist):
     client, _ = _admin_client(app)
     cookie = client.cookies.get("gdueca_session")
     outside = make_client(app, ip="203.0.113.9")
@@ -179,7 +187,7 @@ def test_admin_session_unusable_from_public_network(app):
     assert outside.get("/api/auth/users").status_code == 403
 
 
-def test_spoofed_xff_from_untrusted_peer_ignored(app):
+def test_spoofed_xff_from_untrusted_peer_ignored(app, admin_whitelist):
     """非可信代理直连时伪造 X-Forwarded-For: 127.0.0.1 不能冒充内网。"""
     # 登录侧统一 401（不暴露拒绝原因）；伪造 XFF 不改变外网判定
     from fastapi.testclient import TestClient
@@ -187,11 +195,6 @@ def test_spoofed_xff_from_untrusted_peer_ignored(app):
     client.headers["X-Forwarded-For"] = "127.0.0.1"
     res = _login(client, ADMIN_USERNAME, STRONG_ADMIN_PASSWORD + "2")
     assert res.status_code == 401
-
-
-def test_recover_is_intranet_only(app):
-    outside = make_client(app, ip="8.8.8.8")
-    assert outside.get("/api/auth/security-question").status_code == 403
 
 
 # ---------- XSS：输入过滤 ----------

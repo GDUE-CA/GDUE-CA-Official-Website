@@ -3,9 +3,10 @@
 /**
  * Announcements - 首页公告栏
  * 桌面：标签 + 三栏公告（细线分隔，单行截断省略）；手机：纵向列表
- * 悬浮公告条目弹出预览卡片（标题 / 摘要 / 发布时间），点击条目跳转公告详情页；
+ * 悬浮公告条目弹出预览卡片（标题 / 摘要 / 发布时间）；点击条目：公告配置了 link 时直接跳转
+ * （站内路径加 locale 前缀，外链新标签页打开），否则进入公告详情页；
  * 弹层为原生 div + 受控 open + CSS 过渡（见 SettingsDropdown 同类实现）
- * 数据源：CMS 主页公告（category=home）前 3 条；加载中/失败/为空时回退到 i18n 内置公告
+ * 数据源：CMS 主页公告（category=home）前 3 条；加载中显示骨架，失败/为空显示空态
  */
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -21,7 +22,24 @@ interface NoticeItem {
   title: string;
   date: string; // 纯日期 YYYY-MM-DD（与现有展示样式一致）
   excerpt: string; // 摘要（由正文 Markdown 纯文本化截断）
-  href: string; // 详情目标（站内相对路径，不含 locale 前缀）
+  href: string; // 跳转目标：站内路径已带 locale 前缀，外链为 http(s) 绝对地址
+  external: boolean;
+}
+
+/**
+ * 公告 link → 跳转目标；后端 SafeUrl 只放行 http(s) 与 "/" 开头路径，
+ * 但 "/\\host" 会被浏览器当作 "//host"（协议相对外链），此处一并拒绝，回退到详情页
+ */
+function resolveHref(a: PublicAnnouncement, locale: string): { href: string; external: boolean } {
+  const link = a.link?.trim();
+  if (link && /^https?:\/\//i.test(link)) return { href: link, external: true };
+  if (link && link.startsWith("/") && !/^\/[/\\]/.test(link)) return { href: `/${locale}${link}`, external: false };
+  return { href: `/${locale}/announcements/${a.id}`, external: false };
+}
+
+/** 外链新标签页打开（与公告详情页「相关链接」一致） */
+function linkTarget(item: NoticeItem) {
+  return item.external ? { target: "_blank", rel: "noopener noreferrer" } : {};
 }
 
 /** 鼠标离开后延迟关闭，避免跨条目移动时弹层闪烁 */
@@ -80,26 +98,13 @@ export function Announcements() {
     closeTimer.current = setTimeout(() => setActive(null), CLOSE_DELAY_MS);
   }
 
-  const fallbackItems: NoticeItem[] = [1, 2, 3]
-    .map((n) => ({
-      key: `fallback-${n}`,
-      title: t(`home.announcements.item${n}Title`),
-      date: t(`home.announcements.item${n}Date`),
-      excerpt: "",
-      href: "/announcements",
-    }))
-    .sort((a, b) => b.date.localeCompare(a.date));
-
-  const list: NoticeItem[] =
-    cmsItems && cmsItems.length > 0
-      ? cmsItems.slice(0, 3).map((a) => ({
-          key: `cms-${a.id}`,
-          title: a.title,
-          date: (a.start_at ?? a.created_at).slice(0, 10),
-          excerpt: markdownExcerpt(a.content),
-          href: `/announcements/${a.id}`,
-        }))
-      : fallbackItems;
+  const list: NoticeItem[] = (cmsItems ?? []).map((a) => ({
+    key: `cms-${a.id}`,
+    title: a.title,
+    date: (a.start_at ?? a.created_at).slice(0, 10),
+    excerpt: markdownExcerpt(a.content),
+    ...resolveHref(a, locale),
+  }));
 
   const activeItem = active !== null ? list[active] : undefined;
 
@@ -124,6 +129,22 @@ export function Announcements() {
           className="flex flex-col md:flex-row md:flex-1 md:min-w-0"
           onMouseLeave={scheduleClose}
         >
+          {cmsItems === null &&
+            [0, 1, 2].map((i) => (
+              <li
+                key={`skeleton-${i}`}
+                aria-hidden="true"
+                className="flex min-w-0 flex-col gap-2 py-4 first:pt-0 md:py-0 md:flex-1 md:pl-6 border-b last:border-b-0 md:border-b-0 md:border-l border-border"
+              >
+                <span className="h-3 w-20 rounded-sm bg-muted animate-pulse" />
+                <span className="h-4 w-3/4 rounded-sm bg-muted animate-pulse" />
+              </li>
+            ))}
+          {cmsItems !== null && list.length === 0 && (
+            <li className="flex min-w-0 md:flex-1 md:pl-6 md:border-l border-border text-sm text-muted-foreground">
+              {t("announcements.empty")}
+            </li>
+          )}
           {list.map((item, i) => (
             <li
               key={item.key}
@@ -133,9 +154,10 @@ export function Announcements() {
                 setActive(i);
               }}
             >
-              {/* 整行可点：点击跳转公告详情（桌面悬浮显示预览卡片） */}
+              {/* 整行可点：有 link 直接跳转，否则进详情（桌面悬浮显示预览卡片） */}
               <Link
-                href={`/${locale}${item.href}`}
+                href={item.href}
+                {...linkTarget(item)}
                 aria-controls={POPOVER_ID}
                 className="flex w-full min-w-0 flex-col gap-1 text-left rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
               >
@@ -163,7 +185,8 @@ export function Announcements() {
           <div className="rounded-md border border-border bg-popover text-popover-foreground shadow-md max-h-[60vh] overflow-y-auto">
             {activeItem && (
               <Link
-                href={`/${locale}${activeItem.href}`}
+                href={activeItem.href}
+                {...linkTarget(activeItem)}
                 className="block p-5 rounded-md transition-colors hover:bg-secondary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <time

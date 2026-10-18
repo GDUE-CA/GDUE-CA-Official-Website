@@ -30,7 +30,7 @@ def _admin_client(app) -> tuple[TestClient, dict]:
     if res.json()["must_change_password"]:
         r = client.post("/api/auth/change-password", headers=headers, json={
             "old_password": STRONG_ADMIN_PASSWORD,
-            "new_password": STRONG_ADMIN_PASSWORD + "2",
+            "new_password": STRONG_ADMIN_PASSWORD + "2", "confirm_password": STRONG_ADMIN_PASSWORD + "2",
         })
         assert r.status_code == 200, r.text
     return client, headers

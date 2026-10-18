@@ -74,8 +74,9 @@ def test_import_skip_and_update(app):
     # 公开接口不含敏感字段
     pub = client.get("/api/members").json()
     zhang = next(x for x in pub if x["name"] == "张三")
-    assert "phone" not in zhang and "wechat" not in zhang
-    assert zhang["grade"] == "2025级"
+    # 响应最小化：花名册个人信息（年级 / 性别 / 院系 / 专业班级）只在管理端返回
+    for field in ("phone", "wechat", "grade", "gender", "department", "major_class"):
+        assert field not in zhang, field
 
     # skip 模式：重复跳过 + 更新 1 条新记录
     res2 = _import(client, headers, _make_import_xlsx([

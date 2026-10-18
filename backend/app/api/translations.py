@@ -42,7 +42,7 @@ async def batch_translate(
         if sl == req.target_lang:
             translations[item.key] = {"text": item.text, "source_lang": sl, "translated": False}
             continue
-        result = await translate_text(db, text, req.target_lang, sl)
+        result = await translate_text(db, text, req.target_lang)
         if result:
             translations[item.key] = {"text": result, "source_lang": sl, "translated": True}
         else:

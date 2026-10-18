@@ -36,7 +36,7 @@ def _admin_headers(app) -> tuple[TestClient, dict]:
     headers = {"X-CSRF-Token": res.json()["csrf_token"]}
     if res.json().get("must_change_password"):
         r = client.post("/api/auth/change-password", headers=headers, json={
-            "old_password": STRONG_ADMIN_PASSWORD, "new_password": STRONG_ADMIN_PASSWORD + "2",
+            "old_password": STRONG_ADMIN_PASSWORD, "new_password": STRONG_ADMIN_PASSWORD + "2", "confirm_password": STRONG_ADMIN_PASSWORD + "2",
         })
         assert r.status_code == 200, r.text
     return client, headers

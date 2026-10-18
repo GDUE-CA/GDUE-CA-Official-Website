@@ -111,6 +111,39 @@ def csrf(client) -> dict:
     return {"X-CSRF-Token": token}
 
 
+TEST_REGISTER_CODE = "123456"
+
+
+def register_member(client, username: str, password: str, email: str | None = None, **extra):
+    """走真实三步注册接口注册 member：预置邮箱验证码（代替收信）+ 3 个自定义安全问题。
+
+    返回注册响应；201 = 新建，400 = 用户名 / 邮箱已存在（可复跑）。
+    """
+    import asyncio
+    import hashlib
+
+    from app.api.auth import _email_hash
+    from app.core.kv import get_kv
+
+    email = email or f"{username}@gdue-ca.cn"
+    code_key = f"regcode:code:{_email_hash(email)}"
+    digest = hashlib.sha256(TEST_REGISTER_CODE.encode()).hexdigest()
+    asyncio.run(get_kv().set(code_key, digest, 600))
+    return client.post("/api/auth/register", headers=csrf(client), json={
+        "username": username,
+        "display_name": username,
+        "password": password,
+        "confirm_password": password,
+        "email": email,
+        "code": TEST_REGISTER_CODE,
+        "security_questions": [
+            {"position": i, "question": f"测试问题{i}", "answer": f"answer{i}", "is_custom": True}
+            for i in (1, 2, 3)
+        ],
+        **extra,
+    })
+
+
 @pytest.fixture(autouse=True)
 def _reset_rate_limit():
     from app.core import rate_limit
