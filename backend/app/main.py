@@ -62,6 +62,8 @@ async def _rebuild_users_student_id_nullable(conn):
 
     from sqlalchemy import text
 
+    if conn.dialect.name != "sqlite":
+        return  # 仅 SQLite 需要整表重建；PostgreSQL 由 create_all 按新模型建表
     rows = await conn.execute(text("PRAGMA table_info(users)"))
     infos = rows.fetchall()
     if not infos:
@@ -184,7 +186,7 @@ async def _migrate_columns(conn):
         "registrations": [
             ("checked_in_at", "DATETIME NULL"),
             ("submit_ip", "VARCHAR(64) NULL"),
-            ("source", "VARCHAR(16) NOT NULL DEFAULT 'form'"),
+            ("source", "VARCHAR(16) NOT NULL DEFAULT 'FORM'"),
         ],
         "bug_reports": [("submit_ip", "VARCHAR(64) NULL")],
         # V0.5.8 §5.3：人工审核找回账号双表单扩展（校内 / 社会外部）
@@ -269,9 +271,10 @@ async def _migrate_columns(conn):
         await conn.execute(text("ALTER TYPE userrole ADD VALUE IF NOT EXISTS 'MEMBER'"))
         # 公告 category 新枚举值：主页公告（原社团公告 club 改名）
         await conn.execute(text("ALTER TYPE announcementcategory ADD VALUE IF NOT EXISTS 'HOME'"))
-    # 公告 category 历史数据兼容：社团公告 club → 主页公告 home（SAEnum 存枚举名）
+    # 公告 category 历史数据兼容：社团公告 club → 主页公告 home（SAEnum 存枚举名）。
+    # 转为文本再比较：PostgreSQL 原生 ENUM 已无 CLUB 值，直接比较会报 invalid input value
     await conn.execute(text(
-        "UPDATE announcements SET category = 'HOME' WHERE category = 'CLUB'"
+        "UPDATE announcements SET category = 'HOME' WHERE CAST(category AS VARCHAR) = 'CLUB'"
     ))
     # 翻译缓存去重：缓存表无唯一约束，历史并发未命中可能产生重复行（按原文哈希+语言对保留最新一条）
     await conn.execute(text(
@@ -306,6 +309,8 @@ async def _migrate_columns(conn):
         for col, ddl in columns:
             if col not in existing:
                 await conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {ddl}"))
+    # 报名来源旧默认值：早期 ADD COLUMN 以枚举值 'form' 回填，SAEnum 按枚举名读取会 LookupError
+    await conn.execute(text("UPDATE registrations SET source = 'FORM' WHERE source = 'form'"))
     # 评论旧枚举 status → 双布尔回填（仅当 status 列存在时执行；新库无此列跳过）
     rows = await conn.execute(text("PRAGMA table_info(comments)"))
     has_status_col = any(row[1] == "status" for row in rows)

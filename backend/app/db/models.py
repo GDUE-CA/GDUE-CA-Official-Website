@@ -12,6 +12,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    TypeDecorator,
     UniqueConstraint,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -21,6 +22,22 @@ from app.core.log import current_trace_id
 
 def utcnow() -> datetime:
     return datetime.now(timezone.utc)
+
+
+class UTCDateTime(TypeDecorator):
+    """时间列统一存 naive UTC（项目既有约定）：写入时把带时区的值换算为 UTC 并去掉 tzinfo。
+
+    SQLite 写入时本就静默丢弃 tzinfo；PostgreSQL（asyncpg）的 TIMESTAMP WITHOUT TIME ZONE
+    拒绝带时区的值，因此所有 DateTime 列经由此类型，两种数据库行为一致。读取仍为 naive。
+    """
+
+    impl = DateTime
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if isinstance(value, datetime) and value.tzinfo is not None:
+            return value.astimezone(timezone.utc).replace(tzinfo=None)
+        return value
 
 
 class Base(DeclarativeBase):
@@ -48,7 +65,7 @@ class User(Base):
     # 默认管理员首次登录后必须改密
     must_change_password: Mapped[bool] = mapped_column(Boolean, default=False)
     # 登录失败处理已迁移至（账号+维度）阶梯防爆破（app/core/brute_force.py，数据存 KV/Redis）
-    password_changed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    password_changed_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     # 更改绑定邮箱人工审核一次性豁免标记：管理员同意人工申请后置 True，
     # 用户端凭此跳过身份校验完成换绑，成功瞬间同事务清除（一次性，禁止复用）
     allow_manual_email_switch: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -85,8 +102,8 @@ class User(Base):
     permission_overrides: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     # 实名验证（Phase 6）：未实名账号禁止进后台，仅可浏览前台
     realname_verified: Mapped[bool] = mapped_column(Boolean, default=False)
-    realname_verified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    realname_submitted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    realname_verified_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
+    realname_submitted_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     realname_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     # 展示昵称（公开注册 / 个人资料用；NULL = 回退 username）
     display_name: Mapped[str | None] = mapped_column(String(64), nullable=True)
@@ -133,7 +150,7 @@ class User(Base):
     # 性别：male / female / hidden（不显示）；NULL = 未设置
     gender: Mapped[str | None] = mapped_column(String(8), nullable=True)
     # 生日（naive UTC 存储）；NULL = 未设置
-    birthday: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    birthday: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     # 个性签名 / 简介
     bio: Mapped[str | None] = mapped_column(Text, nullable=True)
     # 主题预设：default / apple / festival:* ；NULL = 跟随系统默认
@@ -143,10 +160,10 @@ class User(Base):
     profile_privacy: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     # 软删除：True 送入内容回收站，定时任务 30 天后物理删除；删除后禁止登录
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
-    deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
-    last_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)
+    last_login_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     # 安全问题（per-user 3 个）：注册/初始化时强制设 3 个，写完置 False；
     # 存量用户默认 True（下次登录强制补设）
     must_set_security_questions: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -182,8 +199,8 @@ class UserSecurityQuestion(Base):
     position: Mapped[int] = mapped_column(Integer)
     # 是否自定义问题：True=用户输入原文，False=预设 key
     is_custom: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)
 
     user: Mapped["User"] = relationship(back_populates="security_questions")
 
@@ -207,8 +224,8 @@ class SecurityPresetQuestion(Base):
     # 停用后新用户不可见，老用户数据不受影响
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)
 
 
 # ---------- 社交关注（V0.5.5 §9.2）：单向关注；双向互关自动视为好友 ----------
@@ -227,7 +244,7 @@ class UserFollow(Base):
     followee_id: Mapped[int] = mapped_column(
         ForeignKey("users.id"), index=True
     )
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
 
 
 # ---------- 登录会话（设备管理 / 踢出登录 / 30 分钟滑动超时） ----------
@@ -252,12 +269,12 @@ class LoginSession(Base):
     # 勾选「记住此设备」登录：空闲超时从 30 分钟放宽到 30 天
     remember_device: Mapped[bool] = mapped_column(Boolean, default=False)
     revoked: Mapped[bool] = mapped_column(Boolean, default=False)
-    revoked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    login_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    revoked_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
+    login_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
     # 滑动续期：每次认证请求刷新
-    last_active_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    last_active_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
     # 会话硬顶：登录时间 + token 有效期
-    expires_at: Mapped[datetime] = mapped_column(DateTime)
+    expires_at: Mapped[datetime] = mapped_column(UTCDateTime)
 
 
 # ---------- 用户界面显示偏好（/setting/界面与显示，跟随账号多端同步） ----------
@@ -282,8 +299,8 @@ class UserDisplayPreference(Base):
     font_scale: Mapped[float] = mapped_column(Float, default=1.0)
     # 是否允许横屏（移动端偏好；前端视能力应用）
     enable_landscape: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)
 
 
 # ---------- 用户通知偏好（/setting/通知设置；安全类通知强制锁定） ----------
@@ -313,8 +330,8 @@ class UserNotificationPreference(Base):
     security_credential_change: Mapped[bool] = mapped_column(Boolean, default=True)
     # 安全通知锁定标记：恒为 True，仅作语义表达与前端展示依据
     security_notice_locked: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)
 
 
 # ---------- 用户黑名单（/setting/隐私设置/黑名单） ----------
@@ -325,7 +342,7 @@ class UserBlock(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     blocker_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     blocked_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
 
     __table_args__ = (
         UniqueConstraint("blocker_id", "blocked_id", name="uq_user_block_pair"),
@@ -354,11 +371,11 @@ class Activity(Base):
     # 分类：历史数据为 lecture/competition/recruitment/workshop；后台可自由扩展
     category: Mapped[str] = mapped_column(String(64))
     status: Mapped[ActivityStatus] = mapped_column(SAEnum(ActivityStatus), default=ActivityStatus.DRAFT)
-    register_start: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    register_end: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    register_start: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
+    register_end: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     # 活动开始/结束时间（Phase 3：状态自动识别 + 双必填校验由后端强制）
-    start_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
-    end_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+    start_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True, index=True)
+    end_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True, index=True)
     max_participants: Mapped[int] = mapped_column(Integer, default=0)  # 0 = 无上限
     # 实际参与人数（历史活动统计值；报名制活动可为空=未统计）
     participants: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -370,9 +387,9 @@ class Activity(Base):
     operator_admin_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     # 软删除：True 送入内容回收站，定时任务 30 天后物理删除（与归档互不干扰）
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
-    deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+    deleted_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)
 
     registrations: Mapped[list["Registration"]] = relationship(back_populates="activity")
 
@@ -410,8 +427,9 @@ class Registration(Base):
         SAEnum(RegistrationType), default=RegistrationType.ACTIVITY, index=True
     )
     # 报名来源：form=公开表单提交；manual=管理员后台手动补录
+    # SAEnum 存枚举名（FORM），server_default 须同为枚举名，否则 PostgreSQL 原生 ENUM 建表失败
     source: Mapped[RegistrationSource] = mapped_column(
-        SAEnum(RegistrationSource), default=RegistrationSource.FORM, server_default="form"
+        SAEnum(RegistrationSource), default=RegistrationSource.FORM, server_default="FORM"
     )
     activity_id: Mapped[int | None] = mapped_column(
         ForeignKey("activities.id"), nullable=True, index=True
@@ -432,8 +450,8 @@ class Registration(Base):
     )
     remark: Mapped[str | None] = mapped_column(Text, nullable=True)
     # 签到时间（仅通过回执码公开签到接口产生，管理员不可手动设置）
-    checked_in_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    submitted_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
+    checked_in_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
+    submitted_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
 
     activity: Mapped[Activity] = relationship(back_populates="registrations")
 
@@ -451,7 +469,7 @@ class ActivityEnrol(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     activity_id: Mapped[int] = mapped_column(ForeignKey("activities.id"), index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
 
     __table_args__ = (
@@ -473,7 +491,7 @@ class BugReport(Base):
     description: Mapped[str] = mapped_column(Text)
     extra: Mapped[str | None] = mapped_column(Text, nullable=True)
     resolved: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
 
 
 # ---------- 翻译缓存 ----------
@@ -487,7 +505,7 @@ class TranslationCache(Base):
     target_lang: Mapped[str] = mapped_column(String(8))
     source_text: Mapped[str] = mapped_column(Text)
     translated_text: Mapped[str] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
 
 
 # ---------- 系统配置（单例表，id 固定为 1） ----------
@@ -551,7 +569,7 @@ class AuditLog(Base):
     trace_id: Mapped[str | None] = mapped_column(
         String(64), nullable=True, index=True, default=lambda: _trace_or_none()
     )
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
 
 
 def _trace_or_none() -> str | None:
@@ -569,7 +587,7 @@ class NetworkConfigHistory(Base):
     change_summary: Mapped[str | None] = mapped_column(String(512), nullable=True)
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     ip: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
 
 
 # ---------- 忘记密码申请 ----------
@@ -597,8 +615,8 @@ class PasswordResetRequest(Base):
     status: Mapped[str] = mapped_column(String(16), default=PasswordResetStatus.PENDING.value, index=True)
     admin_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     handled_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
-    handled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
+    handled_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
     # ---- V0.5.8 人工审核找回账号扩展 ----
     # 工单类型：legacy / school / external
     kind: Mapped[str] = mapped_column(String(16), default="legacy")
@@ -648,8 +666,8 @@ class EmailChangeRequest(Base):
     submit_ip: Mapped[str | None] = mapped_column(String(64), nullable=True)
     fingerprint: Mapped[str | None] = mapped_column(String(128), nullable=True)
     reviewed_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
-    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
 
 
 # ---------- 一次性安全恢复码（V0.5.8 §4：账号兜底找回密钥） ----------
@@ -669,10 +687,10 @@ class UserRecoveryCode(Base):
     )
     # 规范化（去分隔符 + 大写）后的 SHA-256 十六进制
     code_sha256: Mapped[str] = mapped_column(String(64), unique=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
-    used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    used_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     revoked: Mapped[bool] = mapped_column(Boolean, default=False)
-    revoked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
 
 
 # ---------- IP 规则（黑白名单，替代 system_settings.ip_blacklist JSON） ----------
@@ -694,11 +712,11 @@ class IpRule(Base):
     # 违规原因（黑名单展示给前端弹窗） / 信任原因（白名单备注）
     reason: Mapped[str | None] = mapped_column(String(512), nullable=True)
     # null = 永久；到期时间（UTC，naive 存储）
-    expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+    expires_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True, index=True)
     # 白名单可选：绑定账号 ID，命中时实现可信 IP 自动登录（opt-in）
     bound_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
 
 
 # ---------- 安全问题（单例表，id 固定为 1） ----------
@@ -710,7 +728,7 @@ class SecurityQuestion(Base):
     question: Mapped[str] = mapped_column(String(256))
     # 答案的 bcrypt 哈希（规范化：去首尾空格 + 小写后再哈希），不存明文
     answer: Mapped[str] = mapped_column(String(256))
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)
 
 
 # ==================== Phase 3 内容 CMS ====================
@@ -739,13 +757,13 @@ class Announcement(Base):
     # 可选跳转链接（http(s):// 或站内 / 开头）
     link: Mapped[str | None] = mapped_column(String(512), nullable=True)
     # 生效时间窗（NULL = 立即生效/永不失效；均以 UTC 存储）
-    start_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
-    end_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+    start_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True, index=True)
+    end_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True, index=True)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
     # 优先级：数字越大越优先展示
     priority: Mapped[int] = mapped_column(Integer, default=0)
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
 
     # 多媒体/办公文档附件（详情页在线预览）；随公告删除级联清理
     attachments: Mapped[list["AnnouncementAttachment"]] = relationship(
@@ -786,7 +804,7 @@ class AnnouncementAttachment(Base):
     kind: Mapped[AnnouncementAttachmentKind] = mapped_column(
         SAEnum(AnnouncementAttachmentKind), default=AnnouncementAttachmentKind.OTHER, index=True
     )
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
 
 
 class UserNotifyRead(Base):
@@ -800,7 +818,7 @@ class UserNotifyRead(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     announcement_id: Mapped[int] = mapped_column(ForeignKey("announcements.id"), index=True)
-    read_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    read_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
 
     __table_args__ = (
         UniqueConstraint("user_id", "announcement_id", name="uq_user_notify_read"),
@@ -825,7 +843,7 @@ class UserMessage(Base):
     # 可选站内跳转链接（/ 开头路径）
     link: Mapped[str | None] = mapped_column(String(512), nullable=True)
     is_read: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
 
 
 # ---------- 用户自定义徽章（user_badges） ----------
@@ -848,8 +866,8 @@ class UserBadge(Base):
     text_color: Mapped[str] = mapped_column(String(7), default="#ffffff")
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)
 
 
 # ---------- 富文本内容块（社团介绍等） ----------
@@ -865,7 +883,7 @@ class ContentBlock(Base):
     title: Mapped[str | None] = mapped_column(String(200), nullable=True)
     body_md: Mapped[str] = mapped_column(Text)
     updated_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)
 
 
 # ---------- 成员管理（现任/往届） ----------
@@ -900,7 +918,7 @@ class Member(Base):
     display_order: Mapped[int] = mapped_column(Integer, default=0, index=True)
     # 归档：前端默认不展示归档成员
     archived: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
 
 
 # ---------- 招新信息 ----------
@@ -913,10 +931,10 @@ class RecruitmentInfo(Base):
     content: Mapped[str] = mapped_column(Text)
     # 目标部门（如「技术部」「策划部」，可选）
     target_dept: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
-    start_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
-    end_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+    start_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True, index=True)
+    end_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True, index=True)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
 
 
 # ---------- 活动报名统计快照 ----------
@@ -936,7 +954,7 @@ class ActivityStatistics(Base):
     approved: Mapped[int] = mapped_column(Integer, default=0)
     rejected: Mapped[int] = mapped_column(Integer, default=0)
     checked_in: Mapped[int] = mapped_column(Integer, default=0)
-    generated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    generated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
 
 
 # ---------- 媒体文件统一管理 ----------
@@ -967,7 +985,7 @@ class MediaFile(Base):
     category: Mapped[MediaCategory] = mapped_column(
         SAEnum(MediaCategory), default=MediaCategory.MISC, index=True
     )
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
 
 
 # ==================== Phase 4 博客 CMS ====================
@@ -999,9 +1017,9 @@ class BlogPost(Base):
         SAEnum(BlogPostStatus), default=BlogPostStatus.DRAFT, index=True
     )
     # 首次发布时间（手工发布或定时到点时写入）
-    published_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+    published_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True, index=True)
     # 定时发布时间（仅 status=scheduled 时有意义）
-    scheduled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+    scheduled_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True, index=True)
     author_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     # 是否允许评论（Phase 5 评论系统读取此开关 + 全局开关共同决定）
     allow_comments: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -1014,8 +1032,8 @@ class BlogPost(Base):
     share_count: Mapped[int] = mapped_column(Integer, default=0)
     # 收藏数
     favourite_count: Mapped[int] = mapped_column(Integer, default=0)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)
 
     author: Mapped["User"] = relationship(lazy="joined")
     tags: Mapped[list["BlogTag"]] = relationship(
@@ -1032,7 +1050,7 @@ class BlogTag(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     slug: Mapped[str] = mapped_column(String(128), unique=True, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
 
 
 class BlogPostTag(Base):
@@ -1093,8 +1111,8 @@ class Comment(Base):
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     # 管理员屏蔽标记（软删除）：公开列表过滤 is_hidden=false
     is_hidden: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
-    deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
 
 
 # ==================== Phase 9 项目展示 CMS ====================
@@ -1133,8 +1151,8 @@ class Project(Base):
         SAEnum(ProjectStatus), default=ProjectStatus.DRAFT, index=True
     )
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)
 
 
 # ==================== 主题系统（管理员可上传/启停/排序，无需改前端代码） ====================
@@ -1169,9 +1187,9 @@ class Theme(Base):
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
-    deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+    deleted_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)
 
 
 # ==================== Phase 6 登录体系：第三方 OAuth + SSO + 实名验证 ====================
@@ -1196,7 +1214,7 @@ class OAuthAccount(Base):
     # 第三方平台的唯一用户标识（GitHub/Microsoft/Google 数字 id 或 Apple sub）
     openid: Mapped[str] = mapped_column(String(128))
     raw_profile: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
 
 
 class LoginChannel(Base):
@@ -1217,7 +1235,7 @@ class LoginChannel(Base):
     # 预留扩展配置（如 Apple team_id/key_id、Microsoft tenant）
     config: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=utcnow, onupdate=utcnow
+        UTCDateTime, default=utcnow, onupdate=utcnow
     )
 
 
@@ -1235,7 +1253,7 @@ class SsoClient(Base):
     name: Mapped[str] = mapped_column(String(128))
     redirect_uris: Mapped[list] = mapped_column(JSON, default=list)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
 
 
 class RealnameStatus(str, Enum):
@@ -1263,8 +1281,8 @@ class RealnameRequest(Base):
     )
     # 拒绝原因（管理员填写）
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
-    submitted_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
-    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    submitted_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     reviewed_by: Mapped[int | None] = mapped_column(
         ForeignKey("users.id"), nullable=True
     )
@@ -1301,9 +1319,9 @@ class Tag(Base):
     # 使用该标签的模块集合（JSON 列表，便于跨模块筛选时聚合查询）
     scopes: Mapped[list[str]] = mapped_column(JSON, default=list)
     # 全站公共基线字段
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
-    deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)
+    deleted_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True, index=True)
 
 
 # ---------- Memo 主体 ----------
@@ -1360,12 +1378,12 @@ class Memo(Base):
     admin_removed_by: Mapped[int | None] = mapped_column(
         ForeignKey("users.id"), nullable=True
     )
-    admin_removed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    admin_removed_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
 
     # 公共基线字段（一致遵循）
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
-    deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)
+    deleted_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True, index=True)
     tenant_id: Mapped[int] = mapped_column(Integer, default=1, index=True)
 
     author: Mapped["User"] = relationship(foreign_keys=[author_id], lazy="joined")
@@ -1406,8 +1424,8 @@ class MemoVersion(Base):
     visibility: Mapped[MemoVisibility] = mapped_column(SAEnum(MemoVisibility))
 
     # 公共基线字段
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
-    deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     tenant_id: Mapped[int] = mapped_column(Integer, default=1, index=True)
 
     editor: Mapped["User"] = relationship(foreign_keys=[editor_id])
@@ -1427,7 +1445,7 @@ class MemoTag(Base):
     tag_id: Mapped[int] = mapped_column(
         ForeignKey("tags.id", ondelete="CASCADE"), primary_key=True
     )
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
 
 
 class MemoLike(Base):
@@ -1440,7 +1458,7 @@ class MemoLike(Base):
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
     )
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
 
 
 class MemoFavorite(Base):
@@ -1453,7 +1471,7 @@ class MemoFavorite(Base):
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
     )
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
 
 
 class MemoAttachment(Base):
@@ -1477,8 +1495,8 @@ class MemoAttachment(Base):
     kind: Mapped[str] = mapped_column(String(16), default="file")
 
     # 公共基线字段
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
-    deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     tenant_id: Mapped[int] = mapped_column(Integer, default=1, index=True)
 
 
@@ -1527,10 +1545,10 @@ class BackgroundTask(Base):
     created_by_user_id: Mapped[int | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
-    finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
+    finished_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     # 用户手动关闭时间；NULL = 仍在通知中心/悬浮弹窗可见
-    dismissed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+    dismissed_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True, index=True)
 
 
 # ==================== Module D：系统基础数据（学院/年级/专业/班级） ====================
@@ -1545,8 +1563,8 @@ class SysCollege(Base):
     college_name: Mapped[str] = mapped_column(String(128))
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     is_disabled: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)
 
 
 class SysGrade(Base):
@@ -1557,8 +1575,8 @@ class SysGrade(Base):
     grade_year: Mapped[int] = mapped_column(Integer)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     is_disabled: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)
 
 
 class SysMajor(Base):
@@ -1570,8 +1588,8 @@ class SysMajor(Base):
     major_name: Mapped[str] = mapped_column(String(128))
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     is_disabled: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)
 
 
 class SysClass(Base):
@@ -1592,8 +1610,8 @@ class SysClass(Base):
     display_name: Mapped[str] = mapped_column(String(128))
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     is_disabled: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)
 
 
 # ==================== Module D：学校身份人工验证 ====================
@@ -1627,8 +1645,8 @@ class UserSchoolVerifyApplication(Base):
     reviewed_by: Mapped[int | None] = mapped_column(
         ForeignKey("users.id"), nullable=True
     )
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
-    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
 
 
 # ==================== Module D：社团报名（club_apply_record） ====================
@@ -1685,5 +1703,5 @@ class ClubApplyRecord(Base):
     reviewed_by: Mapped[int | None] = mapped_column(
         ForeignKey("users.id"), nullable=True
     )
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
-    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
