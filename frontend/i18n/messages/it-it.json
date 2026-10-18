@@ -1249,6 +1249,7 @@
         "title": "Verifica in due passaggi",
         "subtitle": "Abbiamo rilevato un dispositivo o una rete sconosciuta. Un codice a 6 cifre è stato inviato al tuo indirizzo e-mail. Inseriscilo per completare l'accesso.",
         "subtitleWithEmail": "Un codice è stato inviato a {email}. Inseriscilo per completare l'accesso.",
+        "subtitleReused": "Un codice è appena stato inviato a {email} ed è ancora valido. Controlla la tua casella di posta e inseriscilo.",
         "codeLabel": "Codice di verifica e-mail",
         "codePlaceholder": "Codice a 6 cifre",
         "verify": "Verifica e accedi",

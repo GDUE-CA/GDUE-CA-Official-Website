@@ -1348,6 +1348,7 @@
         "title": "二次验证",
         "subtitle": "检测到陌生设备或网络，我们已向您的绑定邮箱发送 6 位验证码，请输入以完成登录。",
         "subtitleWithEmail": "验证码已发送至 {email}，请输入以完成登录。",
+        "subtitleReused": "验证码已于刚才发送至 {email}，仍然有效，请查收后输入。",
         "codeLabel": "邮箱验证码",
         "codePlaceholder": "6 位数字",
         "verify": "验证并登录",

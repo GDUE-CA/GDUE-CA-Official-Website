@@ -1320,6 +1320,7 @@
         "title": "Vérification en deux étapes",
         "subtitle": "Nous avons détecté un nouvel appareil ou réseau. Un code à 6 chiffres a été envoyé à votre adresse e-mail. Saisissez-le pour terminer la connexion.",
         "subtitleWithEmail": "Un code a été envoyé à {email}. Saisissez-le pour terminer la connexion.",
+        "subtitleReused": "Un code vient d’être envoyé à {email} et est toujours valide. Consultez votre boîte de réception et saisissez-le.",
         "codeLabel": "Code de vérification e-mail",
         "codePlaceholder": "Code à 6 chiffres",
         "verify": "Vérifier et se connecter",

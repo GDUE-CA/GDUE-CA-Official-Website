@@ -1320,6 +1320,7 @@
         "title": "二次驗證",
         "subtitle": "偵測到陌生裝置或網絡，我們已向您的綁定電郵發送 6 位驗證碼，請輸入以完成登入。",
         "subtitleWithEmail": "驗證碼已發送至 {email}，請輸入以完成登入。",
+        "subtitleReused": "驗證碼已於剛才發送至 {email}，仍然有效，請查收後輸入。",
         "codeLabel": "電郵驗證碼",
         "codePlaceholder": "6 位數字",
         "verify": "驗證並登入",

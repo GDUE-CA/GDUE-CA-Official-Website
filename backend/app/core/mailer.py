@@ -183,6 +183,8 @@ async def send_email(to_addr: str, subject: str, body: str) -> bool:
         else:
             send = asyncio.to_thread(_send_smtp_sync, to_addr, subject, body)
         await asyncio.wait_for(send, timeout=_SEND_TIMEOUT_SECONDS)
+        # 「已提交」≠「已送达」：Graph 202 / SMTP 接收后仍可能延迟、进垃圾箱，排查投递时以此为准
+        logger.info("邮件已提交（provider=%s 收件人=%s 主题=%s）", provider, to_addr, subject)
         return True
     except MailError as e:
         logger.error("邮件发送失败（provider=%s 收件人=%s 主题=%s）：%s", provider, to_addr, subject, e)

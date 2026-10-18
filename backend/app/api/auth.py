@@ -13,6 +13,7 @@ import json
 import logging
 import re
 import secrets
+import time
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -408,11 +409,28 @@ def _mask_email(email: str) -> str:
     return f"{local[:2]}***@{domain}"
 
 
+async def _login2fa_cooldown(kv, uid: str) -> int:
+    """距离可重发还剩多少秒（0 = 可立即发送）。
+
+    login2fa:sent:{uid} 存发送时刻（Unix 秒），据此推算剩余冷却；旧格式值（"1"）无法推算，按整段冷却处理。
+    """
+    raw = await kv.get(f"login2fa:sent:{uid}")
+    if raw is None:
+        return 0
+    interval = settings.EMAIL_CODE_RESEND_INTERVAL_SECONDS
+    try:
+        left = interval - (int(time.time()) - int(raw))
+    except ValueError:
+        return interval
+    return max(0, min(interval, left))
+
+
 async def _send_login2fa_code(uid: str, email: str, kv) -> bool:
     """生成 6 位登录二次验证码并同步投递邮件；成功才写 KV（验证码只存 SHA-256）。
 
     KV：login2fa:code:{uid}=sha256(码)、login2fa:att:{uid}=尝试计数、
-    login2fa:sent:{uid}=重发冷却标记（EMAIL_CODE_RESEND_INTERVAL_SECONDS）。
+    login2fa:sent:{uid}=发送时刻（Unix 秒），兼作重发冷却（EMAIL_CODE_RESEND_INTERVAL_SECONDS）。
+    新码直接覆盖旧码，旧码随之失效。
     """
     code = f"{secrets.randbelow(1000000):06d}"
     body = (
@@ -427,7 +445,7 @@ async def _send_login2fa_code(uid: str, email: str, kv) -> bool:
     ttl = settings.EMAIL_CODE_TTL_SECONDS
     await kv.setex(f"login2fa:code:{uid}", ttl, hashlib.sha256(code.encode()).hexdigest())
     await kv.setex(f"login2fa:att:{uid}", ttl, "0")
-    await kv.set(f"login2fa:sent:{uid}", "1",
+    await kv.set(f"login2fa:sent:{uid}", str(int(time.time())),
                  ttl_seconds=settings.EMAIL_CODE_RESEND_INTERVAL_SECONDS)
     return True
 
@@ -451,13 +469,16 @@ async def _login2fa_challenge(
     if not user_email:
         log_action(db, user.id, "login2fa.skipped_no_email", None, client_ip)
         return None
-    if not await kv.exists(f"login2fa:code:{uid}"):
-        # 无有效验证码才发新码；同步投递失败按登录失败处理，不泄露 SMTP 状态
-        sent = await _send_login2fa_code(uid, user_email, kv)
-        if not sent:
+    # 每次密码登录都发新码；仅在重发冷却内且旧码仍有效时沿用旧码（避免连点登录刷邮件）。
+    # 同步投递失败按登录失败处理，不泄露 SMTP 状态
+    cooldown = await _login2fa_cooldown(kv, uid)
+    code_sent = not (cooldown > 0 and await kv.exists(f"login2fa:code:{uid}"))
+    if code_sent:
+        if not await _send_login2fa_code(uid, user_email, kv):
             log_action(db, user.id, "login2fa.send_failed", None, client_ip)
             return fail(BizCode.LOGIN_BLOCKED, params=_LOGIN_DENIED)
-    log_action(db, user.id, "login2fa.challenge",
+        cooldown = settings.EMAIL_CODE_RESEND_INTERVAL_SECONDS
+    log_action(db, user.id, "login2fa.code_sent" if code_sent else "login2fa.code_reused",
                f"ip:{client_ip} fp:{(fingerprint or '-')[:16]}", client_ip)
     return LoginResponse(
         role=Role(user.role.value),
@@ -465,6 +486,8 @@ async def _login2fa_challenge(
         username=user.username,
         requires_2fa=True,
         email_masked=_mask_email(user_email),
+        code_sent=code_sent,
+        resend_after=cooldown,
     )
 
 
@@ -833,16 +856,18 @@ async def login_2fa_resend(
                    f"account:{account_hint} reason:no_challenge", client_ip)
         await db.commit()
         return {"ok": False, "message": "发送失败，请稍后重试"}
-    if await kv.exists(f"login2fa:sent:{uid}"):
-        return {"ok": False, "message": "验证码发送间隔未到，请稍后再试"}
+    cooldown = await _login2fa_cooldown(kv, uid)
+    if cooldown > 0:
+        return {"ok": False, "message": "验证码发送间隔未到，请稍后再试", "resend_after": cooldown}
 
     sent = await _send_login2fa_code(uid, user_email, kv)
     if not sent:
         log_action(db, user.id, "login2fa.resend_send_failed", None, client_ip)
         await db.commit()
-        return {"ok": False, "message": "邮件发送失败，请稍后重试"}
+        return {"ok": False, "message": "邮件发送失败，请稍后重试", "resend_after": 0}
     log_action(db, user.id, "login2fa.resend_ok", None, client_ip)
-    return {"ok": True, "message": "验证码已重新发送，请查收"}
+    return {"ok": True, "message": "验证码已重新发送，请查收",
+            "resend_after": settings.EMAIL_CODE_RESEND_INTERVAL_SECONDS}
 
 
 # ---------- 退出登录 ----------

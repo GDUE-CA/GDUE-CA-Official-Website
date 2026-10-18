@@ -1249,6 +1249,7 @@
         "title": "Verificação em dois passos",
         "subtitle": "Detetámos um dispositivo ou rede desconhecida. Foi enviado um código de 6 dígitos para o seu endereço de e-mail. Introduza-o para concluir o início de sessão.",
         "subtitleWithEmail": "Foi enviado um código para {email}. Introduza-o para concluir o início de sessão.",
+        "subtitleReused": "Foi acabado de enviar um código para {email} e ainda é válido. Verifique a sua caixa de entrada e introduza-o.",
         "codeLabel": "Código de verificação de e-mail",
         "codePlaceholder": "Código de 6 dígitos",
         "verify": "Verificar e iniciar sessão",
