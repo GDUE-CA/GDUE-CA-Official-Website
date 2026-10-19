@@ -32,6 +32,9 @@ class UserProfileOut(BaseModel):
     # ---- 个人主页外观（V0.5.5 §9）：公开装饰字段，不走隐私过滤 ----
     profile_banner: str | None = None
     profile_banner_color: str | None = None
+    # V0.6.1 需求5：主页隐藏标记（管理员处罚）。访客看到「主页不可见」提示；
+    # 隐藏时访客仅返回最小字段（不泄露内部信息），本人 / 管理员仍可查看完整内容。
+    profile_hidden: bool = False
     # ---- 社交关注（V0.5.5 §9.2）：未登录访问者 is_following/is_friends 为 None ----
     follower_count: int = 0
     following_count: int = 0

@@ -75,8 +75,22 @@ const COMMON_TIMEZONES = [
   "Australia/Sydney",
 ];
 
-/** 默认语言选项（与后端 locale 字段对齐） */
-const LOCALE_OPTIONS = ["zh-CN", "en-GB", "ja-JP", "ko-KR", "zh-TW", "vi-VN"];
+/** 默认语言选项（V0.6.1 需求1：与后端 13 语种白名单对齐，顺序同 LOCALE_LIST 规格） */
+const LOCALE_OPTIONS = [
+  "zh-CN",
+  "zh-HK",
+  "zh-MO",
+  "zh-TW",
+  "ja-JP",
+  "ko-KR",
+  "en-GB",
+  "en-US",
+  "es-ES",
+  "fr-FR",
+  "de-DE",
+  "pt-PT",
+  "it-IT",
+];
 
 /** 后端字段路径 → 向导步骤下标（0 = BG 口令，1 = 系统默认值，2 = 首位超管） */
 function stepOfFirstFieldError(err: unknown): number | null {

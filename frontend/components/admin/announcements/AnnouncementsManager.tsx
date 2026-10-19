@@ -3,8 +3,9 @@
 /**
  * 公告管理组件（信息通知 / 主页公告共用，category 区分）
  *
- * - 列表：搜索 / 启用筛选 / 服务端分页 / 启用状态徽章 / 编辑删除
- * - 创建与编辑共用 Dialog 表单：标题、内容、链接、生效时间窗、优先级、启用开关
+ * - 列表：搜索 / 状态筛选（published/draft） / 服务端分页 / 状态徽章 / 编辑删除
+ * - 创建与编辑共用 Dialog 表单：标题、内容、发布者介绍、链接、生效时间窗、优先级、状态
+ * - 多语言内容覆盖（V0.6.1 需求4）：13 语种独立覆盖标题/正文/发布者介绍，公开接口按回退链解析
  * - 时间以 datetime-local 输入，提交时转 UTC ISO；展示用 FormattedUserActionTime
  */
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -15,7 +16,10 @@ import Trash2 from "@/assets/icons/action/trash-2.svg";
 import Upload from "@/assets/icons/action/upload.svg";
 import Megaphone from "@/assets/icons/status/megaphone.svg";
 import FileText from "@/assets/icons/status/file-text.svg";
+import Languages from "@/assets/icons/navigation/languages.svg";
+import ChevronDown from "@/assets/icons/navigation/chevron-down.svg";
 import { useI18n } from "@/i18n/provider";
+import { LOCALE_LIST } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,7 +44,13 @@ import {
   adminUploadAnnouncementAttachment,
   adminDeleteAnnouncementAttachment,
 } from "@/lib/api/announcements";
-import type { Announcement, AnnouncementCategory } from "@/types/api";
+import type {
+  Announcement,
+  AnnouncementCategory,
+  AnnouncementI18n,
+  AnnouncementI18nField,
+  AnnouncementStatus,
+} from "@/types/api";
 import { useServerFieldErrors } from "@/lib/hooks/useServerFieldErrors";
 import { FieldError } from "@/components/ui/field-error";
 
@@ -57,7 +67,28 @@ const ATTACHMENT_ACCEPT = ATTACHMENT_EXTS.map((ext) => `.${ext}`).join(",");
 /** 后端请求体字段名（data-field 对位，与 1001 data.errors[].field 一致） */
 type AnnouncementField =
   | "title" | "content" | "link" | "start_at"
-  | "end_at" | "priority" | "enabled";
+  | "end_at" | "priority" | "enabled" | "publisher_intro" | "i18n";
+
+/** 空的多语言覆盖条目（三字段均空串） */
+const EMPTY_I18N_ENTRY: Record<AnnouncementI18nField, string> = {
+  title: "", content: "", publisher_intro: "",
+};
+
+/** 剔除空白值：三字段均空时移除该语种条目，返回 undefined 表示无覆盖 */
+function cleanI18nOverrides(
+  overrides: Record<string, Record<AnnouncementI18nField, string>>
+): AnnouncementI18n | undefined {
+  const out: AnnouncementI18n = {};
+  for (const [loc, entry] of Object.entries(overrides)) {
+    const fields: Partial<Record<AnnouncementI18nField, string>> = {};
+    for (const f of Object.keys(EMPTY_I18N_ENTRY) as AnnouncementI18nField[]) {
+      const v = entry[f]?.trim();
+      if (v) fields[f] = v;
+    }
+    if (Object.keys(fields).length > 0) out[loc] = fields;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
 
 export function AnnouncementsManager({ category }: { category: AnnouncementCategory }) {
   const { t } = useI18n();
@@ -68,11 +99,11 @@ export function AnnouncementsManager({ category }: { category: AnnouncementCateg
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  // 搜索（300ms 防抖）+ 启用筛选 + 分页
+  // 搜索（300ms 防抖）+ 状态筛选 + 分页
   const [q, setQ] = useState("");
   const [query, setQuery] = useState(""); // 防抖后的实际查询词
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [enabledFilter, setEnabledFilter] = useState<"" | "enabled" | "disabled">("");
+  const [statusFilter, setStatusFilter] = useState<"" | AnnouncementStatus>("");
   const [page, setPage] = useState(1);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -83,11 +114,18 @@ export function AnnouncementsManager({ category }: { category: AnnouncementCateg
   const [content, setContent] = useState("");
   /** 正文编辑模式：edit=Markdown 源编辑，preview=富文本预览 */
   const [contentMode, setContentMode] = useState<"edit" | "preview">("edit");
+  const [publisherIntro, setPublisherIntro] = useState("");
   const [link, setLink] = useState("");
   const [startAt, setStartAt] = useState(""); // datetime-local 字符串
   const [endAt, setEndAt] = useState("");
   const [priority, setPriority] = useState("0");
   const [enabled, setEnabled] = useState(true);
+  // 多语言内容覆盖（V0.6.1 需求4）：语种 → 三字段覆盖；i18nOpen 控制折叠区
+  const [i18nOpen, setI18nOpen] = useState(false);
+  const [i18nLang, setI18nLang] = useState<string>("zh-cn");
+  const [i18nOverrides, setI18nOverrides] = useState<
+    Record<string, Record<AnnouncementI18nField, string>>
+  >({});
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const fieldErrors = useServerFieldErrors<AnnouncementField>({ fallback: t("common.saveFailed") });
@@ -104,7 +142,7 @@ export function AnnouncementsManager({ category }: { category: AnnouncementCateg
     try {
       const res = await adminListAnnouncements({
         category,
-        enabled: enabledFilter === "" ? undefined : enabledFilter === "enabled",
+        status: statusFilter || undefined,
         q: query || undefined,
         page,
         page_size: PAGE_SIZE,
@@ -116,7 +154,7 @@ export function AnnouncementsManager({ category }: { category: AnnouncementCateg
     } finally {
       setLoading(false);
     }
-  }, [category, enabledFilter, query, page]);
+  }, [category, statusFilter, query, page]);
 
   useEffect(() => {
     load();
@@ -139,11 +177,15 @@ export function AnnouncementsManager({ category }: { category: AnnouncementCateg
     setTitle("");
     setContent("");
     setContentMode("edit");
+    setPublisherIntro("");
     setLink("");
     setStartAt("");
     setEndAt("");
     setPriority("0");
     setEnabled(true);
+    setI18nOpen(false);
+    setI18nLang("zh-cn");
+    setI18nOverrides({});
     setFormError(null);
     fieldErrors.clear();
     setAttachmentError(null);
@@ -155,12 +197,27 @@ export function AnnouncementsManager({ category }: { category: AnnouncementCateg
     setTitle(a.title);
     setContent(a.content);
     setContentMode("edit");
+    setPublisherIntro(a.publisher_intro ?? "");
     setLink(a.link ?? "");
     // datetime-local 需要 YYYY-MM-DDTHH:mm 格式
     setStartAt(a.start_at ? a.start_at.slice(0, 16) : "");
     setEndAt(a.end_at ? a.end_at.slice(0, 16) : "");
     setPriority(String(a.priority));
     setEnabled(a.enabled);
+    setI18nOpen(false);
+    setI18nLang("zh-cn");
+    // 回填多语言覆盖（仅白名单 13 语种，缺失字段补空串）
+    const overrides: Record<string, Record<AnnouncementI18nField, string>> = {};
+    if (a.i18n) {
+      for (const [loc, fields] of Object.entries(a.i18n)) {
+        overrides[loc] = {
+          title: fields?.title ?? "",
+          content: fields?.content ?? "",
+          publisher_intro: fields?.publisher_intro ?? "",
+        };
+      }
+    }
+    setI18nOverrides(overrides);
     setFormError(null);
     fieldErrors.clear();
     setAttachmentError(null);
@@ -226,6 +283,8 @@ export function AnnouncementsManager({ category }: { category: AnnouncementCateg
         end_at: endAt ? new Date(endAt).toISOString() : undefined,
         enabled,
         priority: Number(priority) || 0,
+        publisher_intro: publisherIntro.trim() || undefined,
+        i18n: cleanI18nOverrides(i18nOverrides),
       };
       if (editing) {
         await adminUpdateAnnouncement(editing.id, payload);
@@ -277,17 +336,17 @@ export function AnnouncementsManager({ category }: { category: AnnouncementCateg
             </CardTitle>
             <div className="flex items-center gap-2">
               <select
-                value={enabledFilter}
+                value={statusFilter}
                 onChange={(e) => {
-                  setEnabledFilter(e.target.value as "" | "enabled" | "disabled");
+                  setStatusFilter(e.target.value as "" | AnnouncementStatus);
                   setPage(1);
                 }}
                 className="h-9 rounded-md border border-input bg-background px-2 text-sm"
                 aria-label={t("admin.announcements.colEnabled")}
               >
                 <option value="">{t("admin.announcements.filterAll")}</option>
-                <option value="enabled">{t("admin.announcements.filterEnabled")}</option>
-                <option value="disabled">{t("admin.announcements.filterDisabled")}</option>
+                <option value="published">{t("admin.announcements.filterEnabled")}</option>
+                <option value="draft">{t("admin.announcements.filterDisabled")}</option>
               </select>
               <Input
                 placeholder={t("admin.announcements.searchPlaceholder")}
@@ -329,7 +388,21 @@ export function AnnouncementsManager({ category }: { category: AnnouncementCateg
                 <tbody>
                   {items.map((a) => (
                     <tr key={a.id} className="border-t border-border hover:bg-muted/30">
-                      <td className="px-3 py-2 font-medium max-w-[180px] truncate">{a.title}</td>
+                      <td className="px-3 py-2 font-medium max-w-[180px]">
+                        <span className="flex items-center gap-1">
+                          <span className="truncate">{a.title}</span>
+                          {/* 多语言覆盖数徽章（V0.6.1 需求4）：仅已有覆盖时显示 */}
+                          {a.i18n && Object.keys(a.i18n).length > 0 && (
+                            <span
+                              className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-mono text-primary"
+                              title={t("admin.announcements.i18nSection")}
+                            >
+                              <Languages className="h-3 w-3" aria-hidden="true" />
+                              {Object.keys(a.i18n).length}
+                            </span>
+                          )}
+                        </span>
+                      </td>
                       <td className="px-3 py-2 text-muted-foreground max-w-[200px] truncate hidden md:table-cell">
                         {a.content}
                       </td>
@@ -343,8 +416,10 @@ export function AnnouncementsManager({ category }: { category: AnnouncementCateg
                         {a.end_at ? <FormattedUserActionTime utcIso={a.end_at} /> : "—"}
                       </td>
                       <td className="px-3 py-2">
-                        <StatusBadge tone={a.enabled ? "success" : "neutral"}>
-                          {a.enabled ? t("admin.announcements.enabledYes") : t("admin.announcements.enabledNo")}
+                        <StatusBadge tone={a.status === "published" ? "success" : "neutral"}>
+                          {a.status === "published"
+                            ? t("admin.announcements.enabledYes")
+                            : t("admin.announcements.enabledNo")}
                         </StatusBadge>
                       </td>
                       <td className="px-3 py-2 font-mono text-xs hidden sm:table-cell">{a.priority}</td>
@@ -465,6 +540,17 @@ export function AnnouncementsManager({ category }: { category: AnnouncementCateg
               </p>
               <FieldError>{fe.content}</FieldError>
             </div>
+            <div className="space-y-2" data-field="publisher_intro">
+              <Label htmlFor="ann-intro">{t("admin.announcements.colPublisherIntro")}</Label>
+              <Input
+                id="ann-intro"
+                aria-invalid={!!fe.publisher_intro}
+                value={publisherIntro}
+                onChange={(e) => setPublisherIntro(e.target.value)}
+                placeholder={t("admin.announcements.publisherIntroPlaceholder")}
+              />
+              <FieldError>{fe.publisher_intro}</FieldError>
+            </div>
             <div className="space-y-2" data-field="link">
               <Label htmlFor="ann-link">{t("admin.announcements.colLink")}</Label>
               <Input
@@ -534,6 +620,93 @@ export function AnnouncementsManager({ category }: { category: AnnouncementCateg
                 {t("admin.announcements.statusHint")}
               </p>
               <FieldError>{fe.enabled}</FieldError>
+            </div>
+
+            {/* 多语言内容覆盖（V0.6.1 需求4）：13 语种独立覆盖标题/正文/发布者介绍 */}
+            <div className="space-y-2 rounded-md border border-border p-3">
+              <button
+                type="button"
+                className="flex w-full items-center justify-between gap-2 text-left"
+                onClick={() => setI18nOpen((v) => !v)}
+                aria-expanded={i18nOpen}
+              >
+                <span className="flex items-center gap-1.5 text-sm font-medium">
+                  <Languages className="h-4 w-4" />
+                  {t("admin.announcements.i18nSection")}
+                  {(() => {
+                    const filled = Object.keys(cleanI18nOverrides(i18nOverrides) ?? {}).length;
+                    return filled > 0 ? (
+                      <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-mono text-primary">
+                        {filled}
+                      </span>
+                    ) : null;
+                  })()}
+                </span>
+                <ChevronDown
+                  className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${i18nOpen ? "rotate-180" : ""}`}
+                  aria-hidden="true"
+                />
+              </button>
+              {i18nOpen && (
+                <div className="space-y-3 pt-1">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="ann-i18n-lang">{t("admin.announcements.i18nLangLabel")}</Label>
+                    <select
+                      id="ann-i18n-lang"
+                      value={i18nLang}
+                      onChange={(e) => setI18nLang(e.target.value)}
+                      className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                    >
+                      {LOCALE_LIST.map((opt) => (
+                        <option key={opt.code} value={opt.code}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-muted-foreground">
+                      {t("admin.announcements.i18nSectionHint")}
+                    </p>
+                  </div>
+                  {(
+                    [
+                      ["title", t("admin.announcements.colTitle"), title],
+                      ["content", t("admin.announcements.colContent"), content],
+                      ["publisher_intro", t("admin.announcements.colPublisherIntro"), publisherIntro],
+                    ] as const
+                  ).map(([field, label, base]) => (
+                    <div key={field} className="space-y-1.5">
+                      <Label htmlFor={`ann-i18n-${field}`}>{label}</Label>
+                      {field === "content" ? (
+                        <Textarea
+                          id="ann-i18n-content"
+                          rows={4}
+                          value={i18nOverrides[i18nLang]?.content ?? ""}
+                          onChange={(e) =>
+                            setI18nOverrides((prev) => ({
+                              ...prev,
+                              [i18nLang]: { ...EMPTY_I18N_ENTRY, ...prev[i18nLang], content: e.target.value },
+                            }))
+                          }
+                          placeholder={t("admin.announcements.i18nPlaceholder").replace("{base}", base.slice(0, 40))}
+                        />
+                      ) : (
+                        <Input
+                          id={`ann-i18n-${field}`}
+                          value={i18nOverrides[i18nLang]?.[field] ?? ""}
+                          onChange={(e) =>
+                            setI18nOverrides((prev) => ({
+                              ...prev,
+                              [i18nLang]: { ...EMPTY_I18N_ENTRY, ...prev[i18nLang], [field]: e.target.value },
+                            }))
+                          }
+                          placeholder={t("admin.announcements.i18nPlaceholder").replace("{base}", base.slice(0, 40))}
+                        />
+                      )}
+                    </div>
+                  ))}
+                  <p className="text-xs text-muted-foreground">{t("admin.announcements.i18nEmptyHint")}</p>
+                </div>
+              )}
             </div>
 
             {/* 附件管理（详情页在线预览；仅已保存公告可上传） */}

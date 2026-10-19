@@ -227,11 +227,6 @@
       "stat3": "Schools Covered",
       "stat4": "Founded"
     },
-    "announcements": {
-      "title": "Latest Announcements",
-      "subtitle": "Stay updated with the latest club news",
-      "viewDetail": "View details"
-    },
     "events": {
       "title": "Upcoming Events",
       "subtitle": "Join our tech events and talks",
@@ -2417,6 +2412,13 @@
       "previewBtn": "Vorschau",
       "previewEmpty": "Noch nichts zur Vorschau vorhanden",
       "statusHint": "Veröffentlicht: auf der Website sichtbar; Entwurf: nur im Admin gespeichert, nicht öffentlich sichtbar.",
+      "colPublisherIntro": "Herausgeber-Info",
+      "publisherIntroPlaceholder": "z. B. Studierendenrat · Pressestelle (optional; wird unter dem Titel auf der Detailseite angezeigt)",
+      "i18nSection": "Sprachspezifische Inhalte",
+      "i18nLangLabel": "Bearbeitete Sprache",
+      "i18nSectionHint": "Überschreibt Titel / Inhalt / Herausgeber-Info für die ausgewählte Sprache; Sprachen ohne Überschreibung fallen automatisch auf den Hauptinhalt oder die englische Version zurück",
+      "i18nPlaceholder": "Leer lassen, um auf den Hauptinhalt zurückzufallen; aktueller Hauptinhalt: {base}",
+      "i18nEmptyHint": "Leere Felder werden nicht gespeichert; nur ausgefüllte Sprachen werden als Überschreibung gespeichert",
       "timeWindowHint": "Leave blank for immediate effect / never expire; time stored in UTC",
       "saveBtn": "Save",
       "cancelBtn": "Cancel",

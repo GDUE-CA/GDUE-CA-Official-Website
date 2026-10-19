@@ -227,11 +227,6 @@
       "stat3": "",
       "stat4": ""
     },
-    "announcements": {
-      "title": "",
-      "subtitle": "",
-      "viewDetail": ""
-    },
     "events": {
       "title": "",
       "subtitle": "",
@@ -2346,6 +2341,13 @@
       "previewBtn": "",
       "previewEmpty": "",
       "statusHint": "",
+      "colPublisherIntro": "Intro dell'editore",
+      "publisherIntroPlaceholder": "es. Consiglio Studentesco · Ufficio Stampa (facoltativo; mostrato sotto il titolo nella pagina di dettaglio)",
+      "i18nSection": "Contenuti per lingua",
+      "i18nLangLabel": "Lingua in modifica",
+      "i18nSectionHint": "Sostituisce titolo / corpo / intro dell'editore per la lingua selezionata; le lingue senza sostituzione ricadono automaticamente sul contenuto principale o sulla versione inglese",
+      "i18nPlaceholder": "Lasciare vuoto per ricadere sul contenuto principale; contenuto principale attuale: {base}",
+      "i18nEmptyHint": "I campi vuoti non vengono salvati; vengono salvate come sostituzione solo le lingue compilate",
       "timeWindowHint": "",
       "saveBtn": "",
       "cancelBtn": "",

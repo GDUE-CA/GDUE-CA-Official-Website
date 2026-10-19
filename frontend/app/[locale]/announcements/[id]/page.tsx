@@ -57,6 +57,10 @@ export default async function AnnouncementDetailPage({
         <h1 className="text-3xl md:text-4xl font-bold tracking-tight break-words">
           {a.title}
         </h1>
+        {/* 发布者介绍（V0.6.1 需求4，可选） */}
+        {a.publisher_intro && (
+          <p className="text-sm text-muted-foreground break-words">{a.publisher_intro}</p>
+        )}
       </div>
 
       {/* 正文（Markdown 富文本） */}

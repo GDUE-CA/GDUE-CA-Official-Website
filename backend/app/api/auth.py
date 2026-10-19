@@ -718,6 +718,15 @@ async def login(
         await db.commit()
         return fail(BizCode.LOGIN_BLOCKED, params=_LOGIN_DENIED)
 
+    # V0.6.1 需求5：临时账号封禁（举报处罚）——到期自动解除，封禁期内拒绝登录
+    if user.ban_until is not None:
+        if user.ban_until <= datetime.now(timezone.utc).replace(tzinfo=None):
+            user.ban_until = None
+        else:
+            log_action(db, user.id, "login.temp_banned", None, client_ip)
+            await db.commit()
+            return fail(BizCode.LOGIN_BLOCKED, params=_LOGIN_DENIED)
+
     # 管理员级账号来源 IP 白名单校验（默认空 = 不限制；普通用户不经过此校验）
     if is_admin_tier(Role(user.role.value)) and not await is_admin_network(request, db):
         log_action(db, user.id, "login.denied_network", None, client_ip)
@@ -1090,15 +1099,9 @@ async def update_profile(
     if not u:
         raise HTTPException(status_code=404, detail="用户不存在")
 
-    # 检查 username 唯一性（如修改了）
-    old_username = u.username
-    if req.username and req.username != u.username:
-        dup = await db.execute(select(User).where(User.username == req.username))
-        if dup.scalar_one_or_none():
-            raise HTTPException(status_code=400, detail="显示名称已存在")
-        u.username = req.username
-    if req.username is not None and req.username != old_username:
-        _log(db, u.id, "profile.username_change", f"{old_username}->{req.username}", get_client_ip(request))
+    # V0.6.1 需求5：用户名注册确认后永久不可修改（数据库 + 后端双重约束）
+    if req.username is not None and req.username != u.username:
+        raise HTTPException(status_code=400, detail="用户名不可修改")
     if req.display_name is not None:
         u.display_name = req.display_name
     if req.real_name is not None:
@@ -1598,11 +1601,9 @@ async def update_user(
              f"user:{user_id} {json.dumps(req.permission_overrides, ensure_ascii=False)}",
              get_client_ip(request))
 
+    # V0.6.1 需求5：用户名永久不可修改，管理端同样拒绝
     if req.username is not None and req.username != u.username:
-        dup = await db.execute(select(User).where(User.username == req.username))
-        if dup.scalar_one_or_none():
-            raise HTTPException(status_code=400, detail="显示名称已存在")
-        u.username = req.username
+        raise HTTPException(status_code=400, detail="用户名不可修改")
     if req.real_name is not None:
         u.real_name = req.real_name
     if req.student_id is not None:

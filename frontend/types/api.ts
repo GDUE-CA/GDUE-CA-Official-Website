@@ -460,6 +460,8 @@ export interface UserProfile {
   follows_me: boolean | null;
   /** 双向互关（自动视为好友） */
   is_friend: boolean | null;
+  /** V0.6.1 需求5：主页隐藏标记（管理员处罚）；访客看到「主页不可见」提示 */
+  profile_hidden: boolean;
 }
 
 /** 博客指标操作结果（POST /api/blog/{slug}/{share|like|unlike|favourite|unfavourite}） */
@@ -941,6 +943,17 @@ export interface Paginated<T> {
 /* ---------- 公告（Phase 3） ---------- */
 export type AnnouncementCategory = "homepage" | "home";
 
+/** 公告状态（V0.6.1 需求4）：后端派生字段，映射 enabled 存储；草稿仅后台可见 */
+export type AnnouncementStatus = "draft" | "published";
+
+/** 公告多语言覆盖字段白名单 */
+export type AnnouncementI18nField = "title" | "content" | "publisher_intro";
+
+/** 公告多语言覆盖（V0.6.1 需求4）：仅白名单 13 语种，公开接口按回退链解析 */
+export type AnnouncementI18n = Partial<
+  Record<string, Partial<Record<AnnouncementI18nField, string>>>
+>;
+
 /**
  * 公告附件预览类型（与后端 AnnouncementAttachmentKind 枚举一一对应）：
  * video/audio/pdf 走在线预览，office（Word/Excel/PPT）浏览器无原生渲染能力，仅下载。
@@ -965,7 +978,12 @@ export interface Announcement {
   start_at: string | null;
   end_at: string | null;
   enabled: boolean;
+  /** 派生状态：映射 enabled */
+  status: AnnouncementStatus;
   priority: number;
+  publisher_intro: string | null;
+  /** 多语言覆盖全量（管理端回填表单用） */
+  i18n: AnnouncementI18n | null;
   category: AnnouncementCategory;
   created_by: number | null;
   created_at: string;
@@ -981,7 +999,9 @@ export interface PublicAnnouncement {
   link: string | null;
   start_at: string | null;
   end_at: string | null;
+  status: AnnouncementStatus;
   priority: number;
+  publisher_intro: string | null;
   /** 发布时间兜底：start_at 为空时作为发布时间展示 */
   created_at: string;
   attachments: AnnouncementAttachment[];
@@ -995,6 +1015,8 @@ export interface AnnouncementCreate {
   end_at?: string;
   enabled?: boolean;
   priority?: number;
+  publisher_intro?: string;
+  i18n?: AnnouncementI18n;
   category?: AnnouncementCategory;
 }
 
@@ -2395,4 +2417,116 @@ export interface ClubApplyGuestSubmit {
   class_suffix?: string | null;
   departments: string[];
   intro?: string | null;
+}
+
+/* ---------- 首页 Hero 区块配置（V0.6.1 需求3） ---------- */
+
+/** 多语言文案字典：{locale: text}，缺失/空串由读取方按兜底链回退 */
+export type LocalizedText = Record<string, string>;
+
+/** Hero 左侧文本字段（单语种） */
+export interface HeroTexts {
+  eyebrow: string;
+  title: string;
+  subtitle: string;
+  description: string;
+}
+
+/** 管理端：Hero 行动按钮（多语言文案 + 跳转 URL + 启用开关） */
+export interface HeroButton {
+  id: string;
+  label: LocalizedText;
+  href: string;
+  variant: "default" | "outline";
+  enabled: boolean;
+}
+
+/** 管理端：Hero 统计卡片（多语言主数值 + 滚动起始值 + 多语言底部说明） */
+export interface HeroStat {
+  value: LocalizedText;
+  from_value: number | null;
+  label: LocalizedText;
+  enabled: boolean;
+}
+
+/** 管理端：完整 Hero 配置（含全部语种原文，供后台表单编辑） */
+export interface HeroConfig {
+  background_url: string | null;
+  background_opacity: number;
+  background_blur: number;
+  texts: Record<string, HeroTexts>;
+  buttons: HeroButton[];
+  stats: HeroStat[];
+  updated_at: string | null;
+}
+
+/** 管理端：Hero 配置更新请求 */
+export type HeroUpdate = Omit<HeroConfig, "updated_at">;
+
+/** 公开：按请求 locale 解析后的按钮 */
+export interface HeroPublicButton {
+  id: string;
+  label: string | null;
+  href: string;
+  variant: string;
+  enabled: boolean;
+}
+
+/** 公开：按请求 locale 解析后的统计卡片 */
+export interface HeroPublicStat {
+  value: string | null;
+  from_value: number | null;
+  label: string | null;
+  enabled: boolean;
+}
+
+/** 公开：按请求 locale 解析后的 Hero 配置 */
+export interface HeroPublic {
+  locale: string;
+  background_url: string | null;
+  background_opacity: number;
+  background_blur: number;
+  eyebrow: string;
+  title: string;
+  subtitle: string;
+  description: string;
+  buttons: HeroPublicButton[];
+  stats: HeroPublicStat[];
+}
+
+/* ==================== V0.6.1 需求5：举报（Report） ==================== */
+
+export type ReportType = "user" | "blog" | "post";
+export type ReportStatus = "pending" | "approved" | "rejected";
+/** 处罚动作：warning / hide_profile / ban_temp（用户类）；hide_content（内容类） */
+export type ReportPenalty = "warning" | "hide_profile" | "ban_temp" | "hide_content";
+
+export interface ReportReporterOut {
+  user_id: number | null;
+  username: string | null;
+  display_name: string | null;
+}
+
+export interface ReportOut {
+  id: number;
+  report_type: ReportType;
+  target_id: number;
+  /** 被举报资源预览文本 */
+  target_label: string | null;
+  /** 被举报对象用户名（仅 user 类型） */
+  target_username: string | null;
+  /** 举报人信息（仅管理员可见，被举报用户不可见） */
+  reporter: ReportReporterOut | null;
+  reporter_ip: string | null;
+  reason: string;
+  status: ReportStatus;
+  admin_comment: string | null;
+  penalty: string | null;
+  created_at: string;
+  reviewed_at: string | null;
+}
+
+export interface ReportListOut {
+  items: ReportOut[];
+  total: number;
 }

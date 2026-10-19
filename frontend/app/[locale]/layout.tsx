@@ -7,6 +7,7 @@ import {
   defaultLocale,
   isLocale,
   urlLangToLocale,
+  localeToHreflang,
   type Locale,
 } from "@/lib/i18n";
 import { getDictionaryByLocale } from "@/i18n/dictionary";
@@ -79,10 +80,11 @@ export async function generateMetadata({
   const currentPath = (await headers()).get("x-pathname") ?? `/${locale}`;
   const rest = stripLocalePrefix(currentPath);
 
-  // 每个支持的语言生成一条 alternate，全部带 locale 前缀；x-default 指向默认语言
+  // 每个支持的语言生成一条 alternate（hreflang 用 BCP 47 规范大小写，如 zh-CN / en-GB），
+  // 全部带 locale 前缀；x-default 指向默认语言
   const languages: Record<string, string> = {};
   for (const l of locales) {
-    languages[l] = `${BASE_URL}/${l}${rest}`;
+    languages[localeToHreflang(l)] = `${BASE_URL}/${l}${rest}`;
   }
   languages["x-default"] = `${BASE_URL}/${defaultLocale}${rest}`;
 

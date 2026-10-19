@@ -22,11 +22,11 @@ from app.db.models import TranslationCache
 
 logger = logging.getLogger("gdueca.translator")
 
-# i18n 字典接口的合法语言集合（与前端 frontend/lib/i18n.ts 的 locales 对应，全小写）
-UI_LANGS = {"zh-cn", "zh-tw", "zh-hk", "en-us", "en-gb", "ja"}
+# i18n 字典接口的合法语言集合（V0.6.1 需求1：与前端 13 语种白名单一一对应，全小写）
+UI_LANGS = set(SUPPORTED_LOCALE_IDS)
 
-# 内容翻译接受的显示语言：19 门界面语言 + 旧调用方使用的代码
-_DISPLAY_LANGS = SUPPORTED_LOCALE_IDS | UI_LANGS | {"zh", "en"}
+# 内容翻译接受的显示语言：13 门界面语言 + 旧调用方使用的代码（zh/en/ja 兼容保留）
+_DISPLAY_LANGS = SUPPORTED_LOCALE_IDS | UI_LANGS | {"zh", "en", "ja"}
 
 ContentLang = Literal["zh", "en"]
 

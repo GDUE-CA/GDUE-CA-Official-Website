@@ -17,6 +17,7 @@ export const PERMISSION_MODULES = [
   "review.resets",
   "review.emails", // 更改绑定邮箱人工申请审核
   "review.school", // 学校身份人工验证审核（Module D）
+  "review.reports", // V0.6.1 需求5：用户举报审核
   "settings",
   "users",
   "badges", // 用户徽章管理（用户详情页内）
@@ -63,6 +64,7 @@ export const ROLE_DEFAULTS: Record<string, Partial<Record<PermissionModule, Perm
     "review.resets": ["view", "manage"],
     "review.emails": ["view", "manage"],
     "review.school": ["view", "manage"],
+    "review.reports": ["view", "manage"],
     settings: ["view", "manage"],
     users: ["view", "manage"],
     badges: ["view", "manage"],
@@ -94,6 +96,7 @@ export const ROLE_DEFAULTS: Record<string, Partial<Record<PermissionModule, Perm
     "review.resets": ["view", "manage"],
     "review.emails": ["view", "manage"],
     "review.school": ["view", "manage"],
+    "review.reports": ["view", "manage"],
     settings: ["view", "manage"],
     users: ["view"],
     badges: ["view", "manage"],

@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { locales, defaultLocale } from "@/lib/i18n";
+import { locales, defaultLocale, localeToHreflang } from "@/lib/i18n";
 
 /**
  * sitemap.ts - 自动生成 sitemap.xml
@@ -23,7 +23,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
       const url = `${BASE_URL}/${locale}${route}`;
       const alternates: Record<string, string> = {};
       for (const altLocale of locales) {
-        alternates[altLocale] = `${BASE_URL}/${altLocale}${route}`;
+        // hreflang 键用 BCP 47 规范大小写（zh-CN / en-GB），与页面 <head> 输出一致
+        alternates[localeToHreflang(altLocale)] = `${BASE_URL}/${altLocale}${route}`;
       }
       // 默认语言额外标注 x-default（仍带 locale 前缀，与规范 §1 一致）
       if (locale === defaultLocale) {

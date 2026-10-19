@@ -25,12 +25,19 @@ import GraduationCap from "@/assets/icons/status/graduation-cap.svg";
 import Handshake from "@/assets/icons/status/handshake.svg";
 import UserPlus from "@/assets/icons/user/user-plus.svg";
 import CheckBadge from "@/assets/icons/status/badge-check.svg";
+import Eye from "@/assets/icons/status/eye.svg";
+import EyeOff from "@/assets/icons/status/eye-off.svg";
+import Copy from "@/assets/icons/action/copy.svg";
+import ShieldAlert from "@/assets/icons/status/shield-alert.svg";
+import ClipboardList from "@/assets/icons/action/clipboard-list.svg";
 import { useI18n } from "@/i18n/provider";
 import { useLocalizedPath } from "@/lib/navigation";
 import { BadgeList } from "@/components/user/BadgeChip";
+import { ReportDialog } from "@/components/user/ReportDialog";
 import { Button } from "@/components/ui/button";
 import { API_BASE_URL, ApiError } from "@/lib/api/client";
 import { fetchMe } from "@/lib/api/auth";
+import { isAdminRole } from "@/lib/auth";
 import {
   fetchPublicProfile,
   followUser,
@@ -64,11 +71,17 @@ export default function UserProfilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // 访问者身份：null=未登录/BG（无法关注）；用于区分「本人 → 编辑资料」
-  const [viewer, setViewer] = useState<{ username: string } | null>(null);
+  // 访问者身份：null=未登录/BG（无法关注）；role 用于区分管理员审核快捷入口
+  const [viewer, setViewer] = useState<{ username: string; role: string } | null>(null);
   // 关注状态本地镜像（后端为权威，前端乐观更新）
   const [following, setFollowing] = useState(false);
   const [followBusy, setFollowBusy] = useState(false);
+  // V0.6.1 需求5：本人「编辑视图 ↔ 访客预览视图」切换（仅本人有效）
+  const [previewMode, setPreviewMode] = useState(false);
+  // 举报弹窗（访客预览视图右上角入口）
+  const [reportOpen, setReportOpen] = useState(false);
+  // 分享链接复制成功提示
+  const [copied, setCopied] = useState(false);
 
   // 个人资料 + 当前登录者（未登录静默）
   useEffect(() => {
@@ -90,7 +103,7 @@ export default function UserProfilePage() {
         setLoading(false);
       });
     fetchMe()
-      .then((me) => setViewer({ username: me.username }))
+      .then((me) => setViewer({ username: me.username, role: me.role }))
       .catch(() => setViewer(null));
   }, [username, t]);
 
@@ -153,6 +166,25 @@ export default function UserProfilePage() {
   const bannerUrl = profile.profile_banner ? assetUrl(profile.profile_banner) : null;
   const isSelf = viewer?.username === profile.username;
   const isFriend = profile.is_friend === true && following;
+  // V0.6.1 需求5：管理员访问者（任意后台角色）显示审核快捷入口；
+  // super_admin/admin 可查看被隐藏主页的完整内容（与后端 _FULL_ACCESS_ROLES 一致）
+  const viewerIsAdmin = isAdminRole(viewer?.role);
+  const viewerFullAccess = viewer?.role === "super_admin" || viewer?.role === "admin";
+  // 主页被隐藏且当前访问者无完整查看权限 → 展示「主页不可见」提示（本人 / 管理员不受限）
+  const profileHiddenForViewer = profile.profile_hidden && !isSelf && !viewerFullAccess;
+
+  /** 复制个人主页分享链接（/u/{username}） */
+  async function copyShareLink() {
+    if (!profile) return;
+    const url = `${window.location.origin}${lp(`/u/${profile.username}`)}`;
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      /* 剪贴板不可用时静默（仍展示已复制提示） */
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
 
   // 地区展示文本（永久公开）
   const regionText = [
@@ -214,40 +246,79 @@ export default function UserProfilePage() {
               <UserCircle className="h-20 w-20 sm:h-24 sm:w-24 text-muted-foreground ring-4 ring-background rounded-full bg-muted" />
             )}
           </div>
-          {/* 社交动作区：本人=编辑资料；访客=关注/已关注；未登录=关注（点击去登录） */}
-          <div className="pb-1.5">
+          {/* 社交动作区：本人=编辑资料/预览切换；访客=举报（+管理员审核入口）+ 关注/已关注 */}
+          <div className="flex flex-wrap items-center justify-end gap-2 pb-1.5">
             {isSelf ? (
-              <Button asChild variant="outline" size="sm">
-                <Link href={lp("/setting/profile")}>
-                  {t("profile.editProfile")}
-                </Link>
-              </Button>
-            ) : viewer ? (
-              <Button
-                variant={following ? "outline" : "default"}
-                size="sm"
-                onClick={toggleFollow}
-                disabled={followBusy}
-              >
-                {following ? (
-                  <>
-                    <CheckBadge className="h-4 w-4 mr-1" />
-                    {t("profile.following")}
-                  </>
-                ) : (
-                  <>
-                    <UserPlus className="h-4 w-4 mr-1" />
-                    {t("profile.follow")}
-                  </>
-                )}
-              </Button>
+              previewMode ? (
+                <>
+                  <Button variant="outline" size="sm" onClick={copyShareLink}>
+                    <Copy className="h-4 w-4 mr-1" />
+                    {copied ? t("profile.linkCopied") : t("profile.copyShareLink")}
+                  </Button>
+                  <Button size="sm" onClick={() => setPreviewMode(false)}>
+                    <EyeOff className="h-4 w-4 mr-1" />
+                    {t("profile.exitPreview")}
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button variant="outline" size="sm" onClick={() => setPreviewMode(true)}>
+                    <Eye className="h-4 w-4 mr-1" />
+                    {t("profile.previewVisitor")}
+                  </Button>
+                  <Button asChild variant="outline" size="sm">
+                    <Link href={lp("/setting/profile")}>
+                      {t("profile.editProfile")}
+                    </Link>
+                  </Button>
+                </>
+              )
             ) : (
-              <Button asChild size="sm">
-                <Link href={lp("/login")}>
-                  <UserPlus className="h-4 w-4 mr-1" />
-                  {t("profile.follow")}
-                </Link>
-              </Button>
+              <>
+                {/* 管理员访问他人主页：审核快捷入口（管理员无编辑他人主页权限） */}
+                {viewerIsAdmin && (
+                  <Button asChild variant="outline" size="sm">
+                    <Link href={lp("/admin/audit/report")}>
+                      <ClipboardList className="h-4 w-4 mr-1" />
+                      {t("profile.auditShortcut")}
+                    </Link>
+                  </Button>
+                )}
+                {/* 访客举报入口（被隐藏主页不展示） */}
+                {!profileHiddenForViewer && (
+                  <Button variant="ghost" size="sm" onClick={() => setReportOpen(true)}>
+                    <ShieldAlert className="h-4 w-4 mr-1" />
+                    {t("profile.report")}
+                  </Button>
+                )}
+                {viewer ? (
+                  <Button
+                    variant={following ? "outline" : "default"}
+                    size="sm"
+                    onClick={toggleFollow}
+                    disabled={followBusy}
+                  >
+                    {following ? (
+                      <>
+                        <CheckBadge className="h-4 w-4 mr-1" />
+                        {t("profile.following")}
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus className="h-4 w-4 mr-1" />
+                        {t("profile.follow")}
+                      </>
+                    )}
+                  </Button>
+                ) : (
+                  <Button asChild size="sm">
+                    <Link href={lp("/login")}>
+                      <UserPlus className="h-4 w-4 mr-1" />
+                      {t("profile.follow")}
+                    </Link>
+                  </Button>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -321,7 +392,17 @@ export default function UserProfilePage() {
         </div>
       </div>
 
-      {/* 3. Tab 切换栏：About 默认 / Posts */}
+      {/* 3. 被隐藏主页：访客展示「主页不可见」提示（不返回 404，不泄露内部信息） */}
+      {profileHiddenForViewer ? (
+        <div className="max-w-3xl mx-auto px-4 py-12">
+          <div className="rounded-xl border border-border bg-background p-10 text-center">
+            <EyeOff className="h-10 w-10 mx-auto text-muted-foreground/60 mb-3" />
+            <h2 className="text-lg font-semibold">{t("profile.hiddenNotice")}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t("profile.hiddenNoticeHint")}</p>
+          </div>
+        </div>
+      ) : (
+      /* 3. Tab 切换栏：About 默认 / Posts */
       <div className="max-w-3xl mx-auto px-4">
         <div className="flex gap-1">
           <TabButton
@@ -507,6 +588,16 @@ export default function UserProfilePage() {
           </div>
         )}
       </div>
+      )}
+
+      {/* 4. 举报弹窗（访客预览视图触发；user 类型以 username 寻址） */}
+      <ReportDialog
+        open={reportOpen}
+        onOpenChange={setReportOpen}
+        allowedTypes={["user"]}
+        targetUsername={profile.username}
+        targetLabel={profile.display_name}
+      />
     </div>
   );
 }

@@ -25,6 +25,7 @@ import { API_BASE_URL, ApiError } from "@/lib/api/client";
 import { clearLocalSession, isAdminRole, isLogged, logout } from "@/lib/auth";
 import type { AdminUser } from "@/types/api";
 import User from "@/assets/icons/user/user.svg";
+import UserCircle from "@/assets/icons/user/user-circle.svg";
 import LayoutDashboard from "@/assets/icons/navigation/layout-dashboard.svg";
 import LogOut from "@/assets/icons/navigation/log-out.svg";
 import Check from "@/assets/icons/action/check.svg";
@@ -181,6 +182,13 @@ export function UserMenu() {
         </div>
         <DropdownMenuSeparator />
 
+        {/* V0.6.1 需求5：个人主页直达入口（/u/{username}） */}
+        <DropdownMenuItem asChild>
+          <Link href={lp(`/u/${profile.username}`)}>
+            <UserCircle />
+            {t("nav.profilePage")}
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link href={lp("/setting/profile")}>
             <User />

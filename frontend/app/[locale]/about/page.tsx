@@ -34,27 +34,21 @@ export default async function AboutPage({
 
   /**
    * 按当前语言取值：数据内部用 "zh-cn"/"zh-tw"/"en-us"/"ja" 作 key（历史遗留）；
-   * 全部 locale 映射到最接近的数据 key，缺失回退简体中文。
+   * 全部 locale（V0.6.1 需求1：13 语种白名单）映射到最接近的数据 key，缺失回退简体中文。
    */
   const localeToDataKey: Record<string, string> = {
     "zh-cn": "zh-cn",
-    "zh-cn-sg": "zh-cn",
     "zh-hk": "zh-tw",
     "zh-mo": "zh-tw",
-    "zh-yue-cn": "zh-cn",
-    "zh-yue-tw": "zh-tw",
-    "en-gb": "en-us",
-    "en-us": "en-us",
+    "zh-tw": "zh-tw",
     "ja-jp": "ja",
     "ko-kr": "en-us",
+    "en-gb": "en-us",
+    "en-us": "en-us",
     "es-es": "en-us",
     "fr-fr": "en-us",
     "de-de": "en-us",
-    "ru-ru": "en-us",
-    "pt-br": "en-us",
-    "ar-sa": "en-us",
-    "hi-in": "en-us",
-    "tr-tr": "en-us",
+    "pt-pt": "en-us",
     "it-it": "en-us",
   };
   const pick = (obj: Record<string, string>) => {

@@ -14,7 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import delete as sa_delete
 from sqlalchemy import func, select
 
-from app.api import account, activities, admin_stats, announcements, audit, auth, background_tasks, badges, blog, bug_report, club_apply, comments, content, db_maintenance, email_change, geo, i18n_public, health, memos, media, members, notifications, oauth, projects, query, realname, recovery_codes, recovery_review, recruitment, recycle, register, roles, school_verify, security, security_questions, sso, stats, sys_data, system, system_init, system_reset, tags, themes, translations, users, version
+from app.api import account, activities, admin_stats, announcements, audit, auth, background_tasks, badges, blog, bug_report, club_apply, comments, content, db_maintenance, email_change, geo, hero, i18n_public, health, memos, media, members, notifications, oauth, projects, query, realname, recovery_codes, recovery_review, recruitment, recycle, register, reports, roles, school_verify, security, security_questions, sso, stats, sys_data, system, system_init, system_reset, tags, themes, translations, users, version
 from app.core.config import get_settings
 from app.core.csrf import CSRF_HEADER, csrf_middleware
 from app.core.exceptions import register_exception_handlers
@@ -34,6 +34,7 @@ from app.db.models import (
     ActivityStatus,
     Base,
     ClubDepartment,
+    HeroConfig,
     IpRule,
     IpRuleType,
     SystemSetting,
@@ -241,6 +242,14 @@ async def _migrate_columns(conn):
             # 安全问题（per-user 3 个）：存量用户默认 True（下次登录强制补设）；
             # 新注册 / 初始化向导完成时写 False
             ("must_set_security_questions", "BOOLEAN DEFAULT 1"),
+            # ---- V0.6.1 需求5：个人主页隐藏 + 临时封禁到期 ----
+            ("profile_hidden", "BOOLEAN DEFAULT 0"),
+            ("ban_until", "DATETIME NULL"),
+        ],
+        "announcements": [
+            # V0.6.1 需求4：发布者介绍 + 多语言覆盖
+            ("publisher_intro", "VARCHAR(200) NULL"),
+            ("i18n", "JSON NULL"),
         ],
         "activities": [
             ("checkin_open", "BOOLEAN DEFAULT 0"),
@@ -338,6 +347,8 @@ async def _migrate_columns(conn):
             ("sys_default_currency", "VARCHAR(8) NULL"),
             # V0.5.5 §3.3：邮件收发模块就绪开关
             ("mail_system_ready", "BOOLEAN DEFAULT 0"),
+            # V0.6.1 需求5：举报审核通知开关
+            ("report_notify_enabled", "BOOLEAN DEFAULT 1"),
         ],
     }
     await _split_audit_request_id(conn)
@@ -553,6 +564,17 @@ async def _init_db():
             for spec in builtin_departments:
                 s.add(ClubDepartment(enabled=True, **spec))
             logger.info("已 seed %d 个内置意向部门选项", len(builtin_departments))
+        await s.commit()
+
+        # V0.6.1 需求3 预置首页 Hero 默认主题：仅当表中无记录（全新部署）时写入 Seed，
+        # 已有配置直接跳过，绝不覆盖管理员已配置好的首页。
+        hero_count = (await s.execute(
+            select(func.count()).select_from(HeroConfig)
+        )).scalar_one()
+        if hero_count == 0:
+            from app.api.hero import DEFAULT_HERO_SEED
+            s.add(HeroConfig(id=1, **DEFAULT_HERO_SEED))
+            logger.info("已 seed 默认首页 Hero 主题配置")
         await s.commit()
 
 
@@ -793,6 +815,8 @@ app.include_router(announcements.admin_router)
 app.include_router(notifications.router)
 app.include_router(content.public_router)
 app.include_router(content.admin_router)
+app.include_router(hero.public_router)
+app.include_router(hero.admin_router)
 app.include_router(members.public_router)
 app.include_router(members.admin_router)
 app.include_router(recruitment.public_router)
@@ -851,10 +875,14 @@ app.include_router(club_apply.router)
 app.include_router(club_apply.admin_router)
 # V0.5.8 安全问题预设题库后台 CRUD
 app.include_router(security_questions.router)
+# V0.6.1 需求5：举报提交 + 后台举报审核
+app.include_router(reports.router)
+app.include_router(reports.admin_router)
 
 # ---------- 静态文件服务（头像上传 + 成员头像 + 博客图片 + Memo 附件） ----------
 os.makedirs("uploads/avatars", exist_ok=True)
 os.makedirs("uploads/members", exist_ok=True)
 os.makedirs("uploads/blog", exist_ok=True)
 os.makedirs("uploads/memos", exist_ok=True)
+os.makedirs("uploads/hero", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")

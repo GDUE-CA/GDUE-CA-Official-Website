@@ -28,6 +28,26 @@ interface I18nContextValue {
 
 const I18nContext = createContext<I18nContextValue | null>(null);
 
+/** 已告警的缺失 key（每 key 每会话仅告警一次，避免控制台刷屏） */
+const warnedMissingKeys = new Set<string>();
+
+/**
+ * 文案兜底策略（V0.6.1 需求2）场景 2：i18n key 不存在时的降级处理。
+ * 开发环境：浏览器控制台告警一次，提示补齐翻译；
+ * 生产环境：静默，仅按既有行为原样输出 key 名（防页面空白）。
+ * 仅浏览器端告警——SSR / 构建期调用不打服务端日志。
+ */
+function warnMissingKey(key: string): void {
+  if (
+    process.env.NODE_ENV === "development" &&
+    typeof window !== "undefined" &&
+    !warnedMissingKeys.has(key)
+  ) {
+    warnedMissingKeys.add(key);
+    console.warn(`[i18n] 缺失翻译 key：${key}（已按兜底策略原样输出 key 名，请补齐 13 语种词条）`);
+  }
+}
+
 function lookup(
   messages: Messages,
   key: string,
@@ -41,10 +61,15 @@ function lookup(
     } else {
       // fallback: 字面量带点 key（如 admin.nav 内 "users.list" 字面量 key）。
       // 标准逐段 split('.') 解析会失败，尝试把剩余段合并为字面量 key 直接访问当前父对象。
-      return lookupLiteral(messages, key, vars);
+      const hit = lookupLiteral(messages, key, vars);
+      if (hit === key) warnMissingKey(key);
+      return hit;
     }
   }
-  if (typeof result !== "string") return key;
+  if (typeof result !== "string") {
+    warnMissingKey(key);
+    return key;
+  }
   if (vars) {
     return result.replace(/\{(\w+)\}/g, (_, name: string) =>
       String(vars[name] ?? `{${name}}`)

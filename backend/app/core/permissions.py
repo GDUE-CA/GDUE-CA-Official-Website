@@ -33,6 +33,7 @@ PERMISSION_MODULES = (
     "review.resets",
     "review.emails",   # 更改绑定邮箱人工申请审核
     "review.school",   # 学校身份人工验证审核（Module D）
+    "review.reports",  # V0.6.1 需求5：用户举报审核（仅审核权限管理员可访问）
     "settings",
     "users",
     # ---------- CMS 扩展 ----------
@@ -98,6 +99,11 @@ ROLE_DEFAULTS: dict[str, dict[Role, set[str]]] = {
     },
     # 学校身份人工验证审核（super_admin/admin view+manage；editor 不参与）
     "review.school": {
+        Role.SUPER_ADMIN: {"view", "manage"},
+        Role.ADMIN: {"view", "manage"},
+    },
+    # V0.6.1 需求5：举报审核（仅具备审核权限的管理员；editor 不参与）
+    "review.reports": {
         Role.SUPER_ADMIN: {"view", "manage"},
         Role.ADMIN: {"view", "manage"},
     },

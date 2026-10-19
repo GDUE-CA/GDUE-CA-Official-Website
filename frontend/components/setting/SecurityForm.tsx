@@ -3,13 +3,13 @@
 /**
  * SecurityForm —— Tab-4 账号安全
  *
- * a) 用户名：显示当前值 + 「修改」→ Dialog① 输入新用户名（/^[A-Za-z0-9_]{4,}$/）
- *    → 提交前 Dialog② 二次确认 → PUT profile {username} → 更新本地会话
- *    （后端自动写审计日志）
+ * a) 用户名：仅只读展示（V0.6.1 需求5：注册确认后永久不可修改，
+ *    前端移除了全部修改入口与二次确认弹窗；后端同样拒绝改用户名请求）
  * b) 密码：旧密码/新密码/确认（统一 PasswordInput 眼睛切换）+ 强度指示器，
  *    POST /api/auth/change-password；强制旧密码，不提供邮箱验证码绕过入口；
  *    「保留当前设备登录」默认勾选，取消 = 全部会话（含本机）强制下线
- * c) 预留入口：更换绑定邮箱 / 手机号（disabled + comingSoon 说明）
+ * c) 一次性安全恢复码
+ * d) 预留入口：更换绑定邮箱 / 手机号（disabled + comingSoon 说明）
  */
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -20,7 +20,6 @@ import UserCog from "@/assets/icons/user/user-cog.svg";
 import { useI18n } from "@/i18n/provider";
 import { useLocalizedPath } from "@/lib/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import {
@@ -30,22 +29,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { fetchProfile, updateProfile, changePassword } from "@/lib/api/auth";
-import { getSession, saveSession, clearLocalSession } from "@/lib/auth";
+import { fetchProfile, changePassword } from "@/lib/api/auth";
+import { clearLocalSession } from "@/lib/auth";
 import { meetsPasswordPolicy, passwordClassCount } from "@/lib/passwordPolicy";
 import { RecoveryCodesCard } from "./RecoveryCodesCard";
 import { cn } from "@/lib/utils";
 import { useServerFieldErrors } from "@/lib/hooks/useServerFieldErrors";
 import { FieldError } from "@/components/ui/field-error";
-
-/** 用户名格式：≥4 字符，字母/数字/下划线 */
-const USERNAME_RE = /^[A-Za-z0-9_]{4,}$/;
 
 /** 密码强度：不满足强口令策略为 weak，满足后按长度 / 字符类别区分 medium / strong */
 function passwordStrength(pwd: string): "weak" | "medium" | "strong" {
@@ -62,17 +52,9 @@ export function SecurityForm() {
   const router = useRouter();
   const lp = useLocalizedPath();
 
-  // 当前用户名
+  // 当前用户名（只读展示）
   const [currentUsername, setCurrentUsername] = useState("");
   const [loading, setLoading] = useState(true);
-
-  // 用户名修改：Dialog① 输入 → Dialog② 确认
-  const [usernameOpen, setUsernameOpen] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [newUsername, setNewUsername] = useState("");
-  const [usernameError, setUsernameError] = useState<string | null>(null);
-  const [usernameSaving, setUsernameSaving] = useState(false);
-  const [usernameMsg, setUsernameMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
   // 密码修改
   const [oldPassword, setOldPassword] = useState("");
@@ -93,14 +75,6 @@ export function SecurityForm() {
       .finally(() => setLoading(false));
   }, []);
 
-  function validateUsername(name: string): string | null {
-    if (!name) return t("account.usernameRequired");
-    if (name.length < 4) return t("account.usernameTooShort");
-    if (!USERNAME_RE.test(name)) return t("account.usernameInvalid");
-    if (name === currentUsername) return t("account.usernameSame");
-    return null;
-  }
-
   /** 前端预校验：按字段返回错误（与后端字段名一致，行内展示） */
   function validatePassword(
     oldp: string,
@@ -113,48 +87,6 @@ export function SecurityForm() {
     else if (newp === oldp) errs.new_password = t("account.passwordSame");
     if (newp !== confirm) errs.confirm_password = t("account.passwordMismatch");
     return errs;
-  }
-
-  /** Dialog① 提交：校验通过后弹出二次确认 */
-  function handleUsernameNext(e: React.FormEvent) {
-    e.preventDefault();
-    const err = validateUsername(newUsername.trim());
-    if (err) {
-      setUsernameError(err);
-      return;
-    }
-    setUsernameError(null);
-    setConfirmOpen(true);
-  }
-
-  /** Dialog② 确认：真正提交 */
-  async function handleUsernameSubmit() {
-    const name = newUsername.trim();
-    if (validateUsername(name)) {
-      setConfirmOpen(false);
-      return;
-    }
-    setUsernameSaving(true);
-    setUsernameMsg(null);
-    try {
-      const updated = await updateProfile({ username: name });
-      // 更新本地会话展示信息
-      const session = getSession();
-      if (session) saveSession({ ...session, username: updated.username });
-      setCurrentUsername(updated.username);
-      setUsernameMsg({ type: "ok", text: t("account.usernameUpdated") });
-      setConfirmOpen(false);
-      setUsernameOpen(false);
-      setNewUsername("");
-    } catch (err) {
-      setUsernameMsg({
-        type: "err",
-        text: err instanceof Error ? err.message : t("account.usernameSaveError"),
-      });
-      setConfirmOpen(false);
-    } finally {
-      setUsernameSaving(false);
-    }
   }
 
   async function handlePasswordSubmit(e: React.FormEvent) {
@@ -200,48 +132,20 @@ export function SecurityForm() {
 
   return (
     <div className="space-y-6">
-      {/* a) 用户名 */}
+      {/* a) 用户名（只读：注册确认后永久不可修改） */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <UserCog className="h-5 w-5" />
             {t("account.usernameSection")}
           </CardTitle>
-          <CardDescription>{t("account.usernameHint")}</CardDescription>
+          <CardDescription>{t("account.usernameImmutable")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">{t("account.currentUsername")}</span>
-              <span className="font-mono font-medium">{currentUsername}</span>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setNewUsername("");
-                setUsernameError(null);
-                setUsernameMsg(null);
-                setUsernameOpen(true);
-              }}
-            >
-              {t("account.edit")}
-            </Button>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">{t("account.currentUsername")}</span>
+            <span className="font-mono font-medium">{currentUsername}</span>
           </div>
-          {usernameMsg && (
-            <p
-              className={cn(
-                "flex items-center gap-2 rounded-md px-3 py-2 text-sm",
-                usernameMsg.type === "ok"
-                  ? "bg-green-50 text-green-600 dark:bg-green-950/20"
-                  : "bg-destructive/10 text-destructive"
-              )}
-            >
-              {usernameMsg.type === "ok" && <CheckCircle2 className="h-4 w-4" />}
-              {usernameMsg.text}
-            </p>
-          )}
         </CardContent>
       </Card>
 
@@ -388,76 +292,6 @@ export function SecurityForm() {
           <p className="text-xs text-muted-foreground">{t("setting.security.comingSoon")}</p>
         </CardContent>
       </Card>
-
-      {/* Dialog① 输入新用户名 */}
-      <Dialog
-        open={usernameOpen}
-        onOpenChange={(open) => {
-          if (!open && !usernameSaving) setUsernameOpen(false);
-        }}
-      >
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>{t("account.newUsername")}</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleUsernameNext} className="space-y-3" noValidate>
-            <Input
-              value={newUsername}
-              onChange={(e) => {
-                setNewUsername(e.target.value);
-                setUsernameError(null);
-              }}
-              placeholder={t("account.usernamePlaceholder")}
-              autoComplete="off"
-              autoFocus
-            />
-            <p className="text-xs text-muted-foreground">{t("account.usernameHint")}</p>
-            {usernameError && (
-              <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                {usernameError}
-              </p>
-            )}
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setUsernameOpen(false)}>
-                {t("setting.cancel")}
-              </Button>
-              <Button type="submit">{t("common.confirm")}</Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog② 二次确认 */}
-      <Dialog
-        open={confirmOpen}
-        onOpenChange={(open) => {
-          if (!open && !usernameSaving) setConfirmOpen(false);
-        }}
-      >
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>{t("account.usernameSection")}</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            {t("setting.security.usernameConfirm", { name: newUsername.trim() })}
-          </p>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setConfirmOpen(false)} disabled={usernameSaving}>
-              {t("setting.cancel")}
-            </Button>
-            <Button variant="destructive" onClick={() => void handleUsernameSubmit()} disabled={usernameSaving}>
-              {usernameSaving ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  {t("setting.saving")}
-                </>
-              ) : (
-                t("common.confirm")
-              )}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

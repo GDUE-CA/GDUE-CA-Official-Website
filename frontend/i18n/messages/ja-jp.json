@@ -227,11 +227,6 @@
       "stat3": "カバー学院数",
       "stat4": "創立年"
     },
-    "announcements": {
-      "title": "最新のお知らせ",
-      "subtitle": "サークルの最新情報",
-      "viewDetail": "詳細を見る"
-    },
     "events": {
       "title": "近日の活動",
       "subtitle": "技術イベントと講座に参加しよう",
@@ -2417,6 +2412,13 @@
       "previewBtn": "プレビュー",
       "previewEmpty": "プレビューできる内容はまだありません",
       "statusHint": "公開済み：サイトに表示されます。下書き：管理画面にのみ保存され、公開されません",
+      "colPublisherIntro": "発行者紹介",
+      "publisherIntroPlaceholder": "例：学生会 ・ 広報部（任意、詳細ページのタイトル下に表示）",
+      "i18nSection": "多言語コンテンツの上書き",
+      "i18nLangLabel": "編集する言語",
+      "i18nSectionHint": "選択した言語のタイトル / 本文 / 発行者紹介を個別に上書きします。未設定の言語は本文または英語版に自動フォールバックします",
+      "i18nPlaceholder": "空欄の場合は本文にフォールバック。現在の本文：{base}",
+      "i18nEmptyHint": "空欄の項目は保存されません。入力した言語のみ上書き内容として保存されます",
       "timeWindowHint": "空欄は即時有効 / 無期限を意味します。時刻は UTC で保存されます",
       "saveBtn": "保存",
       "cancelBtn": "キャンセル",

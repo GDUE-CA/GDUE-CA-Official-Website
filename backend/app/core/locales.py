@@ -3,8 +3,9 @@
 定义支持的 UI 界面语言列表、变体回退映射、locale→region_code 映射，
 以及 locale / region_code / currency 的校验函数。
 
-规范约束（本地化系统，2026-10-13 版）：
-- 19 门语言，URL 路径全小写横杠分隔；
+规范约束（V0.6.1 需求1 定稿，2026-10-19 版）：
+- 语言白名单严格锁定 13 门，禁止新增其他 locale（与前端 13 个 messages/*.json 一一对应）；
+- URL 路径全小写横杠分隔；
 - 变体语言缺失词条沿回退链按分组兜底：亚洲语言（zh/ja/ko）落到 zh-cn，
   欧美/拉丁系语言落到 en-gb（双基准语言：zh-cn + en-gb）；
 - 时区一律 IANA 标识符（如 Asia/Shanghai），禁止存 ±偏移量；
@@ -29,26 +30,20 @@ class LocaleMeta:
     region_code: str
 
 
-# 唯一源：支持的全部 19 门 UI 界面语言
+# 唯一源：支持的全部 13 门 UI 界面语言（V0.6.1 需求1 锁定白名单，禁止新增）
 SUPPORTED_LOCALES: tuple[LocaleMeta, ...] = (
-    LocaleMeta("zh-cn", "简体中文（中国大陆）", "Simplified Chinese (China)", None, "CN"),
-    LocaleMeta("zh-cn-sg", "简体中文（新加坡）", "Simplified Chinese (Singapore)", "zh-cn", "SG"),
-    LocaleMeta("zh-hk", "繁體中文（中國香港）", "Traditional Chinese (Hong Kong)", None, "HK"),
-    LocaleMeta("zh-mo", "繁體中文（中國澳門）", "Traditional Chinese (Macao)", "zh-hk", "MO"),
-    LocaleMeta("zh-yue-cn", "简体粤语", "Cantonese (Simplified)", "zh-cn", "CN"),
-    LocaleMeta("zh-yue-tw", "繁體廣東話", "Cantonese (Traditional)", "zh-hk", "TW"),
-    LocaleMeta("en-gb", "English (UK)", "English (United Kingdom)", None, "GB"),
-    LocaleMeta("en-us", "English (US)", "English (United States)", "en-gb", "US"),
+    LocaleMeta("zh-cn", "简体中文（中国大陆）", "Simplified Chinese (Mainland China)", None, "CN"),
+    LocaleMeta("zh-hk", "繁體中文（香港）", "Traditional Chinese (Hong Kong)", None, "HK"),
+    LocaleMeta("zh-mo", "繁體中文（澳門）", "Traditional Chinese (Macao)", "zh-hk", "MO"),
+    LocaleMeta("zh-tw", "繁體中文（台灣）", "Traditional Chinese (Taiwan)", None, "TW"),
     LocaleMeta("ja-jp", "日本語", "Japanese (Japan)", None, "JP"),
     LocaleMeta("ko-kr", "한국어", "Korean (South Korea)", None, "KR"),
-    LocaleMeta("es-es", "Español", "Spanish (Spain)", None, "ES"),
+    LocaleMeta("en-gb", "British English", "British English", None, "GB"),
+    LocaleMeta("en-us", "American English", "American English", "en-gb", "US"),
+    LocaleMeta("es-es", "Español", "European Spanish", None, "ES"),
     LocaleMeta("fr-fr", "Français", "French (France)", None, "FR"),
     LocaleMeta("de-de", "Deutsch", "German (Germany)", None, "DE"),
-    LocaleMeta("ru-ru", "Русский", "Russian (Russia)", None, "RU"),
-    LocaleMeta("pt-br", "Português (Brasil)", "Portuguese (Brazil)", None, "BR"),
-    LocaleMeta("ar-sa", "العربية", "Arabic (Saudi Arabia)", None, "SA"),
-    LocaleMeta("hi-in", "हिन्दी", "Hindi (India)", None, "IN"),
-    LocaleMeta("tr-tr", "Türkçe", "Turkish (Türkiye)", None, "TR"),
+    LocaleMeta("pt-pt", "Português", "European Portuguese", None, "PT"),
     LocaleMeta("it-it", "Italiano", "Italian (Italy)", None, "IT"),
 )
 

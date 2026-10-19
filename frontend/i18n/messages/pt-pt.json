@@ -227,11 +227,6 @@
       "stat3": "",
       "stat4": ""
     },
-    "announcements": {
-      "title": "",
-      "subtitle": "",
-      "viewDetail": ""
-    },
     "events": {
       "title": "",
       "subtitle": "",
@@ -2346,6 +2341,13 @@
       "previewBtn": "",
       "previewEmpty": "",
       "statusHint": "",
+      "colPublisherIntro": "Introdução do editor",
+      "publisherIntroPlaceholder": "p. ex., Associação de Estudantes · Dept. de Comunicação (opcional; apresentado sob o título na página de detalhe)",
+      "i18nSection": "Conteúdo por idioma",
+      "i18nLangLabel": "Idioma em edição",
+      "i18nSectionHint": "Substitui o título / o corpo / a introdução do editor para o idioma selecionado; os idiomas sem substituição recuam automaticamente para o conteúdo principal ou para a versão inglesa",
+      "i18nPlaceholder": "Deixe em branco para recuar ao conteúdo principal; conteúdo principal atual: {base}",
+      "i18nEmptyHint": "Os campos em branco não são guardados; apenas os idiomas preenchidos são guardados como substituição",
       "timeWindowHint": "",
       "saveBtn": "",
       "cancelBtn": "",

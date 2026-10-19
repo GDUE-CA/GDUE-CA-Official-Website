@@ -159,6 +159,11 @@ class User(Base):
     # 隐私设置 JSON：{"gender":"public","bio":"public","birthday":"public"}
     # region 永久公开不在此 JSON 内
     profile_privacy: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    # V0.6.1 需求5：个人主页隐藏标记（管理员审核通过举报后置 True）。
+    # 访客访问返回「主页不可见」提示（非 404）；本人仍可正常进入编辑视图。
+    profile_hidden: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    # V0.6.1 需求5：临时账号封禁到期时间（UTC naive）；到期后登录自动解除。
+    ban_until: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     # 软删除：True 送入内容回收站，定时任务 30 天后物理删除；删除后禁止登录
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     deleted_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
@@ -551,6 +556,8 @@ class SystemSetting(Base):
     # 邮件收发模块就绪开关（V0.5.5 §3.3）：false = 后台「邮件与推送」置灰 + 访问页黄横幅；
     # 状态完全由后端配置驱动，前端禁止写死禁用
     mail_system_ready: Mapped[bool] = mapped_column(Boolean, default=False)
+    # V0.6.1 需求5：举报审核通知开关（true = 审核完成通知举报人 / 处罚时通知被举报人）
+    report_notify_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
 # ---------- 操作日志 ----------
@@ -806,6 +813,11 @@ class Announcement(Base):
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
     # 优先级：数字越大越优先展示
     priority: Mapped[int] = mapped_column(Integer, default=0)
+    # 发布者介绍（可选，公告详情页标题下展示，如「学生会 · 宣传部」）
+    publisher_intro: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    # 多语言覆盖（V0.6.1 需求4）：{"zh-cn": {"title": ..., "content": ..., "publisher_intro": ...}}
+    # 仅白名单 13 语种；公开接口按回退链解析，被覆盖字段跳过 DeepL 自动翻译
+    i18n: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
 
@@ -926,6 +938,31 @@ class ContentBlock(Base):
     key: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     title: Mapped[str | None] = mapped_column(String(200), nullable=True)
     body_md: Mapped[str] = mapped_column(Text)
+    updated_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)
+
+
+# ---------- 首页 Hero 区块配置（单例表，id 固定为 1） ----------
+class HeroConfig(Base):
+    """首页 Hero 区块动态配置（软编码，替代前端硬编码）。
+
+    全新部署由启动期 seed 写入默认首页主题；管理员在后台「首页标题管理」修改，
+    也可一键恢复默认。文本/按钮/统计卡片的多语言文案以 JSON 按 locale 存储，
+    缺失或空串由前端按 i18n 兜底策略回退 zh-CN。
+    """
+    __tablename__ = "hero_config"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    # 背景图 URL（NULL = 无图，前端降级纯色）+ 透明度 0-100 + 磨砂模糊 0-24px
+    background_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    background_opacity: Mapped[int] = mapped_column(Integer, default=30)
+    background_blur: Mapped[int] = mapped_column(Integer, default=8)
+    # 多语言文本：{"zh-cn": {"eyebrow","title","subtitle","description"}, ...}
+    texts: Mapped[dict] = mapped_column(JSON, default=dict)
+    # 按钮组：[{"id","label":{locale:text},"href","variant","enabled"}]
+    buttons: Mapped[list] = mapped_column(JSON, default=list)
+    # 统计卡片（最多 4 张）：[{"value":{locale:text},"from":int|null,"label":{locale:text},"enabled"}]
+    stats: Mapped[list] = mapped_column(JSON, default=list)
     updated_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)
 
@@ -1770,3 +1807,49 @@ class ClubDepartment(Base):
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)
+
+
+# ---------- V0.6.1 需求5：举报记录 ----------
+class ReportType(str, Enum):
+    USER = "user"   # 用户主页
+    BLOG = "blog"   # 博客文章
+    POST = "post"   # 说说（动态 / Memo）
+
+
+class ReportStatus(str, Enum):
+    PENDING = "pending"     # 待审核
+    APPROVED = "approved"   # 已通过（举报成立，已执行处罚）
+    REJECTED = "rejected"   # 已驳回
+
+
+class Report(Base):
+    """用户举报记录（reports）：访客 / 登录用户提交，后台审核中心处理。
+
+    - reporter_user_id 可为 NULL（匿名举报，仅记录来源 IP 用于防刷与隐私隔离）；
+    - 被举报用户无法查看举报人信息：举报人字段仅对具备 review.reports 权限的
+      管理员输出，不对被举报对象暴露；
+    - 防刷：同举报人（登录）/ 同 IP（匿名）对同一资源仅允许一条 pending 记录。
+    """
+    __tablename__ = "reports"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    report_type: Mapped[ReportType] = mapped_column(SAEnum(ReportType), index=True)
+    # 被举报资源 ID：user=用户 id；blog=博客 id；post=说说(Memo) id
+    target_id: Mapped[int] = mapped_column(Integer, index=True)
+    # 举报人：匿名提交为 NULL
+    reporter_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id"), nullable=True, index=True
+    )
+    # 举报人来源 IP（匿名防重 / 审计用；不对被举报对象暴露）
+    reporter_ip: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    reason: Mapped[str] = mapped_column(Text)
+    status: Mapped[ReportStatus] = mapped_column(
+        SAEnum(ReportStatus), default=ReportStatus.PENDING, index=True
+    )
+    admin_comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # 审核通过的处罚动作标识（warning / hide_profile / ban_temp / hide_content）
+    penalty: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # 审核管理员 ID
+    reviewed_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)

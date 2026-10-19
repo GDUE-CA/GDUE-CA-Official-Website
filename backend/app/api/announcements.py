@@ -13,6 +13,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import ctx_uid, log_action
+from app.core.locales import LOCALE_FALLBACK_MAP, SUPPORTED_LOCALE_IDS
 from app.core.middleware import get_client_ip
 from app.core.permissions import require_permission
 from app.db.models import (
@@ -56,6 +57,74 @@ def _is_in_effect(a: Announcement, now: datetime) -> bool:
     return True
 
 
+# 公开内容的多语言覆盖字段（V0.6.1 需求4）
+_PUBLIC_I18N_FIELDS = ("title", "content", "publisher_intro")
+
+
+def _locale_chain(lang: str) -> list[str]:
+    """显示语言回退链：locale 本身 → 变体 fallback → 分组终态（东亚→zh-cn / 欧美→en-gb）。
+
+    与前端 localeFallbackChain 同构；非白名单语言（如旧调用方 zh/en）返回空链。
+    """
+    lowered = lang.lower()
+    if lowered not in SUPPORTED_LOCALE_IDS:
+        return []
+    chain = [lowered]
+    fb = LOCALE_FALLBACK_MAP.get(lowered)
+    if fb and fb not in chain:
+        chain.append(fb)
+    terminal = "zh-cn" if lowered.startswith(("zh", "ja", "ko")) else "en-gb"
+    if terminal not in chain:
+        chain.append(terminal)
+    return chain
+
+
+def _apply_i18n(out, cover, chain: list[str]) -> set[str]:
+    """按回退链就地应用多语言覆盖，返回已覆盖字段集合（链上先到先得，不回退已设字段）。"""
+    applied: set[str] = set()
+    if not isinstance(cover, dict):
+        return applied
+    for loc in chain:
+        fields = cover.get(loc)
+        if not isinstance(fields, dict):
+            continue
+        for field in _PUBLIC_I18N_FIELDS:
+            if field in applied:
+                continue
+            value = fields.get(field)
+            if isinstance(value, str) and value.strip():
+                setattr(out, field, value)
+                applied.add(field)
+    return applied
+
+
+async def _resolve_public_content(
+    db: AsyncSession, entities: list[Announcement], outs: list, lang: str
+):
+    """公开内容按显示语言解析：i18n 覆盖优先（回退链），未被覆盖的字段走 DeepL 翻译兜底。
+
+    被覆盖字段跳过 DeepL，避免管理员手写译文被机器译文冲掉；任何异常不外抛。
+    """
+    chain = _locale_chain(lang)
+    if not chain:
+        await translate_obj_fields(db, outs, _PUBLIC_I18N_FIELDS, lang)
+        return
+    plain: list = []
+    covered: list[tuple] = []
+    for a, out in zip(entities, outs):
+        applied = _apply_i18n(out, a.i18n, chain)
+        if applied:
+            covered.append((out, applied))
+        else:
+            plain.append(out)
+    if plain:
+        await translate_obj_fields(db, plain, _PUBLIC_I18N_FIELDS, lang)
+    for out, applied in covered:
+        remaining = tuple(f for f in _PUBLIC_I18N_FIELDS if f not in applied)
+        if remaining:
+            await translate_obj_fields(db, [out], remaining, lang)
+
+
 # ---------- 公开：返回当前生效中的公告 ----------
 @public_router.get("", response_model=list[AnnouncementPublicOut])
 async def list_public_announcements(
@@ -84,9 +153,10 @@ async def list_public_announcements(
     )
     result = await db.execute(stmt)
     # 翻译 Out 副本而非 ORM 实体，避免译文随 get_db 统一 commit 污染源数据
-    outs = [AnnouncementPublicOut.model_validate(a) for a in result.scalars().all()]
+    entities = list(result.scalars().all())
+    outs = [AnnouncementPublicOut.model_validate(a) for a in entities]
     if lang:
-        await translate_obj_fields(db, outs, ("title", "content"), lang)
+        await _resolve_public_content(db, entities, outs, lang)
     return outs
 
 
@@ -107,7 +177,7 @@ async def get_public_announcement(
     out = AnnouncementPublicOut.model_validate(a)
     if lang:
         # 翻译 Out 副本而非 ORM 实体，避免译文随 get_db 统一 commit 污染源数据
-        await translate_obj_fields(db, [out], ("title", "content"), lang)
+        await _resolve_public_content(db, [a], [out], lang)
     return out
 
 
@@ -115,7 +185,7 @@ async def get_public_announcement(
 @admin_router.get("", response_model=dict)
 async def admin_list_announcements(
     category: Literal["homepage", "home"] | None = Query(default=None),
-    enabled: bool | None = Query(default=None),
+    status: Literal["published", "draft"] | None = Query(default=None, description="状态筛选：published 已发布 / draft 草稿"),
     q: str | None = Query(default=None, max_length=64),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
@@ -125,8 +195,9 @@ async def admin_list_announcements(
     stmt = select(Announcement)
     if category:
         stmt = apply_eq(stmt, Announcement.category, AnnouncementCategory(category))
-    if enabled is not None:
-        stmt = apply_eq(stmt, Announcement.enabled, enabled)
+    # status 为派生状态（V0.6.1 需求4），映射 enabled 单真值源存储
+    if status is not None:
+        stmt = apply_eq(stmt, Announcement.enabled, status == "published")
     stmt = apply_search(stmt, [Announcement.title, Announcement.content], q)
     # 按公告日期（start_at）倒序，最新公告始终在最顶部；未设生效时间的按创建时间兜底
     stmt = stmt.order_by(Announcement.start_at.desc(), Announcement.created_at.desc())
@@ -193,7 +264,8 @@ async def admin_update_announcement(
 
     if "category" in data and data["category"] is not None:
         a.category = AnnouncementCategory(data["category"])
-    for k in ("title", "content", "link", "start_at", "end_at", "enabled", "priority"):
+    for k in ("title", "content", "link", "start_at", "end_at", "enabled",
+              "priority", "publisher_intro", "i18n"):
         if k in data:
             setattr(a, k, data[k])
     if "title" in data or "content" in data:

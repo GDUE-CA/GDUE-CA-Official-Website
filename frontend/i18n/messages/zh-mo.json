@@ -227,11 +227,6 @@
       "stat3": "",
       "stat4": ""
     },
-    "announcements": {
-      "title": "",
-      "subtitle": "",
-      "viewDetail": ""
-    },
     "events": {
       "title": "",
       "subtitle": "",
@@ -2346,6 +2341,13 @@
       "previewBtn": "",
       "previewEmpty": "",
       "statusHint": "",
+      "colPublisherIntro": "發佈者介紹",
+      "publisherIntroPlaceholder": "例如：學生會 · 宣傳部（可選，詳情頁標題下顯示）",
+      "i18nSection": "多語言內容覆蓋",
+      "i18nLangLabel": "編輯語言",
+      "i18nSectionHint": "為所選語言單獨覆蓋標題 / 內文 / 發佈者介紹；未覆蓋的語言自動回退主要內容或英文版",
+      "i18nPlaceholder": "留空回退主要內容；目前主要內容：{base}",
+      "i18nEmptyHint": "留空的欄位不會儲存；僅填寫過的語言會儲存覆蓋內容",
       "timeWindowHint": "",
       "saveBtn": "",
       "cancelBtn": "",

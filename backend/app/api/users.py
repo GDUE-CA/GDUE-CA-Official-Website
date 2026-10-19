@@ -62,6 +62,17 @@ def _is_self(viewer_ctx: dict | None, owner: User) -> bool:
     return bool(viewer_ctx) and viewer_ctx.get("user_id") == str(owner.id)
 
 
+def _can_see_hidden(owner: User, viewer_ctx: dict | None) -> bool:
+    """能否查看被隐藏主页的完整内容：本人 或 管理员 tier / Break-Glass。"""
+    if _is_self(viewer_ctx, owner):
+        return True
+    if not viewer_ctx:
+        return False
+    if viewer_ctx.get("break_glass"):
+        return True
+    return viewer_ctx.get("role") in _FULL_ACCESS_ROLES
+
+
 async def _school_info(db: AsyncSession, u: User) -> dict | None:
     """学校信息块（通过外键联表查询展示学院/专业文本；未验证恒为 None）。
 
@@ -115,6 +126,8 @@ def _public_profile(u: User, viewer_ctx: dict | None, badges: list[dict],
         # ---- Module D：身份标签（公开展示；社会成员两值恒 False/无标签） ----
         "identity_school_verified": u.identity_school_verified,
         "is_club_member": u.club_position is not None,
+        # V0.6.1 需求5：主页隐藏标记（访客看到提示；本人/管理员可正常查看）
+        "profile_hidden": bool(u.profile_hidden),
         # 学校信息块：本人恒可见；访客需已验证 + 隐私开关开启（后端控制输出，
         # 禁止仅靠 CSS 隐藏实现隐私）
         "school_info": school_info,
@@ -160,6 +173,15 @@ async def get_user_profile(
 ):
     """用户个人主页基本信息（隐私过滤后；real_name/school_info 按访问者身份+开关输出）。"""
     u = await _load_user_or_404(db, username)
+    # V0.6.1 需求5：主页隐藏——访客（非本人 / 非管理员）仅返回最小字段，不泄露内部信息
+    if u.profile_hidden and not _can_see_hidden(u, viewer_ctx):
+        return UserProfileOut(
+            username=u.username,
+            display_name=u.display_name or u.username,
+            avatar_url=u.avatar_url,
+            created_at=u.created_at,
+            profile_hidden=True,
+        )
     badges = await badges_for_user(db, u)
     # 学校信息：本人永远可见；访客需已验证 + 隐私开关开启（默认关闭）
     school_info = None
@@ -273,6 +295,10 @@ async def list_user_memos(
     """
     u = await _load_user_or_404(db, username)
 
+    # V0.6.1 需求5：主页隐藏时访客不可见任何内容（本人 / 管理员除外）
+    if u.profile_hidden and not _can_see_hidden(u, viewer_ctx):
+        return {"items": [], "total": 0, "page": page, "page_size": page_size}
+
     conditions = [
         Memo.author_id == u.id,
         Memo.archived.is_(False),
@@ -325,9 +351,12 @@ async def list_user_blog(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=10, ge=1, le=50),
     db: AsyncSession = Depends(get_db, scope="function"),
+    viewer_ctx: dict | None = Depends(get_optional_user),
 ):
-    """用户个人主页公开博客列表：仅 status=published。"""
+    """用户个人主页公开博客列表：仅 status=published；隐藏主页访客不可见。"""
     u = await _load_user_or_404(db, username)
+    if u.profile_hidden and not _can_see_hidden(u, viewer_ctx):
+        return {"items": [], "total": 0, "page": page, "page_size": page_size}
     stmt = select(BlogPost).where(
         BlogPost.author_id == u.id,
         BlogPost.status == BlogPostStatus.PUBLISHED,

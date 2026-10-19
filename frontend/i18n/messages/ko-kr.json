@@ -227,11 +227,6 @@
       "stat3": "Schools Covered",
       "stat4": "Founded"
     },
-    "announcements": {
-      "title": "Latest Announcements",
-      "subtitle": "Stay updated with the latest club news",
-      "viewDetail": "View details"
-    },
     "events": {
       "title": "Upcoming Events",
       "subtitle": "Join our tech events and talks",
@@ -2417,6 +2412,13 @@
       "previewBtn": "미리보기",
       "previewEmpty": "미리볼 내용이 없습니다",
       "statusHint": "게시됨: 사이트에 표시됩니다. 임시 저장: 관리자에만 저장되며 공개되지 않습니다",
+      "colPublisherIntro": "게시자 소개",
+      "publisherIntroPlaceholder": "예: 학생회 · 홍보부 (선택 입력, 상세 페이지 제목 아래 표시)",
+      "i18nSection": "언어별 콘텐츠 재정의",
+      "i18nLangLabel": "편집할 언어",
+      "i18nSectionHint": "선택한 언어의 제목 / 본문 / 게시자 소개를 개별적으로 재정의합니다. 설정하지 않은 언어는 본문 또는 영어 버전으로 자동 대체됩니다",
+      "i18nPlaceholder": "비워 두면 본문으로 대체됩니다. 현재 본문: {base}",
+      "i18nEmptyHint": "빈 칸으로 남긴 항목은 저장되지 않으며, 입력한 언어만 재정의 내용으로 저장됩니다",
       "timeWindowHint": "Leave blank for immediate effect / never expire; time stored in UTC",
       "saveBtn": "Save",
       "cancelBtn": "Cancel",

@@ -227,11 +227,6 @@
       "stat3": "Schools Covered",
       "stat4": "Founded"
     },
-    "announcements": {
-      "title": "Latest Announcements",
-      "subtitle": "Stay updated with the latest club news",
-      "viewDetail": "View details"
-    },
     "events": {
       "title": "Upcoming Events",
       "subtitle": "Join our tech events and talks",
@@ -2417,6 +2412,13 @@
       "previewBtn": "Vista previa",
       "previewEmpty": "Nada que previsualizar todavía",
       "statusHint": "Publicado: visible en el sitio; Borrador: guardado solo en el panel, no se muestra públicamente.",
+      "colPublisherIntro": "Intro del publicador",
+      "publisherIntroPlaceholder": "p. ej., Consejo Estudiantil · Dpto. de Prensa (opcional; se muestra bajo el título en la página de detalle)",
+      "i18nSection": "Contenido por idioma",
+      "i18nLangLabel": "Idioma en edición",
+      "i18nSectionHint": "Sustituye el título / el cuerpo / la intro del publicador para el idioma seleccionado; los idiomas sin sustitución recurren automáticamente al contenido principal o a la versión en inglés",
+      "i18nPlaceholder": "Déjelo vacío para usar el contenido principal; contenido principal actual: {base}",
+      "i18nEmptyHint": "Los campos vacíos no se guardan; solo se almacenan los idiomas que haya rellenado",
       "timeWindowHint": "Leave blank for immediate effect / never expire; time stored in UTC",
       "saveBtn": "Save",
       "cancelBtn": "Cancel",

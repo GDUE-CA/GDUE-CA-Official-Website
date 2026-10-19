@@ -3,12 +3,13 @@
 /**
  * LanguagePopover —— 语言选择浮层（账号菜单 / 设置菜单共用的多语言控件）
  *
- * - 顶部搜索框：按语言本地名 / 英文名 / 语言代码实时过滤
- * - 列表固定最大高度、垂直滚动，按地区分组（东亚 / 欧美 / 东南亚），空分组自动隐藏
- * - 选中语言立即生效（替换 URL 语言前缀）并关闭浮层
- * - 通过 PopoverAnchor 挂在任意锚点元素上（典型：下拉菜单项），内容 Portal 挂载
- *
- * 新语言接入：仅需在 i18n/messages/ 目录新增 json 文件，本组件自动分组渲染。
+ * V0.6.1 需求1 规范化：
+ * - 语种清单锁定为 lib/i18n.ts 的 LOCALE_LIST（13 语种白名单，禁止新增）；
+ * - 渲染顺序、主标签 label、副标签 subLabel 与固定清单完全一致，不再按地区分组；
+ * - 顶部搜索框：按主标签 / 副标签 / 语言代码实时过滤（过滤不改变固定顺序）；
+ * - 选中语言立即生效（替换 URL 语言前缀）并持久化（localStorage + Cookie），
+ *   下次访问由 proxy 读 Cookie 恢复上次语言；
+ * - 通过 PopoverAnchor 挂在任意锚点元素上（典型：下拉菜单项），内容 Portal 挂载。
  */
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
@@ -16,22 +17,12 @@ import Check from "@/assets/icons/action/check.svg";
 import Search from "@/assets/icons/action/search.svg";
 import { useI18n } from "@/i18n/provider";
 import {
-  locales,
-  localeDisplayName,
-  localeEnglishName,
-  localeGroup,
-  localeGroupOrder,
+  LOCALE_LIST,
+  persistLocalePreference,
   type Locale,
-  type LocaleGroup,
 } from "@/lib/i18n";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-
-/** 分组标题的 i18n key 映射 */
-const GROUP_LABEL_KEYS: Record<LocaleGroup, string> = {
-  eastAsia: "nav.langGroups.eastAsia",
-  europeAmericas: "nav.langGroups.europeAmericas",
-};
 
 interface LanguagePopoverProps {
   open: boolean;
@@ -49,23 +40,16 @@ export function LanguagePopover({ open, onOpenChange, anchor, onPicked }: Langua
   const [query, setQuery] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
 
-  /** 按关键词过滤并按分组组织；空分组不渲染 */
-  const groups = useMemo(() => {
+  /** 按关键词过滤（保持 LOCALE_LIST 固定顺序） */
+  const items = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const matched = (loc: Locale) => {
-      if (!q) return true;
-      return (
-        localeDisplayName(loc).toLowerCase().includes(q) ||
-        localeEnglishName(loc).toLowerCase().includes(q) ||
-        loc.includes(q)
-      );
-    };
-    return localeGroupOrder
-      .map((group) => ({
-        group,
-        items: locales.filter((loc) => localeGroup(loc) === group && matched(loc)),
-      }))
-      .filter((g) => g.items.length > 0);
+    if (!q) return LOCALE_LIST;
+    return LOCALE_LIST.filter(
+      (o) =>
+        o.label.toLowerCase().includes(q) ||
+        o.subLabel.toLowerCase().includes(q) ||
+        o.code.includes(q)
+    );
   }, [query]);
 
   function handleOpenChange(next: boolean) {
@@ -73,11 +57,12 @@ export function LanguagePopover({ open, onOpenChange, anchor, onPicked }: Langua
     onOpenChange(next);
   }
 
-  /** 选中语言：立即切换（替换 URL 前缀）并关闭浮层 */
+  /** 选中语言：持久化（localStorage + Cookie）→ 切 URL 前缀 → 关闭浮层 */
   function pick(target: Locale) {
     handleOpenChange(false);
     onPicked?.();
     if (target === locale) return;
+    persistLocalePreference(target);
     const segments = pathname.split("/");
     segments[1] = target;
     router.push(segments.join("/"));
@@ -110,42 +95,35 @@ export function LanguagePopover({ open, onOpenChange, anchor, onPicked }: Langua
           />
         </div>
 
-        {/* 语言列表：固定最大高度 + 垂直滚动 */}
+        {/* 语言列表：LOCALE_LIST 固定顺序，固定最大高度 + 垂直滚动 */}
         <div className="max-h-64 overflow-y-auto p-1">
-          {groups.length === 0 && (
+          {items.length === 0 && (
             <p className="px-2 py-6 text-center text-xs text-muted-foreground">
               {t("nav.languageEmpty")}
             </p>
           )}
-          {groups.map(({ group, items }) => (
-            <div key={group}>
-              <p className="px-2 pb-0.5 pt-1.5 text-[11px] font-semibold text-muted-foreground">
-                {t(GROUP_LABEL_KEYS[group])}
-              </p>
-              {items.map((loc) => {
-                const active = loc === locale;
-                return (
-                  <button
-                    key={loc}
-                    type="button"
-                    onClick={() => pick(loc)}
-                    className={cn(
-                      "relative flex w-full cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent",
-                      active && "text-primary"
-                    )}
-                  >
-                    <span className="flex min-w-0 flex-1 flex-col">
-                      <span className="truncate leading-tight">{localeDisplayName(loc)}</span>
-                      <span className="truncate text-[11px] leading-tight text-muted-foreground">
-                        {localeEnglishName(loc)}
-                      </span>
-                    </span>
-                    {active && <Check className="h-4 w-4 shrink-0 text-primary" />}
-                  </button>
-                );
-              })}
-            </div>
-          ))}
+          {items.map((o) => {
+            const active = o.code === locale;
+            return (
+              <button
+                key={o.code}
+                type="button"
+                onClick={() => pick(o.code)}
+                className={cn(
+                  "relative flex w-full cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent",
+                  active && "text-primary"
+                )}
+              >
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span className="truncate leading-tight">{o.label}</span>
+                  <span className="truncate text-[11px] leading-tight text-muted-foreground">
+                    {o.subLabel}
+                  </span>
+                </span>
+                {active && <Check className="h-4 w-4 shrink-0 text-primary" />}
+              </button>
+            );
+          })}
         </div>
       </PopoverContent>
     </Popover>

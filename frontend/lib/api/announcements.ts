@@ -10,6 +10,7 @@ import type {
   AnnouncementAttachment,
   AnnouncementCategory,
   AnnouncementCreate,
+  AnnouncementStatus,
   AnnouncementUpdate,
   Paginated,
   PublicAnnouncement,
@@ -32,17 +33,17 @@ export function getPublicAnnouncement(id: number, lang?: string) {
   return apiFetch<PublicAnnouncement>(`/api/announcements/${id}${query ? `?${query}` : ""}`);
 }
 
-/** 管理：公告分页列表 */
+/** 管理：公告分页列表（status 为派生状态：published 已发布 / draft 草稿） */
 export function adminListAnnouncements(params: {
   category?: AnnouncementCategory;
-  enabled?: boolean;
+  status?: AnnouncementStatus;
   q?: string;
   page?: number;
   page_size?: number;
 } = {}) {
   const qs = new URLSearchParams();
   if (params.category) qs.set("category", params.category);
-  if (params.enabled !== undefined) qs.set("enabled", String(params.enabled));
+  if (params.status) qs.set("status", params.status);
   if (params.q) qs.set("q", params.q);
   if (params.page) qs.set("page", String(params.page));
   if (params.page_size) qs.set("page_size", String(params.page_size));

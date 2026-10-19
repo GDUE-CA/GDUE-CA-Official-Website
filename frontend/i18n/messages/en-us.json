@@ -227,11 +227,6 @@
       "stat3": "Schools Covered",
       "stat4": "Founded"
     },
-    "announcements": {
-      "title": "Latest Announcements",
-      "subtitle": "Stay updated with the latest club news",
-      "viewDetail": "View details"
-    },
     "events": {
       "title": "Upcoming Events",
       "subtitle": "Join our tech events and talks",
@@ -2445,6 +2440,13 @@
       "previewBtn": "Preview",
       "previewEmpty": "Nothing to preview yet",
       "statusHint": "Published: visible on the site; Draft: saved in admin only, not shown publicly.",
+      "colPublisherIntro": "Publisher Intro",
+      "publisherIntroPlaceholder": "e.g. Student Union - Publicity Dept. (optional, shown under the title on the detail page)",
+      "i18nSection": "Language-Specific Content",
+      "i18nLangLabel": "Editing language",
+      "i18nSectionHint": "Override the title / body / publisher intro for the selected language; languages without overrides automatically fall back to the main content or the English version",
+      "i18nPlaceholder": "Leave blank to fall back to the main content; current main content: {base}",
+      "i18nEmptyHint": "Blank fields are not saved; only languages you have filled in are stored as overrides",
       "timeWindowHint": "Leave blank for immediate effect / never expire; time stored in UTC",
       "saveBtn": "Save",
       "cancelBtn": "Cancel",

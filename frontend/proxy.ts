@@ -28,14 +28,15 @@ const SESSION_COOKIE = "gdueca_session";
 const LOCALE_LIKE_RE = /^[a-z]{2}(-[a-z]{2,3})?$/i;
 
 /**
- * 旧 locale 前缀 → 新 locale 前缀的 301 永久重定向映射。
- * zh-tw 改名 zh-hk；zh-yue-hk 改名 zh-yue-tw；ja 改名 ja-jp。
+ * 旧 locale 前缀 → 现役 locale 前缀的兼容重定向（V0.6.1 需求1 收敛为 13 语种后）。
+ * 注意：zh-tw 现已是合法语种，绝不能再映射到 zh-hk（否则会劫持 /zh-tw/** 全部请求）；
+ * zh-yue-*（粤语）已从白名单移除，旧链接就近归入繁体语种；ja 旧短码归一 ja-jp。
  * 放在 localeRedirect 最早处，优先于非法 locale 剥离逻辑。
  */
 const OLD_LOCALE_REDIRECTS: Record<string, string> = {
-  "zh-tw": "zh-hk",
-  "zh-yue-hk": "zh-yue-tw",
   ja: "ja-jp",
+  "zh-yue-hk": "zh-hk",
+  "zh-yue-tw": "zh-tw",
 };
 
 /**
@@ -225,7 +226,7 @@ function localeRedirect(request: NextRequest): LocaleRedirect | null {
 
   const firstSeg = pathname.split("/")[1] ?? "";
 
-  // 旧 locale 前缀 301 永久重定向（en-gb→en-us、zh-tw→zh-hk、zh-yue-hk→zh-yue-tw、ja→ja-jp）
+  // 旧 locale 前缀兼容重定向（ja→ja-jp、zh-yue-hk→zh-hk、zh-yue-tw→zh-tw）
   if (firstSeg && firstSeg.toLowerCase() in OLD_LOCALE_REDIRECTS) {
     const newLocale = OLD_LOCALE_REDIRECTS[firstSeg.toLowerCase()];
     const rest = pathname.slice(firstSeg.length + 1); // 去掉 /{oldLocale}

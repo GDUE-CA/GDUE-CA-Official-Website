@@ -8,7 +8,8 @@
  * - 列表滚动交给当前操作系统原生滚动控件（max-h + overflow-y-auto），
  *   禁止自定义滚动条样式（Apple 橡皮筋回弹 / Windows / Android 原生外观）；
  * - 选中项 Check 标记；选择后自动保存（persistOnPick 时）并关闭折叠面板；
- * - 语言列表来自 messages 目录扫描结果（lib/i18n/locales.generated.ts），无硬编码。
+ * - 语种清单锁定为 lib/i18n.ts 的 LOCALE_LIST（V0.6.1 需求1：13 语种白名单），
+ *   渲染顺序与 label / subLabel 文案与规格定稿完全一致，不再经 Intl.DisplayNames 派生。
  */
 import { useMemo, useRef, useState } from "react";
 import Check from "@/assets/icons/action/check.svg";
@@ -18,9 +19,9 @@ import { useI18n } from "@/i18n/provider";
 import { useSwitchLocale } from "@/lib/navigation";
 import { updateProfile } from "@/lib/api/auth";
 import {
-  locales,
-  localeDisplayName,
-  localeEnglishName,
+  LOCALE_LIST,
+  localeOption,
+  persistLocalePreference,
   type Locale,
 } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -55,24 +56,24 @@ export function LocaleSelector({
   const [query, setQuery] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
 
-  /** 实时过滤：本地名 / 英文名 / 语言代码 */
+  /** 实时过滤：主标签 / 副标签 / 语言代码（保持 LOCALE_LIST 固定顺序） */
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return locales;
-    return locales.filter(
-      (loc) =>
-        localeDisplayName(loc).toLowerCase().includes(q) ||
-        localeEnglishName(loc).toLowerCase().includes(q) ||
-        loc.includes(q)
+    if (!q) return LOCALE_LIST;
+    return LOCALE_LIST.filter(
+      (o) =>
+        o.label.toLowerCase().includes(q) ||
+        o.subLabel.toLowerCase().includes(q) ||
+        o.code.includes(q)
     );
   }, [query]);
 
   const currentLabel =
     value === "" && includeSystemOption
       ? (systemOptionLabel ?? value)
-      : localeDisplayName(value);
+      : (localeOption(value)?.label ?? value);
 
-  /** 选中语言：通知外层 → 可选持久化 + 切 URL → 收起面板清空搜索 */
+  /** 选中语言：通知外层 → 可选持久化（后端偏好 + 本地 localStorage/Cookie）+ 切 URL → 收起面板清空搜索 */
   function pick(loc: string) {
     setOpen(false);
     setQuery("");
@@ -80,7 +81,10 @@ export function LocaleSelector({
     onChange(loc);
     if (persistOnPick) {
       void updateProfile({ locale: loc }).catch(() => undefined);
-      if (loc) switchLocale(loc as Locale);
+      if (loc) {
+        persistLocalePreference(loc as Locale);
+        switchLocale(loc as Locale);
+      }
     }
   }
 
@@ -138,22 +142,22 @@ export function LocaleSelector({
                 {t("nav.languageEmpty")}
               </p>
             )}
-            {filtered.map((loc) => {
-              const active = loc === value;
+            {filtered.map((o) => {
+              const active = o.code === value;
               return (
                 <button
-                  key={loc}
+                  key={o.code}
                   type="button"
-                  onClick={() => pick(loc)}
+                  onClick={() => pick(o.code)}
                   className={cn(
                     "relative flex w-full cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm outline-none transition-colors duration-[180ms] hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent",
                     active && "text-primary"
                   )}
                 >
                   <span className="flex min-w-0 flex-1 flex-col">
-                    <span className="truncate leading-tight">{localeDisplayName(loc)}</span>
+                    <span className="truncate leading-tight">{o.label}</span>
                     <span className="truncate text-[11px] leading-tight text-muted-foreground">
-                      {localeEnglishName(loc)}
+                      {o.subLabel}
                     </span>
                   </span>
                   {active && <Check className="h-4 w-4 shrink-0 text-primary" />}
