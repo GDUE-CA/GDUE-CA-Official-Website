@@ -135,7 +135,8 @@ export async function verifyRiskToken(
   // 浏览器访问风控接口与访问本站可能走不同出口（如 IPv6 / IPv4），此时无法确认是同一访客
   const tokenIp = typeof claims.ip === "string" ? normalizeIp(claims.ip) : null;
   if (!tokenIp || ipScope(tokenIp) !== ipScope(clientIp)) {
-    return { ok: false, reason: "ip mismatch" };
+    // 记录令牌内 IP，便于区分「v4/v6 出口不同」与「风控接口拿到的是 CDN 节点 IP」
+    return { ok: false, reason: `ip mismatch token_ip=${tokenIp ?? "(无)"}` };
   }
   return { ok: true, claims };
 }
