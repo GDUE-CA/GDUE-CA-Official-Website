@@ -5,8 +5,11 @@ import { TURNSTILE_ACTION } from "./turnstile";
  * 访问检测页（检测中 / 人机验证 / 拒绝访问 三态）
  *
  * 由 proxy.ts 直接返回的独立 HTML（不经 React 渲染）：不依赖站点脚本包、在原 URL 原地展示，
- * 通过后刷新即进入原页面。风控接口由访客浏览器直接请求（接口按来源 IP 自行判定并签名），
- * 视觉沿用站点「克制科技风」：中性灰 + 信号绿、细边框、等宽辅助信息。
+ * 通过后刷新即进入原页面。风控接口由访客浏览器直接请求（接口按来源 IP 自行判定并签名）。
+ *
+ * 检测阶段做成「无感」：只有居中的菊花加载动画，超过 1.2 秒才淡入一行提示；通过后直接刷新，
+ * 动画一直留到新页面首帧绘制。仅在需要人机验证或拒绝访问时才把详情卡片浮出，
+ * 卡片视觉沿用站点「克制科技风」：中性灰 + 信号绿、细边框、等宽辅助信息。
  */
 
 export const VERIFY_PATH = "/__risk/verify";
@@ -26,8 +29,6 @@ interface Copy {
   tsLang: string;
   brandSub: string;
   status: string;
-  checkTitle: string;
-  checkLead: string;
   checking: string;
   computing: string;
   success: string;
@@ -72,8 +73,6 @@ const COPY: Record<PageLang, Copy> = {
     tsLang: "zh-cn",
     brandSub: "安全检查",
     status: "安全检查",
-    checkTitle: "正在检查访问环境",
-    checkLead: "为保护站点与成员数据，首次访问需要确认网络环境，通常一两秒即可完成，无需任何操作。",
     checking: "正在检测网络环境…",
     computing: "正在完成安全校验…",
     success: "检测通过，正在进入页面…",
@@ -116,8 +115,6 @@ const COPY: Record<PageLang, Copy> = {
     tsLang: "zh-tw",
     brandSub: "安全檢查",
     status: "安全檢查",
-    checkTitle: "正在檢查存取環境",
-    checkLead: "為保護網站與成員資料，首次造訪需要確認網路環境，通常一兩秒即可完成，無需任何操作。",
     checking: "正在檢測網路環境…",
     computing: "正在完成安全校驗…",
     success: "檢測通過，正在進入頁面…",
@@ -160,8 +157,6 @@ const COPY: Record<PageLang, Copy> = {
     tsLang: "en",
     brandSub: "Security check",
     status: "Security check",
-    checkTitle: "Checking your connection",
-    checkLead: "To protect the site and member data, first visits need a quick network check. It takes a second or two — no action needed.",
     checking: "Checking your network…",
     computing: "Finishing security check…",
     success: "All clear, taking you in…",
@@ -204,8 +199,6 @@ const COPY: Record<PageLang, Copy> = {
     tsLang: "ja",
     brandSub: "セキュリティチェック",
     status: "セキュリティチェック",
-    checkTitle: "接続環境を確認しています",
-    checkLead: "サイトとメンバーのデータを守るため、初回アクセス時にネットワーク環境を確認します。通常 1〜2 秒で完了し、操作は不要です。",
     checking: "ネットワーク環境を確認中…",
     computing: "セキュリティチェックを完了しています…",
     success: "確認できました。ページへ移動します…",
@@ -244,6 +237,12 @@ const COPY: Record<PageLang, Copy> = {
     mailSubject: "公式サイトへのアクセスがブロックされました（許可申請）",
   },
 };
+
+/** 菊花叶片：12 片各转 30°，延迟错开 1/12 秒形成顺时针渐隐 */
+const SPINNER_BLADES = Array.from(
+  { length: 12 },
+  (_, i) => `.spinner i:nth-child(${i + 1}){transform:rotate(${i * 30}deg);animation-delay:${((i - 12) / 12).toFixed(3)}s}`,
+).join("\n");
 
 const STYLES = `
 :root{--bg:#FAFAF9;--fg:#0F0F10;--card:#FFFFFF;--muted:#5C5C58;--soft:#F1F1EF;--border:#E5E5E2;--signal:#16A34A;--signal-text:#15803D;--danger:#C81E1E;--danger-soft:#FDECEC;--grid:rgba(15,15,16,.06);color-scheme:light dark}
@@ -294,10 +293,18 @@ h1{font-size:24px;line-height:1.3;letter-spacing:-.02em;font-weight:600}
 @media (prefers-reduced-motion:reduce){.dot::after,.spin{animation:none}}
 @media (max-width:480px){.card{padding:22px 18px}h1{font-size:21px}}
 .view{display:flex;flex-direction:column;gap:18px}
-.bar{height:2px;border-radius:2px;background:var(--border);overflow:hidden;position:relative}
-.bar span{position:absolute;inset:0 auto 0 0;width:35%;background:var(--signal);border-radius:2px;animation:slide 1.2s ease-in-out infinite}
-@keyframes slide{0%{transform:translateX(-100%)}100%{transform:translateX(300%)}}
-@media (prefers-reduced-motion:reduce){.bar span{animation:none;width:100%}}
+.loader{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:16px;animation:fade .3s ease .12s both;transition:opacity .22s ease,transform .22s ease}
+.loader.out{opacity:0;transform:scale(.94)}
+.loader .hint{color:var(--muted);font-size:13px;text-align:center;opacity:0;transition:opacity .4s ease}
+.loader.slow .hint{opacity:1}
+.spinner{position:relative;width:28px;height:28px}
+.spinner i{position:absolute;left:calc(50% - 1.25px);top:0;width:2.5px;height:8px;border-radius:2px;background:var(--fg);transform-origin:50% 14px;opacity:.14;animation:blade 1s linear infinite}
+${SPINNER_BLADES}
+@keyframes blade{0%{opacity:.85}100%{opacity:.14}}
+@keyframes fade{from{opacity:0}}
+.shell{animation:rise .38s cubic-bezier(.2,.8,.2,1) both}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}}
+@media (prefers-reduced-motion:reduce){.loader,.shell{animation:none;transition:none}.spinner i{animation:none;opacity:.5}}
 `;
 
 export interface GatePageInput {
@@ -334,8 +341,10 @@ function jsonForScript(value: unknown): string {
 
 /**
  * 浏览器端流程（ES5，兼容旧浏览器）：
- *   check()       带 aud / nonce 请求风控接口（不带 Cookie），按结果分流
- *   submitToken() 干净：把签名令牌原样交给本站验签，服务端可改判（next: challenge / blocked）
+ *   check()       带 aud / nonce 请求风控接口（不带 Cookie），按结果分流；期间只显示加载动画
+ *   submitToken() 干净：把签名令牌原样交给本站验签，通过即刷新（不再闪现成功提示），
+ *                 服务端可改判（next: challenge / blocked）
+ *   reveal()      需要人机验证 / 拒绝访问时，加载动画淡出、详情卡片浮入
  *   challenge()   风险 / 检测失败：Turnstile，未配置则工作量证明
  *   runPow()      纯 JS SHA-256 逐题求解工作量证明（HTTP 局域网访问时 crypto.subtle 不可用），
  *                 不足最短耗时则补足等待（自脚本启动计时，约等于题目签发时刻，另留 0.5 秒余量）
@@ -354,11 +363,15 @@ function lz(hw){var z=0;for(var k=0;k<8;k++){if(hw[k]===0){z+=32;continue;}retur
 
 var t=C.t,$=function(id){return document.getElementById(id);};
 var ip=C.ip,verdict=null,checkFailed=false;
-function view(name){["check","challenge","blocked"].forEach(function(v){$("v-"+v).hidden=v!==name;});
+var slowTimer=setTimeout(function(){$("loader").className+=" slow";},1200);
+function reveal(){var l=$("loader"),s=$("shell");clearTimeout(slowTimer);if(!s.hidden)return;l.className+=" out";
+  setTimeout(function(){l.hidden=true;s.hidden=false;},matchMedia("(prefers-reduced-motion: reduce)").matches?0:220);}
+function view(name){["challenge","blocked"].forEach(function(v){$("v-"+v).hidden=v!==name;});
   $("card").className="card"+(name==="blocked"?" blocked":"");
   $("status").textContent=name==="blocked"?"403 · "+t.blockedStatus:t.status;
-  $("meta").hidden=name==="check";$("blocked-extra").hidden=name!=="blocked";
-  $("foot").textContent=name==="blocked"?t.footBlocked:t.foot+(name==="challenge"&&C.siteKey?" · "+t.footTurnstile:"");}
+  $("blocked-extra").hidden=name!=="blocked";
+  $("foot").textContent=name==="blocked"?t.footBlocked:t.foot+(name==="challenge"&&C.siteKey?" · "+t.footTurnstile:"");
+  reveal();}
 function state(el,msg,tone,busy){el.setAttribute("data-tone",tone||"");el.innerHTML="";if(busy){var s=document.createElement("span");s.className="spin";el.appendChild(s);}el.appendChild(document.createTextNode(msg));}
 function reasons(){if(checkFailed)return [t.checkFailed];var r=[];if(verdict.isIdc)r.push(t.idc);if(verdict.isProxy)r.push(t.proxy);if(!r.length&&verdict.isRisky)r.push(t.risky);return r;}
 function fillMeta(){$("m-ip").textContent=ip||"—";var box=$("m-reason");box.innerHTML="";reasons().forEach(function(x){var c=document.createElement("span");c.className="chip";c.textContent=x;box.appendChild(c);});
@@ -376,15 +389,15 @@ function turnstile(){var el=$("s-challenge");$("widget").hidden=false;state(el,t
   var s=document.createElement("script");s.src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=onTurnstileLoad";s.async=true;s.nonce=C.nonce;
   s.onerror=function(){state(el,t.widgetError,"err");};document.head.appendChild(s);}
 function challenge(){view("challenge");fillMeta();$("challenge-lead").textContent=checkFailed?t.leadFailed:t.leadRisky;if(C.siteKey)turnstile();else if(C.pow)runPow($("s-challenge"));else state($("s-challenge"),t.failed,"err");}
-function submitToken(token){var el=$("s-check");state(el,t.computing,"",true);
+function submitToken(token){$("s-check").textContent=t.computing;
   fetch(C.verifyPath,{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({mode:"token",token:token})})
-    .then(function(r){if(r.ok)return enter(el);return r.json().catch(function(){return {};}).then(function(b){if(b&&b.next==="blocked")return blocked();checkFailed=!(b&&b.next==="challenge"&&verdict&&(verdict.isRisky||verdict.isIdc||verdict.isProxy));challenge();});},
+    .then(function(r){if(r.ok)return location.replace(location.href);return r.json().catch(function(){return {};}).then(function(b){if(b&&b.next==="blocked")return blocked();checkFailed=!(b&&b.next==="challenge"&&verdict&&(verdict.isRisky||verdict.isIdc||verdict.isProxy));challenge();});},
       function(){checkFailed=true;challenge();});}
 function blocked(){view("blocked");fillMeta();
   var diag=[t.ip+": "+(ip||"-"),t.requestId+": "+C.requestId,t.reason+": "+reasons().join(" + "),t.time+": "+$("m-time").textContent].join("\\n");
   var mail=$("mail");if(mail)mail.href="mailto:"+encodeURIComponent(C.contactEmail)+"?subject="+encodeURIComponent(t.mailSubject+" ("+(ip||"-")+")")+"&body="+encodeURIComponent(diag+"\\n\\n");
   $("copy").onclick=function(){var b=this,o=b.textContent;if(navigator.clipboard)navigator.clipboard.writeText(diag).then(function(){b.textContent=t.copied;setTimeout(function(){b.textContent=o;},1600);},function(){});};}
-function check(){view("check");state($("s-check"),t.checking,"",true);
+function check(){
   var ctl=typeof AbortController==="function"?new AbortController():null,timer=setTimeout(function(){if(ctl)ctl.abort();},C.timeout);
   var opts={credentials:"omit",cache:"no-store",headers:{Accept:"application/json"}};if(ctl)opts.signal=ctl.signal;
   var url=C.apiUrl+(C.apiUrl.indexOf("?")<0?"?":"&")+"aud="+encodeURIComponent(C.aud)+"&nonce="+encodeURIComponent(C.riskNonce);
@@ -468,17 +481,15 @@ export function renderGatePage(input: GatePageInput): string {
 <style>${STYLES}</style>
 </head>
 <body>
-<main class="shell">
+<div class="loader" id="loader">
+  <div class="spinner" aria-hidden="true">${"<i></i>".repeat(12)}</div>
+  <p class="hint" id="s-check" role="status">${esc(t.checking)}</p>
+  <noscript><style>.spinner{display:none}.loader .hint{opacity:1}</style><p class="note">${esc(t.noscript)}</p></noscript>
+</div>
+<main class="shell" id="shell" hidden>
   <header class="brand"><span class="mark" aria-hidden="true">CA</span><span>GDUECA</span><span class="sub">/ ${esc(t.brandSub)}</span></header>
   <section class="card" id="card" aria-live="polite">
     <div class="status mono"><span class="dot" aria-hidden="true"></span><span id="status">${esc(t.status)}</span></div>
-    <div class="view" id="v-check">
-      <h1>${esc(t.checkTitle)}</h1>
-      <p class="lead">${esc(t.checkLead)}</p>
-      <div class="bar" aria-hidden="true"><span></span></div>
-      <p class="state" id="s-check" role="status"><span class="spin" aria-hidden="true"></span>${esc(t.checking)}</p>
-      <noscript><p class="note">${esc(t.noscript)}</p></noscript>
-    </div>
     <div class="view" id="v-challenge" hidden>
       <h1>${esc(t.challengeTitle)}</h1>
       <p class="lead" id="challenge-lead"></p>
@@ -493,7 +504,7 @@ export function renderGatePage(input: GatePageInput): string {
         <ol><li>${esc(t.step1)}</li><li>${esc(t.step2)}</li></ol>
       </div>
     </div>
-    <dl class="meta" id="meta" hidden>
+    <dl class="meta" id="meta">
       <div><dt>${esc(t.ip)}</dt><dd class="mono" id="m-ip"></dd></div>
       <div><dt>${esc(t.reason)}</dt><dd class="chips" id="m-reason"></dd></div>
       <div><dt>${esc(t.requestId)}</dt><dd class="mono">${esc(input.requestId)}</dd></div>
