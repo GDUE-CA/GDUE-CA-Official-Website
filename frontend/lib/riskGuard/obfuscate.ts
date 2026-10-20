@@ -29,6 +29,9 @@ const BASE: ObfuscatorOptions = {
   stringArrayThreshold: 1,
   stringArrayWrappersType: "function",
   identifierNamesGenerator: "mangled",
+  // 固定种子：产出可复现，「测过的产物 == 上线的产物」。默认随机种子下 mangled 命名偶发
+  // 与排除区保留名撞名（曾致 "W is not a function"），固定后只要测一次通过即稳定。
+  seed: "gdueca",
   // 关键：不启用 debugProtection（其实现依赖 Function 构造器，违反 CSP）
   debugProtection: false,
   renameGlobals: false,
@@ -79,5 +82,15 @@ export function obfuscate(code: string, profile: ObfuscationProfile, reserved: s
  * 并整体包一层 IIFE，使 `__gate` 不落到真正的全局作用域。
  */
 export function obfuscateClientScript(script: string): string {
-  return obfuscate(`function __gate(C){\n${script}\n}`, "strong", ["^C$", "^__gate$"]);
+  // obfuscator:disable 区域保留原名（SHA-256 常量表 K / 消息调度数组 W / sha256 / lz / solve），
+  // 须一并保留，否则 mangled 会把别处标识符也命名为这些短名，造成撞名崩溃。
+  return obfuscate(`function __gate(C){\n${script}\n}`, "strong", [
+    "^C$",
+    "^__gate$",
+    "^K$",
+    "^W$",
+    "^sha256$",
+    "^lz$",
+    "^solve$",
+  ]);
 }
