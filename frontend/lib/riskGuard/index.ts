@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { requestHost } from "@/lib/requestHost";
 import { getRiskGuardConfig, isTurnstileConfigured } from "./config";
 import { verifiedCrawler } from "./crawler";
 import { allowPreviewBot } from "./previewBots";
@@ -101,7 +102,7 @@ export async function riskGuard(request: NextRequest, ctx: GuardContext): Promis
 const warnedHosts = new Set<string>();
 
 function audienceFor(request: NextRequest, audiences: string[], traceId: string): string {
-  const host = (request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? "").split(",")[0].trim();
+  const host = requestHost(request.headers);
   let hostname = "";
   try {
     hostname = new URL(`http://${host}`).hostname.toLowerCase();
@@ -136,9 +137,8 @@ function json(body: object, status: number): NextResponse {
 function isSameOrigin(request: NextRequest): boolean {
   const origin = request.headers.get("origin");
   if (!origin) return true;
-  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
   try {
-    return new URL(origin).host === host;
+    return new URL(origin).host === requestHost(request.headers).toLowerCase();
   } catch {
     return false;
   }
