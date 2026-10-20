@@ -10,6 +10,7 @@ require_role 依赖分布，可按账号通过 users.permission_overrides 覆盖
 from enum import Enum
 
 from fastapi import Depends, HTTPException, Request
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import Role, _authenticate, is_admin_tier
@@ -230,29 +231,105 @@ ROLE_DEFAULTS: dict[str, dict[Role, set[str]]] = {
 }
 
 
-def has_permission(role_value: str, overrides: dict | None, module: str, action: str) -> bool:
-    """判定有效权限：super_admin 恒通过；override 命中模块则完全替代默认矩阵。"""
+def has_permission(
+    role_value: str,
+    overrides: dict | None,
+    module: str,
+    action: str,
+    *,
+    custom_perms: dict | None = None,
+    builtin_perms: dict | None = None,
+) -> bool:
+    """判定有效权限：super_admin 恒通过；override 命中模块则完全替代默认矩阵。
+
+    V0.6.3 需求7 角色来源扩展（判定序）：
+    1. super_admin → True（短路）；
+    2. 用户级 overrides 命中模块 → 按列表；
+    3. custom_perms 非 None（用户关联了自定义角色组）→ 完全替代，无回落；
+    4. builtin_perms 命中模块（内置角色行在 DB 中的矩阵）→ 按 DB；
+    5. 回落代码内置 ROLE_DEFAULTS。
+    """
     if role_value == Role.SUPER_ADMIN.value:
         return True
     if overrides and module in overrides:
         actions = overrides[module]
         return isinstance(actions, list) and action in actions
+    if custom_perms is not None:
+        actions = custom_perms.get(module, [])
+        return isinstance(actions, list) and action in actions
+    if builtin_perms and module in builtin_perms:
+        actions = builtin_perms[module]
+        return isinstance(actions, list) and action in actions
     role = Role(role_value)
     return action in ROLE_DEFAULTS.get(module, {}).get(role, set())
+
+
+def resolve_role_permissions(
+    role_value: str,
+    custom_perms: dict | None = None,
+    builtin_perms: dict | None = None,
+) -> dict[str, list[str]] | None:
+    """有效角色矩阵快照（V0.6.3 需求7，/api/auth/me 返回给前端镜像判定用）。
+
+    super_admin → None（has_permission 恒短路，前端同样视为全通过）；
+    自定义角色 → 其 permissions；内置角色 → DB 行逐模块覆盖代码默认
+    （DB 中动作被清空的模块表示拒绝，不残留代码默认）。
+    """
+    if role_value == Role.SUPER_ADMIN.value:
+        return None
+    if custom_perms is not None:
+        return {
+            m: sorted(set(a)) for m, a in custom_perms.items()
+            if m in PERMISSION_MODULES and isinstance(a, list)
+        }
+    merged: dict[str, list[str]] = {}
+    for module, per_role in ROLE_DEFAULTS.items():
+        actions = per_role.get(Role(role_value))
+        if actions:
+            merged[module] = sorted(actions)
+    if builtin_perms:
+        for module, actions in builtin_perms.items():
+            if module not in PERMISSION_MODULES:
+                continue
+            if actions:
+                merged[module] = sorted(set(actions))
+            else:
+                merged.pop(module, None)
+    return merged
 
 
 def require_permission(module: str, action: str):
     """模块级权限依赖：登录 + 会话校验同 require_role，再按矩阵判定有效权限。
 
     覆盖矩阵存于 users.permission_overrides（JSON，仅 super_admin 可写），
-    每次请求实时读取，权限变更即时生效。
+    每次请求实时读取，权限变更即时生效。角色来源（V0.6.3 需求7）：
+    用户关联自定义角色组时取其 permissions；否则取内置角色行 DB 矩阵（缺失回落代码默认）。
     """
     async def _dep(request: Request, db: AsyncSession = Depends(get_db, scope="function")) -> dict:
+        from app.db.models import CustomRole  # 延迟导入避免模块级循环依赖
+
         ctx, user = await _authenticate(request, db)
         # Break-Glass：绕过 RBAC 权限校验（含 must_change_password / 实名门槛）
         if ctx.get("break_glass"):
             return ctx
-        if not has_permission(ctx["role"], user.permission_overrides, module, action):
+        custom_perms: dict | None = None
+        builtin_perms: dict | None = None
+        if ctx["role"] != Role.SUPER_ADMIN.value:
+            if user.custom_role_id:
+                row = await db.get(CustomRole, user.custom_role_id)
+                # 行缺失（角色组已被删除但关联未清理）按 None 处理 → 回落内置默认
+                if row is not None:
+                    custom_perms = row.permissions or {}
+            else:
+                row = (await db.execute(
+                    select(CustomRole).where(CustomRole.builtin_key == ctx["role"])
+                )).scalar_one_or_none()
+                if row is not None:
+                    builtin_perms = row.permissions or {}
+        if not has_permission(
+            ctx["role"], user.permission_overrides, module, action,
+            custom_perms=custom_perms, builtin_perms=builtin_perms,
+        ):
             raise HTTPException(status_code=403, detail="权限不足")
         if user.must_change_password:
             raise HTTPException(status_code=403, detail="请先修改初始密码",

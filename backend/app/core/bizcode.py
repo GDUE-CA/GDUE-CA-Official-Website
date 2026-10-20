@@ -38,6 +38,8 @@ class BizCode(IntEnum):
     LOGIN_BLOCKED = 1013
     # 系统尚未完成初始化向导（system_initialized=false），普通账号禁止登录
     SYSTEM_NOT_INITIALIZED = 1014
+    # 登录二次验证码投递失败（邮件通道已配置但发信失败）：属发送方临时故障，与凭据无关
+    LOGIN_2FA_SEND_FAILED = 1015
 
     INTERNAL_ERROR = 5000
     UPSTREAM_FAILURE = 5001
@@ -96,6 +98,10 @@ _BIZCODE_REGISTRY: dict[int, BizCodeMeta] = {
     ),
     BizCode.SYSTEM_NOT_INITIALIZED: BizCodeMeta(
         http_status=403, i18n_key="error.system_not_initialized", fallback_zh="系统尚未完成初始化，请使用应急账号登录后台完成初始化向导"
+    ),
+    BizCode.LOGIN_2FA_SEND_FAILED: BizCodeMeta(
+        http_status=503, i18n_key="error.login_2fa_send_failed",
+        fallback_zh="验证码发送失败，请稍后重试或联系管理员"
     ),
     BizCode.INTERNAL_ERROR: BizCodeMeta(
         http_status=500, i18n_key="error.internal", fallback_zh="服务器内部错误，请稍后重试"

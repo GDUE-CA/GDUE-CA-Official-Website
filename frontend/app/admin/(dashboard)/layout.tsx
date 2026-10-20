@@ -68,7 +68,7 @@ import { BackgroundTaskFloat } from "@/components/notifications/BackgroundTaskFl
 import { fetchMe } from "@/lib/api/auth";
 import { fetchOverview } from "@/lib/api/adminStats";
 import { fetchPublicSettings } from "@/lib/api/system";
-import { API_BASE_URL, ApiError } from "@/lib/api/client";
+import { API_BASE_URL } from "@/lib/api/client";
 import { clearLocalSession, isAdminRole, logout, saveSession, type AdminSession } from "@/lib/auth";
 import {
   hasPermission,
@@ -139,7 +139,6 @@ const firstLevelItems: FirstLevel[] = [
       { key: "admin.nav.users.list", href: "/admin/users", icon: UsersIcon, modules: ["users"] },
       { key: "admin.nav.users.roles", href: "/admin/roles", icon: KeyRound, modules: ["roles"] }, // V0.5.5 §3.2：角色管理（后端鉴权，前端不硬置灰）
       { key: "admin.nav.users.members", href: "/admin/members", icon: UsersRound, modules: ["members"] }, // ↩成员花名册
-      { key: "admin.nav.users.realname", href: "/admin/realname-review", icon: BadgeCheck, modules: ["realname"] }, // ↩实名审核
     ],
   },
   // 3. 审核中心（V0.5.5 §3.1：统一收纳全部申请/审核/工单业务，原分散入口全部迁移至此）
@@ -155,6 +154,7 @@ const firstLevelItems: FirstLevel[] = [
       { key: "admin.review.tabs.recovery", href: "/admin/review?tab=recovery", icon: LifeBuoy, modules: ["review.resets"] }, // 找回账号审核（V0.5.8 §5.4 人工审核工单）
       { key: "admin.nav.users.schoolVerify", href: "/admin/school-verify", icon: GraduationCap, modules: ["review.school"] }, // ↩学校身份核验
       { key: "admin.nav.users.emailChange", href: "/admin/email-change-requests", icon: MailPlus, modules: ["review.emails"] }, // ↩更换绑定邮箱申请列表
+      { key: "admin.nav.users.realname", href: "/admin/realname-review", icon: BadgeCheck, modules: ["realname"] }, // V0.6.3 需求5：实名审核由用户管理迁入（i18n key 保持原样）
     ],
   },
   // 4. 内容管理
@@ -167,7 +167,7 @@ const firstLevelItems: FirstLevel[] = [
       { key: "admin.nav.content.memo", href: "/admin/memo", icon: FileText, modules: ["memo"] },
       { key: "admin.nav.content.blocks", href: "/admin/content/club-intro", icon: FileText, modules: ["content"] }, // ↩内容块
       { key: "admin.nav.content.hero", href: "/admin/content/hero", icon: Palette, modules: ["content"] }, // V0.6.1 需求3：首页 Hero 区块管理
-      { key: "admin.nav.content.securityQuestions", href: "/admin/security-questions", icon: ShieldCheck, modules: ["security_questions"] }, // ↩安全问题库（V0.5.8 §3）
+      { key: "admin.nav.config.sysdata", href: "/admin/sys-data", icon: Database, modules: ["settings"] }, // V0.6.3 需求4：学院专业数据由系统配置迁入（i18n key 保持原样）
       { key: "admin.nav.content.media", href: "/admin/media", icon: FolderOpen, modules: ["media"] }, // ↩媒体库
       { key: "admin.nav.content.recycle", href: "/admin/recycle", icon: Trash2 }, // ↩内容回收站
     ],
@@ -202,6 +202,7 @@ const firstLevelItems: FirstLevel[] = [
     modules: ["security"],
     children: [
       { key: "admin.nav.security.breakglass", icon: KeyRound, placeholder: true }, // ⏳常驻状态页未实现
+      { key: "admin.nav.content.securityQuestions", href: "/admin/security-questions", icon: ShieldCheck, modules: ["security_questions"] }, // V0.6.3 需求3：安全问题库由内容管理迁入（i18n key 保持原样）
       { key: "admin.nav.security.login", href: "/admin/security/bans", icon: ShieldBan, modules: ["security"] }, // 封禁列表+解封
       { key: "admin.nav.security.access", href: "/admin/security/access-control", icon: Globe, modules: ["security"] }, // 访问控制 Tab
       { key: "admin.nav.security.systemReset", href: "/admin/system-reset", icon: ShieldAlert, modules: ["system_reset"] }, // V0.5.7 高危：仅超管/Break-Glass
@@ -215,7 +216,6 @@ const firstLevelItems: FirstLevel[] = [
     modules: ["settings"],
     children: [
       { key: "admin.nav.config.site", href: "/admin/settings", icon: Settings, modules: ["settings"] },
-      { key: "admin.nav.config.sysdata", href: "/admin/sys-data", icon: Database, modules: ["settings"] }, // Module D：学院/年级/专业/班级管理
       { key: "admin.nav.config.themes", href: "/admin/themes", icon: Palette, modules: ["themes"] }, // 界面主题 CRUD/上传
       { key: "admin.nav.config.locale", icon: Globe, placeholder: true }, // ⏳专用本地化子页未实现
       { key: "admin.nav.config.oauth", href: "/admin/oauth", icon: KeyRound, modules: ["oauth"] }, // ↩OAuth 渠道
@@ -341,9 +341,11 @@ export default function AdminDashboardLayout({
         }
         setChecked(true);
       })
-      .catch((err) => {
+      .catch(() => {
         if (cancelled) return;
-        if (err instanceof ApiError && err.status === 401) clearLocalSession();
+        // 身份校验失败一律清除本地缓存再跳登录页（401 会话失效、5xx、网络异常均如此）。
+        // 仅清 401 会让缓存身份残留 → /login 读到残留身份又跳回本页 → 无限重定向循环。
+        clearLocalSession();
         router.replace(lp("/login"));
       });
     return () => {

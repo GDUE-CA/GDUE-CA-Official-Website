@@ -1,10 +1,12 @@
 "use client";
 
 /**
- * 成员管理组件
+ * 社团通讯录组件（V0.6.3 需求7 重构）
  *
- * - 列表：搜索 / 届别筛选 / 归档筛选 / 服务端分页 / 头像+姓名+职务+徽章行
- * - 批量勾选：全选本页 / 跨页保留，批量改届别与职务
+ * - 列表：按职务分块展示（组头=职务/未分组+人数徽章）；搜索 / 届别 / 归档 / 职务筛选；
+ *   硬顶 2000 行（截断时提示）；不再使用服务端分页
+ * - 导出：CSV / Excel / vCard 三格式 + 隐私开关（剔除手机号与微信号），带当前筛选条件
+ * - 批量勾选：全选当前结果 / 跨组保留，批量改届别与职务
  * - Excel 导入：下载空白模板（表头复刻成员信息表），上传后按姓名去重（跳过/更新）
  * - 创建与编辑共用 Dialog：姓名、职务、届别、简介、排序、归档开关
  * - 头像上传：前端先校验格式（JPG/PNG/WEBP）与大小（≤5MB）再调用上传接口
@@ -32,7 +34,8 @@ import {
 import { StatusBadge } from "@/components/admin/review/StatusBadge";
 import { FormattedUserActionTime } from "@/components/shared/FormattedUserActionTime";
 import {
-  adminListMembers,
+  adminListMembersGrouped,
+  adminExportMembers,
   adminCreateMember,
   adminUpdateMember,
   adminDeleteMember,
@@ -41,13 +44,14 @@ import {
   adminImportMembers,
   adminBatchUpdateMembers,
 } from "@/lib/api/members";
-import type { Member, MemberImportResult, MemberTerm } from "@/types/api";
+import type { Member, MemberGroup, MemberImportResult, MemberTerm } from "@/types/api";
 import { useServerFieldErrors } from "@/lib/hooks/useServerFieldErrors";
 import { FieldError } from "@/components/ui/field-error";
 
-const PAGE_SIZE = 20;
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024; // 与后端限制一致：5MB
 const AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"];
+/** 职务筛选哨兵值：未分组（后端 role_title=空串） */
+const UNGROUPED = "__ungrouped__";
 
 /** 后端请求体字段名（data-field 对位，与 1001 data.errors[].field 一致） */
 type MemberField =
@@ -57,20 +61,20 @@ type MemberField =
 export function MembersManager() {
   const { t } = useI18n();
 
-  const [items, setItems] = useState<Member[]>([]);
-  const [total, setTotal] = useState(0);
+  const [groups, setGroups] = useState<MemberGroup[]>([]);
+  const [roleTitles, setRoleTitles] = useState<string[]>([]);
+  const [truncated, setTruncated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  // 搜索（300ms 防抖）+ 届别/归档筛选 + 分页
+  // 搜索（300ms 防抖）+ 届别/归档/职务筛选
   const [q, setQ] = useState("");
   const [query, setQuery] = useState("");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [termFilter, setTermFilter] = useState<"" | MemberTerm>("");
   const [archivedFilter, setArchivedFilter] = useState<"" | "active" | "archived">("");
-  const [page, setPage] = useState(1);
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const [roleTitleFilter, setRoleTitleFilter] = useState("");
 
   // 表单
   const [open, setOpen] = useState(false);
@@ -105,36 +109,45 @@ export function MembersManager() {
   // 模板下载
   const [downloading, setDownloading] = useState(false);
 
+  // 导出弹窗（格式 + 隐私开关，带当前筛选）
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportFormat, setExportFormat] = useState<"csv" | "xlsx" | "vcf">("csv");
+  const [exportSensitive, setExportSensitive] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  /** 当前筛选条件（/grouped 与 /export 共用组装） */
+  const currentFilter = useCallback(() => ({
+    term: termFilter || undefined,
+    archived: archivedFilter === "" ? undefined : archivedFilter === "archived",
+    role_title:
+      roleTitleFilter === "" ? undefined : roleTitleFilter === UNGROUPED ? "" : roleTitleFilter,
+    q: query || undefined,
+  }), [termFilter, archivedFilter, roleTitleFilter, query]);
+
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await adminListMembers({
-        term: termFilter || undefined,
-        archived: archivedFilter === "" ? undefined : archivedFilter === "archived",
-        q: query || undefined,
-        page,
-        page_size: PAGE_SIZE,
-      });
-      setItems(res.items);
-      setTotal(res.total);
+      const res = await adminListMembersGrouped(currentFilter());
+      setGroups(res.groups);
+      setRoleTitles(res.role_titles);
+      setTruncated(res.truncated);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Load failed");
     } finally {
       setLoading(false);
     }
-  }, [termFilter, archivedFilter, query, page]);
+  }, [currentFilter]);
 
   useEffect(() => {
     load();
   }, [load]);
 
-  // 搜索防抖：变更时回到第一页
+  // 搜索防抖
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       setQuery(q);
-      setPage(1);
     }, 300);
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -302,12 +315,40 @@ export function MembersManager() {
     setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
   }
 
-  function toggleSelectPage() {
-    const pageIds = items.map((m) => m.id);
+  // 当前结果全集（分组扁平化；全选/计数共用）
+  const allItems = groups.flatMap((g) => g.members);
+
+  function toggleSelectAll() {
+    const pageIds = allItems.map((m) => m.id);
     const allChecked = pageIds.length > 0 && pageIds.every((id) => selected.includes(id));
     setSelected((s) =>
       allChecked ? s.filter((id) => !pageIds.includes(id)) : [...s, ...pageIds.filter((id) => !s.includes(id))]
     );
+  }
+
+  /** 导出通讯录（当前筛选 + 格式 + 隐私开关） */
+  async function handleExport() {
+    setExporting(true);
+    try {
+      const blob = await adminExportMembers({
+        ...currentFilter(),
+        format: exportFormat,
+        include_sensitive: exportSensitive,
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `members.${exportFormat}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      setExportOpen(false);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Export failed");
+    } finally {
+      setExporting(false);
+    }
   }
 
   /** 批量修改届别 / 职务 */
@@ -349,6 +390,10 @@ export function MembersManager() {
         <Button variant="outline" onClick={openImport}>
           <Upload className="h-4 w-4 mr-1.5" />
           {t("admin.members.importBtn")}
+        </Button>
+        <Button variant="outline" onClick={() => setExportOpen(true)}>
+          <Download className="h-4 w-4 mr-1.5" />
+          {t("admin.members.exportBtn")}
         </Button>
         <Button onClick={openCreate}>
           <Plus className="h-4 w-4 mr-1.5" />
@@ -399,15 +444,26 @@ export function MembersManager() {
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <CardTitle className="text-base flex items-center gap-2">
               <UsersRound className="h-4 w-4" />
-              {total} {t("admin.members.colName")}
+              {allItems.length} {t("admin.members.colName")}
             </CardTitle>
             <div className="flex items-center gap-2 flex-wrap">
               <select
+                value={roleTitleFilter}
+                onChange={(e) => setRoleTitleFilter(e.target.value)}
+                className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                aria-label={t("admin.members.colRoleTitle")}
+              >
+                <option value="">{t("admin.members.filterAll")}</option>
+                <option value={UNGROUPED}>{t("admin.members.groupUngrouped")}</option>
+                {roleTitles.map((rt) => (
+                  <option key={rt} value={rt}>
+                    {rt}
+                  </option>
+                ))}
+              </select>
+              <select
                 value={termFilter}
-                onChange={(e) => {
-                  setTermFilter(e.target.value as "" | MemberTerm);
-                  setPage(1);
-                }}
+                onChange={(e) => setTermFilter(e.target.value as "" | MemberTerm)}
                 className="h-9 rounded-md border border-input bg-background px-2 text-sm"
                 aria-label={t("admin.members.colTerm")}
               >
@@ -417,10 +473,7 @@ export function MembersManager() {
               </select>
               <select
                 value={archivedFilter}
-                onChange={(e) => {
-                  setArchivedFilter(e.target.value as "" | "active" | "archived");
-                  setPage(1);
-                }}
+                onChange={(e) => setArchivedFilter(e.target.value as "" | "active" | "archived")}
                 className="h-9 rounded-md border border-input bg-background px-2 text-sm"
                 aria-label={t("admin.members.colArchived")}
               >
@@ -445,130 +498,123 @@ export function MembersManager() {
             </div>
           ) : error ? (
             <p className="text-sm text-destructive py-8 text-center">{error}</p>
-          ) : items.length === 0 ? (
+          ) : allItems.length === 0 ? (
             <p className="text-sm text-muted-foreground py-8 text-center">
               {t("admin.members.empty")}
             </p>
           ) : (
-            <div className="space-y-2">
-              {/* 全选本页 */}
+            <div className="space-y-5">
+              {/* 全选当前结果 */}
               <label className="flex items-center gap-2 px-3 text-xs text-muted-foreground cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={items.length > 0 && items.every((m) => selected.includes(m.id))}
-                  onChange={toggleSelectPage}
+                  checked={allItems.length > 0 && allItems.every((m) => selected.includes(m.id))}
+                  onChange={toggleSelectAll}
                   className="h-4 w-4 accent-primary cursor-pointer"
                 />
                 {t("admin.members.selectAll")}
               </label>
-              {items.map((m) => (
-                <div
-                  key={m.id}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-md bg-muted/40 hover:bg-muted/60 transition-colors"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selected.includes(m.id)}
-                    onChange={() => toggleSelect(m.id)}
-                    aria-label={m.name}
-                    className="h-4 w-4 accent-primary cursor-pointer shrink-0"
-                  />
-                  {/* 头像：有 URL 显示图片，否则回退姓名首字 */}
-                  {m.avatar_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={m.avatar_url}
-                      alt={m.name}
-                      className="h-10 w-10 rounded-full object-cover shrink-0"
-                    />
-                  ) : (
-                    <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-semibold shrink-0">
-                      {m.name.slice(0, 1)}
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0 space-y-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold">{m.name}</span>
-                      {m.role_title && (
-                        <span className="text-xs text-muted-foreground">{m.role_title}</span>
-                      )}
-                      <StatusBadge tone={m.term === "current" ? "info" : "neutral"}>
-                        {m.term === "current"
-                          ? t("admin.members.termCurrent")
-                          : t("admin.members.termFormer")}
-                      </StatusBadge>
-                      <StatusBadge tone={m.archived ? "neutral" : "success"}>
-                        {m.archived
-                          ? t("admin.members.archivedYes")
-                          : t("admin.members.archivedNo")}
-                      </StatusBadge>
-                    </div>
-                    {m.bio && (
-                      <p className="text-xs text-muted-foreground line-clamp-1">{m.bio}</p>
-                    )}
-                    {/* 花名册信息（仅管理端可见，含电话） */}
-                    {(() => {
-                      const parts = [
-                        m.gender,
-                        m.grade,
-                        m.department,
-                        m.major_class,
-                        m.phone,
-                        m.political_status,
-                      ].filter(Boolean);
-                      return parts.length > 0 ? (
-                        <p className="text-xs text-muted-foreground line-clamp-1">
-                          {parts.join(" · ")}
-                        </p>
-                      ) : null;
-                    })()}
+              {groups.map((g) => (
+                <section key={g.role_title ?? UNGROUPED} className="space-y-2">
+                  {/* 组头：职务 + 人数徽章 */}
+                  <div className="flex items-center gap-2 px-1">
+                    <h3 className="text-sm font-semibold">
+                      {g.role_title ?? t("admin.members.groupUngrouped")}
+                    </h3>
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                      {t("admin.members.groupCount").replace("{count}", String(g.members.length))}
+                    </span>
                   </div>
-                  <div className="text-xs text-muted-foreground whitespace-nowrap hidden sm:block">
-                    {t("admin.members.colDisplayOrder")}: {m.display_order}
+                  <div className="space-y-2">
+                    {g.members.map((m) => (
+                      <div
+                        key={m.id}
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-md bg-muted/40 hover:bg-muted/60 transition-colors"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selected.includes(m.id)}
+                          onChange={() => toggleSelect(m.id)}
+                          aria-label={m.name}
+                          className="h-4 w-4 accent-primary cursor-pointer shrink-0"
+                        />
+                        {/* 头像：有 URL 显示图片，否则回退姓名首字 */}
+                        {m.avatar_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={m.avatar_url}
+                            alt={m.name}
+                            className="h-10 w-10 rounded-full object-cover shrink-0"
+                          />
+                        ) : (
+                          <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-semibold shrink-0">
+                            {m.name.slice(0, 1)}
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-semibold">{m.name}</span>
+                            {m.role_title && (
+                              <span className="text-xs text-muted-foreground">{m.role_title}</span>
+                            )}
+                            <StatusBadge tone={m.term === "current" ? "info" : "neutral"}>
+                              {m.term === "current"
+                                ? t("admin.members.termCurrent")
+                                : t("admin.members.termFormer")}
+                            </StatusBadge>
+                            <StatusBadge tone={m.archived ? "neutral" : "success"}>
+                              {m.archived
+                                ? t("admin.members.archivedYes")
+                                : t("admin.members.archivedNo")}
+                            </StatusBadge>
+                          </div>
+                          {m.bio && (
+                            <p className="text-xs text-muted-foreground line-clamp-1">{m.bio}</p>
+                          )}
+                          {/* 花名册信息（仅管理端可见，含电话） */}
+                          {(() => {
+                            const parts = [
+                              m.gender,
+                              m.grade,
+                              m.department,
+                              m.major_class,
+                              m.phone,
+                              m.political_status,
+                            ].filter(Boolean);
+                            return parts.length > 0 ? (
+                              <p className="text-xs text-muted-foreground line-clamp-1">
+                                {parts.join(" · ")}
+                              </p>
+                            ) : null;
+                          })()}
+                        </div>
+                        <div className="text-xs text-muted-foreground whitespace-nowrap hidden sm:block">
+                          {t("admin.members.colDisplayOrder")}: {m.display_order}
+                        </div>
+                        <div className="text-xs text-muted-foreground whitespace-nowrap hidden md:block">
+                          <FormattedUserActionTime utcIso={m.created_at} />
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Button variant="ghost" size="icon" onClick={() => openEdit(m)} aria-label={t("admin.members.editBtn")}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleDelete(m.id)} aria-label={t("admin.members.deleteBtn")}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <div className="text-xs text-muted-foreground whitespace-nowrap hidden md:block">
-                    <FormattedUserActionTime utcIso={m.created_at} />
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <Button variant="ghost" size="icon" onClick={() => openEdit(m)} aria-label={t("admin.members.editBtn")}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDelete(m.id)} aria-label={t("admin.members.deleteBtn")}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
-                </div>
+                </section>
               ))}
             </div>
           )}
 
-          {/* 分页（服务端分页） */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
-              <span className="text-xs text-muted-foreground">
-                {t("admin.security.pageInfo")
-                  .replace("{page}", String(page))
-                  .replace("{total}", String(totalPages))}
-              </span>
-              <div className="flex gap-1">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={page <= 1}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                >
-                  {t("admin.security.prev")}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={page >= totalPages}
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                >
-                  {t("admin.security.next")}
-                </Button>
-              </div>
-            </div>
+          {/* 截断提示（硬顶 2000 行，替代原服务端分页） */}
+          {truncated && (
+            <p className="mt-4 pt-4 border-t border-border text-xs text-amber-600 dark:text-amber-400">
+              {t("admin.members.truncatedHint")}
+            </p>
           )}
         </CardContent>
       </Card>
@@ -703,6 +749,71 @@ export function MembersManager() {
               <Button onClick={handleSave} disabled={saving}>
                 {saving && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
                 {t("admin.members.saveBtn")}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* 导出弹窗：格式单选 + 隐私开关（带当前筛选条件） */}
+      <Dialog open={exportOpen} onOpenChange={setExportOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("admin.members.exportTitle")}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">{t("admin.members.exportHint")}</p>
+            <div className="space-y-2">
+              <Label>{t("admin.members.exportFormat")}</Label>
+              <div className="flex items-center gap-4 text-sm">
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="member-export-format"
+                    checked={exportFormat === "csv"}
+                    onChange={() => setExportFormat("csv")}
+                    className="h-4 w-4 accent-primary cursor-pointer"
+                  />
+                  CSV
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="member-export-format"
+                    checked={exportFormat === "xlsx"}
+                    onChange={() => setExportFormat("xlsx")}
+                    className="h-4 w-4 accent-primary cursor-pointer"
+                  />
+                  Excel
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="member-export-format"
+                    checked={exportFormat === "vcf"}
+                    onChange={() => setExportFormat("vcf")}
+                    className="h-4 w-4 accent-primary cursor-pointer"
+                  />
+                  vCard
+                </label>
+              </div>
+            </div>
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                checked={exportSensitive}
+                onChange={(e) => setExportSensitive(e.target.checked)}
+                className="h-4 w-4 accent-primary cursor-pointer"
+              />
+              {t("admin.members.exportSensitive")}
+            </label>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setExportOpen(false)}>
+                {t("admin.members.cancelBtn")}
+              </Button>
+              <Button onClick={handleExport} disabled={exporting}>
+                {exporting && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+                {exporting ? t("admin.members.exporting") : t("admin.members.exportSubmit")}
               </Button>
             </div>
           </div>

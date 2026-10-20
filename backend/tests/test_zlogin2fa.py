@@ -31,8 +31,15 @@ EMAIL = "login2fa@catyuki.com"
 
 @pytest.fixture
 def mails(monkeypatch):
-    """截获验证码邮件：记录 (收件人, 验证码)。"""
+    """截获验证码邮件：记录 (收件人, 验证码)。
+
+    V0.6.3 起 _login2fa_challenge 新增 mailer_configured() 前置守卫：
+    通道未配置（无 SMTP/GRAPH 凭据）时跳过 2FA 放行。测试环境天然未配置，
+    必须把该守卫强制置 True 才会进入真实发码路径；send_email 的成功/失败
+    由下方 fake_send / 具体用例另行控制。
+    """
     sent: list[tuple[str, str]] = []
+    monkeypatch.setattr(auth, "mailer_configured", lambda: True)
 
     async def fake_send(to_addr, subject, body):
         sent.append((to_addr, re.search(r"\b(\d{6})\b", body).group(1)))
@@ -126,7 +133,9 @@ def test_send_failure_blocks_login_without_cooldown(client, monkeypatch):
     async def fail_send(*args):
         return False
 
+    monkeypatch.setattr(auth, "mailer_configured", lambda: True)
     monkeypatch.setattr(auth, "send_email", fail_send)
     r = _login(client)
-    assert r.status_code == 401
+    # V0.6.3：通道已配置但发信失败 → 区分「凭据错误」返回 503，提示为临时基础设施故障
+    assert r.status_code == 503
     assert asyncio.run(get_kv().get(f"login2fa:sent:{_uid()}")) is None

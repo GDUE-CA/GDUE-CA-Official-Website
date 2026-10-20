@@ -247,7 +247,7 @@ export default function SettingsPage() {
               }
             }}
           >
-            {t("admin.activities.save")}
+            {t("common.save")}
           </Button>
         </CardContent>
       </Card>
@@ -255,16 +255,16 @@ export default function SettingsPage() {
       {/* 站点信息：站点名称、页脚（独立保存） */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">站点信息</CardTitle>
+          <CardTitle className="text-base">{t("admin.settings.siteInfo")}</CardTitle>
         </CardHeader>
         <CardContent {...fieldErrors.rootProps} className="space-y-3">
           <div className="space-y-2" data-field="site_name">
-            <Label htmlFor="siteName">站点名称</Label>
+            <Label htmlFor="siteName">{t("admin.settings.siteName")}</Label>
             <Input id="siteName" aria-invalid={!!fe.site_name} value={siteName} onChange={(e) => setSiteName(e.target.value)} />
             <FieldError>{fe.site_name}</FieldError>
           </div>
           <div className="space-y-2" data-field="footer">
-            <Label htmlFor="footer">页脚</Label>
+            <Label htmlFor="footer">{t("admin.settings.footer")}</Label>
             <Textarea id="footer" aria-invalid={!!fe.footer} rows={2} value={footer} onChange={(e) => setFooter(e.target.value)} />
             <FieldError>{fe.footer}</FieldError>
           </div>
@@ -277,7 +277,7 @@ export default function SettingsPage() {
           )}
           <Button onClick={saveSiteInfo} disabled={saving}>
             {saving && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
-            {t("admin.activities.save")}
+            {t("common.save")}
           </Button>
         </CardContent>
       </Card>

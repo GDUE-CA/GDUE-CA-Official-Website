@@ -34,6 +34,7 @@ from app.db.models import (
     ActivityStatus,
     Base,
     ClubDepartment,
+    CustomRole,
     HeroConfig,
     IpRule,
     IpRuleType,
@@ -245,6 +246,8 @@ async def _migrate_columns(conn):
             # ---- V0.6.1 需求5：个人主页隐藏 + 临时封禁到期 ----
             ("profile_hidden", "BOOLEAN DEFAULT 0"),
             ("ban_until", "DATETIME NULL"),
+            # ---- V0.6.3 需求7：自定义角色组关联 ----
+            ("custom_role_id", "INTEGER NULL REFERENCES custom_roles(id)"),
         ],
         "announcements": [
             # V0.6.1 需求4：发布者介绍 + 多语言覆盖
@@ -577,6 +580,32 @@ async def _init_db():
             logger.info("已 seed 默认首页 Hero 主题配置")
         await s.commit()
 
+        # V0.6.3 需求7 预置 4 个内置角色行：按 builtin_key 不存在才插入，
+        # 管理员后续在角色矩阵中的修改不被覆盖。super_admin 恒全模块 view+manage
+        # （与 has_permission 短路语义一致），其余角色取代码默认矩阵 ROLE_DEFAULTS。
+        from app.core.permissions import PERMISSION_MODULES, ROLE_DEFAULTS
+        for role in Role:
+            exists = (await s.execute(
+                select(CustomRole).where(CustomRole.builtin_key == role.value)
+            )).scalar_one_or_none()
+            if exists:
+                continue
+            if role == Role.SUPER_ADMIN:
+                perms = {m: ["view", "manage"] for m in PERMISSION_MODULES}
+            else:
+                perms = {
+                    m: sorted(actions)
+                    for m, per_role in ROLE_DEFAULTS.items()
+                    if (actions := per_role.get(role))
+                }
+            s.add(CustomRole(
+                name=f"builtin:{role.value}",
+                builtin_key=role.value,
+                description=None,
+                permissions=perms,
+            ))
+        await s.commit()
+
 
 # ---------- 全局定时任务（P0，每小时） ----------
 def _cleanup_expired_mail_attachments() -> int:
@@ -684,6 +713,9 @@ async def _maintenance_loop() -> None:
 async def lifespan(app: FastAPI):
     # Break-Glass 启动硬性校验：凭据只允许来自环境变量，缺失/非法直接崩溃退出
     _validate_break_glass_env()
+    # V0.6.3：运行环境校验 —— ENVIRONMENT=dev 时跳过真实邮件投递（验证码仅记日志），
+    # 并拦截「生产部署误开 dev」的高危配置
+    _validate_environment()
     # V0.5.9：SMTP / 邮件通道环境变量完整性校验——未配置时输出明确告警日志
     # （验证码、回执、审核通知等邮件将无法投递；后台「系统设置」页同步展示警告横幅）
     from app.core.mailer import is_configured as _mailer_is_configured, current_provider as _mail_provider
@@ -737,6 +769,34 @@ def _validate_break_glass_env() -> None:
             "; ".join(problems),
         )
         raise SystemExit(1)
+
+
+def _validate_environment() -> None:
+    """运行环境校验 + 生产防护：ENVIRONMENT 仅允许 dev / prod 两个值。
+
+    dev = 本地调试专用：注册 / 找回密码 / 二次验证等验证码跳过真实邮件投递，
+    仅记录到服务端日志。生产环境（全站 HTTPS，COOKIE_SECURE=true）绝不允许
+    开启 dev，否则邮箱校验会被绕过 —— 命中时直接 FATAL 退出，防止误配上线。
+    """
+    env = settings.ENVIRONMENT.strip().lower()
+    if env not in ("", "dev", "prod"):
+        logger.critical(
+            "FATAL: ENVIRONMENT 仅支持 'dev' / 'prod'，当前为 %r。请修正后重启。",
+            settings.ENVIRONMENT,
+        )
+        raise SystemExit(1)
+    if not settings.is_dev:
+        return
+    if settings.COOKIE_SECURE.strip().lower() == "true":
+        logger.critical(
+            "FATAL: 检测到 ENVIRONMENT=dev 且 COOKIE_SECURE=true（生产特征），"
+            "禁止在生产环境跳过邮箱验证。请将 ENVIRONMENT 设为 prod。"
+        )
+        raise SystemExit(1)
+    logger.warning(
+        "运行环境 = dev：注册 / 找回密码 / 二次验证等验证码将跳过邮件投递，"
+        "仅记录到服务端日志（严禁用于生产部署）。"
+    )
 
 
 async def _kv_sweep_loop() -> None:

@@ -171,7 +171,19 @@ async def _send_graph(to_addr: str, subject: str, body: str) -> None:
 # ---------- 对外入口 ----------
 
 async def send_email(to_addr: str, subject: str, body: str) -> bool:
-    """发送纯文本邮件；成功 True，失败/未配置 False（失败原因仅写日志）。"""
+    """发送纯文本邮件；成功 True，失败/未配置 False（失败原因仅写日志）。
+
+    开发环境（ENVIRONMENT=dev）：不调用任何邮件通道，直接返回成功，
+    并将邮件正文（含验证码）写入服务端日志，便于本地调试时从日志读取验证码；
+    生产环境（prod，默认）：按现有通道真实投递，未配置 / 失败照常返回 False。
+    """
+    if get_settings().is_dev:
+        # 开发环境跳过邮件发送：仅记录日志（不调用 SMTP/Graph、不真正发信）
+        logger.warning(
+            "开发环境跳过邮件发送（ENVIRONMENT=dev）收件人=%s 主题=%s\n%s",
+            to_addr, subject, body,
+        )
+        return True
     provider = _provider()
     if not is_configured():
         logger.warning("邮件通道未配置（provider=%s），邮件未发送（收件人=%s 主题=%s）",

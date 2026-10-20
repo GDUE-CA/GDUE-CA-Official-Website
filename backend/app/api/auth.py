@@ -44,7 +44,7 @@ from app.core.csrf import (
 from app.core.ip_intel import resolve_location_full
 from app.core.middleware import get_client_ip
 from app.core.password_policy import check_password_strength
-from app.core.permissions import PERMISSION_MODULES, require_permission
+from app.core.permissions import PERMISSION_MODULES, require_permission, resolve_role_permissions
 from app.core.rate_limit import rate_limit
 from app.core.responses import fail, ok
 from app.core.security import (
@@ -65,6 +65,7 @@ from app.db.models import (
     LoginSession,
     PasswordResetRequest,
     PasswordResetStatus,
+    CustomRole,
     SystemSetting,
     User,
     UserSecurityQuestion,
@@ -456,10 +457,10 @@ async def _login2fa_challenge(
     """陌生 IP/设备 2FA 门禁（密码校验通过后调用）。
 
     返回值：
-    - None：设备已信任（30 天内同指纹+IP 登录过）或账号无绑定邮箱（如实审计后放行），
-      调用方继续建立会话；
+    - None：设备已信任（30 天内同指纹+IP 登录过）、账号无绑定邮箱、或邮件通道未配置
+      （验证码无法投递，放行并记审计+告警），调用方继续建立会话；
     - LoginResponse(requires_2fa=True)：已下发邮箱验证码挑战，会话未建立；
-    - Response（fail JSON）：验证码投递失败，按登录失败统一拒绝（原因仅入审计）。
+    - Response（fail JSON，LOGIN_2FA_SEND_FAILED）：通道已配置但发信失败，提示验证码发送失败。
     """
     uid = str(user.id)
     kv = get_kv()
@@ -469,14 +470,22 @@ async def _login2fa_challenge(
     if not user_email:
         log_action(db, user.id, "login2fa.skipped_no_email", None, client_ip)
         return None
+    # 邮件通道未配置（SMTP_HOST / GRAPH_* 缺失）→ 验证码无处投递，2FA 无法完成：
+    # 直接放行并记审计 + 告警，避免未配置邮件的部署初始化后被整体锁死无法登录；
+    # 配置邮件通道后，本分支不再命中，行为与既有实现完全一致。
+    if not mailer_configured():
+        log_action(db, user.id, "login2fa.skipped_mail_unconfigured", None, client_ip)
+        logger.warning(
+            "登录二次验证跳过：邮件通道未配置，验证码无法投递（账号=%s）", user.username)
+        return None
     # 每次密码登录都发新码；仅在重发冷却内且旧码仍有效时沿用旧码（避免连点登录刷邮件）。
-    # 同步投递失败按登录失败处理，不泄露 SMTP 状态
     cooldown = await _login2fa_cooldown(kv, uid)
     code_sent = not (cooldown > 0 and await kv.exists(f"login2fa:code:{uid}"))
     if code_sent:
         if not await _send_login2fa_code(uid, user_email, kv):
+            # 通道已配置但发信失败（临时故障）：与「凭据错误」区分文案，避免误导为密码问题
             log_action(db, user.id, "login2fa.send_failed", None, client_ip)
-            return fail(BizCode.LOGIN_BLOCKED, params=_LOGIN_DENIED)
+            return fail(BizCode.LOGIN_2FA_SEND_FAILED)
         cooldown = settings.EMAIL_CODE_RESEND_INTERVAL_SECONDS
     log_action(db, user.id, "login2fa.code_sent" if code_sent else "login2fa.code_reused",
                f"ip:{client_ip} fp:{(fingerprint or '-')[:16]}", client_ip)
@@ -1054,7 +1063,24 @@ async def me(
     u = await db.get(User, int(user["user_id"]))
     if not u:
         raise HTTPException(status_code=404, detail="用户不存在")
-    return u
+    out = UserOut.model_validate(u)
+    # V0.6.3 需求7：回填自定义角色组名称 + 有效角色矩阵（super_admin 为 None，前端恒全通过）
+    if u.role != UserRole.SUPER_ADMIN:
+        if u.custom_role_id:
+            cr = await db.get(CustomRole, u.custom_role_id)
+            if cr is not None:
+                out.custom_role_name = cr.name
+                out.role_permissions = resolve_role_permissions(
+                    u.role.value, custom_perms=cr.permissions or {},
+                )
+        else:
+            cr = (await db.execute(
+                select(CustomRole).where(CustomRole.builtin_key == u.role.value)
+            )).scalar_one_or_none()
+            out.role_permissions = resolve_role_permissions(
+                u.role.value, builtin_perms=(cr.permissions if cr else None),
+            )
+    return out
 
 
 # ---------- 个人资料 ----------
@@ -1485,11 +1511,37 @@ async def list_users(
         stmt = stmt.where(User.role == role)
     if is_active is not None:
         stmt = stmt.where(User.is_active == is_active)
+
+    async def _custom_role_names(ids: set[int]) -> dict[int, str]:
+        """批量加载自定义角色组名称映射（V0.6.3 需求7 回填 custom_role_name）。"""
+        if not ids:
+            return {}
+        rows = (await db.execute(
+            select(CustomRole.id, CustomRole.name).where(CustomRole.id.in_(ids))
+        )).all()
+        return dict(rows)
+
     if page is None:
         result = await db.execute(stmt)
-        return result.scalars().all()
+        users = result.scalars().all()
+        name_map = await _custom_role_names(
+            {x.custom_role_id for x in users if x.custom_role_id}
+        )
+        out_list = []
+        for x in users:
+            item = UserOut.model_validate(x)
+            item.custom_role_name = name_map.get(x.custom_role_id)
+            out_list.append(item)
+        return out_list
     # 裸 ORM 对象无法被 dict 响应分支序列化，必须经 UserOut 转为 JSON 基本类型
-    return await paginate(db, stmt, page, page_size, out_model=UserOut)
+    paged = await paginate(db, stmt, page, page_size, out_model=UserOut)
+    items = paged.get("items", [])
+    name_map = await _custom_role_names(
+        {it["custom_role_id"] for it in items if it.get("custom_role_id")}
+    )
+    for it in items:
+        it["custom_role_name"] = name_map.get(it.get("custom_role_id"))
+    return paged
 
 
 @router.get("/users/{user_id}", response_model=UserOut)
@@ -1578,6 +1630,7 @@ async def update_user(
         raise HTTPException(status_code=403, detail="只能修改自己的信息")
     if not is_super and (req.role is not None or req.is_active is not None
                          or req.permission_overrides is not None
+                         or req.custom_role_id is not None
                          or req.club_position is not None):
         raise HTTPException(status_code=403, detail="无权修改角色、账号状态、权限或职务")
 
@@ -1634,6 +1687,19 @@ async def update_user(
                      f"user:{user_id} {u.club_position or '-'}->{new_pos or '-'}",
                      get_client_ip(request))
                 u.club_position = new_pos
+        # 自定义角色组（V0.6.3 需求7）：0 = 清除关联；>0 = 设置为目标自定义角色组
+        # （仅允许关联 builtin_key 为 NULL 的自定义角色组，内置角色行走 role 字段）
+        if req.custom_role_id is not None:
+            new_cr_id = req.custom_role_id or None
+            if new_cr_id is not None:
+                cr = await db.get(CustomRole, new_cr_id)
+                if cr is None or cr.builtin_key is not None:
+                    raise HTTPException(status_code=400, detail="目标角色组不存在或为内置角色")
+            if new_cr_id != u.custom_role_id:
+                _log(db, user, "user.custom_role",
+                     f"user:{user_id} {u.custom_role_id or '-'}->{new_cr_id or '-'}",
+                     get_client_ip(request))
+                u.custom_role_id = new_cr_id
 
     _log(db, user, "user.update", f"user:{user_id}", get_client_ip(request))
     await db.commit()

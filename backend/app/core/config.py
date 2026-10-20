@@ -33,6 +33,12 @@ class Settings(BaseSettings):
     HOST: str = "127.0.0.1"
     PORT: int = 8000
 
+    # ---- 运行环境（仅 dev / prod 两个值） ----
+    # dev：本地调试，跳过邮件投递——验证码仅写入服务端日志（不调用 SMTP/Graph、不真正发信）；
+    # prod：默认值，走真实邮件通道，注册 / 找回密码必须完成邮箱验证。
+    # 安全约束：仅后端读取，绝不通过任何 API 暴露给前端（防止绕过生产邮箱校验）。
+    ENVIRONMENT: str = "prod"
+
     # ---- 数据库 ----
     DATABASE_URL: str = "sqlite+aiosqlite:///./assoc.db"
 
@@ -131,6 +137,11 @@ class Settings(BaseSettings):
     @property
     def break_glass_enabled(self) -> bool:
         return self.SUPER_ADMIN_ENABLED.strip().lower() == "true"
+
+    @property
+    def is_dev(self) -> bool:
+        """是否开发环境（ENVIRONMENT=dev）：true 时跳过真实邮件投递。"""
+        return self.ENVIRONMENT.strip().lower() == "dev"
 
     @property
     def cors_origins_list(self) -> list[str]:

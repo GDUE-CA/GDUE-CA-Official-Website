@@ -211,3 +211,64 @@ def to_xlsx(
     buf = BytesIO()
     wb.save(buf)
     return buf.getvalue()
+
+
+def to_vcf(
+    rows: Sequence[Any],
+    *,
+    include_sensitive: bool = False,
+) -> bytes:
+    """通用 vCard(vcf) 导出（vCard 3.0，CRLF 连接，可直接导入手机通讯录）。
+
+    取值键约定（缺失/None 的字段跳过该行字段）：
+    - name → FN / N
+    - phone → TEL;TYPE=CELL（仅 include_sensitive=True）
+    - wechat → X-WECHAT（仅 include_sensitive=True）
+    - department → ORG
+    - role_title → TITLE
+    - grade / major_class / bio → 组合进 NOTE
+    """
+    def esc(s: str) -> str:
+        # vCard 3.0 文本值转义：反斜杠、逗号、分号、换行
+        return (
+            s.replace("\\", "\\\\")
+            .replace(",", "\\,")
+            .replace(";", "\\;")
+            .replace("\r\n", "\\n")
+            .replace("\n", "\\n")
+            .replace("\r", "\\n")
+        )
+
+    cards: list[str] = []
+    for row in rows:
+        name = _cell_text(_value(row, "name")).strip()
+        if not name:
+            continue
+        lines = ["BEGIN:VCARD", "VERSION:3.0"]
+        lines.append(f"FN;CHARSET=UTF-8:{esc(name)}")
+        # N：姓;名;称谓;前缀;后缀（无法可靠拆分中文姓名，全量放姓位）
+        lines.append(f"N;CHARSET=UTF-8:{esc(name)};;;;")
+        if include_sensitive:
+            phone = _cell_text(_value(row, "phone")).strip()
+            if phone:
+                lines.append(f"TEL;TYPE=CELL:{esc(phone)}")
+            wechat = _cell_text(_value(row, "wechat")).strip()
+            if wechat:
+                lines.append(f"X-WECHAT;CHARSET=UTF-8:{esc(wechat)}")
+        department = _cell_text(_value(row, "department")).strip()
+        if department:
+            lines.append(f"ORG;CHARSET=UTF-8:{esc(department)}")
+        role_title = _cell_text(_value(row, "role_title")).strip()
+        if role_title:
+            lines.append(f"TITLE;CHARSET=UTF-8:{esc(role_title)}")
+        note_parts = [
+            _cell_text(_value(row, "grade")).strip(),
+            _cell_text(_value(row, "major_class")).strip(),
+            _cell_text(_value(row, "bio")).strip(),
+        ]
+        note = " / ".join(p for p in note_parts if p)
+        if note:
+            lines.append(f"NOTE;CHARSET=UTF-8:{esc(note)}")
+        lines.append("END:VCARD")
+        cards.append("\r\n".join(lines))
+    return ("\r\n".join(cards) + "\r\n").encode("utf-8")

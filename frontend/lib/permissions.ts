@@ -162,18 +162,30 @@ export function hasPermission(
   return actions?.includes(action) ?? false;
 }
 
-/** 当前登录者的有效权限上下文（fetchMe 实时计算，不读 localStorage 旧 role） */
+/** 当前登录者的有效权限上下文（fetchMe 实时计算，不读 localStorage 旧 role）
+ *
+ * 判定序（与后端 has_permission 一致）：
+ * super_admin → 恒通过；账号级 override 命中模块 → 按列表（完全替代）；
+ * 服务端解析的 role_permissions（自定义角色组权限 或 内置角色 DB 合并默认）→ 按列表；
+ * role_permissions 缺失（旧会话）→ 回落代码镜像 ROLE_DEFAULTS。
+ */
 export function useEffectivePermissions() {
   const [ctx, setCtx] = useState<{
     role: string;
     overrides: PermissionOverrides | null;
+    rolePermissions: Record<string, string[]> | null;
   } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     fetchMe()
       .then((me: AdminUser) => {
-        if (!cancelled) setCtx({ role: me.role, overrides: me.permission_overrides ?? null });
+        if (!cancelled)
+          setCtx({
+            role: me.role,
+            overrides: me.permission_overrides ?? null,
+            rolePermissions: me.role_permissions ?? null,
+          });
       })
       .catch(() => {
         // 未登录等场景由布局守卫处理
@@ -189,7 +201,15 @@ export function useEffectivePermissions() {
       role: ctx?.role ?? null,
       can(module: PermissionModule, action: PermissionAction) {
         if (!ctx) return false;
-        return hasPermission(ctx.role, ctx.overrides, module, action);
+        if (ctx.role === "super_admin") return true;
+        const override = ctx.overrides?.[module];
+        if (override) return (override as PermissionAction[]).includes(action);
+        // role_permissions 为服务端完整解析结果：模块键缺失 = 拒绝（不可回落内置默认）
+        if (ctx.rolePermissions) {
+          return ((ctx.rolePermissions[module] ?? []) as PermissionAction[]).includes(action);
+        }
+        const actions = ROLE_DEFAULTS[ctx.role]?.[module];
+        return actions?.includes(action) ?? false;
       },
     }),
     [ctx]

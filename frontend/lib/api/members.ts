@@ -8,6 +8,7 @@ import { API_BASE_URL } from "./client";
 import type {
   Member,
   MemberCreate,
+  MemberGroupedResponse,
   MemberImportResult,
   MemberTerm,
   MemberUpdate,
@@ -44,6 +45,60 @@ export function adminListMembers(params: {
 
 export function adminGetMember(id: number) {
   return apiFetch<Member>(`/api/admin/members/${id}`, { withAuth: true });
+}
+
+/** 通讯录筛选条件（/grouped 与 /export 共用） */
+export interface MemberDirectoryFilter {
+  term?: MemberTerm;
+  archived?: boolean;
+  /** 职务精确过滤；空串 = 未分组 */
+  role_title?: string;
+  q?: string;
+}
+
+function buildFilterQs(params: MemberDirectoryFilter): string {
+  const qs = new URLSearchParams();
+  if (params.term) qs.set("term", params.term);
+  if (params.archived !== undefined) qs.set("archived", String(params.archived));
+  if (params.role_title !== undefined) qs.set("role_title", params.role_title);
+  if (params.q) qs.set("q", params.q);
+  return qs.toString();
+}
+
+/** 管理：按职务分组列表（社团通讯录视图；硬顶 2000 行） */
+export function adminListMembersGrouped(
+  params: MemberDirectoryFilter = {}
+): Promise<MemberGroupedResponse> {
+  const query = buildFilterQs(params);
+  return apiFetch<MemberGroupedResponse>(
+    `/api/admin/members/grouped${query ? `?${query}` : ""}`,
+    { withAuth: true }
+  );
+}
+
+/** 管理：导出通讯录 CSV/XLSX/VCF（带当前筛选；隐私开关剔除电话/微信号；硬顶 5000 行） */
+export async function adminExportMembers(
+  params: MemberDirectoryFilter & {
+    format: "csv" | "xlsx" | "vcf";
+    include_sensitive: boolean;
+  }
+): Promise<Blob> {
+  const query = buildFilterQs(params);
+  const qs = new URLSearchParams(query);
+  qs.set("format", params.format);
+  qs.set("include_sensitive", String(params.include_sensitive));
+  const res = await secureFetch(`/api/admin/members/export?${qs.toString()}`);
+  if (!res.ok) {
+    let detail: unknown = null;
+    try { detail = await res.json(); } catch { /* ignore */ }
+    const { ApiError } = await import("./client");
+    throw new ApiError(
+      res.status,
+      detail,
+      typeof detail === "string" ? detail : "导出失败"
+    );
+  }
+  return res.blob();
 }
 
 export function adminCreateMember(payload: MemberCreate) {

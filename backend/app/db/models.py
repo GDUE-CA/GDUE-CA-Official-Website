@@ -101,6 +101,11 @@ class User(Base):
     # 模块级权限覆盖（JSON）：{"activities": ["view"], "review.bugs": ["view", "manage"]}
     # null = 完全按角色默认矩阵；仅 super_admin 可写
     permission_overrides: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    # 自定义角色组（V0.6.3 需求7）：关联 custom_roles 表中 builtin_key 为 NULL 的行；
+    # NULL = 使用内置角色默认矩阵。设置后完全替代内置角色默认（用户级 overrides 仍优先）。
+    custom_role_id: Mapped[int | None] = mapped_column(
+        ForeignKey("custom_roles.id"), nullable=True, index=True
+    )
     # 实名验证（Phase 6）：未实名账号禁止进后台，仅可浏览前台
     realname_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     realname_verified_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
@@ -179,6 +184,29 @@ class User(Base):
         cascade="all, delete-orphan", lazy="selectin",
         back_populates="user",
     )
+
+
+# ---------- 角色组（V0.6.3 需求7）：内置 4 角色 + 自定义角色组 ----------
+class CustomRole(Base):
+    """角色组定义：builtin_key 非空为内置角色行（super_admin/admin/editor/member），
+    NULL 为自定义角色组。permissions 为完整模块矩阵 JSON：{module: ["view","manage"]}。
+
+    保护规则（在 API 层强制）：
+    - super_admin 行仅查看，不可编辑/删除（矩阵保存时拒绝写入）；
+    - admin/editor/member 行可编辑不可删除；
+    - 自定义角色组可完整 CRUD；删除时关联 users.custom_role_id 置 NULL。
+    """
+    __tablename__ = "custom_roles"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(64), unique=True)
+    # 内置角色键（对应 UserRole.value）；NULL = 自定义角色组
+    builtin_key: Mapped[str | None] = mapped_column(String(32), unique=True, nullable=True)
+    description: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    # 完整权限矩阵：{"activities": ["view", "manage"], "security": ["view"]}
+    permissions: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)
 
 
 # ---------- 用户安全问题（per-user 3 个，答对 2/3 可恢复账号） ----------

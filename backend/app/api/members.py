@@ -10,6 +10,7 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, Response, UploadFile, status
 from PIL import Image
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -29,7 +30,7 @@ from app.schemas.member import (
     MemberUpdate,
 )
 from app.utils.crud import apply_eq, apply_search, paginate
-from app.utils.export import to_xlsx
+from app.utils.export import to_csv, to_vcf, to_xlsx
 
 public_router = APIRouter(prefix="/api/members", tags=["members-public"])
 admin_router = APIRouter(prefix="/api/admin/members", tags=["members-admin"])
@@ -110,6 +111,164 @@ async def admin_list_members(
     stmt = apply_search(stmt, [Member.name, Member.role_title, Member.bio], q)
     stmt = stmt.order_by(Member.display_order.asc(), Member.id.asc())
     return await paginate(db, stmt, page, page_size, out_model=MemberAdminOut)
+
+
+# ---------- 管理：按职务分组列表（社团通讯录视图；V0.6.3 需求7） ----------
+# 注：必须定义在 /{mid} 之前，否则 "grouped"/"export" 会被当成成员 id
+MEMBER_GROUPED_MAX_ROWS = 2000
+MEMBER_EXPORT_MAX_ROWS = 5000
+
+
+class MemberGroupOut(BaseModel):
+    role_title: str | None
+    members: list[MemberAdminOut]
+
+
+class MemberGroupedOut(BaseModel):
+    role_titles: list[str]
+    groups: list[MemberGroupOut]
+    truncated: bool
+
+
+def _filtered_member_stmt(term, archived, q, role_title):
+    """/grouped 与 /export 共用的过滤条件组装。"""
+    stmt = select(Member)
+    if term:
+        stmt = apply_eq(stmt, Member.term, MemberTerm(term))
+    if archived is not None:
+        stmt = apply_eq(stmt, Member.archived, archived)
+    if role_title is not None:
+        # 空字符串 = 未分组（role_title 为 NULL 或空串）
+        if role_title == "":
+            stmt = stmt.where(Member.role_title.is_(None) | (Member.role_title == ""))
+        else:
+            stmt = apply_eq(stmt, Member.role_title, role_title)
+    stmt = apply_search(stmt, [Member.name, Member.role_title, Member.bio], q)
+    return stmt
+
+
+@admin_router.get("/grouped", response_model=MemberGroupedOut)
+async def admin_list_members_grouped(
+    term: Literal["current", "former"] | None = Query(default=None),
+    archived: bool | None = Query(default=None),
+    role_title: str | None = Query(default=None, max_length=64),
+    q: str | None = Query(default=None, max_length=64),
+    user: dict = Depends(require_permission("members", "view")),
+    db: AsyncSession = Depends(get_db, scope="function"),
+):
+    """按职务分块的成员列表：组按组内最小 display_order 排序，组内 display_order+id。
+
+    硬顶 2000 行（truncated=True 时前端提示截断）；role_titles 为当前过滤下
+    全部去重职务列表（筛选器下拉选项用，不受硬顶影响）。
+    """
+    # 职务下拉选项：同过滤条件下（不含 role_title 自身过滤）去重收集
+    title_stmt = _filtered_member_stmt(term, archived, q, None)
+    title_rows = (await db.execute(title_stmt)).scalars().all()
+    role_titles = sorted({(m.role_title or "").strip() for m in title_rows} - {""})
+
+    stmt = _filtered_member_stmt(term, archived, q, role_title)
+    stmt = stmt.order_by(Member.display_order.asc(), Member.id.asc())
+    rows = (await db.execute(stmt)).scalars().all()
+    truncated = len(rows) > MEMBER_GROUPED_MAX_ROWS
+    rows = rows[:MEMBER_GROUPED_MAX_ROWS]
+
+    buckets: dict[str, list[Member]] = {}
+    for m in rows:
+        key = (m.role_title or "").strip()
+        buckets.setdefault(key, []).append(m)
+    # 组排序：按组内最小 display_order（平票取组内最小 id）
+    ordered_keys = sorted(
+        buckets.keys(),
+        key=lambda k: (min(x.display_order for x in buckets[k]),
+                       min(x.id for x in buckets[k])),
+    )
+    groups = [
+        MemberGroupOut(
+            role_title=k or None,
+            members=[MemberAdminOut.model_validate(m) for m in buckets[k]],
+        )
+        for k in ordered_keys
+    ]
+    return MemberGroupedOut(role_titles=role_titles, groups=groups, truncated=truncated)
+
+
+# ---------- 管理：成员导出 CSV/XLSX/VCF（V0.6.3 需求7） ----------
+@admin_router.get("/export")
+async def admin_export_members(
+    request: Request,
+    format: Literal["csv", "xlsx", "vcf"] = Query(default="csv"),
+    include_sensitive: bool = Query(default=False),
+    term: Literal["current", "former"] | None = Query(default=None),
+    archived: bool | None = Query(default=None),
+    role_title: str | None = Query(default=None, max_length=64),
+    q: str | None = Query(default=None, max_length=64),
+    user: dict = Depends(require_permission("members", "view")),
+    db: AsyncSession = Depends(get_db, scope="function"),
+):
+    """导出通讯录：隐私开关关闭时剔除电话/微信号；硬顶 5000 行。"""
+    stmt = _filtered_member_stmt(term, archived, q, role_title)
+    stmt = stmt.order_by(Member.display_order.asc(), Member.id.asc())
+    rows = (await db.execute(stmt)).scalars().all()[:MEMBER_EXPORT_MAX_ROWS]
+
+    _log(db, user, "members.export",
+         f"format:{format} sensitive:{include_sensitive} count:{len(rows)}",
+         get_client_ip(request))
+
+    if format == "vcf":
+        data = to_vcf(rows, include_sensitive=include_sensitive)
+        return Response(
+            content=data,
+            media_type="text/vcard; charset=utf-8",
+            headers={"Content-Disposition": 'attachment; filename="members.vcf"'},
+        )
+
+    # CSV/XLSX：届别/归档转展示文本；电话/微信号按隐私开关附加
+    export_rows = [
+        {
+            "name": m.name,
+            "role_title": m.role_title or "",
+            "gender": m.gender or "",
+            "grade": m.grade or "",
+            "department": m.department or "",
+            "major_class": m.major_class or "",
+            "phone": m.phone or "",
+            "wechat": m.wechat or "",
+            "political_status": m.political_status or "",
+            "is_intl_student": "是" if m.is_intl_student else "否",
+            "term": "现任" if m.term == MemberTerm.CURRENT else "往届",
+            "archived": "是" if m.archived else "否",
+        }
+        for m in rows
+    ]
+    headers = [
+        ("姓名", "name"),
+        ("职务", "role_title"),
+        ("性别", "gender"),
+        ("年级", "grade"),
+        ("所在院系", "department"),
+        ("专业及班级", "major_class"),
+    ]
+    if include_sensitive:
+        headers += [("电话", "phone"), ("微信号", "wechat")]
+    headers += [
+        ("政治面貌", "political_status"),
+        ("是否为留学生", "is_intl_student"),
+        ("届别", "term"),
+        ("归档", "archived"),
+    ]
+    if format == "xlsx":
+        data = to_xlsx(export_rows, headers, text_columns={"phone"}, sheet_title="社团通讯录")
+        return Response(
+            content=data,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": 'attachment; filename="members.xlsx"'},
+        )
+    data = to_csv(export_rows, headers, free_text_keys={"name", "department", "major_class"})
+    return Response(
+        content=data,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="members.csv"'},
+    )
 
 
 # ---------- 管理：空白导入模板下载 ----------

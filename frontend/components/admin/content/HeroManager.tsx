@@ -3,8 +3,9 @@
 /**
  * HeroManager - 首页 Hero 区块管理（V0.6.1 需求3）
  *
+ * - 语种选择：可滚动下拉选择器（固定 13 语种），统一驱动文本 / 按钮 / 统计卡片的编辑语种
+ * - 文本配置：Hero 描述 i18n 编辑器，置于页面标题下方、背景上传模块上方
  * - 背景设置：上传图片（jpg/png/webp，≤8MB，内容哈希命名绕过 CDN 旧图）+ 透明度 / 磨砂模糊滑块
- * - 文本配置：13 语种标签页，分别填写 eyebrow / title / subtitle / description
  * - 按钮组 / 统计卡片：动态增删，逐语种文字 + 链接 / 开关
  * - 操作：保存（后端清缓存）、预览（仅前端渲染，不保存）、重置（放弃未保存改动）、恢复默认 Seed（二次确认）
  *
@@ -240,6 +241,73 @@ export function HeroManager() {
         </p>
       )}
 
+      {/* ---------- 语种选择：滚动下拉选择器（固定 13 语种，替代原横向 Tab） ---------- */}
+      <div className="flex items-center gap-2">
+        <Label htmlFor="hero-locale">{t("admin.content.hero.localeLabel")}</Label>
+        <Select value={activeLoc} onValueChange={setActiveLoc}>
+          <SelectTrigger id="hero-locale" className="h-9 w-56">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="max-h-72">
+            {locales.map((loc) => (
+              <SelectItem key={loc} value={loc}>
+                {localeDisplayName(loc)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* ---------- 文本配置（Hero 描述 i18n 编辑器，移至背景上传模块上方） ---------- */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">{t("admin.content.hero.texts")}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {!hasTexts && (
+            <p className="text-xs text-amber-600 bg-amber-500/10 px-3 py-2 rounded-md">
+              {t("admin.content.hero.emptyLocaleHint")}
+            </p>
+          )}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="hero-eyebrow">{t("admin.content.hero.eyebrow")}</Label>
+              <Input
+                id="hero-eyebrow"
+                value={texts.eyebrow}
+                onChange={(e) => setText("eyebrow", e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="hero-title">{t("admin.content.hero.mainTitle")}</Label>
+              <Input
+                id="hero-title"
+                value={texts.title}
+                onChange={(e) => setText("title", e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="hero-subtitle">{t("admin.content.hero.subtitle")}</Label>
+            <Input
+              id="hero-subtitle"
+              value={texts.subtitle}
+              onChange={(e) => setText("subtitle", e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="hero-description">{t("admin.content.hero.description")}</Label>
+            <Textarea
+              id="hero-description"
+              rows={4}
+              maxLength={2000}
+              value={texts.description}
+              onChange={(e) => setText("description", e.target.value)}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
       {/* ---------- 背景设置 ---------- */}
       <Card>
         <CardHeader>
@@ -334,71 +402,6 @@ export function HeroManager() {
                 className="w-full accent-primary"
               />
             </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* ---------- 语言标签页 ---------- */}
-      <div className="flex flex-wrap gap-1.5">
-        {locales.map((loc) => (
-          <Button
-            key={loc}
-            type="button"
-            size="sm"
-            variant={loc === activeLoc ? "default" : "outline"}
-            onClick={() => setActiveLoc(loc)}
-          >
-            {localeDisplayName(loc)}
-          </Button>
-        ))}
-      </div>
-
-      {/* ---------- 文本配置 ---------- */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">{t("admin.content.hero.texts")}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {!hasTexts && (
-            <p className="text-xs text-amber-600 bg-amber-500/10 px-3 py-2 rounded-md">
-              {t("admin.content.hero.emptyLocaleHint")}
-            </p>
-          )}
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="hero-eyebrow">{t("admin.content.hero.eyebrow")}</Label>
-              <Input
-                id="hero-eyebrow"
-                value={texts.eyebrow}
-                onChange={(e) => setText("eyebrow", e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="hero-title">{t("admin.content.hero.mainTitle")}</Label>
-              <Input
-                id="hero-title"
-                value={texts.title}
-                onChange={(e) => setText("title", e.target.value)}
-              />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="hero-subtitle">{t("admin.content.hero.subtitle")}</Label>
-            <Input
-              id="hero-subtitle"
-              value={texts.subtitle}
-              onChange={(e) => setText("subtitle", e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="hero-description">{t("admin.content.hero.description")}</Label>
-            <Textarea
-              id="hero-description"
-              rows={4}
-              maxLength={2000}
-              value={texts.description}
-              onChange={(e) => setText("description", e.target.value)}
-            />
           </div>
         </CardContent>
       </Card>

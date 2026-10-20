@@ -279,6 +279,12 @@ export interface AdminUser {
   timezone: string | null;
   /** 模块级权限覆盖：模块名 → 允许动作列表；null = 全部使用角色默认（仅 super_admin 可写） */
   permission_overrides: Record<string, string[]> | null;
+  /** 自定义角色组 id（V0.6.3 需求7）；null/缺省 = 未关联 */
+  custom_role_id?: number | null;
+  /** 自定义角色组名称（list_users 批量回填；未关联为 null） */
+  custom_role_name?: string | null;
+  /** 服务端解析后的有效角色权限矩阵（仅 /me 返回；super_admin 为 null 表示恒全通过） */
+  role_permissions?: Record<string, string[]> | null;
   /** 用户物理位置：国家 */
   country: string | null;
   /** 一级行政区（省/州） */
@@ -679,6 +685,8 @@ export interface UserUpdatePayload {
   club_position?: string | null;
   /** 模块级权限覆盖（仅 super_admin 可写；空对象 = 清除覆盖恢复默认） */
   permission_overrides?: Record<string, string[]> | null;
+  /** 自定义角色组 id（仅 super_admin 可写；0 = 清除，>0 = 设置，缺省 = 不变） */
+  custom_role_id?: number | null;
 }
 
 /* ----------------------- 翻译 / 回执查询 ----------------------- */
@@ -914,9 +922,19 @@ export interface RoleDef {
   default_modules: Record<string, string[]>;
 }
 
+/** 自定义角色组定义（V0.6.3 需求7）：permissions = module -> actions */
+export interface CustomRoleDef {
+  id: number;
+  name: string;
+  description: string | null;
+  permissions: Record<string, string[]>;
+  user_count: number;
+}
+
 export interface RolesOverview {
   roles: RoleDef[];
   modules: string[];
+  custom_roles: CustomRoleDef[];
 }
 
 /** GET /api/admin/roles/overrides：配置了权限覆盖的账号（轻量列表项） */
@@ -1197,6 +1215,21 @@ export interface MemberImportResult {
   updated: number;
   skipped: number;
   errors: MemberImportError[];
+}
+
+/** 管理端按职务分组的成员组（GET /api/admin/members/grouped；V0.6.3 需求7） */
+export interface MemberGroup {
+  /** 组名（职务）；null = 未分组 */
+  role_title: string | null;
+  members: Member[];
+}
+
+export interface MemberGroupedResponse {
+  /** 当前过滤下去重职务列表（筛选器下拉选项） */
+  role_titles: string[];
+  groups: MemberGroup[];
+  /** 结果超过硬顶 2000 行被截断 */
+  truncated: boolean;
 }
 
 /* ---------- 招新信息（Phase 3） ---------- */

@@ -37,6 +37,7 @@ import {
   updateUser,
   fetchMe,
 } from "@/lib/api/auth";
+import { fetchRolesOverview } from "@/lib/api/roles";
 import { BatchBar } from "@/components/admin/review/BatchBar";
 import { useBatchSelection } from "@/components/admin/review/useBatchSelection";
 import { AdminList } from "@/components/admin/shared/AdminList";
@@ -44,7 +45,7 @@ import { UserFilterBar, type UserFilters } from "@/components/admin/users/UserFi
 import { UserCreateDialog } from "@/components/admin/users/UserCreateDialog";
 import { ResetPasswordDialog } from "@/components/admin/users/ResetPasswordDialog";
 import { PermissionMatrixDialog } from "@/components/admin/users/PermissionMatrixDialog";
-import type { AdminUser, AdminRole, UserUpdatePayload } from "@/types/api";
+import type { AdminUser, AdminRole, CustomRoleDef, UserUpdatePayload } from "@/types/api";
 
 export default function UsersPage() {
   const { t } = useI18n();
@@ -58,6 +59,8 @@ export default function UsersPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<UserUpdatePayload>({});
+  // 自定义角色组选项（仅 super_admin 加载，用于行内编辑分配）
+  const [customRoles, setCustomRoles] = useState<CustomRoleDef[]>([]);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [togglingId, setTogglingId] = useState<number | null>(null);
@@ -79,6 +82,12 @@ export default function UsersPage() {
       setIsSuperAdmin(me.role === "super_admin");
       setIsBreakGlass(!!me.is_break_glass);
       const canList = me.role !== "member";
+      if (me.role === "super_admin") {
+        // 自定义角色组选项（行内编辑分配用；失败不阻塞主列表）
+        fetchRolesOverview()
+          .then((ov) => setCustomRoles(ov.custom_roles))
+          .catch(() => setCustomRoles([]));
+      }
       if (canList) {
         const list = await listUsers({
           q: filter?.q || undefined,
@@ -125,6 +134,8 @@ export default function UsersPage() {
       phone: u.phone ?? undefined,
       role: u.role as AdminRole,
       is_active: u.is_active,
+      // 自定义角色组：仅 super_admin 提交（0 = 清除）；非超管编辑自己时不携带该字段
+      ...(isSuperAdmin ? { custom_role_id: u.custom_role_id ?? 0 } : {}),
     });
     setError(null);
   }
@@ -411,26 +422,57 @@ export default function UsersPage() {
                   render: (u) =>
                     editingId === u.id ? (
                       isSuperAdmin ? (
-                        <select
-                          value={editForm.role ?? "member"}
-                          onChange={(e) =>
-                            setEditForm({ ...editForm, role: e.target.value as AdminRole })
-                          }
-                          className="flex h-8 w-full rounded-md border border-input bg-transparent px-2 py-1 text-xs"
-                        >
-                          {(["super_admin", "admin", "editor", "member"] as AdminRole[]).map(
-                            (r) => (
-                              <option key={r} value={r}>
-                                {t(`admin.users.roles.${r}`)}
+                        <div className="space-y-1">
+                          <select
+                            value={editForm.role ?? "member"}
+                            onChange={(e) =>
+                              setEditForm({ ...editForm, role: e.target.value as AdminRole })
+                            }
+                            className="flex h-8 w-full rounded-md border border-input bg-transparent px-2 py-1 text-xs"
+                          >
+                            {(["super_admin", "admin", "editor", "member"] as AdminRole[]).map(
+                              (r) => (
+                                <option key={r} value={r}>
+                                  {t(`admin.users.roles.${r}`)}
+                                </option>
+                              )
+                            )}
+                          </select>
+                          {/* 自定义角色组（V0.6.3 需求7）：0 = 无 */}
+                          <select
+                            value={editForm.custom_role_id ?? 0}
+                            onChange={(e) =>
+                              setEditForm({
+                                ...editForm,
+                                custom_role_id: Number(e.target.value),
+                              })
+                            }
+                            aria-label={t("admin.users.customRole")}
+                            className="flex h-8 w-full rounded-md border border-input bg-transparent px-2 py-1 text-xs"
+                          >
+                            <option value={0}>{t("admin.users.customRoleNone")}</option>
+                            {customRoles.map((c) => (
+                              <option key={c.id} value={c.id}>
+                                {c.name}
                               </option>
-                            )
-                          )}
-                        </select>
+                            ))}
+                          </select>
+                        </div>
                       ) : (
                         roleBadge(u.role)
                       )
                     ) : (
-                      roleBadge(u.role)
+                      <span className="inline-flex flex-wrap items-center gap-1">
+                        {roleBadge(u.role)}
+                        {u.custom_role_name && (
+                          <Badge
+                            variant="outline"
+                            className="border-emerald-500/40 text-emerald-600 dark:text-emerald-400"
+                          >
+                            {u.custom_role_name}
+                          </Badge>
+                        )}
+                      </span>
                     ),
                 },
                 {

@@ -270,6 +270,8 @@ class UserUpdate(BaseModel):
     is_active: bool | None = None
     # 模块级权限覆盖（仅 super_admin 可写；None = 不修改）
     permission_overrides: dict[str, list[str]] | None = None
+    # 自定义角色组（仅 super_admin 可写；None = 不修改；0 = 清除关联；>0 = 设置为该自定义角色组）
+    custom_role_id: int | None = None
     # 社团职务（仅 super_admin 可写；纯展示层与权限解耦）：
     # president / vice_president / member；空字符串 = 清除职务（置 NULL）
     club_position: str | None = None
@@ -330,6 +332,12 @@ class UserOut(BaseModel):
     locality_text: str | None = None
     # 模块级权限覆盖；null = 按角色默认矩阵
     permission_overrides: dict[str, list[str]] | None = None
+    # 自定义角色组（V0.6.3 需求7）：关联 custom_roles 行 id / 名称；null = 使用内置角色矩阵
+    custom_role_id: int | None = None
+    custom_role_name: str | None = None
+    # 有效角色矩阵（仅 /api/auth/me 填充：自定义角色→其 permissions；
+    # 内置角色→DB 合并代码默认；super_admin→None 前端恒全通过）
+    role_permissions: dict[str, list[str]] | None = None
     # 展示昵称（公开注册 / 个人资料；NULL = 回退 username）
     display_name: str | None = None
     # ---- 区域格式（只存编码 / 模式字符串，不存展示文本） ----

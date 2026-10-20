@@ -104,3 +104,13 @@ docker logs --tail 200 <container>
 ```
 
 将纯静态维护页部署到 `/var/www/maintenance/`（默认）。Nginx 检测到 Node 3000 端口 502/504 时通过 `error_page` 回退到该页（状态码强制 503、禁止缓存），Nginx 挂载配置见 `deploy/nginx/gdueca.conf`。每次部署成功后执行一次即可。
+
+## 6. 运行环境（ENVIRONMENT · dev / prod）
+
+后端启动时读取环境变量 `ENVIRONMENT`（仅支持 `dev` / `prod`），并做硬性防护：
+
+- `prod`（默认）：走真实邮件通道，注册 / 找回密码必须完成邮箱验证；
+- `dev`：本地调试专用，注册 / 找回密码 / 二次验证等验证码**跳过真实投递**，仅写入后端日志（从日志读取验证码即可完成流程）。
+
+【生产防护】生产环境严禁将 `ENVIRONMENT` 设为 `dev`：后端启动时若检测到 `dev` 与生产特征（`COOKIE_SECURE=true`）同时存在，会直接 FATAL 退出拒绝启动，避免邮箱校验被绕过。生产 `.env` 保持 `ENVIRONMENT=prod` 即可（或不设置，默认即为 `prod`）。
+
