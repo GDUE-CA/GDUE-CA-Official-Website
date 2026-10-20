@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import Script from "next/script";
 import "@/app/globals.css";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
+import { antiDebugScript } from "@/lib/antiDebug";
 import { defaultLocale } from "@/lib/i18n";
 
 /**
@@ -36,6 +37,11 @@ export default async function RootLayout({
 }) {
   const h = await headers();
   const nonce = h.get("x-nonce") ?? undefined;
+  // 全站反调试脚本：仅生产启用，DISABLE_ANTIDEBUG=1 可一键关闭（无需改前端）
+  const antiDebug =
+    process.env.NODE_ENV === "production" && process.env.DISABLE_ANTIDEBUG !== "1"
+      ? antiDebugScript()
+      : null;
   // <html lang>：proxy.ts 按 URL 首段注入 x-locale（非 locale 路由如 /admin 回退默认 zh-cn）；
   // 客户端导航切换语言时由 [locale] layout 的 HtmlLangSync 同步
   const lang = h.get("x-locale") ?? defaultLocale;
@@ -57,6 +63,13 @@ export default async function RootLayout({
         >
           {`(function(){try{var s=localStorage.getItem('gdueca-theme');var t=s||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');if(t==='dark')document.documentElement.classList.add('dark');var ss=localStorage.getItem('gdueca-theme-style');if(ss&&/^[a-z][a-z0-9-]{0,31}$/.test(ss)){document.documentElement.setAttribute('data-theme-style',ss);}else{document.documentElement.setAttribute('data-theme-style','apple');}}catch(e){}})();`}
         </Script>
+        {antiDebug && (
+          // 全站反调试（仅生产，可用 DISABLE_ANTIDEBUG=1 关闭）：纯 debugger 语句，CSP 安全。
+          // 用 beforeInteractive 直接渲进初始 HTML（与主题脚本一致，CSP 下最稳，保护更早启动）
+          <Script id="gdueca-ad" strategy="beforeInteractive" nonce={nonce} suppressHydrationWarning>
+            {antiDebug}
+          </Script>
+        )}
       </head>
       <body className="min-h-full flex flex-col bg-background">
         <ThemeProvider>{children}</ThemeProvider>
