@@ -14,27 +14,23 @@ import { getDictionaryByLocale } from "@/i18n/dictionary";
 import { I18nProvider } from "@/i18n/provider";
 import { SessionHeartbeat } from "@/components/shared/SessionHeartbeat";
 import { HtmlLangSync } from "@/components/shared/HtmlLangSync";
+import { getSiteUrl } from "@/lib/site";
 import { BanModal } from "@/components/shared/BanModal";
 import { NavDesktop } from "@/components/layout/NavDesktop";
 import { Footer } from "@/components/layout/Footer";
 import { BackgroundTaskFloat } from "@/components/notifications/BackgroundTaskFloat";
-
-/** 站点根 URL（与 sitemap.ts / robots.ts 同源，用于 hreflang 绝对 URL） */
-const BASE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL || "https://gdueca.example.edu.cn";
 
 /** 为每个语言生成静态参数 */
 export async function generateStaticParams() {
   return locales.map((locale) => ({ locale }));
 }
 
-/** schema.org EducationalOrganization JSON-LD（与 locale 无关，全站统一） */
+/** schema.org EducationalOrganization JSON-LD（与 locale 无关，全站统一；url 运行时注入） */
 const orgJsonLd = {
   "@context": "https://schema.org",
   "@type": "EducationalOrganization",
   name: "广东第二师范学院计算机协会",
   alternateName: "GDUE Computer Association",
-  url: "https://gdueca.example.edu.cn",
   address: {
     "@type": "PostalAddress",
     addressRegion: "广东省",
@@ -79,14 +75,16 @@ export async function generateMetadata({
   // 兜底为 /{locale}（仅当 header 缺失时，通常是 SSR 直发场景）
   const currentPath = (await headers()).get("x-pathname") ?? `/${locale}`;
   const rest = stripLocalePrefix(currentPath);
+  // 站点根 URL（与 sitemap.ts / robots.ts 同源，见 lib/site.ts）
+  const baseUrl = await getSiteUrl();
 
   // 每个支持的语言生成一条 alternate（hreflang 用 BCP 47 规范大小写，如 zh-CN / en-GB），
   // 全部带 locale 前缀；x-default 指向默认语言
   const languages: Record<string, string> = {};
   for (const l of locales) {
-    languages[localeToHreflang(l)] = `${BASE_URL}/${l}${rest}`;
+    languages[localeToHreflang(l)] = `${baseUrl}/${l}${rest}`;
   }
-  languages["x-default"] = `${BASE_URL}/${defaultLocale}${rest}`;
+  languages["x-default"] = `${baseUrl}/${defaultLocale}${rest}`;
 
   return {
     title: {
@@ -100,7 +98,8 @@ export async function generateMetadata({
       description: dict.meta.description,
       type: "website",
     },
-    alternates: { languages },
+    ...(baseUrl ? { metadataBase: new URL(baseUrl) } : {}),
+    alternates: { canonical: `${baseUrl}/${locale}${rest}`, languages },
   };
 }
 
@@ -135,7 +134,7 @@ export default async function LocaleLayout({
         strategy="afterInteractive"
         nonce={nonce}
       >
-        {JSON.stringify(orgJsonLd)}
+        {JSON.stringify({ ...orgJsonLd, url: await getSiteUrl() })}
       </Script>
 
       {/* Umami 网站统计脚本（非 Google Analytics）—— next/script 自动挂到 head */}

@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { getSiteUrl } from "@/lib/site";
 
 /**
  * robots.ts - 自动生成 robots.txt
@@ -11,12 +12,12 @@ import type { MetadataRoute } from "next";
  *   - /{locale}/setting/ 个人设置（登录态才能访问）
  *
  * 私密路径本身 403/重定向，但显式 Disallow 可避免爬虫浪费配额。
- * 部署后可通过 /robots.txt 访问。
+ * 部署后可通过 /robots.txt 访问；域名取运行时配置（见 lib/site.ts）。
  */
-const BASE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL || "https://gdueca.example.edu.cn";
+export const dynamic = "force-dynamic";
 
-export default function robots(): MetadataRoute.Robots {
+export default async function robots(): Promise<MetadataRoute.Robots> {
+  const baseUrl = await getSiteUrl();
   return {
     rules: {
       userAgent: "*",
@@ -32,7 +33,7 @@ export default function robots(): MetadataRoute.Robots {
         "/*/setting/*",
       ],
     },
-    sitemap: `${BASE_URL}/sitemap.xml`,
-    host: BASE_URL,
+    // 不输出 Host 指令：仅 Yandex 识别，Google / Bing 忽略
+    sitemap: `${baseUrl}/sitemap.xml`,
   };
 }
