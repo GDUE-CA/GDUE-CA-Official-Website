@@ -151,7 +151,6 @@ GDUE-CA-Official-Website/
 │   ├── scripts/                      #   Ops & seed scripts
 │   └── tests/                        #   pytest tests
 ├── deploy/                           # Deployment directory
-│   ├── nginx/gdueca.conf            #   Nginx reverse proxy + static maintenance fallback
 │   └── scripts/post_deploy.sh        #   Static maintenance page deploy script (syncs to /var/www/maintenance)
 ├── docs/                             # SPEC.md / BREAK_GLASS_OPS.md etc.
 └── .env.example                      # Environment variable template
@@ -327,7 +326,7 @@ pm2 save
 
 ### 2. Nginx Configuration
 
-Wire up [deploy/nginx/gdueca.conf](deploy/nginx/gdueca.conf) (HTTP/2 + HTTP/3, real-IP passthrough, `/admin` intranet-only, static maintenance fallback), then `nginx -t && systemctl reload nginx`.
+The host Nginx config is maintained on the server (not shipped in the repo). It must provide: real-IP passthrough (`X-Forwarded-For` / `X-Real-IP`, required by the frontend risk guard), `/admin` intranet-only, and a static maintenance fallback on Next.js 502/504 (status 503, no caching). Then `nginx -t && systemctl reload nginx`.
 
 ### 3. Deploy the static maintenance page (required after deployment)
 

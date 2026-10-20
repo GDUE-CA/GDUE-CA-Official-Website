@@ -103,7 +103,7 @@ docker logs --tail 200 <container>
 ./deploy/scripts/post_deploy.sh
 ```
 
-将纯静态维护页部署到 `/var/www/maintenance/`（默认）。Nginx 检测到 Node 3000 端口 502/504 时通过 `error_page` 回退到该页（状态码强制 503、禁止缓存），Nginx 挂载配置见 `deploy/nginx/gdueca.conf`。每次部署成功后执行一次即可。
+将纯静态维护页部署到 `/var/www/maintenance/`（默认）。Nginx 检测到 Node 3000 端口 502/504 时通过 `error_page` 回退到该页（状态码强制 503、禁止缓存），对应配置在宿主机 Nginx 中维护。每次部署成功后执行一次即可。
 
 ## 6. 运行环境（ENVIRONMENT · dev / prod）
 

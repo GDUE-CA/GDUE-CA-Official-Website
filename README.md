@@ -151,7 +151,6 @@ GDUE-CA-Official-Website/
 │   ├── scripts/                      #   运维与种子脚本
 │   └── tests/                        #   pytest 测试
 ├── deploy/                           # 部署目录
-│   ├── nginx/gdueca.conf            #   Nginx 反代 + 静态维护页兜底
 │   └── scripts/post_deploy.sh        #   静态维护页部署脚本（同步到 /var/www/maintenance）
 ├── docs/                             # SPEC.md / BREAK_GLASS_OPS.md 等文档
 └── .env.example 环境变量模板
@@ -324,7 +323,7 @@ pm2 save
 
 ### 2. Nginx 配置
 
-接入 [deploy/nginx/gdueca.conf](deploy/nginx/gdueca.conf)（HTTP/2 + HTTP/3、真实 IP 透传、`/admin` 仅内网、静态维护页兜底），随后 `nginx -t && systemctl reload nginx`。
+宿主机 Nginx 配置由服务器自行维护（不随仓库分发），需具备：真实 IP 透传（`X-Forwarded-For` / `X-Real-IP`，前端风控依赖）、`/admin` 仅内网、Next.js 502/504 回退静态维护页（状态码 503、禁止缓存）。修改后 `nginx -t && systemctl reload nginx`。
 
 ### 3. 部署静态维护页（部署后必做）
 
