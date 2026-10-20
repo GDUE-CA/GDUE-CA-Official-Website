@@ -10,8 +10,11 @@ import type { ObfuscatorOptions } from "javascript-obfuscator";
  * 纯 `debugger` 语句（无需 eval）提供，再经本混淆器隐藏。
  *
  * 提供两档强度：
- *  - "strong"：检测页脚本、反调试片段等「高价值小体积」代码。控制流平坦化 + 死代码 +
- *    字符串 RC4 加密 + 防篡改自毁（selfDefending，不依赖 eval）。
+ *  - "strong"：检测页脚本、反调试片段等「高价值小体积」代码。控制流平坦化 +
+ *    字符串 RC4 加密 + 防篡改自毁（selfDefending，不依赖 eval）。不注入死代码：
+ *    检测页处于首访关键路径，死代码让体积 +22%，而反混淆工具能自动剔除，性价比低。
+ *    CPU 热点（如 PoW 的 SHA-256）须在源码中用 `// javascript-obfuscator:disable` 排除，
+ *    控制流平坦化会让热循环慢数百倍。
  *  - "lite"：站点业务 chunk（已被打包器压缩，体量大）。仅标识符改名 + 字符串 RC4，
  *    不做控制流平坦化 / 死代码 / selfDefending，避免体积翻倍与破坏打包器运行时。
  */
@@ -36,8 +39,7 @@ const PROFILES: Record<ObfuscationProfile, ObfuscatorOptions> = {
     ...BASE,
     controlFlowFlattening: true,
     controlFlowFlatteningThreshold: 0.75,
-    deadCodeInjection: true,
-    deadCodeInjectionThreshold: 0.3,
+    deadCodeInjection: false,
     stringArrayWrappersCount: 2,
     splitStrings: true,
     splitStringsChunkLength: 8,

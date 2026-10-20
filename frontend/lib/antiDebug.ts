@@ -9,7 +9,8 @@ import { obfuscate } from "@/lib/riskGuard/obfuscate";
  *
  * 之所以不使用 javascript-obfuscator 自带的 debugProtection：其实现依赖 `Function('debugger')`
  * 构造器，会被本站生产 CSP（无 unsafe-eval）拦截。这里改用自己的 `debugger` 语句（eval-free），
- * 再经 strong 档混淆（selfDefending + 字符串 RC4）隐藏，既满足 CSP 又具备防篡改能力。
+ * 再经 lite 档混淆（改名 + 字符串 RC4）。它内联在每个页面的 HTML 里，strong 档体积是 lite 的 2.2 倍
+ * （gzip 3.2KB vs 1.4KB），而 `debugger` 关键字无论哪档都无法隐藏、停用断点即可绕过，加强混淆收益有限。
  */
 export const ANTI_DEBUG_SOURCE = `
 (function(){
@@ -25,6 +26,6 @@ let cached: string | null = null;
 /** 返回混淆后的全站反调试脚本（可直接内联进 <script nonce>） */
 export function antiDebugScript(): string {
   if (cached !== null) return cached;
-  cached = obfuscate(ANTI_DEBUG_SOURCE, "strong");
+  cached = obfuscate(ANTI_DEBUG_SOURCE, "lite");
   return cached;
 }

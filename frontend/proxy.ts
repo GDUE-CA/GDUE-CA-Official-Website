@@ -210,8 +210,11 @@ function detectLocale(request: NextRequest): Locale {
   return defaultLocale;
 }
 
-/** 重定向结果：目标 URL + 状态码（locale 补全用 301；其余兼容跳转沿用 307） */
-type LocaleRedirect = { url: URL; status: number };
+/**
+ * 重定向结果：目标 URL + 状态码（locale 补全用 301；其余兼容跳转沿用 307）。
+ * negotiated：目标取决于 Cookie / Accept-Language（因人而异），响应禁止被 CDN / 浏览器缓存
+ */
+type LocaleRedirect = { url: URL; status: number; negotiated?: boolean };
 
 /** 若路径缺少合法 locale 前缀（或为非法 / 旧版前缀），返回应重定向到的 URL 与状态码；否则返回 null */
 function localeRedirect(request: NextRequest): LocaleRedirect | null {
@@ -260,7 +263,7 @@ function localeRedirect(request: NextRequest): LocaleRedirect | null {
     const rest = pathname.replace(/^\/[^/]+/, ""); // 去掉非法首段："/fr/about"→"/about"，"/fr"→""
     const url = request.nextUrl.clone();
     url.pathname = `/${localeToUrlLang(detected)}${rest}`;
-    return { url, status: 301 };
+    return { url, status: 301, negotiated: true };
   }
 
   // 裸路径（无 locale 前缀，首段为业务页面如 /about、/admin、/events）
@@ -268,7 +271,7 @@ function localeRedirect(request: NextRequest): LocaleRedirect | null {
   const detected = detectLocale(request);
   const url = request.nextUrl.clone();
   url.pathname = `/${localeToUrlLang(detected)}${pathname}`;
-  return { url, status: 301 };
+  return { url, status: 301, negotiated: true };
 }
 
 function requestIsHttps(request: NextRequest): boolean {
@@ -295,7 +298,12 @@ export async function proxy(request: NextRequest) {
   if (settingRedirect) return NextResponse.redirect(settingRedirect);
 
   const localeRedir = localeRedirect(request);
-  if (localeRedir) return NextResponse.redirect(localeRedir.url, localeRedir.status);
+  if (localeRedir) {
+    const res = NextResponse.redirect(localeRedir.url, localeRedir.status);
+    // 301 默认可被 CDN / 浏览器缓存：协商型跳转若被缓存，所有人都会被送到首个访客的语言
+    if (localeRedir.negotiated) res.headers.set("Cache-Control", "private, no-store");
+    return res;
+  }
 
   const blocked = await riskGuard(request, guardCtx);
   if (blocked) return blocked;

@@ -9,11 +9,14 @@
  *
  * Worker：workerSrc 指向同源静态资源 `/pdf/pdf.worker.min.mjs`
  * （对应 CSP `worker-src 'self' blob:`）；若 Worker 不可用，pdf.js 自动降级为主线程渲染。
+ * URL 带 `?v=<pdf.js 版本>`：文件名不含哈希，靠版本号让 CDN / 浏览器长期缓存（next.config.ts），
+ * 升级 pdfjs-dist 时 URL 随之变化，不会出现新主包配旧 Worker 的版本不一致。
+ * 升级后须同步替换 public/pdf/pdf.worker.min.mjs。
  *
  * 本模块通过 next/dynamic({ ssr: false }) 懒加载，pdfjs-dist 不进入详情页首屏 bundle。
  */
 import { useEffect, useRef, useState } from "react";
-import { GlobalWorkerOptions, getDocument } from "pdfjs-dist";
+import { GlobalWorkerOptions, getDocument, version } from "pdfjs-dist";
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, RenderTask } from "pdfjs-dist";
 import Loader2 from "@/assets/icons/status/loader-2.svg";
 import ChevronLeft from "@/assets/icons/navigation/chevron-left.svg";
@@ -21,7 +24,7 @@ import ChevronRight from "@/assets/icons/navigation/chevron-right.svg";
 import { useI18n } from "@/i18n/provider";
 import { Button } from "@/components/ui/button";
 
-GlobalWorkerOptions.workerSrc = "/pdf/pdf.worker.min.mjs";
+GlobalWorkerOptions.workerSrc = `/pdf/pdf.worker.min.mjs?v=${version}`;
 
 /** 缩放上下限与步进（相对「适宽」基准比例） */
 const ZOOM_MIN = 0.5;
