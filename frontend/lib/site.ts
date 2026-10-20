@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import { requestHost } from "@/lib/requestHost";
 
 /**
  * 站点对外根 URL（无末尾斜杠），供 sitemap.xml / robots.txt / hreflang / JSON-LD 生成绝对链接。
@@ -12,8 +13,7 @@ export async function getSiteUrl(): Promise<string> {
   const configured = process.env.SITE_URL || process.env.NEXT_PUBLIC_SITE_URL;
   if (configured) return configured.replace(/\/+$/, "");
 
-  const h = await headers();
-  const host = (h.get("x-forwarded-host") ?? h.get("host") ?? "").split(",")[0].trim();
+  const host = requestHost(await headers());
   if (!host) return "";
   // 不信任 X-Forwarded-Proto：Cloudflare → Nginx 回源可能是 http，对外始终是 https；仅本机开发用 http
   const local = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(host);
