@@ -192,6 +192,22 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      // public/ 下的静态文件 Next 默认下发 max-age=0，Fastly 每次都回源。
+      // 文件名不含哈希，未带版本号的请求只给短缓存 + stale-while-revalidate（边缘大多命中，发版后很快更新）
+      {
+        source: "/pdf/:path*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=3600, stale-while-revalidate=86400" }],
+      },
+      // 带 ?v=<pdf.js 版本> 的 Worker（PdfPreview）：内容随版本固定，可长期缓存（同 key 时后者覆盖前者）
+      {
+        source: "/pdf/:path*",
+        has: [{ type: "query", key: "v" }],
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+      },
+      {
+        source: "/favicon.ico",
+        headers: [{ key: "Cache-Control", value: "public, max-age=86400, stale-while-revalidate=604800" }],
+      },
     ];
   },
 

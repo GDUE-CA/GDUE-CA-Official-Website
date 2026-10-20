@@ -349,10 +349,12 @@ function jsonForScript(value: unknown): string {
  *   reveal()      需要人机验证 / 拒绝访问时，加载动画淡出、详情卡片浮入
  *   challenge()   风险 / 检测失败：Turnstile，未配置则工作量证明
  *   runPow()      纯 JS SHA-256 逐题求解工作量证明（HTTP 局域网访问时 crypto.subtle 不可用），
- *                 不足最短耗时则补足等待（自脚本启动计时，约等于题目签发时刻，另留 0.5 秒余量）
+ *                 不足最短耗时则补足等待（自脚本启动计时，约等于题目签发时刻，另留 0.5 秒余量）；
+ *                 sha256 / lz / solve 用 obfuscator:disable 排除在混淆之外（控制流平坦化会让热循环慢数百倍）
  *   blocked()   IDC + 代理：拒绝页，生成带诊断信息的 mailto
  */
 const CLIENT_SCRIPT = `
+// javascript-obfuscator:disable
 var K=[0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
 var W=new Array(64);
 function sha256(s){var n=s.length,m=((n+8)>>6)+1,b=new Array(m*16),i,j;for(i=0;i<b.length;i++)b[i]=0;for(i=0;i<n;i++)b[i>>2]|=(s.charCodeAt(i)&255)<<(24-(i&3)*8);b[n>>2]|=0x80<<(24-(n&3)*8);b[m*16-1]=n*8;
@@ -362,6 +364,7 @@ var t1=(h+((e>>>6|e<<26)^(e>>>11|e<<21)^(e>>>25|e<<7))+((e&f)^(~e&g))+K[j]+W[j])
 h0=(h0+a)|0;h1=(h1+bb)|0;h2=(h2+c)|0;h3=(h3+d)|0;h4=(h4+e)|0;h5=(h5+f)|0;h6=(h6+g)|0;h7=(h7+h)|0;}
 return [h0,h1,h2,h3,h4,h5,h6,h7];}
 function lz(hw){var z=0;for(var k=0;k<8;k++){if(hw[k]===0){z+=32;continue;}return z+Math.clz32(hw[k]);}return z;}
+// javascript-obfuscator:enable
 
 var t=C.t,$=function(id){return document.getElementById(id);};
 var ip=C.ip,verdict=null,checkFailed=false;
@@ -381,7 +384,9 @@ function fillMeta(){$("m-ip").textContent=ip||"—";var box=$("m-reason");box.in
 function post(body){return fetch(C.verifyPath,{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}).then(function(r){if(!r.ok)throw new Error(String(r.status));});}
 function enter(el){state(el,t.success,"ok",true);setTimeout(function(){location.replace(location.href);},300);}
 var started=Date.now();
+// javascript-obfuscator:disable
 function solve(){var bits=C.pow.bits,count=C.pow.count,out=[],i=0,n=0,salt=C.pow.salt+":0:";return new Promise(function(resolve){(function step(){var end=Date.now()+50;do{for(var k=0;k<1000;k++,n++){if(lz(sha256(salt+n))>=bits){out.push(n);if(++i>=count)return resolve(out);salt=C.pow.salt+":"+i+":";n=-1;}}}while(Date.now()<end);setTimeout(step,0);})();});}
+// javascript-obfuscator:enable
 function dwell(v){var left=C.powMinMs+500-(Date.now()-started);return left>0?new Promise(function(r){setTimeout(function(){r(v);},left);}):v;}
 function runPow(el){state(el,t.computing,"",true);solve().then(dwell).then(function(ns){return post({mode:"pow",challenge:C.pow,nonces:ns});}).then(function(){enter(el);},function(){state(el,t.failed,"err");});}
 function turnstile(){var el=$("s-challenge");$("widget").hidden=false;state(el,t.loading,"",true);
