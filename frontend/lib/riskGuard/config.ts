@@ -24,15 +24,21 @@ function urlEnv(name: string, fallback: string): string {
   return fallback;
 }
 
-/** 允许的令牌 aud：RISK_TOKEN_AUD，未配置时取站点地址的主机名 */
+/**
+ * 允许的令牌 aud：RISK_TOKEN_AUD 与站点地址（SITE_URL / NEXT_PUBLIC_SITE_URL）的主机名合并去重。
+ * 站点地址总是计入：换域名时只改 SITE_URL 也能生效，避免两份配置不同步导致 aud 与 Origin 不一致
+ */
 function audiencesEnv(): string[] {
   const list = listEnv("RISK_TOKEN_AUD").map((a) => a.toLowerCase());
-  if (list.length > 0) return list;
-  try {
-    return process.env.NEXT_PUBLIC_SITE_URL ? [new URL(process.env.NEXT_PUBLIC_SITE_URL).hostname] : [];
-  } catch {
-    return [];
+  for (const url of [process.env.SITE_URL, process.env.NEXT_PUBLIC_SITE_URL]) {
+    if (!url) continue;
+    try {
+      list.push(new URL(url).hostname.toLowerCase());
+    } catch {
+      console.warn(`risk_guard | 站点地址非法（${url}），未计入令牌 aud 白名单`);
+    }
   }
+  return [...new Set(list)];
 }
 
 function listEnv(name: string): string[] {

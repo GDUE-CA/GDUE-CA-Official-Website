@@ -70,7 +70,7 @@ export async function riskGuard(request: NextRequest, ctx: GuardContext): Promis
     ip,
     apiUrl: cfg.apiUrl,
     apiTimeoutMs: cfg.apiTimeoutMs,
-    aud: audienceFor(request, cfg.audiences),
+    aud: audienceFor(request, cfg.audiences, requestIdOf(request)),
     riskNonce: issueNonce(ipScope(ip), cfg),
     turnstileSiteKey: turnstile ? cfg.turnstileSiteKey : "",
     pow: turnstile ? null : issuePowChallenge(ipScope(ip), cfg),
@@ -92,9 +92,13 @@ export async function riskGuard(request: NextRequest, ctx: GuardContext): Promis
 
 /**
  * 页面请求风控令牌时使用的 aud：风控接口要求它等于浏览器 Origin 的主机名，
- * 因此优先用本次访问的主机名（须在白名单内）；验签时只认白名单，不信任 Host 头
+ * 因此优先用本次访问的主机名（须在白名单内）；验签时只认白名单，不信任 Host 头。
+ * 主机名不在白名单时回落白名单首项——此时风控接口必然因 aud ≠ Origin 返回 403，
+ * 每个主机名告警一次，便于发现「换了域名但 RISK_TOKEN_AUD / SITE_URL 没跟上」
  */
-function audienceFor(request: NextRequest, audiences: string[]): string {
+const warnedHosts = new Set<string>();
+
+function audienceFor(request: NextRequest, audiences: string[], traceId: string): string {
   const host = (request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? "").split(",")[0].trim();
   let hostname = "";
   try {
@@ -102,7 +106,18 @@ function audienceFor(request: NextRequest, audiences: string[]): string {
   } catch {
     /* 非法 Host 走白名单首项 */
   }
-  return audiences.includes(hostname) ? hostname : (audiences[0] ?? hostname);
+  if (audiences.includes(hostname)) return hostname;
+  const fallback = audiences[0] ?? hostname;
+  if (!warnedHosts.has(hostname) && warnedHosts.size < 100) {
+    warnedHosts.add(hostname);
+    riskLog(
+      "WARN",
+      traceId,
+      `访问主机名 ${hostname || "(空)"} 不在令牌 aud 白名单 [${audiences.join(", ")}] 内，回落为 ${fallback}；` +
+        "风控接口将因 aud 与 Origin 不一致返回 403，请把该域名加入 RISK_TOKEN_AUD 或设置 SITE_URL",
+    );
+  }
+  return fallback;
 }
 
 function json(body: object, status: number): NextResponse {
