@@ -122,6 +122,12 @@ function audienceFor(request: NextRequest, audiences: string[], traceId: string)
   return fallback;
 }
 
+/** 排查访客 IP 还原用：反代传来的原始转发头（截断防日志膨胀） */
+function forwardedInfo(request: NextRequest): string {
+  const h = (name: string) => (request.headers.get(name) ?? "-").replace(/[\r\n]/g, "").slice(0, 120);
+  return `x-real-ip=${h("x-real-ip")} xff=${h("x-forwarded-for")}`;
+}
+
 function json(body: object, status: number): NextResponse {
   return NextResponse.json(body, { status, headers: { "Cache-Control": "no-store" } });
 }
@@ -148,26 +154,36 @@ export async function handleVerify(request: NextRequest, ctx: GuardContext): Pro
   const cfg = getRiskGuardConfig();
   if (request.method !== "POST") return json({ ok: false }, 405);
   if (!cfg.enabled) return json({ ok: false }, 404);
-  if (!isSameOrigin(request)) return json({ ok: false }, 403);
+  const requestId = requestIdOf(request);
+  if (!isSameOrigin(request)) {
+    const h = (name: string) => (request.headers.get(name) ?? "-").replace(/[\r\n]/g, "").slice(0, 120);
+    riskLog("INFO", requestId, `来源校验失败 origin=${h("origin")} host=${h("host")} x-forwarded-host=${h("x-forwarded-host")}`);
+    return json({ ok: false }, 403);
+  }
 
   const ip = getClientIp(request);
-  if (!ip) return json({ ok: false }, 400);
+  if (!ip) {
+    riskLog("INFO", requestId, `无法识别访客 IP ${forwardedInfo(request)}`);
+    return json({ ok: false }, 400);
+  }
   const scope = ipScope(ip);
 
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
-  const requestId = requestIdOf(request);
   const turnstile = isTurnstileConfigured(cfg);
   let passed = false;
   if (body?.mode === "token") {
     const token = typeof body.token === "string" && body.token.length <= 4096 ? body.token : "";
     const result = await verifyRiskToken(token, ip, cfg, requestId);
     if (!result.ok) {
-      riskLog("INFO", requestId, `风控令牌无效（${result.reason}）ip=${ip}，转人机验证`);
+      riskLog("INFO", requestId, `风控令牌无效（${result.reason}）ip=${ip} ${forwardedInfo(request)}，转人机验证`);
       return json({ ok: false, next: "challenge" }, 403);
     }
     const { isRisky, isIdc, isProxy } = result.claims;
-    if (isIdc && isProxy) return json({ ok: false, next: "blocked" }, 403);
-    if (isRisky || isIdc || isProxy) return json({ ok: false, next: "challenge" }, 403);
+    if (isRisky || isIdc || isProxy) {
+      const next = isIdc && isProxy ? "blocked" : "challenge";
+      riskLog("INFO", requestId, `风控判定有风险 isRisky=${isRisky} isIdc=${isIdc} isProxy=${isProxy} ip=${ip} → ${next}`);
+      return json({ ok: false, next }, 403);
+    }
     passed = true;
   } else if (body?.mode === "pow" && !turnstile) {
     passed = verifyPow(body.challenge, body.nonces, scope, cfg);
@@ -175,9 +191,13 @@ export async function handleVerify(request: NextRequest, ctx: GuardContext): Pro
     const token = typeof body.token === "string" ? body.token : "";
     passed = token.length > 0 && token.length <= 2048 && (await verifyTurnstile(token, ip, cfg, requestId));
   } else {
+    riskLog("INFO", requestId, `验证请求无效 mode=${String(body?.mode).slice(0, 16)} turnstile=${turnstile} ip=${ip}`);
     return json({ ok: false }, 400);
   }
-  if (!passed) return json({ ok: false }, 403);
+  if (!passed) {
+    riskLog("INFO", requestId, `验证未通过 mode=${body.mode} ip=${ip} ${forwardedInfo(request)}`);
+    return json({ ok: false }, 403);
+  }
 
   riskLog("INFO", requestId, `检测通过 mode=${body.mode} ip=${ip}`);
   const pass = issuePassToken(scope, cfg);
