@@ -63,14 +63,16 @@ export async function riskGuard(request: NextRequest, ctx: GuardContext): Promis
 
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
   const turnstile = isTurnstileConfigured(cfg);
+  // 只取一次：检测页展示的请求 id 与 aud 告警日志一致（未带 X-Request-ID 时每次调用都会新生成）
+  const requestId = requestIdOf(request);
   const html = renderGatePage({
     locale: ctx.locale,
     nonce,
-    requestId: requestIdOf(request),
+    requestId,
     ip,
     apiUrl: cfg.apiUrl,
     apiTimeoutMs: cfg.apiTimeoutMs,
-    aud: audienceFor(request, cfg.audiences, requestIdOf(request)),
+    aud: audienceFor(request, cfg.audiences, requestId),
     riskNonce: issueNonce(ipScope(ip), cfg),
     turnstileSiteKey: turnstile ? cfg.turnstileSiteKey : "",
     pow: turnstile ? null : issuePowChallenge(ipScope(ip), cfg),
