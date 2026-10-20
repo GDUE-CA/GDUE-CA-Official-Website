@@ -430,6 +430,87 @@ async def _migrate_columns(conn):
     await _backfill_club_apply_receipts(conn)
 
 
+def _default_sql(col, dialect) -> str | None:
+    """模型列默认值 → SQL 字面量（server_default 优先，其次标量 default）；无法表达返回 None。"""
+    import enum
+
+    if col.server_default is not None and hasattr(col.server_default, "arg"):
+        arg = col.server_default.arg
+        if isinstance(arg, str):
+            return "'" + arg.replace("'", "''") + "'"
+        return str(arg.compile(dialect=dialect))
+    if col.default is None or not col.default.is_scalar:
+        return None  # 无默认 / 可调用默认（如 datetime.now）
+    value = col.default.arg
+    if isinstance(value, enum.Enum):
+        value = value.name  # SAEnum 按枚举名存储
+    try:
+        proc = col.type.literal_processor(dialect)
+    except NotImplementedError:
+        return None
+    return proc(value) if proc else None
+
+
+def _add_column_sql(col, dialect) -> str:
+    """生成补列 DDL（SQLite / PostgreSQL 通用）。
+
+    无可用默认值的非空列按可空补列（存量行无法回填，ADD COLUMN NOT NULL 会失败）；
+    外键以列级 REFERENCES 内联（两种方言均支持）；唯一约束不补（SQLite 不支持，记日志）。
+    """
+    q = dialect.identifier_preparer
+    parts = [q.quote(col.name), col.type.compile(dialect=dialect)]
+    default = _default_sql(col, dialect)
+    if default is not None:
+        parts.append(f"DEFAULT {default}")
+        if not col.nullable:
+            parts.append("NOT NULL")
+    fks = list(col.foreign_keys)
+    if len(fks) == 1:
+        target = fks[0].column
+        parts.append(f"REFERENCES {q.format_table(target.table)} ({q.quote(target.name)})")
+    return f"ALTER TABLE {q.format_table(col.table)} ADD COLUMN {' '.join(parts)}"
+
+
+async def _add_missing_model_columns(conn, metadata=None) -> list[str]:
+    """按 ORM 模型补齐已有表缺失的列（SQLite / PostgreSQL 通用）。
+
+    create_all 只建新表、不给旧表加列；本函数对比模型与库中实际列，缺哪列补哪列，
+    并补建涉及新列的索引与 PostgreSQL 原生 ENUM 类型。在 _migrate_columns 之后执行：
+    SQLite 手写清单里的列（带存量数据专用默认值）已先补上，这里只兜底清单遗漏的列。
+    返回补上的 "表.列" 列表。
+    """
+    from sqlalchemy import Enum as SAEnum
+    from sqlalchemy import inspect as sa_inspect
+    from sqlalchemy import text
+
+    metadata = metadata if metadata is not None else Base.metadata
+    dialect = conn.dialect
+    existing = await conn.run_sync(lambda c: {
+        t: {col["name"] for col in sa_inspect(c).get_columns(t)}
+        for t in sa_inspect(c).get_table_names()
+    })
+    added: list[str] = []
+    for table in metadata.sorted_tables:
+        have = existing.get(table.name)
+        if have is None:
+            continue  # 新表由 create_all 建
+        new_cols = [c for c in table.columns if c.name not in have]
+        for col in new_cols:
+            if isinstance(col.type, SAEnum) and dialect.name == "postgresql":
+                await conn.run_sync(lambda c, t=col.type: t.create(c, checkfirst=True))
+            await conn.execute(text(_add_column_sql(col, dialect)))
+            if col.unique:
+                logger.warning("补列 %s.%s：唯一约束未自动补建，请手动处理", table.name, col.name)
+            added.append(f"{table.name}.{col.name}")
+        names = {c.name for c in new_cols}
+        for idx in table.indexes:
+            if names & {c.name for c in idx.columns}:
+                await conn.run_sync(lambda c, i=idx: i.create(c, checkfirst=True))
+    if added:
+        logger.info("已按模型补齐缺失列：%s", ", ".join(added))
+    return added
+
+
 async def _backfill_club_apply_receipts(conn) -> None:
     """为缺少回执码的存量社团报名补发回执码（与 registrations 跨表查重）。"""
     from sqlalchemy import text
@@ -462,6 +543,8 @@ async def _init_db():
         await _rebuild_users_student_id_nullable(conn)
         await _rebuild_club_apply_user_id_nullable(conn)
         await _migrate_columns(conn)
+        # 兜底：PostgreSQL 不走上面的 SQLite 手写清单，模型新增列全靠这里补齐
+        await _add_missing_model_columns(conn)
 
     # 预置系统设置记录
     async with async_session() as s:
