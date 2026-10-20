@@ -1,3 +1,4 @@
 allowBuilds:
+  javascript-obfuscator: false
   sharp: false
   unrs-resolver: false

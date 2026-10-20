@@ -1,3 +1,5 @@
+import { ANTI_DEBUG_SOURCE } from "@/lib/antiDebug";
+import { obfuscateClientScript } from "./obfuscate";
 import type { PowChallenge } from "./pow";
 import { TURNSTILE_ACTION } from "./turnstile";
 
@@ -410,6 +412,20 @@ function check(){
 check();
 `;
 
+/**
+ * 检测页脚本（生产环境混淆，模块加载时一次性生成并缓存）
+ *
+ * CLIENT_SCRIPT 为常量，整个进程只混淆一次；外层注入的 `C` 配置不参与混淆（见 obfuscate.ts）。
+ * 在模块初始化（服务启动）时完成，首次请求不再承担混淆开销。
+ * 开发环境保留明文，便于调试，也避免 debugProtection 卡住开发者的 DevTools。
+ */
+// 网关是独立页面（不经站点 layout），全站反调试注入覆盖不到，这里把反调试并入网关脚本一起混淆
+const GATE_SCRIPT = `${ANTI_DEBUG_SOURCE}\n${CLIENT_SCRIPT}`;
+const CLIENT_SCRIPT_OUT: string =
+  process.env.NODE_ENV === "production"
+    ? obfuscateClientScript(GATE_SCRIPT)
+    : `function __gate(C){\n${GATE_SCRIPT}\n}`;
+
 export function renderGatePage(input: GatePageInput): string {
   const t = COPY[pageLang(input.locale)];
   const config = {
@@ -517,7 +533,7 @@ export function renderGatePage(input: GatePageInput): string {
   </section>
   <p class="foot mono" id="foot">${esc(t.foot(input.passHours))}</p>
 </main>
-<script nonce="${input.nonce}">(function(){var C=${jsonForScript(config)};${CLIENT_SCRIPT}})();</script>
+<script nonce="${input.nonce}">(function(){${CLIENT_SCRIPT_OUT};__gate(${jsonForScript(config)});})();</script>
 </body>
 </html>`;
 }
