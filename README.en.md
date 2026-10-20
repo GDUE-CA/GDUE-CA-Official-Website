@@ -20,7 +20,7 @@
 [![Maintenance](https://img.shields.io/badge/503_static-maintenance-blueviolet)](#503-static-maintenance-fallback)
 [![License](https://img.shields.io/badge/license-Source--Available-lightgrey)](./LICENSE)
 
-**🌐 Live site: [https://gdue-ca.paperee.guru](https://gdue-ca.paperee.guru)**
+**🌐 Live site: [https://www.gdueca.com](https://www.gdueca.com)**
 
 </div>
 
@@ -229,7 +229,7 @@ BACKEND_URL=http://127.0.0.1:8000
 NEXT_PUBLIC_API_BASE_URL=
 
 # Site's absolute external address (used by sitemap / robots)
-NEXT_PUBLIC_SITE_URL=https://gdue-ca.paperee.guru
+NEXT_PUBLIC_SITE_URL=https://www.gdueca.com
 
 # Umami analytics (optional; loaded only when both are set)
 NEXT_PUBLIC_UMAMI_WEBSITE_ID=
@@ -472,7 +472,7 @@ This project is released under a custom **Source-Available** license — the sou
 
 **Guangdong University of Education (Huadu Campus) Computer Association** · © Guangdong University of Education — Computer Association. All rights reserved.
 
-🌐 Website: [https://gdue-ca.paperee.guru](https://gdue-ca.paperee.guru)　·　💬 Feedback: [GitHub Issues](https://github.com/paperee/GDUE-CA-Official-Website-main/issues)
+🌐 Website: [https://www.gdueca.com](https://www.gdueca.com)　·　💬 Feedback: [GitHub Issues](https://github.com/paperee/GDUE-CA-Official-Website-main/issues)
 
 Full copyright & contact info: [COPYRIGHT.en.md](./COPYRIGHT.en.md)（[中文](./COPYRIGHT.md)）
 

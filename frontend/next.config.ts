@@ -97,8 +97,8 @@ const nextConfig: NextConfig = {
     "localhost",
     "10.0.146.41", // 本机局域网（以太网）
     "100.67.253.101", // 本机 Tailscale 虚拟网卡
-    "gdue-ca.paperee.guru",
-    "*.paperee.guru",
+    "www.gdueca.com",
+    "*.gdueca.com",
     ...(process.env.DEV_ALLOWED_ORIGINS?.split(",")
       .map((s) => s.trim())
       .filter(Boolean) ?? []),

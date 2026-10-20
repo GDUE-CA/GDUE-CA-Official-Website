@@ -20,7 +20,7 @@
 [![Maintenance](https://img.shields.io/badge/503_static-maintenance-blueviolet)](#503-静态维护兜底机制)
 [![License](https://img.shields.io/badge/license-Source--Available-lightgrey)](./LICENSE-ZH.md)
 
-**🌐 在线访问：[https://gdue-ca.paperee.guru](https://gdue-ca.paperee.guru)**
+**🌐 在线访问：[https://www.gdueca.com](https://www.gdueca.com)**
 
 </div>
 
@@ -226,7 +226,7 @@ BACKEND_URL=http://127.0.0.1:8000
 NEXT_PUBLIC_API_BASE_URL=
 
 # 站点对外绝对地址（sitemap / robots 使用）
-NEXT_PUBLIC_SITE_URL=https://gdue-ca.paperee.guru
+NEXT_PUBLIC_SITE_URL=https://www.gdueca.com
 
 # Umami 网站统计（可选，两项都填才加载）
 NEXT_PUBLIC_UMAMI_WEBSITE_ID=
@@ -469,7 +469,7 @@ docker compose logs -f              # Nginx / 前端 / 后端统一日志格式�
 
 **广东第二师范学院（花都校区）计算机协会** · © Guangdong University of Education — Computer Association. All rights reserved.
 
-🌐 官网：[https://gdue-ca.paperee.guru](https://gdue-ca.paperee.guru)　·　💬 反馈：[GitHub Issues](https://github.com/paperee/GDUE-CA-Official-Website-main/issues)
+🌐 官网：[https://www.gdueca.com](https://www.gdueca.com)　·　💬 反馈：[GitHub Issues](https://github.com/paperee/GDUE-CA-Official-Website-main/issues)
 
 完整版权与联系信息见 [COPYRIGHT.md](./COPYRIGHT.md)（[English](./COPYRIGHT.en.md)）
 
