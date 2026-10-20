@@ -7,7 +7,7 @@
 #   部署到 Nginx 挂载目录（默认 /var/www/maintenance/）。
 #   Nginx 检测到 Node 3000 端口返回 502/504（进程宕机 / 无法连接）时，
 #   error_page 502 504 =503 /maintenance/index.html 回退到该静态页，
-#   状态码强制 503 且严禁缓存（见 deploy/nginx/gdueca.conf）。
+#   状态码强制 503 且严禁缓存（宿主机 Nginx 配置）。
 #
 #   页面为原生 HTML/CSS，无编译 / 构建 / 运行时依赖，Nginx 直接挂载即可渲染；
 #   页面内样式通过相对路径 ./style.css 引用，故两个文件必须一并部署。

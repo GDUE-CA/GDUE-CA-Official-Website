@@ -20,7 +20,7 @@
 [![Maintenance](https://img.shields.io/badge/503_static-maintenance-blueviolet)](#503-静态维护兜底机制)
 [![License](https://img.shields.io/badge/license-Source--Available-lightgrey)](./LICENSE-ZH.md)
 
-**🌐 在线访问：[https://gdue-ca.paperee.guru](https://gdue-ca.paperee.guru)**
+**🌐 在线访问：[https://www.gdueca.com](https://www.gdueca.com)**
 
 </div>
 
@@ -151,7 +151,6 @@ GDUE-CA-Official-Website/
 │   ├── scripts/                      #   运维与种子脚本
 │   └── tests/                        #   pytest 测试
 ├── deploy/                           # 部署目录
-│   ├── nginx/gdueca.conf            #   Nginx 反代 + 静态维护页兜底
 │   └── scripts/post_deploy.sh        #   静态维护页部署脚本（同步到 /var/www/maintenance）
 ├── docs/                             # SPEC.md / BREAK_GLASS_OPS.md 等文档
 └── .env.example 环境变量模板
@@ -226,7 +225,7 @@ BACKEND_URL=http://127.0.0.1:8000
 NEXT_PUBLIC_API_BASE_URL=
 
 # 站点对外绝对地址（sitemap / robots 使用）
-NEXT_PUBLIC_SITE_URL=https://gdue-ca.paperee.guru
+NEXT_PUBLIC_SITE_URL=https://www.gdueca.com
 
 # Umami 网站统计（可选，两项都填才加载）
 NEXT_PUBLIC_UMAMI_WEBSITE_ID=
@@ -324,7 +323,7 @@ pm2 save
 
 ### 2. Nginx 配置
 
-接入 [deploy/nginx/gdueca.conf](deploy/nginx/gdueca.conf)（HTTP/2 + HTTP/3、真实 IP 透传、`/admin` 仅内网、静态维护页兜底），随后 `nginx -t && systemctl reload nginx`。
+宿主机 Nginx 配置由服务器自行维护（不随仓库分发），需具备：真实 IP 透传（`X-Forwarded-For` / `X-Real-IP`，前端风控依赖）、`/admin` 仅内网、Next.js 502/504 回退静态维护页（状态码 503、禁止缓存）。修改后 `nginx -t && systemctl reload nginx`。
 
 ### 3. 部署静态维护页（部署后必做）
 
@@ -469,7 +468,7 @@ docker compose logs -f              # Nginx / 前端 / 后端统一日志格式�
 
 **广东第二师范学院（花都校区）计算机协会** · © Guangdong University of Education — Computer Association. All rights reserved.
 
-🌐 官网：[https://gdue-ca.paperee.guru](https://gdue-ca.paperee.guru)　·　💬 反馈：[GitHub Issues](https://github.com/paperee/GDUE-CA-Official-Website-main/issues)
+🌐 官网：[https://www.gdueca.com](https://www.gdueca.com)　·　💬 反馈：[GitHub Issues](https://github.com/paperee/GDUE-CA-Official-Website-main/issues)
 
 完整版权与联系信息见 [COPYRIGHT.md](./COPYRIGHT.md)（[English](./COPYRIGHT.en.md)）
 

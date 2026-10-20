@@ -10,7 +10,7 @@
 
 © Guangdong University of Education — Computer Association. All rights reserved.
 
-🌐 Website: [https://gdue-ca.paperee.guru](https://gdue-ca.paperee.guru)　·　💬 Feedback: [GitHub Issues](https://github.com/paperee/GDUE-CA-Official-Website-main/issues)
+🌐 Website: [https://www.gdueca.com](https://www.gdueca.com)　·　💬 Feedback: [GitHub Issues](https://github.com/paperee/GDUE-CA-Official-Website-main/issues)
 
 </div>
 

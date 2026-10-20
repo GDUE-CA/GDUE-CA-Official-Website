@@ -6,7 +6,7 @@ services:
       context: .
       args:
         # 构建时固化进前端（sitemap / robots 绝对地址、可选 Umami 统计）
-        NEXT_PUBLIC_SITE_URL: "https://gdue-ca.paperee.guru"
+        NEXT_PUBLIC_SITE_URL: "https://www.gdueca.com"
         NEXT_PUBLIC_UMAMI_WEBSITE_ID: ""
         NEXT_PUBLIC_UMAMI_SRC: ""
     image: gdueca:latest

@@ -104,7 +104,7 @@ export function DomainWhitelistPanel() {
             id="allowedHosts"
             aria-invalid={!!fe.allowed_hosts}
             rows={3}
-            placeholder="如：gdue-ca.paperee.guru"
+            placeholder="如：www.gdueca.com"
             value={allowedHosts}
             onChange={(e) => setAllowedHosts(e.target.value)}
             className="font-mono text-sm"

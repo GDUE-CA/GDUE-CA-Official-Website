@@ -20,7 +20,7 @@
 [![Maintenance](https://img.shields.io/badge/503_static-maintenance-blueviolet)](#503-static-maintenance-fallback)
 [![License](https://img.shields.io/badge/license-Source--Available-lightgrey)](./LICENSE)
 
-**🌐 Live site: [https://gdue-ca.paperee.guru](https://gdue-ca.paperee.guru)**
+**🌐 Live site: [https://www.gdueca.com](https://www.gdueca.com)**
 
 </div>
 
@@ -151,7 +151,6 @@ GDUE-CA-Official-Website/
 │   ├── scripts/                      #   Ops & seed scripts
 │   └── tests/                        #   pytest tests
 ├── deploy/                           # Deployment directory
-│   ├── nginx/gdueca.conf            #   Nginx reverse proxy + static maintenance fallback
 │   └── scripts/post_deploy.sh        #   Static maintenance page deploy script (syncs to /var/www/maintenance)
 ├── docs/                             # SPEC.md / BREAK_GLASS_OPS.md etc.
 └── .env.example                      # Environment variable template
@@ -229,7 +228,7 @@ BACKEND_URL=http://127.0.0.1:8000
 NEXT_PUBLIC_API_BASE_URL=
 
 # Site's absolute external address (used by sitemap / robots)
-NEXT_PUBLIC_SITE_URL=https://gdue-ca.paperee.guru
+NEXT_PUBLIC_SITE_URL=https://www.gdueca.com
 
 # Umami analytics (optional; loaded only when both are set)
 NEXT_PUBLIC_UMAMI_WEBSITE_ID=
@@ -327,7 +326,7 @@ pm2 save
 
 ### 2. Nginx Configuration
 
-Wire up [deploy/nginx/gdueca.conf](deploy/nginx/gdueca.conf) (HTTP/2 + HTTP/3, real-IP passthrough, `/admin` intranet-only, static maintenance fallback), then `nginx -t && systemctl reload nginx`.
+The host Nginx config is maintained on the server (not shipped in the repo). It must provide: real-IP passthrough (`X-Forwarded-For` / `X-Real-IP`, required by the frontend risk guard), `/admin` intranet-only, and a static maintenance fallback on Next.js 502/504 (status 503, no caching). Then `nginx -t && systemctl reload nginx`.
 
 ### 3. Deploy the static maintenance page (required after deployment)
 
@@ -472,7 +471,7 @@ This project is released under a custom **Source-Available** license — the sou
 
 **Guangdong University of Education (Huadu Campus) Computer Association** · © Guangdong University of Education — Computer Association. All rights reserved.
 
-🌐 Website: [https://gdue-ca.paperee.guru](https://gdue-ca.paperee.guru)　·　💬 Feedback: [GitHub Issues](https://github.com/paperee/GDUE-CA-Official-Website-main/issues)
+🌐 Website: [https://www.gdueca.com](https://www.gdueca.com)　·　💬 Feedback: [GitHub Issues](https://github.com/paperee/GDUE-CA-Official-Website-main/issues)
 
 Full copyright & contact info: [COPYRIGHT.en.md](./COPYRIGHT.en.md)（[中文](./COPYRIGHT.md)）
 

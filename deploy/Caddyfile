@@ -8,11 +8,16 @@
 #   1. 域名 A/AAAA 记录指向本机，防火墙放行 TCP 80/443 + UDP 443
 #   2. caddy run --config Caddyfile（或 systemd 服务）
 #
-# 注意：与 deploy/nginx/gdueca.conf 二选一，不要同时占用 80/443。
+# 注意：与宿主机 Nginx 二选一，不要同时占用 80/443。
 # =============================================================================
 
+# ---- 根域名：统一 301 到 www（避免两个域名被分别收录） ----
+gdueca.com {
+    redir https://www.gdueca.com{uri} permanent
+}
+
 # ---- 主站：Next.js 前端 ----
-gdue-ca.paperee.guru {
+www.gdueca.com {
     encode zstd gzip
 
     # 后台管理页面：仅允许私有内网访问（后端接口层同样按角色强制校验）
@@ -52,7 +57,7 @@ gdue-ca.paperee.guru {
 }
 
 # ---- API：FastAPI 后端 ----
-api.paperee.guru {
+api.gdueca.com {
     encode zstd gzip
 
     reverse_proxy 127.0.0.1:8000 {
