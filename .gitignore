@@ -54,3 +54,6 @@ backend/scripts/_*.py
 
 .idea
 .idea/**
+
+# 本地示例代码目录（非本仓库内容）
+Kirameku/
